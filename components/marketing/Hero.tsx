@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export function Hero() {
+  const t = useTranslations('hero');
+
   return (
     <section className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden">
       <div className="absolute inset-0 mesh-bg" />
@@ -28,44 +31,43 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            Built specifically for Florida entrepreneurs
+            {t('badge')}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.05] tracking-tight text-balance">
-            Form your Florida business <br className="hidden md:block" />
-            <span className="gradient-text italic">in fifteen minutes.</span>
+            {t('headlineLine1')} <br className="hidden md:block" />
+            <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
           <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
-            File your LLC or Corporation with the State of Florida — without the LegalZoom upsells,
-            hidden fees, or 45-minute forms. We include a year of registered agent service, free.
+            {t('subhead')}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Button asChild size="lg" className="group">
               <Link href="/sign-up">
-                Start your filing
+                {t('startFiling')}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/pricing">See pricing</Link>
+              <Link href="/pricing">{t('seePricing')}</Link>
             </Button>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-ink-subtle">
             <span className="inline-flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5 text-primary" />
-              No credit card to start
+              {t('noCreditCard')}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              State filed in 1 business day
+              {t('filedIn1Day')}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Star className="h-3.5 w-3.5 text-accent fill-accent" />
-              4.9 / 5 from 2,400+ owners
+              {t('rating')}
             </span>
           </div>
         </motion.div>
@@ -84,11 +86,11 @@ export function Hero() {
 }
 
 function HeroPreview() {
+  const t = useTranslations('hero');
   return (
     <div className="relative">
       <div className="absolute -top-8 -left-8 -bottom-8 -right-8 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 rounded-3xl blur-2xl opacity-60" />
       <div className="relative ring-card rounded-2xl bg-white overflow-hidden border border-border">
-        {/* Mock browser chrome */}
         <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
           <span className="h-3 w-3 rounded-full bg-red-300" />
           <span className="h-3 w-3 rounded-full bg-yellow-300" />
@@ -101,14 +103,10 @@ function HeroPreview() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           <div className="md:col-span-2 p-8 md:p-10 border-r border-border">
             <Badge variant="secondary" className="mb-4">
-              Step 2 of 12 · Business Name
+              {t('previewStep')}
             </Badge>
-            <h3 className="font-display text-2xl font-medium mb-2">
-              What's the name of your business?
-            </h3>
-            <p className="text-sm text-ink-muted mb-6">
-              We'll check availability against the Florida Sunbiz database in real time.
-            </p>
+            <h3 className="font-display text-2xl font-medium mb-2">{t('previewQuestion')}</h3>
+            <p className="text-sm text-ink-muted mb-6">{t('previewSubtitle')}</p>
 
             <div className="relative">
               <input
@@ -120,30 +118,34 @@ function HeroPreview() {
                 <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
                   <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Available
+                {t('previewAvailable')}
               </div>
             </div>
 
             <div className="mt-4 p-3 rounded-md bg-success-subtle/50 border border-success/20 text-sm text-ink">
-              <strong>Great choice.</strong> No conflicts on the Florida Department of State record.
+              {t('previewSuccess')}
             </div>
           </div>
 
           <div className="p-8 md:p-10 bg-muted/30">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Order summary</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+              {t('previewSummary')}
+            </p>
             <div className="mt-4 space-y-3">
-              <SummaryRow label="State filing fee" amount="$125.00" />
-              <SummaryRow label="Pro formation" amount="$99.00" />
-              <SummaryRow label="Registered agent (Y1)" amount="Free" muted />
-              <SummaryRow label="Operating Agreement" amount="Included" muted />
-              <SummaryRow label="EIN" amount="Included" muted />
+              <SummaryRow label={t('previewStateFee')} amount="$125.00" />
+              <SummaryRow label={t('previewProFormation')} amount="$99.00" />
+              <SummaryRow label={t('previewRA')} amount={t('previewIncluded')} muted />
+              <SummaryRow label={t('previewOA')} amount={t('previewIncluded')} muted />
+              <SummaryRow label={t('previewEIN')} amount={t('previewIncluded')} muted />
             </div>
             <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
-              <span className="text-sm font-medium">Total today</span>
-              <span className="font-display text-2xl font-medium">$224<span className="text-sm">.00</span></span>
+              <span className="text-sm font-medium">{t('previewTotalToday')}</span>
+              <span className="font-display text-2xl font-medium">
+                $224<span className="text-sm">.00</span>
+              </span>
             </div>
             <div className="mt-3 text-xs text-ink-subtle leading-relaxed">
-              No subscription. No surprise charges. Cancel any add-on before payment.
+              {t('previewNoSubscription')}
             </div>
           </div>
         </div>

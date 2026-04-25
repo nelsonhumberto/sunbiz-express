@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -13,17 +15,18 @@ interface NavBarProps {
   isAdmin?: boolean;
 }
 
-const NAV_LINKS = [
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/services', label: 'Services' },
-  { href: '/about', label: 'About' },
-  { href: '/faq', label: 'FAQ' },
-];
-
 export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
+  const t = useTranslations('nav');
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const NAV_LINKS = [
+    { href: '/pricing', label: t('pricing') },
+    { href: '/services', label: t('services') },
+    { href: '/about', label: t('about') },
+    { href: '/faq', label: t('faq') },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -64,27 +67,28 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
+          <LanguageSwitcher />
           {isAuthed ? (
             <>
               {isAdmin && (
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/admin">Admin</Link>
+                  <Link href="/admin">{t('admin')}</Link>
                 </Button>
               )}
               <Button asChild variant="ghost" size="sm">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/dashboard">{t('dashboard')}</Link>
               </Button>
               <Button asChild>
-                <Link href="/dashboard">Continue Filing</Link>
+                <Link href="/dashboard">{t('continueFiling')}</Link>
               </Button>
             </>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href="/sign-in">Sign in</Link>
+                <Link href="/sign-in">{t('signIn')}</Link>
               </Button>
               <Button asChild>
-                <Link href="/sign-up">Start Filing →</Link>
+                <Link href="/sign-up">{t('startFiling')}</Link>
               </Button>
             </>
           )}
@@ -115,19 +119,18 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               </Link>
             ))}
             <div className="border-t border-border mt-2 pt-3 flex flex-col gap-2">
+              <LanguageSwitcher variant="full" className="w-full justify-start" />
               {isAuthed ? (
-                <>
-                  <Button asChild variant="outline">
-                    <Link href="/dashboard">Dashboard</Link>
-                  </Button>
-                </>
+                <Button asChild variant="outline">
+                  <Link href="/dashboard">{t('dashboard')}</Link>
+                </Button>
               ) : (
                 <>
                   <Button asChild variant="outline">
-                    <Link href="/sign-in">Sign in</Link>
+                    <Link href="/sign-in">{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link href="/sign-up">Start Filing</Link>
+                    <Link href="/sign-up">{t('startFiling')}</Link>
                   </Button>
                 </>
               )}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { signInAction, type ActionResult } from '@/actions/auth';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,13 @@ import { Label } from '@/components/ui/label';
 const initial: ActionResult = {};
 
 export function SignInForm() {
+  const t = useTranslations('auth');
   const [state, formAction] = useFormState(signInAction, initial);
 
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email')}</Label>
         <Input
           id="email"
           name="email"
@@ -32,16 +34,16 @@ export function SignInForm() {
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('password')}</Label>
           <Link href="#" className="text-xs text-ink-muted hover:text-primary">
-            Forgot password?
+            {t('forgotPassword')}
           </Link>
         </div>
         <Input
           id="password"
           name="password"
           type="password"
-          placeholder="Your password"
+          placeholder=""
           autoComplete="current-password"
           required
         />
@@ -62,16 +64,17 @@ export function SignInForm() {
 }
 
 function SubmitButton() {
+  const t = useTranslations('auth');
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" size="lg" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Signing in…
+          {t('signingIn')}
         </>
       ) : (
-        'Sign in →'
+        t('signInButton')
       )}
     </Button>
   );

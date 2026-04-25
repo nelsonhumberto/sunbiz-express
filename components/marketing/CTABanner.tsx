@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function CTABanner() {
+  const t = useTranslations('ctaBanner');
+
   return (
     <section className="py-16 md:py-24">
       <div className="container">
@@ -23,24 +26,19 @@ export function CTABanner() {
           <div className="relative grid grid-cols-1 lg:grid-cols-2 items-center gap-8">
             <div>
               <h2 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-tight">
-                Ready to launch your{' '}
-                <span className="italic">Florida business?</span>
+                {t('headline1')} <span className="italic">{t('headline2')}</span>
               </h2>
-              <p className="mt-4 text-lg text-white/85 leading-relaxed max-w-md">
-                Most owners finish in 15 minutes. We submit to the state the same business day.
-              </p>
+              <p className="mt-4 text-lg text-white/85 leading-relaxed max-w-md">{t('subhead')}</p>
             </div>
 
             <div className="flex flex-col items-start lg:items-end gap-3">
               <Button asChild size="xl" variant="accent" className="text-base shadow-xl">
                 <Link href="/sign-up">
-                  Start your filing
+                  {t('cta')}
                   <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
-              <p className="text-xs text-white/70">
-                No credit card required to start · Cancel any time
-              </p>
+              <p className="text-xs text-white/70">{t('footnote')}</p>
             </div>
           </div>
         </motion.div>

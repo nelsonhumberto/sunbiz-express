@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { Sparkles, ShieldCheck, Receipt } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ interface CostSidebarProps {
 }
 
 export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) {
+  const t = useTranslations('wizard');
   const breakdown = computeCost({ entityType, tier, addOnSlugs });
 
   return (
@@ -21,14 +23,15 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
       <div className="bg-gradient-to-br from-primary/5 to-accent/5 px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Receipt className="h-4 w-4 text-primary" />
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">Order Summary</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
+            {t('orderSummary')}
+          </h3>
         </div>
       </div>
       <CardContent className="p-6 space-y-4">
-        {/* State fees */}
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-            Florida Department of State
+            {t('stateFees')}
           </p>
           {breakdown.lines
             .filter((l) => l.category === 'state')
@@ -37,11 +40,11 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
             ))}
         </div>
 
-        {/* Service fees */}
-        {breakdown.lines.filter((l) => l.category === 'service' || l.category === 'addon').length > 0 && (
+        {breakdown.lines.filter((l) => l.category === 'service' || l.category === 'addon').length >
+          0 && (
           <div className="space-y-2 pt-3 border-t border-border">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-              Sunbiz Express services
+              {t('ourServices')}
             </p>
             {breakdown.lines
               .filter((l) => l.category === 'service' || l.category === 'addon')
@@ -51,15 +54,11 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
           </div>
         )}
 
-        {/* Free year-1 RA callout */}
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-success-subtle/50 border border-success/20">
           <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
-          <div className="text-xs text-ink leading-snug">
-            <strong>Year-1 Registered Agent</strong> is included free.
-          </div>
+          <div className="text-xs text-ink leading-snug">{t('freeRABanner')}</div>
         </div>
 
-        {/* Total */}
         <motion.div
           key={breakdown.totalCents}
           initial={{ scale: 0.98, opacity: 0.6 }}
@@ -67,17 +66,17 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
           className="pt-4 border-t border-border space-y-1"
         >
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-medium">Total today</span>
+            <span className="text-sm font-medium">{t('totalToday')}</span>
             <span className="font-display text-3xl font-medium">
               {formatCurrency(breakdown.totalCents, { showZero: true })}
             </span>
           </div>
-          <p className="text-xs text-ink-subtle">One-time payment · No subscription</p>
+          <p className="text-xs text-ink-subtle">{t('oneTime')}</p>
         </motion.div>
 
         <Badge variant="secondary" className="w-full justify-center font-medium">
           <Sparkles className="h-3 w-3" />
-          Cancel any add-on before paying
+          {t('cancelAnyAddon')}
         </Badge>
       </CardContent>
     </Card>

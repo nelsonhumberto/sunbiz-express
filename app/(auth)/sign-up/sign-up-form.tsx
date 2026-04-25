@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { signUpAction, type ActionResult } from '@/actions/auth';
@@ -12,20 +13,33 @@ import { Checkbox } from '@/components/ui/checkbox';
 const initial: ActionResult = {};
 
 export function SignUpForm() {
+  const t = useTranslations('auth');
   const [state, formAction] = useFormState(signUpAction, initial);
   const [showPwd, setShowPwd] = useState(false);
 
   return (
     <form action={formAction} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <Field name="firstName" label="First name" placeholder="Daniela" error={state.fieldErrors?.firstName} required />
-        <Field name="lastName" label="Last name" placeholder="Demo" error={state.fieldErrors?.lastName} required />
+        <Field
+          name="firstName"
+          label={t('firstName')}
+          placeholder="Daniela"
+          error={state.fieldErrors?.firstName}
+          required
+        />
+        <Field
+          name="lastName"
+          label={t('lastName')}
+          placeholder="Demo"
+          error={state.fieldErrors?.lastName}
+          required
+        />
       </div>
 
       <Field
         name="email"
         type="email"
-        label="Work email"
+        label={t('workEmail')}
         placeholder="you@business.com"
         error={state.fieldErrors?.email}
         required
@@ -33,13 +47,13 @@ export function SignUpForm() {
       />
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('password')}</Label>
         <div className="relative">
           <Input
             id="password"
             name="password"
             type={showPwd ? 'text' : 'password'}
-            placeholder="At least 8 chars, one capital, one number"
+            placeholder={t('passwordHint')}
             autoComplete="new-password"
             required
             className={state.fieldErrors?.password ? 'border-destructive focus-visible:ring-destructive/30' : ''}
@@ -61,8 +75,8 @@ export function SignUpForm() {
       <Field
         name="confirmPassword"
         type="password"
-        label="Confirm password"
-        placeholder="Re-enter your password"
+        label={t('confirmPassword')}
+        placeholder={t('reenterPassword')}
         error={state.fieldErrors?.confirmPassword}
         required
         autoComplete="new-password"
@@ -71,8 +85,7 @@ export function SignUpForm() {
       <div className="flex items-start gap-3 pt-1">
         <Checkbox id="acceptTerms" name="acceptTerms" required />
         <Label htmlFor="acceptTerms" className="text-xs text-ink-muted leading-snug cursor-pointer">
-          I agree that Sunbiz Express is not a law firm and does not provide legal advice. I'm
-          authorized to provide the information for forming a business.
+          {t('termsAgreement')}
         </Label>
       </div>
 
@@ -88,16 +101,17 @@ export function SignUpForm() {
 }
 
 function SubmitButton() {
+  const t = useTranslations('auth');
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" size="lg" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Creating account…
+          {t('creatingAccount')}
         </>
       ) : (
-        'Create my account →'
+        t('createAccount')
       )}
     </Button>
   );

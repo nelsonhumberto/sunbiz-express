@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Fraunces } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -42,26 +44,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={cn(inter.variable, fraunces.variable, 'font-sans')}
         suppressHydrationWarning
       >
-        {children}
-        <Toaster
-          position="top-right"
-          richColors
-          closeButton
-          toastOptions={{
-            className: 'font-sans',
-          }}
-        />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            toastOptions={{
+              className: 'font-sans',
+            }}
+          />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

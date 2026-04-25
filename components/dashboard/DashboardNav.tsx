@@ -2,16 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, CalendarCheck, Settings, ShieldCheck, LogOut } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { LayoutDashboard, FileText, CalendarCheck, ShieldCheck, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/marketing/Logo';
+import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { signOutAction } from '@/actions/auth';
-
-const NAV = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/documents', label: 'Documents', icon: FileText },
-  { href: '/dashboard/compliance', label: 'Compliance', icon: CalendarCheck },
-];
 
 interface DashboardNavProps {
   isAdmin: boolean;
@@ -19,7 +15,15 @@ interface DashboardNavProps {
 }
 
 export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
+  const t = useTranslations('dashboard');
+  const tNav = useTranslations('nav');
   const pathname = usePathname();
+
+  const NAV = [
+    { href: '/dashboard', label: t('navOverview'), icon: LayoutDashboard },
+    { href: '/dashboard/documents', label: t('navDocuments'), icon: FileText },
+    { href: '/dashboard/compliance', label: t('navCompliance'), icon: CalendarCheck },
+  ];
 
   return (
     <aside className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-white">
@@ -29,7 +33,9 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
 
       <nav className="flex-1 px-3 py-4 space-y-1">
         {NAV.map((item) => {
-          const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+          const active =
+            pathname === item.href ||
+            (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
@@ -60,13 +66,16 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
               )}
             >
               <ShieldCheck className="h-4 w-4" />
-              Admin
+              {tNav('admin')}
             </Link>
           </>
         )}
       </nav>
 
       <div className="px-3 py-4 border-t border-border space-y-1">
+        <div className="px-1 py-1 mb-1">
+          <LanguageSwitcher variant="full" className="w-full justify-start" />
+        </div>
         <div className="px-3 py-2">
           <p className="text-sm font-medium text-ink leading-tight truncate">{user.name}</p>
           <p className="text-xs text-ink-subtle truncate">{user.email}</p>
@@ -77,7 +86,7 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-ink-muted hover:bg-muted hover:text-ink transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {tNav('signOut')}
           </button>
         </form>
       </div>

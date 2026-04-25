@@ -2,44 +2,37 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Building2, Briefcase, Check } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { cn } from '@/lib/utils';
 import type { WizardFiling } from '../types';
 
-const ENTITY_OPTIONS = [
-  {
-    value: 'LLC' as const,
-    title: 'Limited Liability Company',
-    subtitle: 'LLC',
-    icon: Building2,
-    perks: [
-      'Most flexible structure',
-      'Pass-through taxation by default',
-      'Lower paperwork than corporations',
-      '$125 Florida filing fee',
-    ],
-    recommended: true,
-  },
-  {
-    value: 'CORP' as const,
-    title: 'Profit Corporation',
-    subtitle: 'C-Corp',
-    icon: Briefcase,
-    perks: [
-      'Best for raising venture capital',
-      'Issue stock to shareholders',
-      'Optional S-Corp election available',
-      '$70 Florida filing fee',
-    ],
-  },
-];
-
 export function Step1Entity({ filing }: { filing: WizardFiling }) {
+  const t = useTranslations('wizard');
+  const tPricing = useTranslations('pricing');
   const [selected, setSelected] = useState<'LLC' | 'CORP'>(filing.entityType as 'LLC' | 'CORP');
   const [pending, start] = useTransition();
   const router = useRouter();
+
+  const ENTITY_OPTIONS = [
+    {
+      value: 'LLC' as const,
+      title: t('entityLLCTitle'),
+      subtitle: 'LLC',
+      icon: Building2,
+      perks: [t('entityLLCDesc1'), t('entityLLCDesc2'), t('entityLLCDesc3'), t('entityLLCDesc4')],
+      recommended: true,
+    },
+    {
+      value: 'CORP' as const,
+      title: t('entityCorpTitle'),
+      subtitle: 'C-Corp',
+      icon: Briefcase,
+      perks: [t('entityCorpDesc1'), t('entityCorpDesc2'), t('entityCorpDesc3'), t('entityCorpDesc4')],
+    },
+  ];
 
   const onContinue = () => {
     start(async () => {
@@ -67,16 +60,14 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
             >
               {option.recommended && (
                 <span className="absolute -top-3 left-6 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider">
-                  Most Popular
+                  {tPricing('ribbon_recommended')}
                 </span>
               )}
               <div className="flex items-start gap-3 mb-4">
                 <div
                   className={cn(
                     'h-11 w-11 rounded-xl flex items-center justify-center',
-                    isSelected
-                      ? 'bg-primary text-white'
-                      : 'bg-primary/10 text-primary'
+                    isSelected ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
                   )}
                 >
                   <option.icon className="h-5 w-5" />
@@ -85,9 +76,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
                   <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
                     {option.subtitle}
                   </p>
-                  <h3 className="font-display text-xl font-medium leading-tight">
-                    {option.title}
-                  </h3>
+                  <h3 className="font-display text-xl font-medium leading-tight">{option.title}</h3>
                 </div>
                 {isSelected && (
                   <span className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center">
@@ -108,10 +97,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
         })}
       </div>
 
-      <p className="text-xs text-ink-subtle leading-relaxed">
-        💡 Not sure which to choose? Most small business owners start with an LLC. You can elect S-Corp
-        tax treatment later for tax savings as your business grows.
-      </p>
+      <p className="text-xs text-ink-subtle leading-relaxed">{t('entityHint')}</p>
 
       <WizardActions onNext={onContinue} pending={pending} />
     </div>

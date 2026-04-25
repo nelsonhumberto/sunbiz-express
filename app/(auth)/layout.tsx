@@ -1,19 +1,22 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Logo } from '@/components/marketing/Logo';
+import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = await getTranslations('auth');
+
   return (
     <div
       className="min-h-screen relative grid lg:grid-cols-5 bg-surface"
       suppressHydrationWarning
     >
-      {/* Left: form. suppressHydrationWarning here because browser extensions
-          (Grammarly, password managers) inject DOM near form inputs and break
-          React's hydration check. The injection is benign — content is identical. */}
+      {/* Left: form */}
       <div className="lg:col-span-2 flex flex-col" suppressHydrationWarning>
-        <header className="container py-6">
+        <header className="container py-6 flex items-center justify-between">
           <Logo />
+          <LanguageSwitcher />
         </header>
         <div
           className="flex-1 flex items-center justify-center px-6 py-8"
@@ -26,7 +29,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <footer className="container py-6 text-xs text-ink-subtle flex justify-between">
           <span>© {COPYRIGHT_YEAR} Sunbiz Express</span>
           <Link href="/" className="hover:text-ink-muted">
-            ← Back to home
+            {t('backToHome')}
           </Link>
         </footer>
       </div>
@@ -40,38 +43,38 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative h-full flex flex-col justify-between p-12 text-white">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-medium">
-              ☀️ Welcome to Sunbiz Express
+              {t('sidePanelBadge')}
             </div>
             <h2 className="font-display text-4xl xl:text-5xl font-medium leading-tight max-w-md">
-              Your Florida business, formed in fifteen minutes.
+              {t('sidePanelHeadline')}
             </h2>
-            <p className="text-lg text-white/85 max-w-md leading-relaxed">
-              Filing should feel as breezy as a Florida summer. We've reduced the typical 45-minute
-              process to a clean 12-step flow — with transparent pricing.
-            </p>
+            <p className="text-lg text-white/85 max-w-md leading-relaxed">{t('sidePanelBody')}</p>
           </div>
 
           <ul className="space-y-3 max-w-sm">
-            {[
-              'Free Year-1 Registered Agent',
-              'No hidden fees, ever',
-              'Live Sunbiz name availability',
-              'Filed in 1 business day',
-            ].map((feature) => (
-              <li key={feature} className="flex items-center gap-3 text-sm text-white/90">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 backdrop-blur border border-white/20">
-                  <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                {feature}
-              </li>
-            ))}
+            {[t('sidePanelFeature1'), t('sidePanelFeature2'), t('sidePanelFeature3'), t('sidePanelFeature4')].map(
+              (feature) => (
+                <li key={feature} className="flex items-center gap-3 text-sm text-white/90">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 backdrop-blur border border-white/20">
+                    <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+                      <path
+                        d="M2 6l3 3 5-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  {feature}
+                </li>
+              )
+            )}
           </ul>
 
           <div className="space-y-2 max-w-sm">
             <div className="flex -space-x-2">
-              {['M', 'C', 'J', 'A'].map((c, i) => (
+              {['M', 'C', 'J', 'A'].map((c) => (
                 <div
                   key={c}
                   className="h-8 w-8 rounded-full bg-white/20 backdrop-blur border-2 border-primary flex items-center justify-center text-xs font-semibold"
@@ -80,9 +83,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 </div>
               ))}
             </div>
-            <p className="text-sm text-white/80">
-              Joined by 2,400+ Florida entrepreneurs this year.
-            </p>
+            <p className="text-sm text-white/80">{t('sidePanelSocial')}</p>
           </div>
         </div>
       </aside>

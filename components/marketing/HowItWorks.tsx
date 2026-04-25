@@ -1,42 +1,29 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
 
-const STEPS = [
-  {
-    n: '01',
-    title: 'Tell us about your business',
-    body: 'Choose LLC or Corporation, enter your name, and we check Sunbiz availability live.',
-  },
-  {
-    n: '02',
-    title: 'Pick your service tier',
-    body: 'Starter (free), Pro ($99), or Concierge ($299). Add EIN, Operating Agreement, or domain.',
-  },
-  {
-    n: '03',
-    title: 'Sign and pay once',
-    body: 'Type-to-sign your filing. Pay state fees + service fee in one transparent transaction.',
-  },
-  {
-    n: '04',
-    title: 'We file with Florida',
-    body: 'Submitted same business day. Documents are emailed and stored in your dashboard.',
-  },
-];
-
 export function HowItWorks() {
+  const t = useTranslations('howItWorks');
+
+  const STEPS = [
+    { n: '01', title: t('step1Title'), body: t('step1Body') },
+    { n: '02', title: t('step2Title'), body: t('step2Body') },
+    { n: '03', title: t('step3Title'), body: t('step3Body') },
+    { n: '04', title: t('step4Title'), body: t('step4Body') },
+  ];
+
   return (
     <section className="py-20 md:py-28">
       <div className="container">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            How it works
+            {t('kicker')}
           </span>
           <h2 className="mt-3 font-display text-4xl md:text-5xl font-medium tracking-tight">
-            From browser tab to{' '}
-            <span className="italic text-primary">filed business</span> — in four steps.
+            {t('headline1')} <span className="italic text-primary">{t('headline2')}</span>{' '}
+            {t('headline3')}
           </h2>
         </div>
 

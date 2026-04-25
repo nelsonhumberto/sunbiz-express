@@ -1,63 +1,61 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Logo } from './Logo';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
 
-const FOOTER_LINKS = {
-  product: [
-    { label: 'Form an LLC', href: '/sign-up?entity=LLC' },
-    { label: 'Form a Corporation', href: '/sign-up?entity=CORP' },
-    { label: 'Pricing', href: '/pricing' },
-    { label: 'Registered Agent', href: '/services#registered-agent' },
-    { label: 'Compliance Service', href: '/services#compliance' },
-  ],
-  company: [
-    { label: 'About', href: '/about' },
-    { label: 'Why us', href: '/about#why' },
-    { label: 'FAQ', href: '/faq' },
-    { label: 'Contact', href: '/about#contact' },
-  ],
-  legal: [
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Disclaimer', href: '/disclaimer' },
-    { label: 'Refund Policy', href: '/terms#refunds' },
-  ],
-  resources: [
-    { label: 'Florida LLC Guide', href: '/faq#florida-llc' },
-    { label: 'Annual Report Help', href: '/faq#annual-report' },
-    { label: 'EIN Lookup', href: '/faq#ein' },
-    { label: 'Sunbiz Search', href: 'https://search.sunbiz.org' },
-  ],
-};
-
 export function Footer() {
+  const tFooter = useTranslations('footer');
+  const tNav = useTranslations('nav');
+
+  const FOOTER_LINKS = {
+    product: [
+      { label: tFooter('formAnLLC'), href: '/sign-up?entity=LLC' },
+      { label: tFooter('formACorp'), href: '/sign-up?entity=CORP' },
+      { label: tNav('pricing'), href: '/pricing' },
+      { label: tFooter('registeredAgent'), href: '/services#registered-agent' },
+      { label: tFooter('complianceService'), href: '/services#compliance' },
+    ],
+    company: [
+      { label: tNav('about'), href: '/about' },
+      { label: tFooter('whyUs'), href: '/about#why' },
+      { label: tNav('faq'), href: '/faq' },
+      { label: tFooter('contact'), href: '/about#contact' },
+    ],
+    legal: [
+      { label: tFooter('terms'), href: '/terms' },
+      { label: tFooter('privacy'), href: '/privacy' },
+      { label: tFooter('disclaimer'), href: '/disclaimer' },
+      { label: tFooter('refundPolicy'), href: '/terms#refunds' },
+    ],
+    resources: [
+      { label: tFooter('floridaLLCGuide'), href: '/faq#florida-llc' },
+      { label: tFooter('annualReportHelp'), href: '/faq#annual-report' },
+      { label: tFooter('einLookup'), href: '/faq#ein' },
+      { label: tFooter('sunbizSearch'), href: 'https://search.sunbiz.org' },
+    ],
+  };
+
   return (
     <footer className="border-t border-border bg-white mt-20">
       <div className="container py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-16">
           <div className="col-span-2 md:col-span-1 space-y-4">
             <Logo />
-            <p className="text-sm text-ink-muted leading-relaxed max-w-xs">
-              The transparent, modern way to form a Florida business. Free Year-1 Registered Agent
-              included.
-            </p>
+            <p className="text-sm text-ink-muted leading-relaxed max-w-xs">{tFooter('tagline')}</p>
             <div className="flex items-center gap-2 text-xs text-ink-subtle">
               <span className="inline-block h-2 w-2 rounded-full bg-success animate-pulse-soft" />
-              <span>All systems operational</span>
+              <span>{tFooter('systemsOperational')}</span>
             </div>
           </div>
 
-          <FooterColumn title="Product" links={FOOTER_LINKS.product} />
-          <FooterColumn title="Company" links={FOOTER_LINKS.company} />
-          <FooterColumn title="Legal" links={FOOTER_LINKS.legal} />
-          <FooterColumn title="Resources" links={FOOTER_LINKS.resources} />
+          <FooterColumn title={tFooter('product')} links={FOOTER_LINKS.product} />
+          <FooterColumn title={tFooter('company')} links={FOOTER_LINKS.company} />
+          <FooterColumn title={tFooter('legal')} links={FOOTER_LINKS.legal} />
+          <FooterColumn title={tFooter('resources')} links={FOOTER_LINKS.resources} />
         </div>
 
         <div className="mt-16 pt-8 border-t border-border flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-4">
-          <p className="text-xs text-ink-subtle">
-            © {COPYRIGHT_YEAR} Sunbiz Express, Inc. · Sunbiz Express is not a law firm and does
-            not provide legal advice.
-          </p>
+          <p className="text-xs text-ink-subtle">{tFooter('copyright', { year: COPYRIGHT_YEAR })}</p>
           <div className="flex items-center gap-3 text-xs text-ink-subtle">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success-subtle text-success">
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">

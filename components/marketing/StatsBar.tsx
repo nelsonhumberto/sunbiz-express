@@ -1,15 +1,18 @@
 'use client';
 
 import { motion } from 'framer-motion';
-
-const STATS = [
-  { number: '2,400+', label: 'Businesses formed' },
-  { number: '15 min', label: 'Average filing time' },
-  { number: '4.9 / 5', label: 'Customer rating' },
-  { number: '< 1 day', label: 'State approval' },
-];
+import { useTranslations } from 'next-intl';
 
 export function StatsBar() {
+  const t = useTranslations('stats');
+
+  const STATS = [
+    { number: '2,400+', label: t('businessesFormed') },
+    { number: '15 min', label: t('averageTime') },
+    { number: '4.9 / 5', label: t('rating') },
+    { number: '< 1 day', label: t('stateApproval') },
+  ];
+
   return (
     <section className="py-12 border-y border-border bg-white">
       <div className="container">

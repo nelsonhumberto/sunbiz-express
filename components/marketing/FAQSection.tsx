@@ -1,3 +1,6 @@
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Accordion,
   AccordionContent,
@@ -5,12 +8,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-interface FAQItem {
-  q: string;
-  a: string;
-}
-
-const FAQ: FAQItem[] = [
+const FAQ_EN = [
   {
     q: 'How long does it take to form a Florida LLC?',
     a: 'About 15 minutes to complete our 12-step wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
@@ -21,7 +19,7 @@ const FAQ: FAQItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: 'Yes. Year-1 Registered Agent service is included in every plan, including the free Starter tier. Renewal is $119/year — well below LegalZoom\'s $249/year. You can cancel any time and switch to your own agent.',
+    a: "Yes. Year-1 Registered Agent service is included in every plan, including the free Starter tier. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -53,16 +51,63 @@ const FAQ: FAQItem[] = [
   },
 ];
 
+const FAQ_ES = [
+  {
+    q: '¿Cuánto tarda formar una LLC en Florida?',
+    a: 'Unos 15 minutos completar nuestro asistente de 12 pasos. Enviamos al Departamento de Estado de Florida el mismo día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
+  },
+  {
+    q: '¿Qué cubre la tarifa estatal y por qué se muestra por separado?',
+    a: 'Florida cobra $125 por presentar Articles of Organization de LLC (o $70 para Corporación). Ese dinero va directo al Estado de Florida — no a nosotros. Mostrarlo por separado es parte de nuestra promesa de transparencia.',
+  },
+  {
+    q: '¿De verdad obtengo Agente Registrado gratis por un año?',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan gratuito Starter. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+  },
+  {
+    q: '¿Qué es un Agente Registrado y lo necesito?',
+    a: 'La ley de Florida requiere que cada LLC y Corporación designe un Agente Registrado — una persona o empresa con dirección física en Florida que pueda recibir documentos legales en nombre de la entidad. Los Apartados Postales no califican. Usar nuestro servicio mantiene tu dirección personal fuera del registro público.',
+  },
+  {
+    q: '¿Cuándo se debe presentar el reporte anual de Florida?',
+    a: 'Entre el 1 de enero y el 1 de mayo de cada año. La tarifa es $138.75 para LLC y $150 para Corporación. Florida cobra una multa no negociable de $400 si pierdes el 1 de mayo, y tu entidad puede ser disuelta administrativamente para septiembre. Te recordaremos con tiempo.',
+  },
+  {
+    q: '¿Puedo formar una LLC si vivo fuera de Florida?',
+    a: 'Sí — Florida no requiere que los miembros o gerentes residan en Florida. Solo necesitas un Agente Registrado en Florida (te damos uno gratis el primer año) y una dirección física en Florida para ese agente.',
+  },
+  {
+    q: '¿Qué pasa con el EIN — lo necesito?',
+    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Pro y Concierge incluyen la obtención del EIN; puedes agregarlo por $49 en el plan gratuito.',
+  },
+  {
+    q: '¿Y si mi nombre está tomado?',
+    a: 'Verificamos la disponibilidad contra la base de datos de Sunbiz en tiempo real. Si tu primera elección no es distinguible en el registro, sugerimos alternativas — y puedes seguir iterando hasta encontrar uno que funcione.',
+  },
+  {
+    q: '¿Son ustedes un bufete de abogados?',
+    a: 'No. Sunbiz Express es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
+  },
+  {
+    q: '¿Cuál es su política de reembolso?',
+    a: 'Las tarifas de servicio son reembolsables por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el pago, la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
+  },
+];
+
 export function FAQSection() {
+  const t = useTranslations('faq');
+  const locale = useLocale();
+  const FAQ = locale === 'es' ? FAQ_ES : FAQ_EN;
+
   return (
     <section className="py-20 md:py-28">
       <div className="container max-w-3xl">
         <div className="text-center mb-12">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Frequently asked
+            {t('kicker')}
           </span>
           <h2 className="mt-3 font-display text-4xl md:text-5xl font-medium tracking-tight">
-            Questions, answered.
+            {t('headline')}
           </h2>
         </div>
 
@@ -76,11 +121,11 @@ export function FAQSection() {
         </Accordion>
 
         <p className="mt-8 text-center text-sm text-ink-muted">
-          Still have questions?{' '}
+          {t('stillHaveQuestions')}{' '}
           <a href="mailto:hello@sunbizexpress.example" className="text-primary font-medium hover:underline">
-            Email us
+            {t('emailUs')}
           </a>{' '}
-          and we'll get back to you within one business day.
+          {t('respondWithin')}
         </p>
       </div>
     </section>

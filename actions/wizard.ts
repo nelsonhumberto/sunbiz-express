@@ -327,7 +327,9 @@ const Step9Schema = z.object({
   businessPurpose: z.string().optional(),
 });
 
-export async function saveStep9(input: z.infer<typeof Step9Schema>) {
+export async function saveStep9(
+  input: z.infer<typeof Step9Schema>
+): Promise<{ ok: boolean; error?: string }> {
   const data = Step9Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
   await prisma.filing.update({

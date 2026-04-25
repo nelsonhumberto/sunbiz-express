@@ -169,10 +169,11 @@ export function isPrivateMailbox(addressLine: string): boolean {
 
 export interface AddressInput {
   street1: string;
-  street2?: string;
+  street2?: string | null;
   city: string;
   state: string;
   zip: string;
+  inCareOf?: string | null;
 }
 
 export function validateRegisteredAgentAddress(addr: AddressInput): {

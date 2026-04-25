@@ -1,0 +1,88 @@
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+interface FAQItem {
+  q: string;
+  a: string;
+}
+
+const FAQ: FAQItem[] = [
+  {
+    q: 'How long does it take to form a Florida LLC?',
+    a: 'About 15 minutes to complete our 12-step wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
+  },
+  {
+    q: 'What does the state fee cover, and why is it separate?',
+    a: "Florida charges $125 to file LLC Articles of Organization (or $70 for a Corporation). That money goes directly to the State of Florida — not to us. Showing it separately is part of our transparency promise.",
+  },
+  {
+    q: 'Do I really get a free Registered Agent for a year?',
+    a: 'Yes. Year-1 Registered Agent service is included in every plan, including the free Starter tier. Renewal is $119/year — well below LegalZoom\'s $249/year. You can cancel any time and switch to your own agent.',
+  },
+  {
+    q: "What's a Registered Agent and do I need one?",
+    a: "Florida law requires every LLC and Corporation to designate a Registered Agent — a person or company with a physical Florida address who can receive legal documents on the entity's behalf. P.O. Boxes don't qualify. Using our service keeps your home address off the public record.",
+  },
+  {
+    q: 'When is the Florida annual report due?',
+    a: "Between January 1 and May 1 each year. The fee is $138.75 for an LLC and $150 for a Corporation. Florida charges a non-waivable $400 late fee if you miss May 1, and your entity can be administratively dissolved by September. We'll remind you well in advance.",
+  },
+  {
+    q: 'Can I form an LLC if I live outside Florida?',
+    a: 'Yes — Florida does not require members or managers to reside in Florida. You only need a Florida Registered Agent (we provide one for free Year 1) and a Florida physical address for that agent.',
+  },
+  {
+    q: 'What about the EIN — do I need one?',
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Pro and Concierge plans include EIN acquisition; you can add it as a $49 upgrade on the free plan.",
+  },
+  {
+    q: 'What if my name is taken?',
+    a: "We check availability against the Sunbiz database in real time. If your first choice isn't distinguishable on the record, we'll suggest alternatives — and you can keep iterating until you find one that works.",
+  },
+  {
+    q: 'Are you a law firm?',
+    a: "No. Sunbiz Express is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
+  },
+  {
+    q: "What's your refund policy?",
+    a: "Service fees are refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida accepts payment, the state filing fee is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
+  },
+];
+
+export function FAQSection() {
+  return (
+    <section className="py-20 md:py-28">
+      <div className="container max-w-3xl">
+        <div className="text-center mb-12">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Frequently asked
+          </span>
+          <h2 className="mt-3 font-display text-4xl md:text-5xl font-medium tracking-tight">
+            Questions, answered.
+          </h2>
+        </div>
+
+        <Accordion type="single" collapsible className="rounded-2xl border border-border bg-white px-6 shadow-soft">
+          {FAQ.map((item, i) => (
+            <AccordionItem key={i} value={`item-${i}`}>
+              <AccordionTrigger>{item.q}</AccordionTrigger>
+              <AccordionContent>{item.a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+
+        <p className="mt-8 text-center text-sm text-ink-muted">
+          Still have questions?{' '}
+          <a href="mailto:hello@sunbizexpress.example" className="text-primary font-medium hover:underline">
+            Email us
+          </a>{' '}
+          and we'll get back to you within one business day.
+        </p>
+      </div>
+    </section>
+  );
+}

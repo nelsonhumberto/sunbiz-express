@@ -1,0 +1,2753 @@
+[
+  {
+    "name": "BAY CORP",
+    "documentNumber": "0900116",
+    "status": "Active",
+    "filingDate": "2026-03-28",
+    "type": "CORP"
+  },
+  {
+    "name": "NIMBUS L.L.C.",
+    "documentNumber": "L202600001031",
+    "status": "Active",
+    "filingDate": "2026-03-25",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC PROPERTIES L.L.C.",
+    "documentNumber": "L202600001022",
+    "status": "CROSS RF",
+    "filingDate": "2026-03-24",
+    "type": "LLC"
+  },
+  {
+    "name": "SARASOTA LLC",
+    "documentNumber": "L202600001196",
+    "status": "Active",
+    "filingDate": "2026-03-23",
+    "type": "LLC"
+  },
+  {
+    "name": "KEY WEST INC.",
+    "documentNumber": "0900118",
+    "status": "Active",
+    "filingDate": "2026-03-02",
+    "type": "CORP"
+  },
+  {
+    "name": "SAND DOLLAR PHARMACY LLC",
+    "documentNumber": "L202600001148",
+    "status": "Active",
+    "filingDate": "2026-02-16",
+    "type": "LLC"
+  },
+  {
+    "name": "QUANTUM HOLDINGS INC",
+    "documentNumber": "0900030",
+    "status": "Active",
+    "filingDate": "2026-02-13",
+    "type": "CORP"
+  },
+  {
+    "name": "HIGHLAND REALTY L.L.C.",
+    "documentNumber": "L202600001095",
+    "status": "Active",
+    "filingDate": "2026-02-07",
+    "type": "LLC"
+  },
+  {
+    "name": "GULF PROPERTIES LLC",
+    "documentNumber": "L202600001156",
+    "status": "INACT",
+    "filingDate": "2026-01-25",
+    "type": "LLC"
+  },
+  {
+    "name": "LIBERTY CO",
+    "documentNumber": "0900072",
+    "status": "Active",
+    "filingDate": "2026-01-23",
+    "type": "CORP"
+  },
+  {
+    "name": "CROSSROADS PET L.L.C.",
+    "documentNumber": "L202600001187",
+    "status": "NAME HS",
+    "filingDate": "2026-01-22",
+    "type": "LLC"
+  },
+  {
+    "name": "COASTAL HEALTH LLC",
+    "documentNumber": "L202600001129",
+    "status": "Active",
+    "filingDate": "2026-01-20",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM AI L.L.C.",
+    "documentNumber": "L202600001055",
+    "status": "Active",
+    "filingDate": "2026-01-11",
+    "type": "LLC"
+  },
+  {
+    "name": "SARASOTA BAKERY LLC",
+    "documentNumber": "L202600001132",
+    "status": "Active",
+    "filingDate": "2026-01-06",
+    "type": "LLC"
+  },
+  {
+    "name": "BOCA TUTORING L.L.C.",
+    "documentNumber": "L202500001195",
+    "status": "Active",
+    "filingDate": "2025-12-29",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX LOGISTICS INC",
+    "documentNumber": "0900126",
+    "status": "Active",
+    "filingDate": "2025-12-07",
+    "type": "CORP"
+  },
+  {
+    "name": "PIONEER BOARDING L.L.C.",
+    "documentNumber": "L202500001151",
+    "status": "INACT",
+    "filingDate": "2025-12-03",
+    "type": "LLC"
+  },
+  {
+    "name": "COASTAL MARINE INC",
+    "documentNumber": "0900159",
+    "status": "Active",
+    "filingDate": "2025-11-11",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY ENTERPRISES LLC",
+    "documentNumber": "L202500001047",
+    "status": "Active",
+    "filingDate": "2025-11-08",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER PARTNERS CO",
+    "documentNumber": "0900151",
+    "status": "Active",
+    "filingDate": "2025-11-06",
+    "type": "CORP"
+  },
+  {
+    "name": "PIONEER CORPORATION",
+    "documentNumber": "0900090",
+    "status": "Active",
+    "filingDate": "2025-10-24",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER LLC",
+    "documentNumber": "L202500001117",
+    "status": "Active",
+    "filingDate": "2025-10-15",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA L.L.C.",
+    "documentNumber": "L202500001025",
+    "status": "CROSS RF",
+    "filingDate": "2025-10-10",
+    "type": "LLC"
+  },
+  {
+    "name": "PHOENIX CORP",
+    "documentNumber": "0900083",
+    "status": "INACT",
+    "filingDate": "2025-10-06",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS BOUTIQUE L.L.C.",
+    "documentNumber": "L202500001086",
+    "status": "CROSS RF",
+    "filingDate": "2025-09-27",
+    "type": "LLC"
+  },
+  {
+    "name": "QUANTUM SOLUTIONS LLC",
+    "documentNumber": "L202500001111",
+    "status": "Active",
+    "filingDate": "2025-09-22",
+    "type": "LLC"
+  },
+  {
+    "name": "SUMMIT CO",
+    "documentNumber": "0900144",
+    "status": "Active",
+    "filingDate": "2025-09-21",
+    "type": "CORP"
+  },
+  {
+    "name": "NIMBUS SALON LLC",
+    "documentNumber": "L202500001084",
+    "status": "Active",
+    "filingDate": "2025-09-19",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER DENTAL L.L.C.",
+    "documentNumber": "L202500001186",
+    "status": "NAME HS",
+    "filingDate": "2025-09-10",
+    "type": "LLC"
+  },
+  {
+    "name": "PENSACOLA PUBLISHING INC.",
+    "documentNumber": "0900092",
+    "status": "Active",
+    "filingDate": "2025-08-28",
+    "type": "CORP"
+  },
+  {
+    "name": "COASTAL MEDIA L.L.C.",
+    "documentNumber": "L202500001070",
+    "status": "Active",
+    "filingDate": "2025-08-25",
+    "type": "LLC"
+  },
+  {
+    "name": "PATRIOT APPAREL L.L.C.",
+    "documentNumber": "L202500001209",
+    "status": "Active",
+    "filingDate": "2025-08-06",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC L.L.C.",
+    "documentNumber": "L202500001198",
+    "status": "Active",
+    "filingDate": "2025-07-29",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER PARTNERS L.L.C.",
+    "documentNumber": "L202500001078",
+    "status": "Active",
+    "filingDate": "2025-07-26",
+    "type": "LLC"
+  },
+  {
+    "name": "HERON ACADEMY CO",
+    "documentNumber": "0900109",
+    "status": "Active",
+    "filingDate": "2025-07-21",
+    "type": "CORP"
+  },
+  {
+    "name": "ORANGE BLOSSOM EDUCATION INC",
+    "documentNumber": "0900056",
+    "status": "Active",
+    "filingDate": "2025-07-19",
+    "type": "CORP"
+  },
+  {
+    "name": "LEGACY AUTO INC.",
+    "documentNumber": "0900001",
+    "status": "Active",
+    "filingDate": "2025-07-17",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY SHIPPING L.L.C.",
+    "documentNumber": "L202500001205",
+    "status": "INACT",
+    "filingDate": "2025-07-16",
+    "type": "LLC"
+  },
+  {
+    "name": "CORNERSTONE MANUFACTURING L.L.C.",
+    "documentNumber": "L202500001193",
+    "status": "CROSS RF",
+    "filingDate": "2025-07-02",
+    "type": "LLC"
+  },
+  {
+    "name": "LIBERTY PUBLISHING CO",
+    "documentNumber": "0900022",
+    "status": "Active",
+    "filingDate": "2025-06-26",
+    "type": "CORP"
+  },
+  {
+    "name": "COASTAL FASHION L.L.C.",
+    "documentNumber": "L202500001008",
+    "status": "Active",
+    "filingDate": "2025-04-11",
+    "type": "LLC"
+  },
+  {
+    "name": "TRAJECTORY CLOUD INC",
+    "documentNumber": "0900095",
+    "status": "Active",
+    "filingDate": "2025-04-02",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY CORP",
+    "documentNumber": "0900066",
+    "status": "Active",
+    "filingDate": "2025-03-25",
+    "type": "CORP"
+  },
+  {
+    "name": "ORLANDO LLC",
+    "documentNumber": "L202500001003",
+    "status": "Active",
+    "filingDate": "2025-03-13",
+    "type": "LLC"
+  },
+  {
+    "name": "CYPRESS INDUSTRIES LLC",
+    "documentNumber": "L202500001032",
+    "status": "INACT",
+    "filingDate": "2025-03-11",
+    "type": "LLC"
+  },
+  {
+    "name": "OCEAN EDUCATION L.L.C.",
+    "documentNumber": "L202500001012",
+    "status": "Active",
+    "filingDate": "2025-03-02",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX TUTORING INC.",
+    "documentNumber": "0900023",
+    "status": "Active",
+    "filingDate": "2025-02-21",
+    "type": "CORP"
+  },
+  {
+    "name": "GULF L.L.C.",
+    "documentNumber": "L202500001097",
+    "status": "Active",
+    "filingDate": "2025-02-19",
+    "type": "LLC"
+  },
+  {
+    "name": "NIMBUS CO",
+    "documentNumber": "0900004",
+    "status": "CROSS RF",
+    "filingDate": "2025-02-12",
+    "type": "CORP"
+  },
+  {
+    "name": "CROSSROADS RESTAURANT LLC",
+    "documentNumber": "L202500001052",
+    "status": "NAME HS",
+    "filingDate": "2025-02-11",
+    "type": "LLC"
+  },
+  {
+    "name": "MOMENTUM L.L.C.",
+    "documentNumber": "L202500001146",
+    "status": "INACT",
+    "filingDate": "2025-02-11",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE AI CORP",
+    "documentNumber": "0900105",
+    "status": "Active",
+    "filingDate": "2025-02-09",
+    "type": "CORP"
+  },
+  {
+    "name": "COASTAL DEVELOPMENT LLC",
+    "documentNumber": "L202500001083",
+    "status": "Active",
+    "filingDate": "2025-02-06",
+    "type": "LLC"
+  },
+  {
+    "name": "QUANTUM INDUSTRIES LLC",
+    "documentNumber": "L202500001166",
+    "status": "Active",
+    "filingDate": "2025-01-31",
+    "type": "LLC"
+  },
+  {
+    "name": "MOMENTUM HOLDINGS LLC",
+    "documentNumber": "L202500001014",
+    "status": "Active",
+    "filingDate": "2025-01-27",
+    "type": "LLC"
+  },
+  {
+    "name": "NAPLES LLC",
+    "documentNumber": "L202500001149",
+    "status": "Active",
+    "filingDate": "2025-01-26",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM L.L.C.",
+    "documentNumber": "L202500001103",
+    "status": "CROSS RF",
+    "filingDate": "2025-01-25",
+    "type": "LLC"
+  },
+  {
+    "name": "NAPLES AI L.L.C.",
+    "documentNumber": "L202500001122",
+    "status": "Active",
+    "filingDate": "2025-01-25",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA MARINE INC.",
+    "documentNumber": "0900074",
+    "status": "Active",
+    "filingDate": "2025-01-18",
+    "type": "CORP"
+  },
+  {
+    "name": "HIBISCUS CO",
+    "documentNumber": "0900115",
+    "status": "Active",
+    "filingDate": "2025-01-14",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY CONSULTING INC",
+    "documentNumber": "0900028",
+    "status": "Active",
+    "filingDate": "2025-01-13",
+    "type": "CORP"
+  },
+  {
+    "name": "NAPLES PHARMACY INC",
+    "documentNumber": "0900006",
+    "status": "INACT",
+    "filingDate": "2025-01-03",
+    "type": "CORP"
+  },
+  {
+    "name": "VELOCITY DISTRIBUTION CORP",
+    "documentNumber": "0900053",
+    "status": "Active",
+    "filingDate": "2024-12-22",
+    "type": "CORP"
+  },
+  {
+    "name": "BEDROCK PLUMBING LLC",
+    "documentNumber": "L202400001213",
+    "status": "Active",
+    "filingDate": "2024-12-20",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE MARINE L.L.C.",
+    "documentNumber": "L202400001167",
+    "status": "Active",
+    "filingDate": "2024-12-02",
+    "type": "LLC"
+  },
+  {
+    "name": "NIMBUS CONSTRUCTION LLC",
+    "documentNumber": "L202400001024",
+    "status": "Active",
+    "filingDate": "2024-11-29",
+    "type": "LLC"
+  },
+  {
+    "name": "CITRUS LLC",
+    "documentNumber": "L202400001076",
+    "status": "Active",
+    "filingDate": "2024-11-29",
+    "type": "LLC"
+  },
+  {
+    "name": "MAGNOLIA PHARMACY CORPORATION",
+    "documentNumber": "0900024",
+    "status": "Active",
+    "filingDate": "2024-11-20",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM INC.",
+    "documentNumber": "0900112",
+    "status": "INACT",
+    "filingDate": "2024-11-19",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM PHARMACY L.L.C.",
+    "documentNumber": "L202400001066",
+    "status": "Active",
+    "filingDate": "2024-11-11",
+    "type": "LLC"
+  },
+  {
+    "name": "PALM PLUMBING L.L.C.",
+    "documentNumber": "L202400001005",
+    "status": "Active",
+    "filingDate": "2024-10-30",
+    "type": "LLC"
+  },
+  {
+    "name": "CITRUS ELECTRIC L.L.C.",
+    "documentNumber": "L202400001009",
+    "status": "Active",
+    "filingDate": "2024-10-30",
+    "type": "LLC"
+  },
+  {
+    "name": "PALM DATA CORPORATION",
+    "documentNumber": "0900121",
+    "status": "INACT",
+    "filingDate": "2024-10-16",
+    "type": "CORP"
+  },
+  {
+    "name": "SUN COAST LLC",
+    "documentNumber": "L202400001002",
+    "status": "Active",
+    "filingDate": "2024-10-09",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE SURF CORPORATION",
+    "documentNumber": "0900041",
+    "status": "Active",
+    "filingDate": "2024-09-21",
+    "type": "CORP"
+  },
+  {
+    "name": "CROSSROADS HOSPITALITY CORP",
+    "documentNumber": "0900101",
+    "status": "Active",
+    "filingDate": "2024-09-09",
+    "type": "CORP"
+  },
+  {
+    "name": "CYPRESS CATERING LLC",
+    "documentNumber": "L202400001089",
+    "status": "Active",
+    "filingDate": "2024-08-27",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE LLC",
+    "documentNumber": "L202400001114",
+    "status": "Active",
+    "filingDate": "2024-08-18",
+    "type": "LLC"
+  },
+  {
+    "name": "CORAL CAFE L.L.C.",
+    "documentNumber": "L202400001050",
+    "status": "Active",
+    "filingDate": "2024-08-09",
+    "type": "LLC"
+  },
+  {
+    "name": "CROSSROADS STUDIO LLC",
+    "documentNumber": "L202400001135",
+    "status": "Active",
+    "filingDate": "2024-08-09",
+    "type": "LLC"
+  },
+  {
+    "name": "HIGHLAND BUILDERS L.L.C.",
+    "documentNumber": "L202400001130",
+    "status": "Active",
+    "filingDate": "2024-08-02",
+    "type": "LLC"
+  },
+  {
+    "name": "STELLAR INC.",
+    "documentNumber": "0900077",
+    "status": "Active",
+    "filingDate": "2024-07-24",
+    "type": "CORP"
+  },
+  {
+    "name": "PHOENIX PHARMACY L.L.C.",
+    "documentNumber": "L202400001023",
+    "status": "Active",
+    "filingDate": "2024-07-20",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER SOLUTIONS CORPORATION",
+    "documentNumber": "0900136",
+    "status": "Active",
+    "filingDate": "2024-07-17",
+    "type": "CORP"
+  },
+  {
+    "name": "LIGHTHOUSE WELLNESS CORPORATION",
+    "documentNumber": "0900015",
+    "status": "Active",
+    "filingDate": "2024-06-20",
+    "type": "CORP"
+  },
+  {
+    "name": "LEGACY REALTY LLC",
+    "documentNumber": "L202400001218",
+    "status": "Active",
+    "filingDate": "2024-06-20",
+    "type": "LLC"
+  },
+  {
+    "name": "MIAMI CAFE INC.",
+    "documentNumber": "0900120",
+    "status": "Active",
+    "filingDate": "2024-06-04",
+    "type": "CORP"
+  },
+  {
+    "name": "GULF LLC",
+    "documentNumber": "L202400001113",
+    "status": "Active",
+    "filingDate": "2024-05-27",
+    "type": "LLC"
+  },
+  {
+    "name": "MANATEE TRAINING LLC",
+    "documentNumber": "L202400001145",
+    "status": "CROSS RF",
+    "filingDate": "2024-05-15",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX LLC",
+    "documentNumber": "L202400001189",
+    "status": "Active",
+    "filingDate": "2024-05-12",
+    "type": "LLC"
+  },
+  {
+    "name": "OCEAN DATA INC.",
+    "documentNumber": "0900155",
+    "status": "Active",
+    "filingDate": "2024-05-05",
+    "type": "CORP"
+  },
+  {
+    "name": "BAY VETERINARY CORPORATION",
+    "documentNumber": "0900025",
+    "status": "Active",
+    "filingDate": "2024-05-01",
+    "type": "CORP"
+  },
+  {
+    "name": "CATALYST PRODUCTIONS CORPORATION",
+    "documentNumber": "0900143",
+    "status": "Active",
+    "filingDate": "2024-04-29",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS L.L.C.",
+    "documentNumber": "L202400001060",
+    "status": "INACT",
+    "filingDate": "2024-04-27",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST L.L.C.",
+    "documentNumber": "L202400001021",
+    "status": "Active",
+    "filingDate": "2024-04-22",
+    "type": "LLC"
+  },
+  {
+    "name": "BEDROCK SERVICES CORPORATION",
+    "documentNumber": "0900033",
+    "status": "Active",
+    "filingDate": "2024-04-17",
+    "type": "CORP"
+  },
+  {
+    "name": "HERON DEVELOPMENT INC",
+    "documentNumber": "0900096",
+    "status": "Active",
+    "filingDate": "2024-04-04",
+    "type": "CORP"
+  },
+  {
+    "name": "MANATEE EDUCATION LLC",
+    "documentNumber": "L202400001120",
+    "status": "NAME HS",
+    "filingDate": "2024-04-01",
+    "type": "LLC"
+  },
+  {
+    "name": "BEACON TRANSPORT L.L.C.",
+    "documentNumber": "L202400001081",
+    "status": "Active",
+    "filingDate": "2024-03-22",
+    "type": "LLC"
+  },
+  {
+    "name": "NAPLES TRAINING L.L.C.",
+    "documentNumber": "L202400001208",
+    "status": "Active",
+    "filingDate": "2024-03-20",
+    "type": "LLC"
+  },
+  {
+    "name": "TRAJECTORY VENTURES LLC",
+    "documentNumber": "L202400001108",
+    "status": "NAME HS",
+    "filingDate": "2024-03-05",
+    "type": "LLC"
+  },
+  {
+    "name": "MANGROVE AUTO L.L.C.",
+    "documentNumber": "L202400001142",
+    "status": "Active",
+    "filingDate": "2024-02-29",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA REALTY LLC",
+    "documentNumber": "L202400001072",
+    "status": "Active",
+    "filingDate": "2024-02-01",
+    "type": "LLC"
+  },
+  {
+    "name": "SUMMIT CO",
+    "documentNumber": "0900065",
+    "status": "Active",
+    "filingDate": "2024-01-17",
+    "type": "CORP"
+  },
+  {
+    "name": "JACKSONVILLE ANALYTICS L.L.C.",
+    "documentNumber": "L202400001161",
+    "status": "Active",
+    "filingDate": "2024-01-15",
+    "type": "LLC"
+  },
+  {
+    "name": "VELOCITY MARINE LLC",
+    "documentNumber": "L202300001044",
+    "status": "Active",
+    "filingDate": "2023-12-30",
+    "type": "LLC"
+  },
+  {
+    "name": "TROPICAL LLC",
+    "documentNumber": "L202300001020",
+    "status": "Active",
+    "filingDate": "2023-12-26",
+    "type": "LLC"
+  },
+  {
+    "name": "STELLAR VENTURES LLC",
+    "documentNumber": "L202300001163",
+    "status": "Active",
+    "filingDate": "2023-12-20",
+    "type": "LLC"
+  },
+  {
+    "name": "SAWGRASS INDUSTRIES INC",
+    "documentNumber": "0900043",
+    "status": "Active",
+    "filingDate": "2023-12-17",
+    "type": "CORP"
+  },
+  {
+    "name": "LEGACY L.L.C.",
+    "documentNumber": "L202300001140",
+    "status": "Active",
+    "filingDate": "2023-12-07",
+    "type": "LLC"
+  },
+  {
+    "name": "CORAL PET LLC",
+    "documentNumber": "L202300001192",
+    "status": "Active",
+    "filingDate": "2023-11-19",
+    "type": "LLC"
+  },
+  {
+    "name": "CROSSROADS DIGITAL LLC",
+    "documentNumber": "L202300001110",
+    "status": "Active",
+    "filingDate": "2023-11-16",
+    "type": "LLC"
+  },
+  {
+    "name": "BAY THERAPY L.L.C.",
+    "documentNumber": "L202300001134",
+    "status": "Active",
+    "filingDate": "2023-11-07",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE INSTITUTE INC.",
+    "documentNumber": "0900078",
+    "status": "Active",
+    "filingDate": "2023-10-30",
+    "type": "CORP"
+  },
+  {
+    "name": "PATRIOT DISTRIBUTION INC.",
+    "documentNumber": "0900139",
+    "status": "CROSS RF",
+    "filingDate": "2023-10-27",
+    "type": "CORP"
+  },
+  {
+    "name": "BEACON DIGITAL INC.",
+    "documentNumber": "0900042",
+    "status": "Active",
+    "filingDate": "2023-10-19",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER ACADEMY L.L.C.",
+    "documentNumber": "L202300001216",
+    "status": "Active",
+    "filingDate": "2023-10-17",
+    "type": "LLC"
+  },
+  {
+    "name": "CROSSROADS BAKERY LLC",
+    "documentNumber": "L202300001069",
+    "status": "Active",
+    "filingDate": "2023-09-27",
+    "type": "LLC"
+  },
+  {
+    "name": "BOCA HOSPITALITY LLC",
+    "documentNumber": "L202300001096",
+    "status": "Active",
+    "filingDate": "2023-08-30",
+    "type": "LLC"
+  },
+  {
+    "name": "PIONEER COFFEE LLC",
+    "documentNumber": "L202300001152",
+    "status": "Active",
+    "filingDate": "2023-08-22",
+    "type": "LLC"
+  },
+  {
+    "name": "HIGHLAND APPAREL INC.",
+    "documentNumber": "0900149",
+    "status": "Active",
+    "filingDate": "2023-08-17",
+    "type": "CORP"
+  },
+  {
+    "name": "HIBISCUS STUDIO L.L.C.",
+    "documentNumber": "L202300001073",
+    "status": "Active",
+    "filingDate": "2023-08-07",
+    "type": "LLC"
+  },
+  {
+    "name": "PENSACOLA ENTERPRISES L.L.C.",
+    "documentNumber": "L202300001182",
+    "status": "Active",
+    "filingDate": "2023-07-27",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE ELECTRIC CORPORATION",
+    "documentNumber": "0900013",
+    "status": "Active",
+    "filingDate": "2023-07-21",
+    "type": "CORP"
+  },
+  {
+    "name": "CORAL INC",
+    "documentNumber": "0900010",
+    "status": "INACT",
+    "filingDate": "2023-06-26",
+    "type": "CORP"
+  },
+  {
+    "name": "KEY WEST STUDIOS CORP",
+    "documentNumber": "0900051",
+    "status": "Active",
+    "filingDate": "2023-06-24",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS LLC",
+    "documentNumber": "L202300001150",
+    "status": "Active",
+    "filingDate": "2023-06-06",
+    "type": "LLC"
+  },
+  {
+    "name": "PELICAN TUTORING CORP",
+    "documentNumber": "0900103",
+    "status": "Active",
+    "filingDate": "2023-05-27",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS LOGISTICS CORPORATION",
+    "documentNumber": "0900050",
+    "status": "Active",
+    "filingDate": "2023-05-26",
+    "type": "CORP"
+  },
+  {
+    "name": "QUANTUM AVIATION L.L.C.",
+    "documentNumber": "L202300001042",
+    "status": "Active",
+    "filingDate": "2023-04-29",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM SURF INC",
+    "documentNumber": "0900062",
+    "status": "Active",
+    "filingDate": "2023-04-14",
+    "type": "CORP"
+  },
+  {
+    "name": "FLORIDA CONSTRUCTION CORPORATION",
+    "documentNumber": "0900097",
+    "status": "Active",
+    "filingDate": "2023-03-25",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS POOL LLC",
+    "documentNumber": "L202300001107",
+    "status": "Active",
+    "filingDate": "2023-03-24",
+    "type": "LLC"
+  },
+  {
+    "name": "NIMBUS CORPORATION",
+    "documentNumber": "0900154",
+    "status": "Active",
+    "filingDate": "2023-03-18",
+    "type": "CORP"
+  },
+  {
+    "name": "TRAJECTORY CORP",
+    "documentNumber": "0900021",
+    "status": "INACT",
+    "filingDate": "2023-03-15",
+    "type": "CORP"
+  },
+  {
+    "name": "MANATEE POOL LLC",
+    "documentNumber": "L202300001013",
+    "status": "Active",
+    "filingDate": "2023-03-12",
+    "type": "LLC"
+  },
+  {
+    "name": "TAMPA AI LLC",
+    "documentNumber": "L202300001139",
+    "status": "Active",
+    "filingDate": "2023-03-08",
+    "type": "LLC"
+  },
+  {
+    "name": "MAGNOLIA PARTNERS CO",
+    "documentNumber": "0900045",
+    "status": "Active",
+    "filingDate": "2023-03-06",
+    "type": "CORP"
+  },
+  {
+    "name": "ORLANDO CORPORATION",
+    "documentNumber": "0900071",
+    "status": "Active",
+    "filingDate": "2023-02-19",
+    "type": "CORP"
+  },
+  {
+    "name": "CORNERSTONE INSTITUTE CORPORATION",
+    "documentNumber": "0900152",
+    "status": "Active",
+    "filingDate": "2023-02-14",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS L.L.C.",
+    "documentNumber": "L202300001201",
+    "status": "CROSS RF",
+    "filingDate": "2023-02-12",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM ROOFING CORP",
+    "documentNumber": "0900104",
+    "status": "Active",
+    "filingDate": "2023-02-08",
+    "type": "CORP"
+  },
+  {
+    "name": "TROPICAL ROOFING LLC",
+    "documentNumber": "L202300001176",
+    "status": "Active",
+    "filingDate": "2023-02-07",
+    "type": "LLC"
+  },
+  {
+    "name": "LIBERTY VETERINARY LLC",
+    "documentNumber": "L202300001016",
+    "status": "Active",
+    "filingDate": "2023-01-12",
+    "type": "LLC"
+  },
+  {
+    "name": "MOMENTUM MANUFACTURING LLC",
+    "documentNumber": "L202300001018",
+    "status": "Active",
+    "filingDate": "2023-01-04",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC AUTO LLC",
+    "documentNumber": "L202300001053",
+    "status": "Active",
+    "filingDate": "2023-01-02",
+    "type": "LLC"
+  },
+  {
+    "name": "STELLAR STUDIO L.L.C.",
+    "documentNumber": "L202200001061",
+    "status": "NAME HS",
+    "filingDate": "2022-12-30",
+    "type": "LLC"
+  },
+  {
+    "name": "SAND DOLLAR SALON L.L.C.",
+    "documentNumber": "L202200001101",
+    "status": "Active",
+    "filingDate": "2022-12-28",
+    "type": "LLC"
+  },
+  {
+    "name": "ORLANDO CATERING INC",
+    "documentNumber": "0900064",
+    "status": "Active",
+    "filingDate": "2022-12-23",
+    "type": "CORP"
+  },
+  {
+    "name": "GULF DIGITAL L.L.C.",
+    "documentNumber": "L202200001067",
+    "status": "Active",
+    "filingDate": "2022-12-22",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST TRANSPORT CORP",
+    "documentNumber": "0900148",
+    "status": "Active",
+    "filingDate": "2022-12-21",
+    "type": "CORP"
+  },
+  {
+    "name": "ORLANDO GROUP L.L.C.",
+    "documentNumber": "L202200001164",
+    "status": "Active",
+    "filingDate": "2022-12-14",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST BUILDERS LLC",
+    "documentNumber": "L202200001109",
+    "status": "Active",
+    "filingDate": "2022-11-26",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER L.L.C.",
+    "documentNumber": "L202200001041",
+    "status": "CROSS RF",
+    "filingDate": "2022-11-19",
+    "type": "LLC"
+  },
+  {
+    "name": "MANGROVE MEDIA INC.",
+    "documentNumber": "0900016",
+    "status": "Active",
+    "filingDate": "2022-11-14",
+    "type": "CORP"
+  },
+  {
+    "name": "VELOCITY DEVELOPMENT L.L.C.",
+    "documentNumber": "L202200001063",
+    "status": "INACT",
+    "filingDate": "2022-11-10",
+    "type": "LLC"
+  },
+  {
+    "name": "MANGROVE CO",
+    "documentNumber": "0900008",
+    "status": "Active",
+    "filingDate": "2022-11-07",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY INC.",
+    "documentNumber": "0900063",
+    "status": "Active",
+    "filingDate": "2022-11-07",
+    "type": "CORP"
+  },
+  {
+    "name": "PIONEER L.L.C.",
+    "documentNumber": "L202200001099",
+    "status": "Active",
+    "filingDate": "2022-11-02",
+    "type": "LLC"
+  },
+  {
+    "name": "SUMMIT BOARDING LLC",
+    "documentNumber": "L202200001125",
+    "status": "Active",
+    "filingDate": "2022-10-28",
+    "type": "LLC"
+  },
+  {
+    "name": "VANGUARD EDUCATION INC",
+    "documentNumber": "0900048",
+    "status": "Active",
+    "filingDate": "2022-10-17",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS AVIATION L.L.C.",
+    "documentNumber": "L202200001200",
+    "status": "Active",
+    "filingDate": "2022-10-08",
+    "type": "LLC"
+  },
+  {
+    "name": "KEY WEST CATERING INC",
+    "documentNumber": "0900073",
+    "status": "Active",
+    "filingDate": "2022-09-30",
+    "type": "CORP"
+  },
+  {
+    "name": "TROPICAL MOTORS CORP",
+    "documentNumber": "0900017",
+    "status": "Active",
+    "filingDate": "2022-09-26",
+    "type": "CORP"
+  },
+  {
+    "name": "MANATEE SALON L.L.C.",
+    "documentNumber": "L202200001102",
+    "status": "Active",
+    "filingDate": "2022-09-23",
+    "type": "LLC"
+  },
+  {
+    "name": "KEY WEST INSTITUTE L.L.C.",
+    "documentNumber": "L202200001100",
+    "status": "Active",
+    "filingDate": "2022-09-21",
+    "type": "LLC"
+  },
+  {
+    "name": "NIMBUS L.L.C.",
+    "documentNumber": "L202200001131",
+    "status": "Active",
+    "filingDate": "2022-09-14",
+    "type": "LLC"
+  },
+  {
+    "name": "PELICAN CO",
+    "documentNumber": "0900068",
+    "status": "Active",
+    "filingDate": "2022-08-24",
+    "type": "CORP"
+  },
+  {
+    "name": "HIGHLAND APPAREL L.L.C.",
+    "documentNumber": "L202200001174",
+    "status": "Active",
+    "filingDate": "2022-08-24",
+    "type": "LLC"
+  },
+  {
+    "name": "MOMENTUM CORPORATION",
+    "documentNumber": "0900138",
+    "status": "Active",
+    "filingDate": "2022-08-22",
+    "type": "CORP"
+  },
+  {
+    "name": "BEACON AI LLC",
+    "documentNumber": "L202200001082",
+    "status": "Active",
+    "filingDate": "2022-08-15",
+    "type": "LLC"
+  },
+  {
+    "name": "MOMENTUM DATA CORP",
+    "documentNumber": "0900029",
+    "status": "Active",
+    "filingDate": "2022-08-13",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM SHIPPING INC",
+    "documentNumber": "0900055",
+    "status": "Active",
+    "filingDate": "2022-08-13",
+    "type": "CORP"
+  },
+  {
+    "name": "PATRIOT INC.",
+    "documentNumber": "0900132",
+    "status": "Active",
+    "filingDate": "2022-08-06",
+    "type": "CORP"
+  },
+  {
+    "name": "BEDROCK ELECTRIC INC.",
+    "documentNumber": "0900130",
+    "status": "Active",
+    "filingDate": "2022-08-05",
+    "type": "CORP"
+  },
+  {
+    "name": "PIONEER MANUFACTURING INC.",
+    "documentNumber": "0900038",
+    "status": "Active",
+    "filingDate": "2022-08-02",
+    "type": "CORP"
+  },
+  {
+    "name": "TAMPA SURF CORP",
+    "documentNumber": "0900119",
+    "status": "Active",
+    "filingDate": "2022-07-18",
+    "type": "CORP"
+  },
+  {
+    "name": "KEY WEST LANDSCAPE L.L.C.",
+    "documentNumber": "L202200001091",
+    "status": "Active",
+    "filingDate": "2022-07-15",
+    "type": "LLC"
+  },
+  {
+    "name": "QUANTUM THERAPY L.L.C.",
+    "documentNumber": "L202200001045",
+    "status": "Active",
+    "filingDate": "2022-07-14",
+    "type": "LLC"
+  },
+  {
+    "name": "HERITAGE LLC",
+    "documentNumber": "L202200001039",
+    "status": "NAME HS",
+    "filingDate": "2022-07-09",
+    "type": "LLC"
+  },
+  {
+    "name": "TRAJECTORY HOSPITALITY INC",
+    "documentNumber": "0900075",
+    "status": "Active",
+    "filingDate": "2022-07-08",
+    "type": "CORP"
+  },
+  {
+    "name": "CATALYST MEDIA L.L.C.",
+    "documentNumber": "L202200001144",
+    "status": "Active",
+    "filingDate": "2022-06-24",
+    "type": "LLC"
+  },
+  {
+    "name": "SAWGRASS LLC",
+    "documentNumber": "L202200001035",
+    "status": "Active",
+    "filingDate": "2022-06-22",
+    "type": "LLC"
+  },
+  {
+    "name": "TROPICAL REALTY CO",
+    "documentNumber": "0900003",
+    "status": "Active",
+    "filingDate": "2022-06-20",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM ANIMAL CORPORATION",
+    "documentNumber": "0900122",
+    "status": "INACT",
+    "filingDate": "2022-06-14",
+    "type": "CORP"
+  },
+  {
+    "name": "MANGROVE INC",
+    "documentNumber": "0900099",
+    "status": "Active",
+    "filingDate": "2022-06-05",
+    "type": "CORP"
+  },
+  {
+    "name": "CATALYST AI L.L.C.",
+    "documentNumber": "L202200001046",
+    "status": "Active",
+    "filingDate": "2022-05-25",
+    "type": "LLC"
+  },
+  {
+    "name": "ORLANDO L.L.C.",
+    "documentNumber": "L202200001015",
+    "status": "Active",
+    "filingDate": "2022-05-18",
+    "type": "LLC"
+  },
+  {
+    "name": "COASTAL CAFE INC.",
+    "documentNumber": "0900046",
+    "status": "Active",
+    "filingDate": "2022-05-15",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS INC",
+    "documentNumber": "0900142",
+    "status": "Active",
+    "filingDate": "2022-05-13",
+    "type": "CORP"
+  },
+  {
+    "name": "NAPLES CORP",
+    "documentNumber": "0900035",
+    "status": "Active",
+    "filingDate": "2022-05-09",
+    "type": "CORP"
+  },
+  {
+    "name": "NIMBUS L.L.C.",
+    "documentNumber": "L202200001162",
+    "status": "Active",
+    "filingDate": "2022-04-28",
+    "type": "LLC"
+  },
+  {
+    "name": "CORNERSTONE AUTO L.L.C.",
+    "documentNumber": "L202200001197",
+    "status": "NAME HS",
+    "filingDate": "2022-04-08",
+    "type": "LLC"
+  },
+  {
+    "name": "HERON GROUP CORPORATION",
+    "documentNumber": "0900009",
+    "status": "Active",
+    "filingDate": "2022-03-23",
+    "type": "CORP"
+  },
+  {
+    "name": "BEDROCK VENTURES L.L.C.",
+    "documentNumber": "L202200001029",
+    "status": "Active",
+    "filingDate": "2022-03-22",
+    "type": "LLC"
+  },
+  {
+    "name": "SAWGRASS INC.",
+    "documentNumber": "0900123",
+    "status": "Active",
+    "filingDate": "2022-03-22",
+    "type": "CORP"
+  },
+  {
+    "name": "CORNERSTONE RESTAURANT L.L.C.",
+    "documentNumber": "L202200001006",
+    "status": "Active",
+    "filingDate": "2022-03-15",
+    "type": "LLC"
+  },
+  {
+    "name": "CYPRESS AUTO LLC",
+    "documentNumber": "L202200001037",
+    "status": "Active",
+    "filingDate": "2022-03-10",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM STUDIO LLC",
+    "documentNumber": "L202200001030",
+    "status": "Active",
+    "filingDate": "2022-03-08",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST INC",
+    "documentNumber": "0900087",
+    "status": "Active",
+    "filingDate": "2022-02-26",
+    "type": "CORP"
+  },
+  {
+    "name": "ORLANDO L.L.C.",
+    "documentNumber": "L202200001040",
+    "status": "Active",
+    "filingDate": "2022-02-25",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC MARINE LLC",
+    "documentNumber": "L202200001000",
+    "status": "Active",
+    "filingDate": "2022-02-21",
+    "type": "LLC"
+  },
+  {
+    "name": "SUMMIT LOGISTICS CORP",
+    "documentNumber": "0900069",
+    "status": "Active",
+    "filingDate": "2022-02-20",
+    "type": "CORP"
+  },
+  {
+    "name": "QUANTUM GROOMING CORP",
+    "documentNumber": "0900114",
+    "status": "Active",
+    "filingDate": "2022-02-15",
+    "type": "CORP"
+  },
+  {
+    "name": "PELICAN TECHNOLOGIES CORPORATION",
+    "documentNumber": "0900100",
+    "status": "Active",
+    "filingDate": "2022-02-04",
+    "type": "CORP"
+  },
+  {
+    "name": "BAY CONSULTING L.L.C.",
+    "documentNumber": "L202200001054",
+    "status": "Active",
+    "filingDate": "2022-01-26",
+    "type": "LLC"
+  },
+  {
+    "name": "ORANGE BLOSSOM L.L.C.",
+    "documentNumber": "L202200001098",
+    "status": "Active",
+    "filingDate": "2022-01-15",
+    "type": "LLC"
+  },
+  {
+    "name": "PINNACLE MOTORS CORPORATION",
+    "documentNumber": "0900085",
+    "status": "Active",
+    "filingDate": "2022-01-02",
+    "type": "CORP"
+  },
+  {
+    "name": "CATALYST SOFTWARE LLC",
+    "documentNumber": "L202100001181",
+    "status": "Active",
+    "filingDate": "2021-12-21",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE POOL L.L.C.",
+    "documentNumber": "L202100001141",
+    "status": "Active",
+    "filingDate": "2021-12-19",
+    "type": "LLC"
+  },
+  {
+    "name": "BAY BOARDING L.L.C.",
+    "documentNumber": "L202100001126",
+    "status": "Active",
+    "filingDate": "2021-12-05",
+    "type": "LLC"
+  },
+  {
+    "name": "VANGUARD WELLNESS CO",
+    "documentNumber": "0900054",
+    "status": "Active",
+    "filingDate": "2021-11-24",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER ANALYTICS INC.",
+    "documentNumber": "0900110",
+    "status": "INACT",
+    "filingDate": "2021-11-21",
+    "type": "CORP"
+  },
+  {
+    "name": "EVERGLADE MARINE INC",
+    "documentNumber": "0900014",
+    "status": "Active",
+    "filingDate": "2021-11-16",
+    "type": "CORP"
+  },
+  {
+    "name": "APPLE TREE PROPERTIES LLC",
+    "documentNumber": "L21000456789",
+    "status": "Active",
+    "filingDate": "2021-11-08",
+    "type": "LLC"
+  },
+  {
+    "name": "GULF ROOFING CO",
+    "documentNumber": "0900156",
+    "status": "Active",
+    "filingDate": "2021-11-08",
+    "type": "CORP"
+  },
+  {
+    "name": "MANGROVE MANUFACTURING CO",
+    "documentNumber": "0900106",
+    "status": "Active",
+    "filingDate": "2021-11-07",
+    "type": "CORP"
+  },
+  {
+    "name": "NAPLES CAFE LLC",
+    "documentNumber": "L202100001179",
+    "status": "Active",
+    "filingDate": "2021-10-31",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST THERAPY LLC",
+    "documentNumber": "L202100001184",
+    "status": "Active",
+    "filingDate": "2021-10-27",
+    "type": "LLC"
+  },
+  {
+    "name": "TAMPA HOSPITALITY CORPORATION",
+    "documentNumber": "0900032",
+    "status": "Active",
+    "filingDate": "2021-10-25",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER L.L.C.",
+    "documentNumber": "L202100001153",
+    "status": "Active",
+    "filingDate": "2021-09-25",
+    "type": "LLC"
+  },
+  {
+    "name": "PHOENIX INC.",
+    "documentNumber": "0900137",
+    "status": "Active",
+    "filingDate": "2021-09-22",
+    "type": "CORP"
+  },
+  {
+    "name": "OCEAN ELECTRIC CO",
+    "documentNumber": "0900147",
+    "status": "Active",
+    "filingDate": "2021-09-18",
+    "type": "CORP"
+  },
+  {
+    "name": "EVERGLADE HEALTH INC",
+    "documentNumber": "0900108",
+    "status": "Active",
+    "filingDate": "2021-09-04",
+    "type": "CORP"
+  },
+  {
+    "name": "VELOCITY AUTO CORP",
+    "documentNumber": "0900131",
+    "status": "Active",
+    "filingDate": "2021-08-04",
+    "type": "CORP"
+  },
+  {
+    "name": "STELLAR CO",
+    "documentNumber": "0900018",
+    "status": "Active",
+    "filingDate": "2021-07-18",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS MEDIA L.L.C.",
+    "documentNumber": "L202100001175",
+    "status": "Active",
+    "filingDate": "2021-07-03",
+    "type": "LLC"
+  },
+  {
+    "name": "SAND DOLLAR SHIPPING LLC",
+    "documentNumber": "L202100001059",
+    "status": "Active",
+    "filingDate": "2021-06-08",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC CORPORATION",
+    "documentNumber": "0900133",
+    "status": "Active",
+    "filingDate": "2021-06-05",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS EDUCATION CO",
+    "documentNumber": "0900047",
+    "status": "Active",
+    "filingDate": "2021-05-29",
+    "type": "CORP"
+  },
+  {
+    "name": "PENSACOLA MOTORS CORP",
+    "documentNumber": "0900067",
+    "status": "Active",
+    "filingDate": "2021-05-29",
+    "type": "CORP"
+  },
+  {
+    "name": "MANGROVE DATA L.L.C.",
+    "documentNumber": "L202100001116",
+    "status": "Active",
+    "filingDate": "2021-04-24",
+    "type": "LLC"
+  },
+  {
+    "name": "HERITAGE LLC",
+    "documentNumber": "L202100001204",
+    "status": "Active",
+    "filingDate": "2021-04-10",
+    "type": "LLC"
+  },
+  {
+    "name": "ATLANTIC MARKETING L.L.C.",
+    "documentNumber": "L202100001147",
+    "status": "Active",
+    "filingDate": "2021-04-09",
+    "type": "LLC"
+  },
+  {
+    "name": "KEY WEST AI L.L.C.",
+    "documentNumber": "L202100001068",
+    "status": "Active",
+    "filingDate": "2021-04-08",
+    "type": "LLC"
+  },
+  {
+    "name": "PHOENIX VENTURES CORPORATION",
+    "documentNumber": "0900040",
+    "status": "Active",
+    "filingDate": "2021-04-02",
+    "type": "CORP"
+  },
+  {
+    "name": "PHOENIX POOL LLC",
+    "documentNumber": "L202100001093",
+    "status": "Active",
+    "filingDate": "2021-04-02",
+    "type": "LLC"
+  },
+  {
+    "name": "BEACON CAPITAL LLC",
+    "documentNumber": "L202100001210",
+    "status": "Active",
+    "filingDate": "2021-04-01",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE HOLDINGS L.L.C.",
+    "documentNumber": "L202100001119",
+    "status": "Active",
+    "filingDate": "2021-03-29",
+    "type": "LLC"
+  },
+  {
+    "name": "ORLANDO PRODUCTIONS L.L.C.",
+    "documentNumber": "L202100001064",
+    "status": "Active",
+    "filingDate": "2021-03-19",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX MARKETING LLC",
+    "documentNumber": "L202100001112",
+    "status": "Active",
+    "filingDate": "2021-03-11",
+    "type": "LLC"
+  },
+  {
+    "name": "CYPRESS TRADING L.L.C.",
+    "documentNumber": "L202100001136",
+    "status": "Active",
+    "filingDate": "2021-02-26",
+    "type": "LLC"
+  },
+  {
+    "name": "MANATEE SPA LLC",
+    "documentNumber": "L202100001115",
+    "status": "Active",
+    "filingDate": "2021-02-14",
+    "type": "LLC"
+  },
+  {
+    "name": "SUMMIT ROOFING L.L.C.",
+    "documentNumber": "L202100001027",
+    "status": "Active",
+    "filingDate": "2021-02-12",
+    "type": "LLC"
+  },
+  {
+    "name": "HERON BAKERY LLC",
+    "documentNumber": "L202100001011",
+    "status": "Active",
+    "filingDate": "2021-02-05",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST ANIMAL CORPORATION",
+    "documentNumber": "0900125",
+    "status": "Active",
+    "filingDate": "2021-01-30",
+    "type": "CORP"
+  },
+  {
+    "name": "TRAJECTORY VENTURES INC",
+    "documentNumber": "0900020",
+    "status": "Active",
+    "filingDate": "2021-01-23",
+    "type": "CORP"
+  },
+  {
+    "name": "SUN COAST BUILDERS L.L.C.",
+    "documentNumber": "L202100001087",
+    "status": "Active",
+    "filingDate": "2021-01-16",
+    "type": "LLC"
+  },
+  {
+    "name": "GULF COFFEE CORPORATION",
+    "documentNumber": "0900058",
+    "status": "Active",
+    "filingDate": "2021-01-13",
+    "type": "CORP"
+  },
+  {
+    "name": "TAMPA L.L.C.",
+    "documentNumber": "L202100001207",
+    "status": "Active",
+    "filingDate": "2021-01-09",
+    "type": "LLC"
+  },
+  {
+    "name": "JACKSONVILLE PROPERTIES L.L.C.",
+    "documentNumber": "L202100001168",
+    "status": "Active",
+    "filingDate": "2021-01-06",
+    "type": "LLC"
+  },
+  {
+    "name": "PHOENIX INC.",
+    "documentNumber": "0900061",
+    "status": "Active",
+    "filingDate": "2021-01-04",
+    "type": "CORP"
+  },
+  {
+    "name": "BOCA MEDIA CO",
+    "documentNumber": "0900129",
+    "status": "Active",
+    "filingDate": "2021-01-04",
+    "type": "CORP"
+  },
+  {
+    "name": "PENSACOLA EDUCATION INC",
+    "documentNumber": "0900005",
+    "status": "Active",
+    "filingDate": "2020-12-23",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS POOL LLC",
+    "documentNumber": "L202000001214",
+    "status": "Active",
+    "filingDate": "2020-12-20",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA DISTRIBUTION L.L.C.",
+    "documentNumber": "L202000001159",
+    "status": "Active",
+    "filingDate": "2020-12-12",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER SALON INC.",
+    "documentNumber": "0900012",
+    "status": "Active",
+    "filingDate": "2020-12-08",
+    "type": "CORP"
+  },
+  {
+    "name": "CITRUS ENTERPRISES L.L.C.",
+    "documentNumber": "L202000001034",
+    "status": "Active",
+    "filingDate": "2020-11-27",
+    "type": "LLC"
+  },
+  {
+    "name": "PATRIOT SHIPPING INC.",
+    "documentNumber": "0900124",
+    "status": "Active",
+    "filingDate": "2020-10-12",
+    "type": "CORP"
+  },
+  {
+    "name": "TRAJECTORY ANIMAL CORP",
+    "documentNumber": "0900127",
+    "status": "Active",
+    "filingDate": "2020-10-03",
+    "type": "CORP"
+  },
+  {
+    "name": "SAWGRASS AUTO LLC",
+    "documentNumber": "L202000001062",
+    "status": "Active",
+    "filingDate": "2020-09-14",
+    "type": "LLC"
+  },
+  {
+    "name": "EVERGLADE MARINE LLC",
+    "documentNumber": "L202000001183",
+    "status": "Active",
+    "filingDate": "2020-09-08",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST ROOFING INC.",
+    "documentNumber": "0900093",
+    "status": "Active",
+    "filingDate": "2020-09-07",
+    "type": "CORP"
+  },
+  {
+    "name": "CORAL LLC",
+    "documentNumber": "L202000001017",
+    "status": "INACT",
+    "filingDate": "2020-09-06",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE PARTNERS INC.",
+    "documentNumber": "0900076",
+    "status": "Active",
+    "filingDate": "2020-09-02",
+    "type": "CORP"
+  },
+  {
+    "name": "MOMENTUM VENTURES CORP",
+    "documentNumber": "0900150",
+    "status": "Active",
+    "filingDate": "2020-08-20",
+    "type": "CORP"
+  },
+  {
+    "name": "AMAZON.COM SERVICES LLC",
+    "documentNumber": "F20000678901",
+    "status": "Active",
+    "filingDate": "2020-08-19",
+    "type": "LLC"
+  },
+  {
+    "name": "BEACON SURF LLC",
+    "documentNumber": "L202000001185",
+    "status": "Active",
+    "filingDate": "2020-08-15",
+    "type": "LLC"
+  },
+  {
+    "name": "NAPLES L.L.C.",
+    "documentNumber": "L202000001090",
+    "status": "Active",
+    "filingDate": "2020-08-10",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST AUTO L.L.C.",
+    "documentNumber": "L202000001075",
+    "status": "INACT",
+    "filingDate": "2020-07-29",
+    "type": "LLC"
+  },
+  {
+    "name": "OCEAN L.L.C.",
+    "documentNumber": "L202000001123",
+    "status": "INACT",
+    "filingDate": "2020-07-22",
+    "type": "LLC"
+  },
+  {
+    "name": "LEGACY MANUFACTURING LLC",
+    "documentNumber": "L202000001004",
+    "status": "Withdrawn",
+    "filingDate": "2020-07-15",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST INC.",
+    "documentNumber": "0900102",
+    "status": "Active",
+    "filingDate": "2020-07-09",
+    "type": "CORP"
+  },
+  {
+    "name": "HERITAGE L.L.C.",
+    "documentNumber": "L202000001028",
+    "status": "Active",
+    "filingDate": "2020-07-06",
+    "type": "LLC"
+  },
+  {
+    "name": "JACKSONVILLE CONSULTING L.L.C.",
+    "documentNumber": "L202000001178",
+    "status": "Active",
+    "filingDate": "2020-07-06",
+    "type": "LLC"
+  },
+  {
+    "name": "TROPICAL LLC",
+    "documentNumber": "L202000001019",
+    "status": "NAME HS",
+    "filingDate": "2020-06-27",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE SHIPPING L.L.C.",
+    "documentNumber": "L202000001199",
+    "status": "Active",
+    "filingDate": "2020-06-06",
+    "type": "LLC"
+  },
+  {
+    "name": "MANATEE CORPORATION",
+    "documentNumber": "0900153",
+    "status": "Active",
+    "filingDate": "2020-05-12",
+    "type": "CORP"
+  },
+  {
+    "name": "MIAMI L.L.C.",
+    "documentNumber": "L202000001007",
+    "status": "Active",
+    "filingDate": "2020-05-06",
+    "type": "LLC"
+  },
+  {
+    "name": "PIONEER LOGISTICS L.L.C.",
+    "documentNumber": "L202000001143",
+    "status": "Active",
+    "filingDate": "2020-04-18",
+    "type": "LLC"
+  },
+  {
+    "name": "BOCA CONSULTING L.L.C.",
+    "documentNumber": "L202000001206",
+    "status": "Active",
+    "filingDate": "2020-04-13",
+    "type": "LLC"
+  },
+  {
+    "name": "PATRIOT MEDIA CO",
+    "documentNumber": "0900079",
+    "status": "Active",
+    "filingDate": "2020-04-11",
+    "type": "CORP"
+  },
+  {
+    "name": "VANGUARD AVIATION L.L.C.",
+    "documentNumber": "L202000001074",
+    "status": "Active",
+    "filingDate": "2020-04-10",
+    "type": "LLC"
+  },
+  {
+    "name": "PHOENIX VETERINARY INC",
+    "documentNumber": "0900107",
+    "status": "Active",
+    "filingDate": "2020-04-01",
+    "type": "CORP"
+  },
+  {
+    "name": "LIGHTHOUSE BAKERY CO",
+    "documentNumber": "0900091",
+    "status": "Active",
+    "filingDate": "2020-03-30",
+    "type": "CORP"
+  },
+  {
+    "name": "COASTAL L.L.C.",
+    "documentNumber": "L202000001138",
+    "status": "NAME HS",
+    "filingDate": "2020-03-27",
+    "type": "LLC"
+  },
+  {
+    "name": "CROSSROADS AUTO CO",
+    "documentNumber": "0900117",
+    "status": "Active",
+    "filingDate": "2020-03-21",
+    "type": "CORP"
+  },
+  {
+    "name": "LIBERTY CORPORATION",
+    "documentNumber": "0900157",
+    "status": "Active",
+    "filingDate": "2020-03-19",
+    "type": "CORP"
+  },
+  {
+    "name": "CORAL MOTORS LLC",
+    "documentNumber": "L202000001065",
+    "status": "Active",
+    "filingDate": "2020-03-17",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST INVESTMENTS L.L.C.",
+    "documentNumber": "L202000001165",
+    "status": "Active",
+    "filingDate": "2020-03-03",
+    "type": "LLC"
+  },
+  {
+    "name": "HERITAGE PUBLISHING L.L.C.",
+    "documentNumber": "L202000001033",
+    "status": "Active",
+    "filingDate": "2020-02-23",
+    "type": "LLC"
+  },
+  {
+    "name": "PELICAN REALTY CORP",
+    "documentNumber": "0900111",
+    "status": "Active",
+    "filingDate": "2020-02-10",
+    "type": "CORP"
+  },
+  {
+    "name": "SUNSHINE SERVICES INC.",
+    "documentNumber": "0900141",
+    "status": "Active",
+    "filingDate": "2020-01-31",
+    "type": "CORP"
+  },
+  {
+    "name": "LIGHTHOUSE RESTAURANT LLC",
+    "documentNumber": "L202000001077",
+    "status": "Active",
+    "filingDate": "2020-01-22",
+    "type": "LLC"
+  },
+  {
+    "name": "CORNERSTONE GROOMING L.L.C.",
+    "documentNumber": "L202000001057",
+    "status": "Active",
+    "filingDate": "2020-01-15",
+    "type": "LLC"
+  },
+  {
+    "name": "GULF CATERING CO",
+    "documentNumber": "0900052",
+    "status": "Active",
+    "filingDate": "2020-01-09",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM SALON LLC",
+    "documentNumber": "L202000001137",
+    "status": "Active",
+    "filingDate": "2020-01-07",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA CORPORATION",
+    "documentNumber": "0900160",
+    "status": "Active",
+    "filingDate": "2019-12-13",
+    "type": "CORP"
+  },
+  {
+    "name": "HERON TRANSPORT L.L.C.",
+    "documentNumber": "L201900001058",
+    "status": "Active",
+    "filingDate": "2019-12-12",
+    "type": "LLC"
+  },
+  {
+    "name": "NIMBUS REALTY CORPORATION",
+    "documentNumber": "0900059",
+    "status": "Active",
+    "filingDate": "2019-12-10",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER CORPORATION",
+    "documentNumber": "0900081",
+    "status": "Active",
+    "filingDate": "2019-12-03",
+    "type": "CORP"
+  },
+  {
+    "name": "STELLAR ENTERPRISES L.L.C.",
+    "documentNumber": "L201900001169",
+    "status": "Active",
+    "filingDate": "2019-12-01",
+    "type": "LLC"
+  },
+  {
+    "name": "CORAL ANALYTICS CORPORATION",
+    "documentNumber": "0900158",
+    "status": "Active",
+    "filingDate": "2019-11-29",
+    "type": "CORP"
+  },
+  {
+    "name": "BAY INC.",
+    "documentNumber": "0900088",
+    "status": "Active",
+    "filingDate": "2019-11-28",
+    "type": "CORP"
+  },
+  {
+    "name": "CYPRESS LLC",
+    "documentNumber": "L201900001049",
+    "status": "Active",
+    "filingDate": "2019-11-17",
+    "type": "LLC"
+  },
+  {
+    "name": "HERON L.L.C.",
+    "documentNumber": "L201900001106",
+    "status": "Active",
+    "filingDate": "2019-11-13",
+    "type": "LLC"
+  },
+  {
+    "name": "PIONEER REALTY LLC",
+    "documentNumber": "L201900001180",
+    "status": "Active",
+    "filingDate": "2019-11-08",
+    "type": "LLC"
+  },
+  {
+    "name": "BEDROCK GROUP INC.",
+    "documentNumber": "0900057",
+    "status": "Active",
+    "filingDate": "2019-10-27",
+    "type": "CORP"
+  },
+  {
+    "name": "APEX HOLDINGS LLC",
+    "documentNumber": "L201900001124",
+    "status": "Active",
+    "filingDate": "2019-10-13",
+    "type": "LLC"
+  },
+  {
+    "name": "MIAMI MARKETING INC",
+    "documentNumber": "0900146",
+    "status": "Active",
+    "filingDate": "2019-09-30",
+    "type": "CORP"
+  },
+  {
+    "name": "FRONTIER INC.",
+    "documentNumber": "0900036",
+    "status": "Active",
+    "filingDate": "2019-09-23",
+    "type": "CORP"
+  },
+  {
+    "name": "PENSACOLA BICYCLE LLC",
+    "documentNumber": "L201900001051",
+    "status": "Active",
+    "filingDate": "2019-09-22",
+    "type": "LLC"
+  },
+  {
+    "name": "PINNACLE LLC",
+    "documentNumber": "L201900001128",
+    "status": "Active",
+    "filingDate": "2019-09-21",
+    "type": "LLC"
+  },
+  {
+    "name": "CYPRESS TUTORING INC.",
+    "documentNumber": "0900019",
+    "status": "CROSS RF",
+    "filingDate": "2019-09-10",
+    "type": "CORP"
+  },
+  {
+    "name": "SUNSHINE STUDIO CORP",
+    "documentNumber": "0900140",
+    "status": "Active",
+    "filingDate": "2019-09-10",
+    "type": "CORP"
+  },
+  {
+    "name": "HIGHLAND THERAPY L.L.C.",
+    "documentNumber": "L201900001171",
+    "status": "Active",
+    "filingDate": "2019-09-06",
+    "type": "LLC"
+  },
+  {
+    "name": "SUN COAST CO",
+    "documentNumber": "0900086",
+    "status": "Active",
+    "filingDate": "2019-08-22",
+    "type": "CORP"
+  },
+  {
+    "name": "STELLAR MEDICAL L.L.C.",
+    "documentNumber": "L201900001104",
+    "status": "Active",
+    "filingDate": "2019-08-22",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE WELLNESS LLC",
+    "documentNumber": "L201900001190",
+    "status": "Active",
+    "filingDate": "2019-08-21",
+    "type": "LLC"
+  },
+  {
+    "name": "TROPICAL MANUFACTURING CORP",
+    "documentNumber": "0900031",
+    "status": "Active",
+    "filingDate": "2019-08-13",
+    "type": "CORP"
+  },
+  {
+    "name": "CORAL PROPERTIES CORPORATION",
+    "documentNumber": "0900026",
+    "status": "Active",
+    "filingDate": "2019-07-31",
+    "type": "CORP"
+  },
+  {
+    "name": "QUANTUM FASHION CO",
+    "documentNumber": "0900080",
+    "status": "Active",
+    "filingDate": "2019-07-30",
+    "type": "CORP"
+  },
+  {
+    "name": "NIMBUS MARINE CO",
+    "documentNumber": "0900039",
+    "status": "Active",
+    "filingDate": "2019-07-19",
+    "type": "CORP"
+  },
+  {
+    "name": "VELOCITY PRODUCTIONS L.L.C.",
+    "documentNumber": "L201900001094",
+    "status": "Active",
+    "filingDate": "2019-07-15",
+    "type": "LLC"
+  },
+  {
+    "name": "SAND DOLLAR BAKERY CORP",
+    "documentNumber": "0900027",
+    "status": "Active",
+    "filingDate": "2019-07-09",
+    "type": "CORP"
+  },
+  {
+    "name": "HIBISCUS CORP",
+    "documentNumber": "0900089",
+    "status": "Active",
+    "filingDate": "2019-06-17",
+    "type": "CORP"
+  },
+  {
+    "name": "HIBISCUS SURF L.L.C.",
+    "documentNumber": "L201900001026",
+    "status": "NAME HS",
+    "filingDate": "2019-06-07",
+    "type": "LLC"
+  },
+  {
+    "name": "APPLE BLOSSOM LLC",
+    "documentNumber": "L19000345678",
+    "status": "Active",
+    "filingDate": "2019-05-22",
+    "type": "LLC"
+  },
+  {
+    "name": "QUANTUM TRADING LLC",
+    "documentNumber": "L201900001170",
+    "status": "Active",
+    "filingDate": "2019-05-18",
+    "type": "LLC"
+  },
+  {
+    "name": "FLORIDA CLOUD LLC",
+    "documentNumber": "L201900001173",
+    "status": "NAME HS",
+    "filingDate": "2019-05-08",
+    "type": "LLC"
+  },
+  {
+    "name": "PELICAN PET LLC",
+    "documentNumber": "L201900001010",
+    "status": "Active",
+    "filingDate": "2019-04-12",
+    "type": "LLC"
+  },
+  {
+    "name": "HIBISCUS DATA CORP",
+    "documentNumber": "0900098",
+    "status": "Active",
+    "filingDate": "2019-04-10",
+    "type": "CORP"
+  },
+  {
+    "name": "PIONEER CORP",
+    "documentNumber": "0900007",
+    "status": "INACT",
+    "filingDate": "2019-03-31",
+    "type": "CORP"
+  },
+  {
+    "name": "OCEAN TECHNOLOGIES L.L.C.",
+    "documentNumber": "L201900001036",
+    "status": "Active",
+    "filingDate": "2019-03-29",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX LLC",
+    "documentNumber": "L201900001177",
+    "status": "Active",
+    "filingDate": "2019-03-20",
+    "type": "LLC"
+  },
+  {
+    "name": "COASTAL BOARDING LLC",
+    "documentNumber": "L201900001105",
+    "status": "Active",
+    "filingDate": "2019-03-17",
+    "type": "LLC"
+  },
+  {
+    "name": "TROPICAL PRODUCTIONS L.L.C.",
+    "documentNumber": "L201900001202",
+    "status": "INACT",
+    "filingDate": "2019-03-09",
+    "type": "LLC"
+  },
+  {
+    "name": "TESLA, INC.",
+    "documentNumber": "F19000789012",
+    "status": "Active",
+    "filingDate": "2019-03-04",
+    "type": "CORP"
+  },
+  {
+    "name": "HERON RECORDS L.L.C.",
+    "documentNumber": "L201900001088",
+    "status": "Active",
+    "filingDate": "2019-03-04",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE MARINE CO",
+    "documentNumber": "0900049",
+    "status": "NAME HS",
+    "filingDate": "2019-03-03",
+    "type": "CORP"
+  },
+  {
+    "name": "BEDROCK FASHION LLC",
+    "documentNumber": "L201900001172",
+    "status": "Active",
+    "filingDate": "2019-02-22",
+    "type": "LLC"
+  },
+  {
+    "name": "JACKSONVILLE L.L.C.",
+    "documentNumber": "L201900001160",
+    "status": "Active",
+    "filingDate": "2019-02-15",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST SHIPPING LLC",
+    "documentNumber": "L201900001157",
+    "status": "INACT",
+    "filingDate": "2019-01-27",
+    "type": "LLC"
+  },
+  {
+    "name": "GULF SOLUTIONS LLC",
+    "documentNumber": "L201900001048",
+    "status": "Active",
+    "filingDate": "2019-01-26",
+    "type": "LLC"
+  },
+  {
+    "name": "MANATEE TRADING INC",
+    "documentNumber": "0900113",
+    "status": "Active",
+    "filingDate": "2019-01-25",
+    "type": "CORP"
+  },
+  {
+    "name": "CATALYST ANALYTICS CORPORATION",
+    "documentNumber": "0900094",
+    "status": "Active",
+    "filingDate": "2019-01-17",
+    "type": "CORP"
+  },
+  {
+    "name": "PALM DEVELOPMENT L.L.C.",
+    "documentNumber": "L201900001133",
+    "status": "INACT",
+    "filingDate": "2019-01-13",
+    "type": "LLC"
+  },
+  {
+    "name": "EVERGLADE LLC",
+    "documentNumber": "L201900001080",
+    "status": "Active",
+    "filingDate": "2019-01-11",
+    "type": "LLC"
+  },
+  {
+    "name": "CORNERSTONE LANDSCAPE LLC",
+    "documentNumber": "L201900001155",
+    "status": "INACT",
+    "filingDate": "2019-01-08",
+    "type": "LLC"
+  },
+  {
+    "name": "CITRUS AVIATION LLC",
+    "documentNumber": "L201900001043",
+    "status": "Active",
+    "filingDate": "2019-01-05",
+    "type": "LLC"
+  },
+  {
+    "name": "KEY WEST L.L.C.",
+    "documentNumber": "L201900001001",
+    "status": "Active",
+    "filingDate": "2019-01-01",
+    "type": "LLC"
+  },
+  {
+    "name": "SUNSHINE BUILDERS L.L.C.",
+    "documentNumber": "L201800001158",
+    "status": "Active",
+    "filingDate": "2018-12-27",
+    "type": "LLC"
+  },
+  {
+    "name": "STELLAR CO",
+    "documentNumber": "0900084",
+    "status": "Active",
+    "filingDate": "2018-12-24",
+    "type": "CORP"
+  },
+  {
+    "name": "VELOCITY MARINE LLC",
+    "documentNumber": "L201800001215",
+    "status": "Active",
+    "filingDate": "2018-12-18",
+    "type": "LLC"
+  },
+  {
+    "name": "LIGHTHOUSE PROPERTIES CO",
+    "documentNumber": "0900037",
+    "status": "INACT",
+    "filingDate": "2018-11-19",
+    "type": "CORP"
+  },
+  {
+    "name": "CROSSROADS CO",
+    "documentNumber": "0900145",
+    "status": "Active",
+    "filingDate": "2018-11-19",
+    "type": "CORP"
+  },
+  {
+    "name": "VANGUARD DATA LLC",
+    "documentNumber": "L201800001056",
+    "status": "Active",
+    "filingDate": "2018-11-09",
+    "type": "LLC"
+  },
+  {
+    "name": "FRONTIER MEDICAL LLC",
+    "documentNumber": "L201800001188",
+    "status": "Active",
+    "filingDate": "2018-11-08",
+    "type": "LLC"
+  },
+  {
+    "name": "OCEAN L.L.C.",
+    "documentNumber": "L201800001212",
+    "status": "Active",
+    "filingDate": "2018-10-17",
+    "type": "LLC"
+  },
+  {
+    "name": "MANATEE DENTAL LLC",
+    "documentNumber": "L201800001154",
+    "status": "NAME HS",
+    "filingDate": "2018-09-29",
+    "type": "LLC"
+  },
+  {
+    "name": "CORAL TRANSPORT CORP",
+    "documentNumber": "0900128",
+    "status": "Active",
+    "filingDate": "2018-09-27",
+    "type": "CORP"
+  },
+  {
+    "name": "CORNERSTONE MEDIA L.L.C.",
+    "documentNumber": "L201800001071",
+    "status": "Active",
+    "filingDate": "2018-09-03",
+    "type": "LLC"
+  },
+  {
+    "name": "CITRUS L.L.C.",
+    "documentNumber": "L201800001219",
+    "status": "Active",
+    "filingDate": "2018-09-02",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST DATA INC",
+    "documentNumber": "0900082",
+    "status": "Active",
+    "filingDate": "2018-08-12",
+    "type": "CORP"
+  },
+  {
+    "name": "TAMPA RESTAURANT L.L.C.",
+    "documentNumber": "L201800001191",
+    "status": "Active",
+    "filingDate": "2018-08-08",
+    "type": "LLC"
+  },
+  {
+    "name": "CATALYST FASHION CORP",
+    "documentNumber": "0900034",
+    "status": "Active",
+    "filingDate": "2018-08-07",
+    "type": "CORP"
+  },
+  {
+    "name": "MOMENTUM FASHION INC",
+    "documentNumber": "0900070",
+    "status": "Active",
+    "filingDate": "2018-08-05",
+    "type": "CORP"
+  },
+  {
+    "name": "LEGACY VENTURES LLC",
+    "documentNumber": "L201800001085",
+    "status": "Active",
+    "filingDate": "2018-08-02",
+    "type": "LLC"
+  },
+  {
+    "name": "VELOCITY HOSPITALITY CORP",
+    "documentNumber": "0900060",
+    "status": "NAME HS",
+    "filingDate": "2018-07-29",
+    "type": "CORP"
+  },
+  {
+    "name": "MIAMI PROPERTIES INC",
+    "documentNumber": "0900002",
+    "status": "Active",
+    "filingDate": "2018-07-24",
+    "type": "CORP"
+  },
+  {
+    "name": "GULF ENTERPRISES INC",
+    "documentNumber": "0900044",
+    "status": "Active",
+    "filingDate": "2018-07-09",
+    "type": "CORP"
+  },
+  {
+    "name": "HIBISCUS L.L.C.",
+    "documentNumber": "L201800001121",
+    "status": "Active",
+    "filingDate": "2018-07-08",
+    "type": "LLC"
+  },
+  {
+    "name": "APEX HOLDINGS LLC",
+    "documentNumber": "L201800001217",
+    "status": "Active",
+    "filingDate": "2018-07-03",
+    "type": "LLC"
+  },
+  {
+    "name": "CITRUS L.L.C.",
+    "documentNumber": "L201800001127",
+    "status": "Active",
+    "filingDate": "2018-06-10",
+    "type": "LLC"
+  },
+  {
+    "name": "CYPRESS BOARDING INC",
+    "documentNumber": "0900011",
+    "status": "Active",
+    "filingDate": "2018-05-19",
+    "type": "CORP"
+  },
+  {
+    "name": "ORLANDO BAKERY L.L.C.",
+    "documentNumber": "L201800001079",
+    "status": "Active",
+    "filingDate": "2018-04-29",
+    "type": "LLC"
+  },
+  {
+    "name": "GOOGLE LLC",
+    "documentNumber": "F18000567890",
+    "status": "Active",
+    "filingDate": "2018-04-12",
+    "type": "LLC"
+  },
+  {
+    "name": "BEACON PHARMACY CORP",
+    "documentNumber": "0900135",
+    "status": "Active",
+    "filingDate": "2018-04-08",
+    "type": "CORP"
+  },
+  {
+    "name": "APEX L.L.C.",
+    "documentNumber": "L201800001203",
+    "status": "Active",
+    "filingDate": "2018-04-06",
+    "type": "LLC"
+  },
+  {
+    "name": "ORLANDO SOFTWARE LLC",
+    "documentNumber": "L201800001092",
+    "status": "NAME HS",
+    "filingDate": "2018-03-14",
+    "type": "LLC"
+  },
+  {
+    "name": "CROSSROADS SHIPPING LLC",
+    "documentNumber": "L201800001038",
+    "status": "Active",
+    "filingDate": "2018-03-07",
+    "type": "LLC"
+  },
+  {
+    "name": "HIGHLAND SERVICES LLC",
+    "documentNumber": "L201800001194",
+    "status": "INACT",
+    "filingDate": "2018-02-26",
+    "type": "LLC"
+  },
+  {
+    "name": "SAND DOLLAR CORP",
+    "documentNumber": "0900134",
+    "status": "INACT",
+    "filingDate": "2018-02-19",
+    "type": "CORP"
+  },
+  {
+    "name": "GULF FASHION LLC",
+    "documentNumber": "L201800001118",
+    "status": "Active",
+    "filingDate": "2018-02-05",
+    "type": "LLC"
+  },
+  {
+    "name": "PELICAN LLC",
+    "documentNumber": "L201800001211",
+    "status": "Active",
+    "filingDate": "2018-01-20",
+    "type": "LLC"
+  },
+  {
+    "name": "DISNEY 4 VILLAS LLC",
+    "documentNumber": "L08000001508",
+    "status": "INACT",
+    "filingDate": "2008-01-04",
+    "type": "LLC"
+  },
+  {
+    "name": "WALT DISNEY PARKS AND RESORTS U.S., INC.",
+    "documentNumber": "F02000098765",
+    "status": "Active",
+    "filingDate": "2002-06-30",
+    "type": "CORP"
+  },
+  {
+    "name": "DISNEY VACATION CLUB MANAGEMENT, LLC",
+    "documentNumber": "L01000045678",
+    "status": "Active",
+    "filingDate": "2001-03-12",
+    "type": "LLC"
+  },
+  {
+    "name": "DISNEY ENTERPRISES, INC.",
+    "documentNumber": "F96000001234",
+    "status": "Active",
+    "filingDate": "1996-08-15",
+    "type": "CORP"
+  },
+  {
+    "name": "NIKE RETAIL SERVICES INC",
+    "documentNumber": "F95000890123",
+    "status": "Active",
+    "filingDate": "1995-10-15",
+    "type": "CORP"
+  },
+  {
+    "name": "APPLE INC.",
+    "documentNumber": "F84000234567",
+    "status": "Active",
+    "filingDate": "1984-09-07",
+    "type": "CORP"
+  },
+  {
+    "name": "DISNEY",
+    "documentNumber": "924613",
+    "status": "Active",
+    "filingDate": "1981-04-23",
+    "type": "CORP"
+  },
+  {
+    "name": "PUBLIX SUPER MARKETS, INC.",
+    "documentNumber": "F30000123456",
+    "status": "Active",
+    "filingDate": "1930-09-06",
+    "type": "CORP"
+  }
+]

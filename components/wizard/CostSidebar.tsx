@@ -1,0 +1,107 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import { Sparkles, ShieldCheck, Receipt } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+
+interface CostSidebarProps {
+  entityType: 'LLC' | 'CORP';
+  tier: TierSlug;
+  addOnSlugs: AddOnSlug[];
+}
+
+export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) {
+  const breakdown = computeCost({ entityType, tier, addOnSlugs });
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="bg-gradient-to-br from-primary/5 to-accent/5 px-6 py-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-primary" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">Order Summary</h3>
+        </div>
+      </div>
+      <CardContent className="p-6 space-y-4">
+        {/* State fees */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+            Florida Department of State
+          </p>
+          {breakdown.lines
+            .filter((l) => l.category === 'state')
+            .map((line, i) => (
+              <CostRow key={i} label={line.label} cents={line.cents} sublabel={line.detail} />
+            ))}
+        </div>
+
+        {/* Service fees */}
+        {breakdown.lines.filter((l) => l.category === 'service' || l.category === 'addon').length > 0 && (
+          <div className="space-y-2 pt-3 border-t border-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+              Sunbiz Express services
+            </p>
+            {breakdown.lines
+              .filter((l) => l.category === 'service' || l.category === 'addon')
+              .map((line, i) => (
+                <CostRow key={i} label={line.label} cents={line.cents} sublabel={line.detail} />
+              ))}
+          </div>
+        )}
+
+        {/* Free year-1 RA callout */}
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-success-subtle/50 border border-success/20">
+          <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
+          <div className="text-xs text-ink leading-snug">
+            <strong>Year-1 Registered Agent</strong> is included free.
+          </div>
+        </div>
+
+        {/* Total */}
+        <motion.div
+          key={breakdown.totalCents}
+          initial={{ scale: 0.98, opacity: 0.6 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="pt-4 border-t border-border space-y-1"
+        >
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm font-medium">Total today</span>
+            <span className="font-display text-3xl font-medium">
+              {formatCurrency(breakdown.totalCents, { showZero: true })}
+            </span>
+          </div>
+          <p className="text-xs text-ink-subtle">One-time payment · No subscription</p>
+        </motion.div>
+
+        <Badge variant="secondary" className="w-full justify-center font-medium">
+          <Sparkles className="h-3 w-3" />
+          Cancel any add-on before paying
+        </Badge>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CostRow({
+  label,
+  cents,
+  sublabel,
+}: {
+  label: string;
+  cents: number;
+  sublabel?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <div className="min-w-0">
+        <p className="text-ink leading-snug">{label}</p>
+        {sublabel && <p className="text-xs text-ink-subtle leading-snug">{sublabel}</p>}
+      </div>
+      <span className="font-medium text-ink shrink-0">
+        {formatCurrency(cents, { showZero: true })}
+      </span>
+    </div>
+  );
+}

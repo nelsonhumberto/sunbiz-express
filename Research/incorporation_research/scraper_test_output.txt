@@ -1,0 +1,15 @@
+
+=== Searching: 'Disney' ===
+  Active matches found: 0 (in 0.05s)
+
+=== Searching: 'Apple' ===
+  Active matches found: 0 (in 0.02s)
+
+=== Searching: 'Acme Corporation' ===
+  Active matches found: 0 (in 0.03s)
+
+=== Searching: 'ZZZQ Nonexistent Test Co LLC' ===
+  Active matches found: 0 (in 0.02s)
+
+=== Searching: 'Sunshine Bakery' ===
+  Active matches found: 0 (in 0.02s)

@@ -1,0 +1,372 @@
+// Florida Incorporation App – Prisma schema
+// 14 core models mirroring the handoff document
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums (SQLite stores as strings) ─────────────────────────────────────
+// EntityType: LLC | CORP
+// FilingStatus: DRAFT | SUBMITTED | APPROVED | REJECTED | ABANDONED
+// PaymentStatus: PENDING | SUCCEEDED | FAILED | REFUNDED
+// ServiceTier: BASIC | STANDARD | PREMIUM
+// MemberRole: MGR | MGRM | AMBR | AP | OFFICER | DIRECTOR | INCORPORATOR
+// DocumentType: ARTICLES_ORG | ARTICLES_INC | OPERATING_AGREEMENT | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT
+// AccountStatus: ACTIVE | SUSPENDED | DELETED
+// UserRole: USER | ADMIN
+// NotificationType: WELCOME | FILING_STARTED | ABANDONED_24H | ABANDONED_72H | PAYMENT_CONFIRMATION | FILING_SUBMITTED | FILING_APPROVED | FILING_REJECTED | ANNUAL_REPORT_60 | ANNUAL_REPORT_30 | ANNUAL_REPORT_FINAL | COMPLIANCE_ALERT
+// NotificationStatus: QUEUED | SENT | FAILED | BOUNCED
+// AnnualReportStatus: PENDING | FILED | OVERDUE | DELINQUENT
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  phone           String?
+  role            String    @default("USER") // USER | ADMIN
+  emailVerified   Boolean   @default(false)
+  accountStatus   String    @default("ACTIVE")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLogin       DateTime?
+
+  filings         Filing[]
+  payments        Payment[]
+  notifications   EmailNotification[]
+  analyticsEvents AnalyticsEvent[]
+}
+
+model Filing {
+  id                       String   @id @default(cuid())
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Step 1
+  entityType               String   @default("LLC") // LLC | CORP
+  state                    String   @default("FL")
+
+  // Step 2
+  businessName             String?
+  nameAvailable            Boolean? // last known result
+  nameCheckedAt            DateTime?
+
+  // Step 3
+  serviceTier              String   @default("STANDARD") // BASIC | STANDARD | PREMIUM
+
+  // Steps 4-9 stored as JSON for flexibility
+  principalAddress         String?  // JSON {street1, street2, city, state, zip, inCareOf}
+  mailingAddress           String?  // JSON or "SAME_AS_PRINCIPAL"
+  registeredAgent          String?  // JSON {type, name, email, phone, street1, street2, city, state, zip, signature, signedAt, useOurService}
+  correspondenceContact    String?  // JSON {email, phone}
+  optionalDetails          String?  // JSON {effectiveDate, authorizedShares, professionalPurpose, businessPurpose}
+
+  // Step 10
+  incorporatorSignature    String?
+  incorporatorSignedAt     DateTime?
+  confirmationAccepted     Boolean  @default(false)
+
+  // Step 11 add-ons captured via FilingAdditionalService
+
+  // Status
+  status                   String   @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | ABANDONED
+  currentStep              Int      @default(1)
+  completedSteps           String   @default("[]") // JSON array of step numbers
+
+  // Sunbiz tracking (mock)
+  sunbizFilingNumber       String?  @unique
+  sunbizTrackingNumber     String?
+  sunbizPin                String?
+  sunbizSubmittedAt        DateTime?
+  sunbizApprovedAt         DateTime?
+  sunbizRejectionReason    String?
+
+  // Costs (cents, snapshot at submission)
+  stateFeeCents            Int      @default(0)
+  serviceFeeCents          Int      @default(0)
+  addOnsTotalCents         Int      @default(0)
+  totalCents               Int      @default(0)
+
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  submittedAt              DateTime?
+  abandonedAt              DateTime?
+
+  steps                    FilingStep[]
+  managersMembers          ManagerMember[]
+  payments                 Payment[]
+  documents                Document[]
+  raServices               RegisteredAgentService[]
+  notifications            EmailNotification[]
+  annualReports            AnnualReport[]
+  filingAdditionalServices FilingAdditionalService[]
+  adminActions             AdminAction[]
+  analyticsEvents          AnalyticsEvent[]
+
+  @@index([userId, status, createdAt])
+}
+
+model FilingStep {
+  id           String   @id @default(cuid())
+  filingId     String
+  filing       Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  stepNumber   Int
+  stepName     String
+  completedAt  DateTime @default(now())
+  dataSnapshot String   // JSON
+
+  @@unique([filingId, stepNumber])
+}
+
+model ManagerMember {
+  id                  String   @id @default(cuid())
+  filingId            String
+  filing              Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  title               String   // MGR | MGRM | AMBR | AP | OFFICER | DIRECTOR | INCORPORATOR
+  name                String
+  street1             String?
+  street2             String?
+  city                String?
+  state               String?
+  zip                 String?
+  ownershipPercentage Float?
+  position            Int      @default(0)
+  createdAt           DateTime @default(now())
+}
+
+model Payment {
+  id                       String   @id @default(cuid())
+  filingId                 String
+  filing                   Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId    String?  @unique
+  stripeChargeId           String?
+  amountCents              Int
+  currency                 String   @default("usd")
+  status                   String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED
+
+  stateFilingFeeCents      Int      @default(0)
+  formationServiceFeeCents Int      @default(0)
+  registeredAgentY1Cents   Int      @default(0)
+  operatingAgreementCents  Int      @default(0)
+  einCents                 Int      @default(0)
+  domainCents              Int      @default(0)
+  certificatesCopiesCents  Int      @default(0)
+  otherServicesCents       Int      @default(0)
+
+  cardLast4                String?
+  cardBrand                String?
+  cardholderName           String?
+  errorMessage             String?
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  completedAt              DateTime?
+  refundedAt               DateTime?
+
+  @@index([filingId, status])
+}
+
+model Document {
+  id               String   @id @default(cuid())
+  filingId         String
+  filing           Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  documentType     String   // ARTICLES_ORG | OPERATING_AGREEMENT | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT
+  title            String
+  // For demo, store as base64 in DB instead of S3
+  base64           String   // Generated PDF/HTML content base64-encoded
+  mimeType         String   @default("application/pdf")
+  fileSizeBytes    Int      @default(0)
+  generatedAt      DateTime @default(now())
+  downloadedCount  Int      @default(0)
+  lastDownloadedAt DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model State {
+  id                       String   @id @default(cuid())
+  stateCode                String   @unique
+  stateName                String
+  llcFilingFeeCents        Int
+  corpFilingFeeCents       Int
+  raFeeCents               Int
+  llcAnnualReportFeeCents  Int
+  corpAnnualReportFeeCents Int
+  annualReportLateFeeCents Int
+  standardProcessingDays   Int
+  expressProcessingDays    Int?
+  expressProcessingFeeCents Int?
+  requiresAnnualReport     Boolean  @default(true)
+  annualReportDueMonth     Int      @default(1)
+  annualReportDueDay       Int      @default(1)
+  annualReportEndMonth     Int      @default(5)
+  annualReportEndDay       Int      @default(1)
+  allowsOnlineFiling       Boolean  @default(true)
+  enabled                  Boolean  @default(true)
+  formationWizardUrl       String?
+  searchUrl                String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model PricingTier {
+  id                                String   @id @default(cuid())
+  tierName                          String
+  tierSlug                          String   @unique
+  description                       String
+  displayOrder                      Int
+  basePriceCents                    Int
+  includedFeatures                  String   // JSON array of strings
+  includesRegisteredAgentY1         Boolean  @default(false)
+  includesOperatingAgreement        Boolean  @default(false)
+  includesEin                       Boolean  @default(false)
+  includesExpedited                 Boolean  @default(false)
+  includesCertifiedCopy             Boolean  @default(false)
+  includesCertificateOfStatus       Boolean  @default(false)
+  includesAnnualCompliance          Boolean  @default(false)
+  includesDomain                    Boolean  @default(false)
+  recommended                       Boolean  @default(false)
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+}
+
+model AdditionalService {
+  id                String   @id @default(cuid())
+  serviceName       String
+  serviceSlug       String   @unique
+  description       String
+  iconKey           String?  // lucide icon name for UI rendering
+  priceCents        Int
+  isRecurring       Boolean  @default(false)
+  recurringInterval String?  // monthly | annually
+  applicableTypes   String   @default("[\"LLC\",\"CORP\"]") // JSON
+  displayOrder      Int      @default(0)
+  enabled           Boolean  @default(true)
+  category          String   @default("formation") // formation | compliance | branding
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  filingServices    FilingAdditionalService[]
+}
+
+model FilingAdditionalService {
+  id              String   @id @default(cuid())
+  filingId        String
+  filing          Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         AdditionalService @relation(fields: [serviceId], references: [id])
+  quantity        Int      @default(1)
+  priceCents      Int
+  status          String   @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  purchasedAt     DateTime?
+  renewalDate     DateTime?
+  expirationDate  DateTime?
+  createdAt       DateTime @default(now())
+
+  @@unique([filingId, serviceId])
+}
+
+model RegisteredAgentService {
+  id              String   @id @default(cuid())
+  filingId        String
+  filing          Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  serviceProvider String   @default("INTERNAL") // INTERNAL | THIRD_PARTY
+  providerName    String?
+  agentName       String
+  agentEmail      String?
+  agentPhone      String?
+  street1         String
+  street2         String?
+  city            String
+  state           String
+  zip             String
+  startDate       DateTime
+  renewalDate     DateTime
+  expirationDate  DateTime?
+  status          String   @default("ACTIVE") // ACTIVE | PENDING | EXPIRED | CANCELLED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailNotification {
+  id               String   @id @default(cuid())
+  filingId         String?
+  filing           Filing?  @relation(fields: [filingId], references: [id], onDelete: SetNull)
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notificationType String
+  recipientEmail   String
+  subject          String
+  templateName     String
+  htmlBody         String   // rendered preview
+  status           String   @default("QUEUED") // QUEUED | SENT | FAILED | BOUNCED
+  sentAt           DateTime?
+  openedAt         DateTime?
+  clickedAt        DateTime?
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, notificationType, createdAt])
+}
+
+model AnnualReport {
+  id                  String   @id @default(cuid())
+  filingId            String
+  filing              Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+  reportYear          Int
+  dueDate             DateTime
+  filedDate           DateTime?
+  sunbizFilingNumber  String?
+  status              String   @default("PENDING") // PENDING | FILED | OVERDUE | DELINQUENT
+  filingFeeCents      Int
+  lateFeeCents        Int      @default(0)
+  totalCostCents      Int      @default(0)
+  reminder60Sent      Boolean  @default(false)
+  reminder30Sent      Boolean  @default(false)
+  reminderFinalSent   Boolean  @default(false)
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([filingId, reportYear])
+}
+
+model AdminAction {
+  id              String   @id @default(cuid())
+  adminUserId     String?
+  filingId        String?
+  filing          Filing?  @relation(fields: [filingId], references: [id], onDelete: SetNull)
+  actionType      String
+  description     String
+  oldValues       String?  // JSON
+  newValues       String?  // JSON
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  filingId  String?
+  filing    Filing?  @relation(fields: [filingId], references: [id], onDelete: SetNull)
+  eventType String
+  eventData String?  // JSON
+  pageUrl   String?
+  referrer  String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, eventType, createdAt])
+}

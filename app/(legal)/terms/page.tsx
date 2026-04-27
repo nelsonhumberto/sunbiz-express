@@ -8,7 +8,7 @@ export default function TermsPage() {
 
       <h2>1. Service Description</h2>
       <p>
-        Sunbiz Express is a self-help business formation platform that assists Florida residents
+        IncServices is a self-help business formation platform that assists Florida residents
         and entrepreneurs in filing Articles of Organization (LLC) and Articles of Incorporation
         (Corporation) with the Florida Department of State, Division of Corporations.
       </p>
@@ -27,7 +27,7 @@ export default function TermsPage() {
 
       <h2>3. Limitation of Liability</h2>
       <p>
-        To the maximum extent permitted by law, Sunbiz Express's total liability is limited to
+        To the maximum extent permitted by law, IncServices's total liability is limited to
         the amount you paid for our services. We are not liable for state filing rejections,
         delays caused by the Florida Department of State, or consequential damages.
       </p>
@@ -76,7 +76,7 @@ export default function TermsPage() {
       <h2>9. Contact</h2>
       <p>
         Questions? Email{' '}
-        <a href="mailto:legal@sunbizexpress.example">legal@sunbizexpress.example</a>.
+        <a href="mailto:legal@incservices.example">legal@incservices.example</a>.
       </p>
     </>
   );

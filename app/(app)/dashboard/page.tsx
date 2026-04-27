@@ -26,7 +26,10 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect('/sign-in');
   const t = await getTranslations('dashboard');
 
-  const [filings, upcomingReports] = await Promise.all([
+  const now = Date.now();
+  const raRenewalHorizon = new Date(now + 60 * 24 * 60 * 60 * 1000);
+
+  const [filings, upcomingReports, upcomingRaRenewals] = await Promise.all([
     prisma.filing.findMany({
       where: { userId: session.user.id },
       orderBy: { updatedAt: 'desc' },
@@ -41,10 +44,29 @@ export default async function DashboardPage() {
       include: { filing: true },
       take: 5,
     }),
+    // Surface in-flight Registered-Agent renewals so the customer can renew
+    // (or cancel) before lapse without us emailing only.
+    prisma.registeredAgentService.findMany({
+      where: {
+        filing: { userId: session.user.id },
+        status: 'ACTIVE',
+        serviceProvider: 'INTERNAL',
+        renewalDate: { gte: new Date(now), lte: raRenewalHorizon },
+      },
+      orderBy: { renewalDate: 'asc' },
+      include: { filing: true },
+      take: 3,
+    }),
   ]);
 
   const drafts = filings.filter((f) => f.status === 'DRAFT');
   const active = filings.filter((f) => f.status !== 'DRAFT');
+  // The freshest draft drives a prominent hero CTA so customers can pick up
+  // exactly where they left off without hunting through the cards below.
+  const latestDraft = drafts[0];
+  const latestDraftCompleted = latestDraft
+    ? safeParseJson<number[]>(latestDraft.completedSteps, []).length
+    : 0;
 
   const h = new Date().getHours();
   const greet = h < 12 ? t('greetMorning') : h < 18 ? t('greetAfternoon') : t('greetEvening');
@@ -63,6 +85,47 @@ export default async function DashboardPage() {
       </div>
 
       {filings.length === 0 && <EmptyState />}
+
+      {latestDraft && (
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-white to-white shadow-card">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-5">
+              <div className="h-14 w-14 rounded-2xl bg-primary text-white flex items-center justify-center shrink-0">
+                <ArrowRight className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wider text-primary font-semibold">
+                  {t('resumeEyebrow')}
+                </p>
+                <h2 className="font-display text-2xl font-medium mt-1">
+                  {latestDraft.businessName ?? t('untitledDraft')}
+                </h2>
+                <p className="text-sm text-ink-muted mt-1">
+                  {t('resumeStepHint', {
+                    current: latestDraft.currentStep,
+                    total: TOTAL_STEPS,
+                    completed: latestDraftCompleted,
+                  })}
+                </p>
+                <p className="text-sm text-primary font-medium mt-1.5 inline-flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {t('resumeUrgency')}
+                </p>
+                <div className="mt-3 max-w-md">
+                  <Progress value={(latestDraftCompleted / TOTAL_STEPS) * 100} />
+                </div>
+              </div>
+              <Link
+                href={`/wizard/${latestDraft.id}/${latestDraft.currentStep ?? 1}`}
+                className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors shrink-0"
+              >
+                {t('resumeFiling')}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {drafts.length > 0 && (
         <section className="space-y-3">
@@ -112,6 +175,42 @@ export default async function DashboardPage() {
                       {t('due')}{' '}
                       {formatDate(report.dueDate, { month: 'long', day: 'numeric', year: 'numeric' })}{' '}
                       · ${(report.filingFeeCents / 100).toFixed(2)}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-subtle" />
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {upcomingRaRenewals.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader title={t('upcomingRaRenewals')} />
+          <Card>
+            <CardContent className="p-0 divide-y divide-border">
+              {upcomingRaRenewals.map((svc) => (
+                <Link
+                  key={svc.id}
+                  href={`/dashboard/filings/${svc.filingId}`}
+                  className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">
+                      {svc.filing.businessName} · {t('raRenewal')}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      {t('renewsOn')}{' '}
+                      {formatDate(svc.renewalDate, {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}{' '}
+                      · {t('raRenewalPrice')}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-ink-subtle" />

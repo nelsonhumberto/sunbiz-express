@@ -1,7 +1,32 @@
 // Constants used by the wizard. Kept separate from actions/wizard.ts because
 // "use server" files can only export async functions.
 
-export const TOTAL_STEPS = 12;
+export const TOTAL_STEPS = 11;
+
+/**
+ * Customer-facing journey phases. The 11 form steps are grouped into 5
+ * phases so the customer feels they're moving through "Name → Setup →
+ * Owners → Package → Pay" instead of "11 government-form steps". The
+ * `WizardShell` renders the current phase next to the step counter.
+ */
+export type WizardPhase = {
+  /** i18n key under `wizard.phase_*`. */
+  key: 'name' | 'setup' | 'people' | 'package' | 'review';
+  /** Inclusive step range this phase covers. */
+  steps: number[];
+};
+
+export const WIZARD_PHASES: WizardPhase[] = [
+  { key: 'name', steps: [1, 2] }, // entity + business name
+  { key: 'setup', steps: [4, 5, 8] }, // addresses + optional details
+  { key: 'people', steps: [6, 7] }, // RA + members/managers
+  { key: 'package', steps: [3, 10] }, // tier + add-ons
+  { key: 'review', steps: [9, 11] }, // review/sign + payment
+];
+
+export function phaseForStep(step: number): WizardPhase['key'] {
+  return WIZARD_PHASES.find((p) => p.steps.includes(step))?.key ?? 'name';
+}
 
 export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle: string }> = {
   1: {
@@ -40,26 +65,21 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
     subtitle: "Who's authorized to act on behalf of the company?",
   },
   8: {
-    slug: 'correspondence',
-    title: 'Where should we reach you?',
-    subtitle: 'For state notices, document delivery, and account updates.',
-  },
-  9: {
     slug: 'optional',
     title: 'A few optional details',
     subtitle: 'Effective date, share count (Corp), professional purpose if applicable.',
   },
-  10: {
+  9: {
     slug: 'review',
     title: 'Review & sign',
     subtitle: 'Confirm everything looks right and sign electronically.',
   },
-  11: {
+  10: {
     slug: 'add-ons',
     title: 'Anything else?',
     subtitle: 'Compliance, banking, branding — included or à la carte.',
   },
-  12: {
+  11: {
     slug: 'payment',
     title: 'Payment',
     subtitle: 'One-time, transparent, no subscription.',

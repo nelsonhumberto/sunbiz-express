@@ -14,12 +14,12 @@ const FAQ_EN = [
     a: 'About 15 minutes to complete our 12-step wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
   },
   {
-    q: 'What does the state fee cover, and why is it separate?',
-    a: "Florida charges $125 to file LLC Articles of Organization (or $70 for a Corporation). That money goes directly to the State of Florida — not to us. Showing it separately is part of our transparency promise.",
+    q: 'What is included in the package price?',
+    a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and same-business-day submission, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf — there are no separate state fees added at checkout.",
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: "Yes. Year-1 Registered Agent service is included in every plan, including the free Starter tier. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
+    a: "Yes. Year-1 Registered Agent service is included in every package, including Basic Filing. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -35,7 +35,7 @@ const FAQ_EN = [
   },
   {
     q: 'What about the EIN — do I need one?',
-    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Pro and Concierge plans include EIN acquisition; you can add it as a $49 upgrade on the free plan.",
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Bank-Ready Filing and Launch Concierge packages include EIN acquisition; you can add it as a $79 upgrade on Basic Filing.",
   },
   {
     q: 'What if my name is taken?',
@@ -43,11 +43,11 @@ const FAQ_EN = [
   },
   {
     q: 'Are you a law firm?',
-    a: "No. Sunbiz Express is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
+    a: "No. IncServices is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
   },
   {
     q: "What's your refund policy?",
-    a: "Service fees are refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida accepts payment, the state filing fee is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
+    a: "The IncServices portion of your package is refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida has accepted the filing, the state filing fee portion is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
   },
 ];
 
@@ -57,12 +57,12 @@ const FAQ_ES = [
     a: 'Unos 15 minutos completar nuestro asistente de 12 pasos. Enviamos al Departamento de Estado de Florida el mismo día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
   },
   {
-    q: '¿Qué cubre la tarifa estatal y por qué se muestra por separado?',
-    a: 'Florida cobra $125 por presentar Articles of Organization de LLC (o $70 para Corporación). Ese dinero va directo al Estado de Florida — no a nosotros. Mostrarlo por separado es parte de nuestra promesa de transparencia.',
+    q: '¿Qué incluye el precio del plan?',
+    a: 'Cada plan incluye la tarifa de presentación requerida del Departamento de Estado de Florida ($125 para LLC, $70 para Corporación), nuestra preparación y envío el mismo día hábil, tu Agente Registrado del primer año, y la entrega digital de tus documentos presentados. Pagamos la tarifa estatal a Florida en tu nombre — no se agregan tarifas estatales aparte al pagar.',
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan gratuito Starter. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el Plan Básico. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
@@ -78,7 +78,7 @@ const FAQ_ES = [
   },
   {
     q: '¿Qué pasa con el EIN — lo necesito?',
-    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Pro y Concierge incluyen la obtención del EIN; puedes agregarlo por $49 en el plan gratuito.',
+    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Listo-para-el-Banco y Concierge de Lanzamiento incluyen la obtención del EIN; puedes agregarlo por $79 en el Plan Básico.',
   },
   {
     q: '¿Y si mi nombre está tomado?',
@@ -86,11 +86,11 @@ const FAQ_ES = [
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
-    a: 'No. Sunbiz Express es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
+    a: 'No. IncServices es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
   },
   {
     q: '¿Cuál es su política de reembolso?',
-    a: 'Las tarifas de servicio son reembolsables por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el pago, la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
+    a: 'La parte de IncServices de tu plan es reembolsable por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el trámite, la porción de la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
   },
 ];
 
@@ -122,7 +122,7 @@ export function FAQSection() {
 
         <p className="mt-8 text-center text-sm text-ink-muted">
           {t('stillHaveQuestions')}{' '}
-          <a href="mailto:hello@sunbizexpress.example" className="text-primary font-medium hover:underline">
+          <a href="mailto:hello@incservices.example" className="text-primary font-medium hover:underline">
             {t('emailUs')}
           </a>{' '}
           {t('respondWithin')}

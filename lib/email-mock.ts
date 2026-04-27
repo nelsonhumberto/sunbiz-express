@@ -9,6 +9,10 @@ export type NotificationType =
   | 'FILING_STARTED'
   | 'ABANDONED_24H'
   | 'ABANDONED_72H'
+  | 'ABANDONED_7D'
+  | 'RA_RENEWAL_60'
+  | 'RA_RENEWAL_30'
+  | 'RA_RENEWAL_7'
   | 'PAYMENT_CONFIRMATION'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
@@ -36,11 +40,11 @@ const TEMPLATES: Record<
   (ctx: EmailContext) => { subject: string; body: string }
 > = {
   WELCOME: ({ firstName }) => ({
-    subject: 'Welcome to Sunbiz Express ☀️',
+    subject: 'Welcome to IncServices ☀️',
     body: html`
       <h1>Welcome, ${firstName ?? 'there'}!</h1>
       <p>You're moments away from forming your Florida business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
-      <a class="cta" href="https://sunbizexpress.example/dashboard">Go to Dashboard</a>
+      <a class="cta" href="https://incservices.example/dashboard">Go to Dashboard</a>
       <p class="muted">Need a hand? Reply to this email and a real person will help.</p>
     `,
   }),
@@ -55,15 +59,48 @@ const TEMPLATES: Record<
     subject: `Continue forming ${businessName ?? 'your business'} — pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
-      <p>Your draft is saved and waiting. Most users finish in 5 minutes from this point.</p>
-      <a class="cta" href="https://sunbizexpress.example/dashboard">Resume Filing</a>
+      <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the Florida Department of State the same business day.</p>
+      <a class="cta" href="https://incservices.example/dashboard">Resume Filing</a>
+      <p class="muted">Most owners finish in 5 minutes from where you left off.</p>
     `,
   }),
   ABANDONED_72H: ({ firstName, businessName }) => ({
-    subject: `Last chance: complete your filing for ${businessName ?? 'your business'}`,
+    subject: `Florida won't reserve "${businessName ?? 'your business'}" until you file`,
     body: html`
-      <h1>Don't lose your progress</h1>
-      <p>${firstName ?? 'Hi'} — we'll keep your draft for a few more days. After that we'll archive it.</p>
+      <h1>Your name isn't locked in yet</h1>
+      <p>${firstName ?? 'Hi'} — Florida only reserves a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
+      <a class="cta" href="https://incservices.example/dashboard">Finish my filing</a>
+      <p class="muted">We'll prepare and submit your Articles to the Florida Department of State the same business day you complete checkout.</p>
+    `,
+  }),
+  ABANDONED_7D: ({ firstName, businessName }) => ({
+    subject: `Need a hand finishing ${businessName ?? 'your business'}?`,
+    body: html`
+      <h1>Stuck on a step?</h1>
+      <p>${firstName ?? 'Hi'} — your draft is still saved. If something is unclear, reply to this email and a Florida specialist will walk you through the rest. No charge.</p>
+      <a class="cta" href="https://incservices.example/dashboard">Resume Filing</a>
+    `,
+  }),
+  RA_RENEWAL_60: ({ businessName }) => ({
+    subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
+    body: html`
+      <h1>Heads up — RA renewal in 60 days</h1>
+      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year — well below LegalZoom's $249/year — and keeps your home address off the public Florida record.</p>
+      <a class="cta" href="https://incservices.example/dashboard">Manage Registered Agent</a>
+    `,
+  }),
+  RA_RENEWAL_30: ({ businessName }) => ({
+    subject: `RA renewal in 30 days for ${businessName ?? 'your business'}`,
+    body: html`
+      <h1>30 days until Registered Agent renewal</h1>
+      <p>Cancel anytime if you've found another agent. Otherwise we'll keep accepting service of process for you starting on your renewal date.</p>
+    `,
+  }),
+  RA_RENEWAL_7: ({ businessName }) => ({
+    subject: `Final notice: RA renewal in 7 days for ${businessName ?? 'your business'}`,
+    body: html`
+      <h1>RA renewal in 7 days</h1>
+      <p>If we don't hear from you, we'll renew Registered Agent service for ${businessName ?? 'your business'} for another year so you don't lose coverage.</p>
     `,
   }),
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
@@ -157,12 +194,12 @@ function wrap(inner: string) {
     blockquote { border-left: 3px solid #F4A261; padding: 8px 16px; margin: 16px 0; background: #FEF6EE; color: #6E3F18; }
   </style></head><body>
     <div style="text-align:center; padding-bottom:16px;">
-      <span style="display:inline-block; width:32px; height:32px; background:#0B7A6B; border-radius:8px; color:#fff; font-weight:bold; line-height:32px;">SE</span>
-      <span style="margin-left:8px; font-weight:600;">Sunbiz Express</span>
+      <span style="display:inline-block; width:32px; height:32px; background:#0B7A6B; border-radius:8px; color:#fff; font-weight:bold; line-height:32px;">IS</span>
+      <span style="margin-left:8px; font-weight:600;">IncServices</span>
     </div>
     ${inner}
     <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>
-    <p class="muted" style="text-align:center;">Sunbiz Express · 1234 Sunshine Blvd, Miami FL 33101 · <a href="#" style="color:#475A56;">Unsubscribe</a></p>
+    <p class="muted" style="text-align:center;">IncServices · 1234 Sunshine Blvd, Miami FL 33101 · <a href="#" style="color:#475A56;">Unsubscribe</a></p>
   </body></html>`;
 }
 

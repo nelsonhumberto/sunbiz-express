@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -87,6 +88,7 @@ export function AddressForm({
   floridaOnly,
   prefix = '',
 }: AddressFormProps) {
+  const t = useTranslations('wizard');
   const set = <K extends keyof AddressValue>(key: K, v: AddressValue[K]) =>
     onChange({ ...value, [key]: v });
   const id = (k: string) => `${prefix}${k}`;
@@ -95,7 +97,7 @@ export function AddressForm({
     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
       {showInCareOf && (
         <div className="md:col-span-6 space-y-1.5">
-          <Label htmlFor={id('inCareOf')}>In care of (optional)</Label>
+          <Label htmlFor={id('inCareOf')}>{t('addrInCareOf')}</Label>
           <Input
             id={id('inCareOf')}
             value={value.inCareOf ?? ''}
@@ -107,7 +109,7 @@ export function AddressForm({
 
       <div className="md:col-span-4 space-y-1.5">
         <Label htmlFor={id('street1')}>
-          Street address <span className="text-destructive">*</span>
+          {t('addrStreet')} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={id('street1')}
@@ -120,7 +122,10 @@ export function AddressForm({
       </div>
 
       <div className="md:col-span-2 space-y-1.5">
-        <Label htmlFor={id('street2')}>Suite / Unit</Label>
+        <Label htmlFor={id('street2')} className="flex items-center gap-2">
+          {t('addrSuite')}
+          <span className="text-xs font-normal text-ink-subtle">{t('optional')}</span>
+        </Label>
         <Input
           id={id('street2')}
           value={value.street2 ?? ''}
@@ -132,7 +137,7 @@ export function AddressForm({
 
       <div className="md:col-span-3 space-y-1.5">
         <Label htmlFor={id('city')}>
-          City <span className="text-destructive">*</span>
+          {t('addrCity')} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={id('city')}
@@ -146,14 +151,14 @@ export function AddressForm({
 
       <div className="md:col-span-2 space-y-1.5">
         <Label htmlFor={id('state')}>
-          State <span className="text-destructive">*</span>
+          {t('addrState')} <span className="text-destructive">*</span>
         </Label>
         {floridaOnly ? (
           <Input id={id('state')} value="FL" disabled />
         ) : (
           <Select value={value.state || 'FL'} onValueChange={(v) => set('state', v)}>
             <SelectTrigger id={id('state')}>
-              <SelectValue placeholder="State" />
+              <SelectValue placeholder={t('addrState')} />
             </SelectTrigger>
             <SelectContent>
               {US_STATES.map(([code, name]) => (
@@ -168,7 +173,7 @@ export function AddressForm({
 
       <div className="md:col-span-1 space-y-1.5">
         <Label htmlFor={id('zip')}>
-          ZIP <span className="text-destructive">*</span>
+          {t('addrZip')} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={id('zip')}

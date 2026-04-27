@@ -180,7 +180,7 @@ model Document {
   id               String   @id @default(cuid())
   filingId         String
   filing           Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
-  documentType     String   // ARTICLES_ORG | OPERATING_AGREEMENT | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT
+  documentType     String   // ARTICLES_ORG | ARTICLES_INC | OPERATING_AGREEMENT | COVER_LETTER | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT
   title            String
   // For demo, store as base64 in DB instead of S3
   base64           String   // Generated PDF/HTML content base64-encoded
@@ -190,6 +190,11 @@ model Document {
   downloadedCount  Int      @default(0)
   lastDownloadedAt DateTime?
   createdAt        DateTime @default(now())
+  // Add-on placeholders (Cert of Status, Certified Copy, EIN Letter) are
+  // created at submit time as pending rows with empty `base64`. Admin uploads
+  // the real PDF received from Florida/IRS, which flips `pendingState` off.
+  pendingState     Boolean  @default(false)
+  uploadedAt       DateTime?
 }
 
 model State {

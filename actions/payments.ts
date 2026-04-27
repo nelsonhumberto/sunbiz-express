@@ -53,7 +53,12 @@ export async function processCheckout(input: {
     addOnSlugs,
   });
 
-  // Create Payment row
+  // Create Payment row. We still split the amount into legacy accounting
+  // fields, but they now reflect the package-pricing ledger:
+  //   stateFilingFeeCents      → total government remittance (filing fee +
+  //                              cert pass-through fees from add-ons)
+  //   formationServiceFeeCents → IncServices margin from the tier package
+  //   otherServicesCents       → customer-paid add-on subtotal
   const payment = await prisma.payment.create({
     data: {
       filingId: filing.id,
@@ -61,13 +66,9 @@ export async function processCheckout(input: {
       stripePaymentIntentId: `pi_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       amountCents: breakdown.totalCents,
       status: 'SUCCEEDED',
-      stateFilingFeeCents: breakdown.stateSubtotalCents,
-      formationServiceFeeCents: breakdown.lines
-        .filter((l) => l.category === 'service')
-        .reduce((s, l) => s + l.cents, 0),
-      otherServicesCents: breakdown.lines
-        .filter((l) => l.category === 'addon')
-        .reduce((s, l) => s + l.cents, 0),
+      stateFilingFeeCents: breakdown.governmentRemittanceCents,
+      formationServiceFeeCents: breakdown.packageMarginCents,
+      otherServicesCents: breakdown.addOnsCents,
       cardLast4: maskCardLast4(input.cardNumber),
       cardBrand: detectBrand(input.cardNumber),
       cardholderName: input.cardholderName,
@@ -75,13 +76,15 @@ export async function processCheckout(input: {
     },
   });
 
-  // Update Filing with snapshot
+  // Update Filing with the same accounting snapshot. The customer never
+  // sees this split — it's used for receipts, cover letters, and revenue
+  // reporting.
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      stateFeeCents: breakdown.stateSubtotalCents,
-      serviceFeeCents: payment.formationServiceFeeCents,
-      addOnsTotalCents: payment.otherServicesCents,
+      stateFeeCents: breakdown.governmentRemittanceCents,
+      serviceFeeCents: breakdown.packageMarginCents,
+      addOnsTotalCents: breakdown.addOnsCents,
       totalCents: breakdown.totalCents,
       completedSteps: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     },

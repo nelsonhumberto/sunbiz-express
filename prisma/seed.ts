@@ -88,7 +88,7 @@ async function main() {
         tierSlug: t.slug,
         description: t.description,
         displayOrder: i,
-        basePriceCents: t.basePriceCents,
+        basePriceCents: t.packagePriceCents,
         includedFeatures: JSON.stringify(t.features.filter((f) => f.included).map((f) => f.label)),
         includesRegisteredAgentY1: true,
         includesOperatingAgreement: t.slug !== 'BASIC',
@@ -171,8 +171,8 @@ async function main() {
       registeredAgent: JSON.stringify({
         type: 'internal',
         useOurService: true,
-        name: 'Sunbiz Express RA Services LLC',
-        email: 'agent@sunbizexpress.example',
+        name: 'IncServices RA Services LLC',
+        email: 'agent@incservices.example',
         street1: '1234 Sunshine Blvd',
         city: 'Miami',
         state: 'FL',
@@ -251,7 +251,7 @@ async function main() {
   const sampleEmails = [
     {
       type: 'WELCOME',
-      subject: 'Welcome to Sunbiz Express ☀️',
+      subject: 'Welcome to IncServices ☀️',
       tpl: 'welcome',
       bodyText: 'Welcome aboard',
       offsetMs: 9 * 24 * 60 * 60 * 1000,
@@ -293,7 +293,7 @@ async function main() {
         recipientEmail: demoUser.email,
         subject: e.subject,
         templateName: e.tpl,
-        htmlBody: `<!doctype html><html><head><style>body{font-family:Inter,sans-serif;padding:32px;color:#0F1F1C;background:#F8FAF9;max-width:560px;margin:0 auto}h1{font-size:22px;margin:0 0 12px}p{color:#475A56;line-height:1.6}.cta{display:inline-block;background:#0B7A6B;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px}</style></head><body><div style="text-align:center;padding-bottom:16px"><span style="display:inline-block;width:32px;height:32px;background:#0B7A6B;border-radius:8px;color:#fff;font-weight:bold;line-height:32px">SE</span> <span style="margin-left:8px;font-weight:600">Sunbiz Express</span></div><h1>${e.bodyText}</h1><p>This is a sample email rendered for the demo.</p></body></html>`,
+        htmlBody: `<!doctype html><html><head><style>body{font-family:Inter,sans-serif;padding:32px;color:#0F1F1C;background:#F8FAF9;max-width:560px;margin:0 auto}h1{font-size:22px;margin:0 0 12px}p{color:#475A56;line-height:1.6}.cta{display:inline-block;background:#0B7A6B;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px}</style></head><body><div style="text-align:center;padding-bottom:16px"><span style="display:inline-block;width:32px;height:32px;background:#0B7A6B;border-radius:8px;color:#fff;font-weight:bold;line-height:32px">IS</span> <span style="margin-left:8px;font-weight:600">IncServices</span></div><h1>${e.bodyText}</h1><p>This is a sample email rendered for the demo.</p></body></html>`,
         status: 'SENT',
         sentAt: new Date(Date.now() - e.offsetMs),
         userId: demoUser.id,

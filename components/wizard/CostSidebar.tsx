@@ -31,25 +31,34 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
       <CardContent className="p-6 space-y-4">
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-            {t('stateFees')}
+            {t('filingPackage')}
           </p>
           {breakdown.lines
-            .filter((l) => l.category === 'state')
-            .map((line, i) => (
-              <CostRow key={i} label={line.label} cents={line.cents} sublabel={line.detail} />
+            .filter((l) => l.category === 'package')
+            .map((line) => (
+              <CostRow
+                key={line.key}
+                label={line.label}
+                cents={line.cents}
+                sublabel={line.detail ?? t('filingFeeIncludedNote')}
+              />
             ))}
         </div>
 
-        {breakdown.lines.filter((l) => l.category === 'service' || l.category === 'addon').length >
-          0 && (
+        {breakdown.lines.some((l) => l.category === 'addon') && (
           <div className="space-y-2 pt-3 border-t border-border">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-              {t('ourServices')}
+              {t('selectedAddOns')}
             </p>
             {breakdown.lines
-              .filter((l) => l.category === 'service' || l.category === 'addon')
-              .map((line, i) => (
-                <CostRow key={i} label={line.label} cents={line.cents} sublabel={line.detail} />
+              .filter((l) => l.category === 'addon')
+              .map((line) => (
+                <CostRow
+                  key={line.key}
+                  label={line.label}
+                  cents={line.cents}
+                  sublabel={line.detail}
+                />
               ))}
           </div>
         )}

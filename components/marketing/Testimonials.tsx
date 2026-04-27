@@ -6,7 +6,7 @@ import { Star } from 'lucide-react';
 
 const TESTIMONIALS_EN = [
   {
-    quote: "I'd done LegalZoom twice and dreaded it both times. Sunbiz Express felt like ordering a sandwich — pick what you want, pay once, done.",
+    quote: "I'd done LegalZoom twice and dreaded it both times. IncServices felt like ordering a sandwich — pick what you want, pay once, done.",
     name: 'Mariana C.',
     role: 'Founder · Coral Gables Realty Group',
     avatar: 'MC',
@@ -18,7 +18,7 @@ const TESTIMONIALS_EN = [
     avatar: 'JT',
   },
   {
-    quote: 'I needed an Operating Agreement my bank would actually accept. Sunbiz Express delivered one in the format Wells Fargo wanted on the first try.',
+    quote: 'I needed an Operating Agreement my bank would actually accept. IncServices delivered one in the format Wells Fargo wanted on the first try.',
     name: 'Aisha N.',
     role: 'Co-Founder · Brickell Capital LLC',
     avatar: 'AN',
@@ -30,7 +30,7 @@ const TESTIMONIALS_EN = [
     avatar: 'DK',
   },
   {
-    quote: "The transparency hit different. I knew exactly what was a state fee versus a service fee — no shell game like every competitor I'd used.",
+    quote: "The transparency hit different. One package price, Florida filing fee already included — no surprise checkout fees like every competitor I'd used.",
     name: 'Priya R.',
     role: 'Independent Consultant · Orlando',
     avatar: 'PR',
@@ -45,7 +45,7 @@ const TESTIMONIALS_EN = [
 
 const TESTIMONIALS_ES = [
   {
-    quote: 'Hice LegalZoom dos veces y temí ambas. Sunbiz Express se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
+    quote: 'Hice LegalZoom dos veces y temí ambas. IncServices se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
     name: 'Mariana C.',
     role: 'Fundadora · Coral Gables Realty Group',
     avatar: 'MC',
@@ -57,7 +57,7 @@ const TESTIMONIALS_ES = [
     avatar: 'JT',
   },
   {
-    quote: 'Necesitaba un Acuerdo Operativo que mi banco realmente aceptara. Sunbiz Express me dio uno en el formato que Wells Fargo quería al primer intento.',
+    quote: 'Necesitaba un Acuerdo Operativo que mi banco realmente aceptara. IncServices me dio uno en el formato que Wells Fargo quería al primer intento.',
     name: 'Aisha N.',
     role: 'Cofundadora · Brickell Capital LLC',
     avatar: 'AN',
@@ -69,7 +69,7 @@ const TESTIMONIALS_ES = [
     avatar: 'DK',
   },
   {
-    quote: 'La transparencia hizo la diferencia. Sabía exactamente qué era tarifa estatal versus tarifa de servicio — sin trucos como otros competidores.',
+    quote: 'La transparencia hizo la diferencia. Un precio de plan, tarifa de Florida ya incluida — sin sorpresas al pagar como otros competidores.',
     name: 'Priya R.',
     role: 'Consultora Independiente · Orlando',
     avatar: 'PR',

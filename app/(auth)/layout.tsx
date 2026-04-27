@@ -27,7 +27,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           </div>
         </div>
         <footer className="container py-6 text-xs text-ink-subtle flex justify-between">
-          <span>© {COPYRIGHT_YEAR} Sunbiz Express</span>
+          <span>© {COPYRIGHT_YEAR} IncServices</span>
           <Link href="/" className="hover:text-ink-muted">
             {t('backToHome')}
           </Link>

@@ -17,3 +17,6 @@ prisma/*.db-journal
 .DS_Store
 *.log
 *.tmp
+
+# TypeScript incremental build
+tsconfig.tsbuildinfo

@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ShieldCheck, Building2, Info } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { ShieldCheck, Building2, Info, HelpCircle } from 'lucide-react';
 import { saveStep6 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { AddressForm, type AddressValue } from '../AddressForm';
@@ -24,8 +25,8 @@ interface RAStored extends AddressValue {
 }
 
 const INTERNAL_AGENT = {
-  name: 'Sunbiz Express RA Services LLC',
-  email: 'agent@sunbizexpress.example',
+  name: 'IncServices RA Services LLC',
+  email: 'agent@incservices.example',
   phone: '+1 (305) 555-0100',
   street1: '1234 Sunshine Boulevard',
   street2: 'Suite 200',
@@ -35,6 +36,8 @@ const INTERNAL_AGENT = {
 };
 
 export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
+  const t = useTranslations('wizard');
+  const tCommon = useTranslations('common');
   const stored = safeParseJson<RAStored | null>(filing.registeredAgent, null);
   const [useOurService, setUseOurService] = useState(stored?.useOurService ?? true);
   const [external, setExternal] = useState({
@@ -49,7 +52,16 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
       zip: stored?.useOurService ? '' : stored?.zip ?? '',
     } as AddressValue,
   });
-  const [signature, setSignature] = useState(stored?.signature ?? '');
+  // Internal-RA consent (replaces the typed signature when we are the agent).
+  // The customer's appointment of us as RA in this step + payment is the
+  // contract; on the document itself we sign as our own legal entity.
+  const [internalConsent, setInternalConsent] = useState(
+    stored?.useOurService === true && (stored?.signature?.length ?? 0) > 0,
+  );
+  const [externalSignature, setExternalSignature] = useState(
+    stored?.useOurService === false ? stored?.signature ?? '' : '',
+  );
+  const [showRAHelp, setShowRAHelp] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -61,7 +73,9 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
     external.address.zip.trim().length > 0 &&
     !isPoBox(external.address.street1);
 
-  const canContinue = (useOurService || externalValid) && signature.trim().length >= 2;
+  const canContinue = useOurService
+    ? internalConsent
+    : externalValid && externalSignature.trim().length >= 2;
 
   const onContinue = () => {
     start(async () => {
@@ -77,7 +91,10 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             city: INTERNAL_AGENT.city,
             state: 'FL',
             zip: INTERNAL_AGENT.zip,
-            signature,
+            // Auto-fill the RA acceptance signature with our entity name.
+            // We sign as the agent on the document; the customer's consent
+            // toggle above is what authorizes us to do so.
+            signature: INTERNAL_AGENT.name,
           }
         : {
             filingId: filing.id,
@@ -90,11 +107,11 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             city: external.address.city,
             state: 'FL',
             zip: external.address.zip,
-            signature,
+            signature: externalSignature,
           };
       const res = await saveStep6(payload);
       if (!res.ok) {
-        toast.error(res.error ?? 'Could not save');
+        toast.error(res.error ?? t('errorSaveGeneric'));
         return;
       }
       router.push(`/wizard/${filing.id}/7`);
@@ -116,22 +133,22 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
           )}
         >
           <Badge variant="success" className="absolute -top-3 left-5">
-            Free Year 1
+            {t('freeYearBadge')}
           </Badge>
           <div className="flex items-start gap-3 mb-2">
             <div className="h-11 w-11 rounded-xl bg-primary text-white flex items-center justify-center shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-ink">Use our Registered Agent</h3>
-              <p className="text-xs text-ink-muted mt-0.5">Recommended for most owners</p>
+              <h3 className="font-semibold text-ink">{t('useOurAgent')}</h3>
+              <p className="text-xs text-ink-muted mt-0.5">{t('useOurAgentRecommended')}</p>
             </div>
           </div>
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
-            <li>· Florida physical address provided</li>
-            <li>· Service of process scanned & forwarded</li>
-            <li>· Year-1 free, then $119/year (cancel anytime)</li>
-            <li>· Keeps your home address off the public record</li>
+            <li>· {t('useOurAgentP1')}</li>
+            <li>· {t('useOurAgentP2')}</li>
+            <li>· {t('useOurAgentP3')}</li>
+            <li>· {t('useOurAgentP4')}</li>
           </ul>
         </button>
 
@@ -150,40 +167,70 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-ink">Use my own agent</h3>
-              <p className="text-xs text-ink-muted mt-0.5">An individual or third-party service</p>
+              <h3 className="font-semibold text-ink">{t('useOwnAgent')}</h3>
+              <p className="text-xs text-ink-muted mt-0.5">{t('useOwnAgentDesc')}</p>
             </div>
           </div>
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
-            <li>· Must have a Florida physical address (no P.O. Box)</li>
-            <li>· Must consent to acting as agent</li>
-            <li>· Available during business hours</li>
-            <li>· You'll need to update Florida if they change</li>
+            <li>· {t('useOwnAgentP1')}</li>
+            <li>· {t('useOwnAgentP2')}</li>
+            <li>· {t('useOwnAgentP3')}</li>
+            <li>· {t('useOwnAgentP4')}</li>
           </ul>
         </button>
       </div>
 
-      {/* Internal agent display */}
+      {/* Internal agent display + consent (replaces typed signature) */}
       {useOurService && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold text-primary">Your Registered Agent</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">Name</p>
-              <p className="font-medium">{INTERNAL_AGENT.name}</p>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-primary">{t('yourRegisteredAgent')}</p>
+              <button
+                type="button"
+                onClick={() => setShowRAHelp((s) => !s)}
+                className="ml-auto inline-flex items-center gap-1 text-xs text-ink-muted hover:text-primary"
+              >
+                <HelpCircle className="h-3 w-3" />
+                {t('raHelpToggle')}
+              </button>
             </div>
-            <div>
-              <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">Address</p>
-              <p className="font-medium leading-tight">
-                {INTERNAL_AGENT.street1}, {INTERNAL_AGENT.street2}
-                <br />
-                {INTERNAL_AGENT.city}, {INTERNAL_AGENT.state} {INTERNAL_AGENT.zip}
-              </p>
+            {showRAHelp && (
+              <div className="rounded-md bg-white border border-primary/10 p-3 text-xs text-ink-muted leading-relaxed">
+                {t('raHelpBody')}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">{t('nameLabel')}</p>
+                <p className="font-medium">{INTERNAL_AGENT.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">{t('addressLabel')}</p>
+                <p className="font-medium leading-tight">
+                  {INTERNAL_AGENT.street1}, {INTERNAL_AGENT.street2}
+                  <br />
+                  {INTERNAL_AGENT.city}, {INTERNAL_AGENT.state} {INTERNAL_AGENT.zip}
+                </p>
+              </div>
             </div>
           </div>
+          {/* One-tap consent — we sign on the document on our own behalf. */}
+          <label className="flex items-start gap-3 rounded-lg border border-border bg-white p-4 cursor-pointer hover:border-primary/30">
+            <input
+              type="checkbox"
+              checked={internalConsent}
+              onChange={(e) => setInternalConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <span className="text-sm text-ink leading-relaxed">
+              {t.rich('raInternalConsent', {
+                agentName: INTERNAL_AGENT.name,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
+            </span>
+          </label>
         </div>
       )}
 
@@ -193,7 +240,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="raName">
-                Agent name <span className="text-destructive">*</span>
+                {t('agentName')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="raName"
@@ -203,7 +250,10 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="raEmail">Agent email</Label>
+              <Label htmlFor="raEmail" className="flex items-center gap-2">
+                {t('agentEmail')}
+                <span className="text-xs font-normal text-ink-subtle">{t('optional')}</span>
+              </Label>
               <Input
                 id="raEmail"
                 type="email"
@@ -216,7 +266,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
 
           <div>
             <Label className="mb-2 block">
-              Florida physical address <span className="text-destructive">*</span>
+              {t('floridaPhysicalAddress')} <span className="text-destructive">*</span>
             </Label>
             <AddressForm
               value={external.address}
@@ -225,37 +275,33 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               prefix="ra-"
             />
             {external.address.street1 && isPoBox(external.address.street1) && (
-              <p className="text-xs text-destructive mt-2">
-                P.O. Boxes are not allowed for registered agents — Florida law requires a physical
-                street address.
-              </p>
+              <p className="text-xs text-destructive mt-2">{t('poBoxRejection')}</p>
             )}
           </div>
         </div>
       )}
 
-      {/* Signature */}
-      <div className="space-y-2 pt-3 border-t border-border">
-        <div className="flex items-start gap-2 text-sm text-ink-muted">
-          <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-          <p>
-            By typing the agent's name below, you confirm they accept the appointment as Registered
-            Agent and agree to act in this capacity. This is a legally binding electronic signature.
-          </p>
+      {/* External RA acceptance signature */}
+      {!useOurService && (
+        <div className="space-y-2 pt-3 border-t border-border">
+          <div className="flex items-start gap-2 text-sm text-ink-muted">
+            <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+            <p>{t('raExternalLegalCopy')}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="signature">
+              {t('raSignatureLabel')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="signature"
+              value={externalSignature}
+              onChange={(e) => setExternalSignature(e.target.value)}
+              placeholder={t('raSignatureLabel')}
+              className="font-display text-lg italic"
+            />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="signature">
-            Type the agent's name to sign <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="signature"
-            value={signature}
-            onChange={(e) => setSignature(e.target.value)}
-            placeholder={useOurService ? 'Type "Sunbiz Express RA Services LLC"' : 'Type the agent\'s name'}
-            className="font-display text-lg italic"
-          />
-        </div>
-      </div>
+      )}
 
       <WizardActions
         prevHref={`/wizard/${filing.id}/5`}

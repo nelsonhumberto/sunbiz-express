@@ -56,7 +56,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         toast.error(res.error ?? 'Could not save');
         return;
       }
-      router.push(`/wizard/${filing.id}/10`);
+      router.push(`/wizard/${filing.id}/9`);
     });
   };
 
@@ -79,10 +79,10 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
             <p className="text-xs text-destructive">{dateError}</p>
           ) : (
             <p className="text-xs text-ink-muted">
-              Florida lets you backdate up to 5 days or schedule up to 90 days in the future. Leave
-              blank to use today's date.
+              Florida lets you backdate up to 5 business days or schedule up to 90 days in the
+              future. Leave blank to use the date Florida processes the filing.
               <br />
-              💡 <strong>Tip:</strong> If forming Oct 1 – Dec 31, set the effective date to January 1
+              <strong>Tip:</strong> If forming Oct 1 – Dec 31, set the effective date to January 1
               of next year — you'll skip a full year of annual reports.
             </p>
           )}
@@ -130,7 +130,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
       </div>
 
       <WizardActions
-        prevHref={`/wizard/${filing.id}/8`}
+        prevHref={`/wizard/${filing.id}/7`}
         onNext={onContinue}
         nextDisabled={!valid}
         pending={pending}

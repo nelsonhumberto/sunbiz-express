@@ -6,10 +6,10 @@ export default function DisclaimerPage() {
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>
       <h1>Legal Disclaimer</h1>
 
-      <h2>Sunbiz Express is not a law firm</h2>
+      <h2>IncServices is not a law firm</h2>
       <p>
-        Sunbiz Express provides self-help business formation services. We are not a law firm. We
-        do not provide legal advice. The information we provide is general in nature and may not
+        IncServices provides self-help business formation services. We are not a law firm. We do
+        not provide legal advice. The information we provide is general in nature and may not
         apply to your specific situation.
       </p>
       <p>
@@ -33,7 +33,7 @@ export default function DisclaimerPage() {
 
       <h2>State filing acceptance</h2>
       <p>
-        Sunbiz Express does not guarantee that the Florida Department of State will accept your
+        IncServices does not guarantee that the Florida Department of State will accept your
         filing. State approval is at the discretion of the Department of State. Common rejection
         reasons include: name conflicts, P.O. Box addresses for registered agents, missing
         information, or incomplete signatures. If your filing is rejected, we will notify you
@@ -58,14 +58,14 @@ export default function DisclaimerPage() {
 
       <h2>Tax advice</h2>
       <p>
-        Sunbiz Express does not provide tax advice. S-Corp election guidance, EIN application
+        IncServices does not provide tax advice. S-Corp election guidance, EIN application
         assistance, and similar services are administrative — not tax-strategic. Consult a
         licensed CPA for tax planning.
       </p>
 
       <h2>Questions?</h2>
       <p>
-        Email <a href="mailto:legal@sunbizexpress.example">legal@sunbizexpress.example</a>.
+        Email <a href="mailto:legal@incservices.example">legal@incservices.example</a>.
       </p>
     </>
   );

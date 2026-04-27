@@ -96,7 +96,7 @@ function HeroPreview() {
           <span className="h-3 w-3 rounded-full bg-yellow-300" />
           <span className="h-3 w-3 rounded-full bg-green-300" />
           <div className="ml-3 px-3 py-1 rounded-md bg-white border border-border text-xs text-ink-muted">
-            sunbizexpress.example/wizard/your-llc/2
+            incservices.example/wizard/your-llc/2
           </div>
         </div>
 
@@ -132,8 +132,11 @@ function HeroPreview() {
               {t('previewSummary')}
             </p>
             <div className="mt-4 space-y-3">
-              <SummaryRow label={t('previewStateFee')} amount="$125.00" />
-              <SummaryRow label={t('previewProFormation')} amount="$99.00" />
+              <SummaryRow
+                label={t('previewBankReady')}
+                sublabel={t('previewBankReadyDetail')}
+                amount="$299.00"
+              />
               <SummaryRow label={t('previewRA')} amount={t('previewIncluded')} muted />
               <SummaryRow label={t('previewOA')} amount={t('previewIncluded')} muted />
               <SummaryRow label={t('previewEIN')} amount={t('previewIncluded')} muted />
@@ -141,7 +144,7 @@ function HeroPreview() {
             <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
               <span className="text-sm font-medium">{t('previewTotalToday')}</span>
               <span className="font-display text-2xl font-medium">
-                $224<span className="text-sm">.00</span>
+                $299<span className="text-sm">.00</span>
               </span>
             </div>
             <div className="mt-3 text-xs text-ink-subtle leading-relaxed">
@@ -154,11 +157,28 @@ function HeroPreview() {
   );
 }
 
-function SummaryRow({ label, amount, muted }: { label: string; amount: string; muted?: boolean }) {
+function SummaryRow({
+  label,
+  sublabel,
+  amount,
+  muted,
+}: {
+  label: string;
+  sublabel?: string;
+  amount: string;
+  muted?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className={muted ? 'text-ink-subtle' : 'text-ink-muted'}>{label}</span>
-      <span className={muted ? 'text-ink-subtle font-medium' : 'text-ink font-medium'}>{amount}</span>
+    <div className="flex items-baseline justify-between text-sm gap-2">
+      <div className="min-w-0">
+        <span className={muted ? 'text-ink-subtle' : 'text-ink-muted'}>{label}</span>
+        {sublabel && (
+          <span className="block text-[11px] text-ink-subtle leading-snug">{sublabel}</span>
+        )}
+      </div>
+      <span className={muted ? 'text-ink-subtle font-medium shrink-0' : 'text-ink font-medium shrink-0'}>
+        {amount}
+      </span>
     </div>
   );
 }

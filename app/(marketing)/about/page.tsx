@@ -14,7 +14,7 @@ export default function AboutPage() {
             <span className="italic text-primary">Florida</span> entrepreneur.
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
-            We believe forming a business should be as simple as ordering coffee. Sunbiz Express
+            We believe forming a business should be as simple as ordering coffee. IncServices
             exists to fix the mess of LegalZoom upsells, hidden fees, and Sunbiz forms designed in
             1998.
           </p>
@@ -62,11 +62,11 @@ export default function AboutPage() {
               <strong className="text-ink">We thought there had to be a better way.</strong>
             </p>
             <p>
-              Sunbiz Express is what we wished existed when we filed our own businesses: a clean,
-              modern, transparent service that shows you the state fee separately from our service
-              fee, includes the year-1 registered agent for free (because everyone needs one and
-              charging for it is the silliest gotcha in legal-tech), and never asks you to scroll
-              past 12 upsells before showing you the checkout button.
+              IncServices is what we wished existed when we filed our own businesses: a clean,
+              modern, transparent platform with one all-in package price (Florida filing fee
+              already included), the year-1 registered agent for free (because everyone needs one
+              and charging for it is the silliest gotcha in legal-tech), and no surprise checkout
+              fees stacked on top.
             </p>
             <p>
               Most importantly — we don't sell your data. Your name, address, and SSN aren't being
@@ -82,8 +82,8 @@ export default function AboutPage() {
           <h2 className="font-display text-3xl font-medium tracking-tight">Get in touch</h2>
           <p className="mt-3 text-ink-muted">
             Email{' '}
-            <a href="mailto:hello@sunbizexpress.example" className="text-primary font-medium hover:underline">
-              hello@sunbizexpress.example
+            <a href="mailto:hello@incservices.example" className="text-primary font-medium hover:underline">
+              hello@incservices.example
             </a>
             <br />
             We respond within one business day. No bots, no hold music, no "Tier 1 support" runaround.

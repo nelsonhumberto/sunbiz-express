@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { Progress } from '@/components/ui/progress';
-import { TOTAL_STEPS } from '@/lib/wizard-constants';
+import { TOTAL_STEPS, phaseForStep } from '@/lib/wizard-constants';
 import { CostSidebar } from './CostSidebar';
 import { cn } from '@/lib/utils';
 
@@ -24,14 +24,15 @@ interface WizardShellProps {
   saved?: boolean;
 }
 
-export function WizardShell({ filingId, step, children, costData, saved }: WizardShellProps) {
+export function WizardShell({ filingId: _filingId, step, children, costData, saved }: WizardShellProps) {
   const t = useTranslations('wizard');
-  const tCommon = useTranslations('common');
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
   const subKey = `step${step}Subtitle` as keyof IntlMessages;
   const title = t(stepKey as never);
   const subtitle = t(subKey as never);
+  const phase = phaseForStep(step);
+  const phaseLabel = t(`phase_${phase}` as never);
 
   const progress = (step / TOTAL_STEPS) * 100;
 
@@ -55,6 +56,9 @@ export function WizardShell({ filingId, step, children, costData, saved }: Wizar
         <div className="container pb-4">
           <div className="flex items-center justify-between mb-2 text-xs">
             <span className="text-ink-muted font-medium">
+              <span className="inline-flex items-center gap-1.5 mr-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase tracking-wider text-[10px]">
+                {phaseLabel}
+              </span>
               {t('stepOf', { current: step, total: TOTAL_STEPS })} ·{' '}
               <span className="text-primary font-semibold">{title}</span>
             </span>

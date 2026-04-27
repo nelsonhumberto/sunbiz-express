@@ -15,25 +15,29 @@ interface PricingTableProps {
 }
 
 const FEATURE_KEYS: Record<string, string> = {
-  'Articles of Organization / Incorporation': 'feat_articles',
-  'State filing submitted same business day': 'feat_sameDay',
+  'Florida filing fee included': 'feat_floridaFee',
+  'Articles of Organization / Incorporation prepared & submitted': 'feat_articles',
+  'Same-business-day filing': 'feat_sameDay',
+  'Same-business-day preparation and submission': 'feat_sameDayPrep',
   'Free Year-1 Registered Agent': 'feat_freeRA',
   'Email support': 'feat_emailSupport',
   'EIN Acquisition (IRS Form SS-4)': 'feat_ein',
   'Operating Agreement (custom)': 'feat_oa',
-  '1 Certified Copy': 'feat_certCopy',
-  '1 Certificate of Status': 'feat_certStatus',
-  '1-day expedited processing': 'feat_expedited',
+  'Operating Agreement (add-on)': 'feat_oaAddOn',
+  'Certified Copy of Articles': 'feat_certCopy',
+  'Certificate of Status (state-issued)': 'feat_certStatus',
   'Email + Live Chat support': 'feat_chatSupport',
-  'Free .com domain (year 1)': 'feat_domain',
-  'Annual Compliance Service (year 1)': 'feat_compliance',
+  'Free .com domain': 'feat_domain',
+  'Free .com domain (year 1)': 'feat_domainConcierge',
+  'Annual Compliance Service': 'feat_compliance',
+  'Compliance Alerts Plus (year 1)': 'feat_complianceAlerts',
   'Priority phone + chat support': 'feat_phoneSupport',
   'S-Corp Election guidance': 'feat_scorp',
   'Banking resolution template': 'feat_banking',
   'Business email setup': 'feat_email',
   'Quarterly compliance check-ins': 'feat_quarterly',
-  'Everything in Starter': 'feat_everythingStarter',
-  'Everything in Pro': 'feat_everythingPro',
+  'Everything in Basic Filing': 'feat_everythingBasic',
+  'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
 };
 
 export function PricingTable({ showHeader = true, className }: PricingTableProps) {
@@ -95,12 +99,18 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
                 <div className="p-8">
                   <h3 className="font-display text-2xl font-medium">{tierName}</h3>
                   <p className="mt-1.5 text-sm text-ink-muted leading-snug min-h-[40px]">{tierDesc}</p>
-                  <div className="mt-6 flex items-baseline gap-1">
+                  <div className="mt-6 flex items-baseline gap-1.5">
                     <span className="font-display text-5xl font-medium">
-                      {tier.basePriceCents === 0 ? '$0' : formatCurrency(tier.basePriceCents)}
+                      {formatCurrency(tier.packagePriceCents)}
                     </span>
-                    <span className="text-ink-subtle text-sm">{t('plusStateFees')}</span>
+                    <span className="text-ink-subtle text-sm">{t('allIn')}</span>
                   </div>
+                  <p className="mt-1.5 text-xs text-ink-subtle">
+                    {t(`bestFor_${tier.slug}` as never)}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-primary">
+                    ✓ {t('filingFeeIncluded')}
+                  </p>
 
                   <Button
                     asChild
@@ -109,9 +119,7 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
                     className="mt-6 w-full"
                   >
                     <Link href={`/sign-up?tier=${tier.slug}`}>
-                      {tier.basePriceCents === 0
-                        ? t('startFree')
-                        : t('chooseTier', { name: tierName })}
+                      {t('chooseTier', { name: tierName })}
                     </Link>
                   </Button>
                 </div>

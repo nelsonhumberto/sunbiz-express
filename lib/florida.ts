@@ -82,6 +82,38 @@ const PROHIBITED_WORDS = [
   'college',
 ];
 
+// Suffix tokens used by the distinguishability normalizer. Includes LLC/Corp
+// suffixes, partnerships, and professional-association forms. Each entry is
+// a sequence of WHITESPACE-SEPARATED tokens that appear as a suffix.
+const DISTINGUISH_SUFFIX_TOKENS: readonly string[][] = [
+  ['LIMITED', 'LIABILITY', 'COMPANY'],
+  ['LIMITED', 'LIABILITY', 'PARTNERSHIP'],
+  ['LIMITED', 'PARTNERSHIP'],
+  ['PROFESSIONAL', 'ASSOCIATION'],
+  ['L', 'L', 'C'],
+  ['L', 'L', 'P'],
+  ['L', 'P'],
+  ['P', 'A'],
+  ['LLC'],
+  ['LLP'],
+  ['LP'],
+  ['LTD'],
+  ['CORPORATION'],
+  ['CORP'],
+  ['INCORPORATED'],
+  ['INC'],
+  ['COMPANY'],
+  ['CO'],
+  ['CHARTERED'],
+  ['PA'],
+];
+
+// Articles (definite/indefinite) — not distinguishing per the FL FAQ.
+const NON_DISTINGUISHING_ARTICLES = new Set(['THE', 'A', 'AN']);
+
+// "and" / "&" treated as non-distinguishing — we drop the connector entirely.
+const NON_DISTINGUISHING_CONNECTORS = new Set(['AND']);
+
 export function normalizeBusinessName(name: string): string {
   return name
     .toUpperCase()
@@ -119,6 +151,93 @@ export function hasCorpSuffix(name: string): boolean {
   });
 }
 
+/**
+ * Reduce a token to its singular/non-possessive base for the distinguishability
+ * comparison. Handles the FL FAQ examples:
+ *   Sport ≡ Sports ≡ Sport's
+ *   Cracker ≡ Crackers
+ *   Cookies ≡ Cookies' ≡ Cookies! (after punctuation strip)
+ * Conservative: tokens of length ≤ 3 are not stemmed, and `-SS` endings are
+ * preserved (BUSINESS, GLASS, BLISS).
+ */
+function stemDistinguishToken(t: string): string {
+  if (t.length <= 3) return t;
+  if (t.endsWith('IES') && t.length >= 5) return t.slice(0, -3) + 'Y';
+  if (t.endsWith('SES') && t.length >= 5) return t.slice(0, -2); // BUSINESSES → BUSINESS
+  if (t.endsWith('SS')) return t;
+  if (t.endsWith('S')) return t.slice(0, -1);
+  return t;
+}
+
+/**
+ * Florida "distinguishable upon the record" normalizer.
+ *
+ * Per https://dos.fl.gov/sunbiz/about-us/faqs/#faq-answer1, these factors are
+ * NOT considered distinguishing and are stripped out:
+ *   - Entity suffixes (Corp, Inc, Co, LLC, L.L.C., LP, LLP, P.A., Chartered…)
+ *   - Articles: "the", "a", "an"
+ *   - Connectors: "and", "&"
+ *   - Punctuation and symbols
+ *   - Singular/plural/possessive forms
+ *
+ * Returns a canonical token string. Two names are "the same on the record"
+ * iff their normalized forms are equal.
+ */
+export function normalizeDistinguishableName(name: string): string {
+  if (!name) return '';
+  let n = name.toUpperCase();
+
+  // Strip apostrophes (possessives) before splitting on punctuation so that
+  // "Tallahassee's" → "TALLAHASSEES" rather than two tokens.
+  n = n.replace(/[\u2018\u2019']/g, '');
+
+  // Replace "&" with " AND " so it tokenizes consistently and is dropped later.
+  n = n.replace(/&/g, ' AND ');
+
+  // Replace any non-alphanumeric character with whitespace, then collapse runs.
+  n = n.replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!n) return '';
+
+  let tokens = n.split(' ');
+
+  // Strip suffix groups from the END, repeatedly (handles e.g. "PROPERTIES, INC, LLC"
+  // weirdness or "CO, INC" historical filings).
+  let stripped = true;
+  while (stripped && tokens.length > 1) {
+    stripped = false;
+    for (const sfx of DISTINGUISH_SUFFIX_TOKENS) {
+      if (tokens.length <= sfx.length) continue;
+      const tail = tokens.slice(-sfx.length);
+      if (tail.length === sfx.length && tail.every((t, i) => t === sfx[i])) {
+        tokens = tokens.slice(0, -sfx.length);
+        stripped = true;
+        break;
+      }
+    }
+  }
+
+  // Drop articles and connectors (anywhere — leading "THE", trailing "AND" left
+  // over from "Cheese AND" after dropping the right-hand suffix, etc.).
+  tokens = tokens.filter(
+    (t) => !NON_DISTINGUISHING_ARTICLES.has(t) && !NON_DISTINGUISHING_CONNECTORS.has(t),
+  );
+
+  // Stem each token for plural/possessive collapse.
+  tokens = tokens.map(stemDistinguishToken);
+
+  return tokens.join(' ');
+}
+
+/**
+ * True iff `a` and `b` are the same name "upon the record" per Florida rules.
+ */
+export function namesAreNotDistinguishable(a: string, b: string): boolean {
+  const na = normalizeDistinguishableName(a);
+  const nb = normalizeDistinguishableName(b);
+  if (!na || !nb) return false;
+  return na === nb;
+}
+
 export function validateBusinessName(
   name: string,
   entityType: 'LLC' | 'CORP'
@@ -149,6 +268,15 @@ export function validateBusinessName(
       valid: false,
       error:
         'Florida Corporations must end with "Corp", "Corporation", "Inc", "Incorporated", "Co", or "Company".',
+    };
+  }
+
+  // Bare suffix-only check after distinguishability normalization (e.g.
+  // "Inc" or "The LLC" would normalize to empty).
+  if (!normalizeDistinguishableName(trimmed)) {
+    return {
+      valid: false,
+      error: 'Name must contain at least one distinguishing word (suffixes and articles do not count).',
     };
   }
   return { valid: true };
@@ -213,19 +341,42 @@ export function validateGeneralAddress(addr: AddressInput): { valid: boolean; er
 
 // ─── Effective date validation ───────────────────────────────────────────
 
+/**
+ * Subtract N business days (Mon-Fri) from a date. Holidays are not honored
+ * (no calendar dependency); this is a conservative approximation of Florida's
+ * "5 business days prior" cap.
+ */
+export function subtractBusinessDays(from: Date, businessDays: number): Date {
+  const d = new Date(from);
+  let remaining = Math.max(0, Math.floor(businessDays));
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay(); // 0 = Sun, 6 = Sat
+    if (dow !== 0 && dow !== 6) remaining--;
+  }
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export function isValidEffectiveDate(date: Date): { valid: boolean; error?: string } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const min = new Date(today);
-  min.setDate(min.getDate() - FL.effectiveDate.minDaysBack);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  // Florida allows an effective date up to 5 business days BEFORE filing and
+  // up to 90 calendar days AFTER. We use business days for the backward cap
+  // to match the FL Profit Corporation Instructions.
+  const min = subtractBusinessDays(today, FL.effectiveDate.minDaysBack);
   const max = new Date(today);
   max.setDate(max.getDate() + FL.effectiveDate.maxDaysForward);
-  if (date < min)
+
+  if (target < min)
     return {
       valid: false,
-      error: `Effective date can be at most ${FL.effectiveDate.minDaysBack} days in the past.`,
+      error: `Effective date can be at most ${FL.effectiveDate.minDaysBack} business days in the past.`,
     };
-  if (date > max)
+  if (target > max)
     return {
       valid: false,
       error: `Effective date can be at most ${FL.effectiveDate.maxDaysForward} days in the future.`,

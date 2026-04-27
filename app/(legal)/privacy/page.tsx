@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
       <h2>3. We do not sell your data</h2>
       <p>
-        Sunbiz Express does <strong>not</strong> sell, lease, rent, or share your personal
+        IncServices does <strong>not</strong> sell, lease, rent, or share your personal
         information with marketing partners, data brokers, or advertisers. Ever. This is a core
         promise.
       </p>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
       <h2>9. Contact</h2>
       <p>
         Privacy questions? Email{' '}
-        <a href="mailto:privacy@sunbizexpress.example">privacy@sunbizexpress.example</a>.
+        <a href="mailto:privacy@incservices.example">privacy@incservices.example</a>.
       </p>
     </>
   );

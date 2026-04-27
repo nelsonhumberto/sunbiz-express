@@ -48,9 +48,13 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                 <div>
                   <h3 className="font-display text-xl font-medium">{t.name}</h3>
                   <p className="font-display text-3xl font-medium mt-1">
-                    {t.basePriceCents === 0 ? '$0' : formatCurrency(t.basePriceCents)}
+                    {formatCurrency(t.packagePriceCents)}{' '}
+                    <span className="text-xs font-normal text-ink-subtle">all-in</span>
                   </p>
-                  <p className="text-xs text-ink-subtle">+ state fees</p>
+                  <p className="text-[11px] font-medium text-primary mt-0.5">
+                    ✓ Florida filing fee included
+                  </p>
+                  <p className="text-[11px] text-ink-subtle mt-0.5">{t.bestFor}</p>
                 </div>
                 {isSelected && (
                   <span className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0">

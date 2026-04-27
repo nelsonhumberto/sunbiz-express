@@ -15,7 +15,7 @@
 // All failure modes return a typed `SunbizError` — never a silent empty list.
 
 import * as cheerio from 'cheerio';
-import { stripSuffix } from './florida';
+import { normalizeDistinguishableName, stripSuffix } from './florida';
 
 export interface SunbizEntity {
   name: string;
@@ -55,9 +55,15 @@ export class SunbizError extends Error {
   }
 }
 
-// Statuses that should be treated as a name conflict per
-// sunbiz_technical_analysis.md §2.5.
-const RESERVED_STATUSES = new Set(['ACTIVE', 'INACT', 'NAME HS', 'CROSS RF']);
+// Status classification per the Florida Sunbiz FAQ (faq-answer1):
+//   - ACTIVE / NAME HS         → name is unavailable (definitive conflict)
+//   - INACT (could be UA or plain INACTIVE) → ambiguous; we cannot tell from
+//     sunbizdaily whether the holding period (1yr admin / 120d voluntary) has
+//     expired, so we treat it as a soft warning rather than a hard block.
+//   - CROSS RF                 → cross-reference of another filing; warn only
+//   - W (Withdrawn) / M (Merged) → ignore (released back to the pool)
+const HARD_BLOCK_STATUSES = new Set(['ACTIVE', 'NAME HS']);
+const SOFT_WARN_STATUSES = new Set(['INACT', 'CROSS RF']);
 
 const REQUEST_TIMEOUT_MS = 12_000;
 const DEFAULT_LIMIT = 25;
@@ -499,6 +505,16 @@ export async function searchSunbiz(
 /**
  * Higher-level availability check that classifies the live Sunbiz results
  * against Florida's "distinguishable upon the record" rule.
+ *
+ * Comparison uses `normalizeDistinguishableName()` from `lib/florida.ts`,
+ * which strips entity suffixes, articles ("the"/"a"/"an"), `and`/`&`,
+ * punctuation/symbols, and singular/plural/possessive forms — matching the
+ * Division's published rules.
+ *
+ * To improve recall we run multiple search terms (the raw query and its
+ * suffix-stripped base) and de-duplicate by document number, since
+ * sunbizdaily's prefix-style search may miss filings with extra leading
+ * articles or different suffix forms.
  */
 export async function checkNameAvailability(
   query: string,
@@ -517,48 +533,82 @@ export async function checkNameAvailability(
     };
   }
 
-  const normalized = stripSuffix(trimmed);
-  const { entities, source } = await searchSunbiz(trimmed, opts);
+  const targetNorm = normalizeDistinguishableName(trimmed);
+  // Build a small set of search terms to widen recall without spamming the API.
+  const searchTerms = uniq([
+    trimmed,
+    stripSuffix(trimmed),
+    targetNorm,
+  ]).filter((t) => t.length >= 2);
 
-  const exact: SunbizEntity[] = [];
-  const similar: SunbizEntity[] = [];
+  let mergedSource: 'sunbizdaily' | 'scrape' | undefined;
+  const seen = new Set<string>();
+  const allEntities: SunbizEntity[] = [];
 
-  for (const e of entities) {
-    // Conservative: only ignore Withdrawn/Merged, treat anything else as a
-    // potential conflict. The bulk feed mostly carries A/I/N/X anyway.
-    const status = e.status.toUpperCase();
-    if (!RESERVED_STATUSES.has(status)) continue;
-    const eNorm = stripSuffix(e.name);
-    if (eNorm === normalized) {
-      exact.push(e);
-    } else if (eNorm.includes(normalized) || normalized.includes(eNorm)) {
-      similar.push(e);
+  for (const term of searchTerms) {
+    let res;
+    try {
+      res = await searchSunbiz(term, opts);
+    } catch (err) {
+      // If any term fails, propagate — caller maps to user-facing error.
+      throw err;
+    }
+    mergedSource = mergedSource ?? res.source;
+    for (const e of res.entities) {
+      if (!e.documentNumber || seen.has(e.documentNumber)) continue;
+      seen.add(e.documentNumber);
+      allEntities.push(e);
     }
   }
 
-  if (exact.length > 0) {
+  const hardConflicts: SunbizEntity[] = [];
+  const softConflicts: SunbizEntity[] = [];
+
+  for (const e of allEntities) {
+    const status = e.status.toUpperCase();
+    const isHard = HARD_BLOCK_STATUSES.has(status);
+    const isSoft = SOFT_WARN_STATUSES.has(status);
+    if (!isHard && !isSoft) continue; // ignore Withdrawn/Merged/Unknown
+
+    const eNorm = normalizeDistinguishableName(e.name);
+    if (!eNorm) continue;
+
+    const isMatch =
+      eNorm === targetNorm ||
+      eNorm.includes(targetNorm) ||
+      targetNorm.includes(eNorm);
+    if (!isMatch) continue;
+
+    if (isHard && eNorm === targetNorm) {
+      hardConflicts.push(e);
+    } else {
+      softConflicts.push(e);
+    }
+  }
+
+  if (hardConflicts.length > 0) {
     return {
       query,
       available: false,
       status: 'exact_conflict',
       message:
-        'An entity with this name already exists in Florida. Try a variation or distinct name.',
-      conflicts: exact.slice(0, 5),
+        'A Florida entity with this name is already on the record. Florida requires names "distinguishable upon the record" — try a more distinct name.',
+      conflicts: hardConflicts.slice(0, 5),
       suggestions: generateSuggestions(trimmed, entityType),
-      source,
+      source: mergedSource,
     };
   }
 
-  if (similar.length > 0) {
+  if (softConflicts.length > 0) {
     return {
       query,
       available: false,
       status: 'similar_conflict',
       message:
-        'Florida requires names "distinguishable on the record." We found similar registered entities — try a more distinct name.',
-      conflicts: similar.slice(0, 5),
+        'We found similar Florida filings (some are inactive or cross-references and may still be held). Florida requires names "distinguishable upon the record" — try a more distinct variation.',
+      conflicts: softConflicts.slice(0, 5),
       suggestions: generateSuggestions(trimmed, entityType),
-      source,
+      source: mergedSource,
     };
   }
 
@@ -567,13 +617,22 @@ export async function checkNameAvailability(
     available: true,
     status: 'available',
     message:
-      source === 'sunbizdaily'
-        ? 'No conflicts found in the Florida Sunbiz registry. A final state check will run at filing.'
-        : 'No conflicts found in the live Florida Sunbiz registry. A final state check will run at filing.',
+      'No conflicts found in the Florida Sunbiz registry. A final state check will run at filing.',
     conflicts: [],
     suggestions: [],
-    source,
+    source: mergedSource,
   };
+}
+
+function uniq<T>(arr: T[]): T[] {
+  const seen = new Set<T>();
+  const out: T[] = [];
+  for (const v of arr) {
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
 }
 
 function generateSuggestions(query: string, entityType: 'LLC' | 'CORP'): string[] {

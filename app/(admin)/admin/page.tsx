@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Building2, Users, DollarSign, TrendingUp, Mail } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,8 @@ import { formatCurrency, formatRelative } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverview() {
+  const t = await getTranslations('admin');
+  const tCommon = await getTranslations('common');
   const [
     totalFilings,
     activeFilings,
@@ -40,35 +43,33 @@ export default async function AdminOverview() {
   return (
     <div className="container max-w-7xl py-10 space-y-8">
       <div>
-        <h1 className="font-display text-4xl font-medium tracking-tight">Admin overview</h1>
-        <p className="mt-2 text-ink-muted">
-          Operational health of Sunbiz Express.
-        </p>
+        <h1 className="font-display text-4xl font-medium tracking-tight">{t('overviewTitle')}</h1>
+        <p className="mt-2 text-ink-muted">{t('overviewSubtitle')}</p>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard
           icon={<Building2 className="h-5 w-5" />}
-          label="Total filings"
+          label={t('totalFilings')}
           value={String(totalFilings)}
           accent="primary"
         />
         <KpiCard
           icon={<TrendingUp className="h-5 w-5" />}
-          label="In progress / approved"
+          label={t('activeFilings')}
           value={String(activeFilings)}
           accent="success"
         />
         <KpiCard
           icon={<Users className="h-5 w-5" />}
-          label="Total users"
+          label={t('totalUsers')}
           value={String(totalUsers)}
           accent="accent"
         />
         <KpiCard
           icon={<DollarSign className="h-5 w-5" />}
-          label="Lifetime revenue"
+          label={t('lifetimeRevenue')}
           value={formatCurrency(totalRevenue, { showZero: true })}
           accent="primary"
         />
@@ -79,21 +80,19 @@ export default async function AdminOverview() {
         <Card className="lg:col-span-2">
           <CardContent className="p-0">
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-              <h2 className="font-semibold">Recent filings</h2>
+              <h2 className="font-semibold">{t('recentFilings')}</h2>
               <Link href="/admin/filings" className="text-sm text-primary hover:underline">
-                View all →
+                {tCommon('viewAll')} →
               </Link>
             </div>
             <ul className="divide-y divide-border">
               {recentFilings.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-ink-muted">
-                  No filings yet.
-                </li>
+                <li className="px-6 py-8 text-center text-sm text-ink-muted">{t('noFilings')}</li>
               ) : (
                 recentFilings.map((f) => (
                   <li key={f.id}>
                     <Link
-                      href={`/admin/filings`}
+                      href={`/admin/filings/${f.id}`}
                       className="flex items-center gap-4 px-6 py-3.5 hover:bg-muted/30 transition-colors"
                     >
                       <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -101,7 +100,7 @@ export default async function AdminOverview() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {f.businessName ?? 'Untitled draft'}
+                          {f.businessName ?? t('untitledFiling')}
                         </p>
                         <p className="text-xs text-ink-muted truncate">
                           {f.user.email} · {formatRelative(f.updatedAt)}
@@ -121,17 +120,15 @@ export default async function AdminOverview() {
             <div className="border-b border-border px-6 py-4 flex items-center justify-between">
               <h2 className="font-semibold flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Outbox
+                {t('outbox')}
               </h2>
               <Link href="/admin/outbox" className="text-sm text-primary hover:underline">
-                All →
+                {tCommon('all')} →
               </Link>
             </div>
             <ul className="divide-y divide-border">
               {recentEmails.length === 0 ? (
-                <li className="px-6 py-8 text-center text-sm text-ink-muted">
-                  No emails sent yet.
-                </li>
+                <li className="px-6 py-8 text-center text-sm text-ink-muted">{t('noEmails')}</li>
               ) : (
                 recentEmails.map((e) => (
                   <li key={e.id} className="px-6 py-3">

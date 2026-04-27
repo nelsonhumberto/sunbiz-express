@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatCurrency, formatRelative } from '@/lib/utils';
-import { AdvanceStatusButton } from './advance-status-button';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminFilingsPage() {
+  const t = await getTranslations('admin');
   const filings = await prisma.filing.findMany({
     include: { user: true, _count: { select: { documents: true, payments: true } } },
     orderBy: { updatedAt: 'desc' },
@@ -18,10 +20,8 @@ export default async function AdminFilingsPage() {
   return (
     <div className="container max-w-7xl py-10 space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-medium tracking-tight">All filings</h1>
-        <p className="mt-1 text-ink-muted">
-          {filings.length} total · use the advance button to simulate state processing.
-        </p>
+        <h1 className="font-display text-3xl font-medium tracking-tight">{t('filingsTitle')}</h1>
+        <p className="mt-1 text-ink-muted">{t('filingsCount', { count: filings.length })}</p>
       </div>
 
       <Card>
@@ -30,25 +30,25 @@ export default async function AdminFilingsPage() {
             <thead className="bg-muted/30 border-b border-border">
               <tr>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Business
+                  {t('tableBusiness')}
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  User
+                  {t('tableUser')}
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Status
+                  {t('tableStatus')}
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Tier
+                  {t('tableTier')}
                 </th>
                 <th className="text-right px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Amount
+                  {t('tableAmount')}
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Updated
+                  {t('tableUpdated')}
                 </th>
                 <th className="text-right px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  Actions
+                  {t('tableActions')}
                 </th>
               </tr>
             </thead>
@@ -56,7 +56,7 @@ export default async function AdminFilingsPage() {
               {filings.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-ink-muted">
-                    No filings yet.
+                    {t('noFilings')}
                   </td>
                 </tr>
               ) : (
@@ -64,7 +64,7 @@ export default async function AdminFilingsPage() {
                   <tr key={filing.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-6 py-4">
                       <Link
-                        href={`/dashboard/filings/${filing.id}`}
+                        href={`/admin/filings/${filing.id}`}
                         className="font-medium hover:text-primary inline-flex items-center gap-1.5"
                       >
                         {filing.businessName ?? <span className="italic text-ink-subtle">untitled</span>}
@@ -93,9 +93,9 @@ export default async function AdminFilingsPage() {
                       {formatRelative(filing.updatedAt)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {(filing.status === 'SUBMITTED' || filing.status === 'DRAFT') && (
-                        <AdvanceStatusButton filingId={filing.id} status={filing.status} />
-                      )}
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/admin/filings/${filing.id}`}>{t('open')}</Link>
+                      </Button>
                     </td>
                   </tr>
                 ))

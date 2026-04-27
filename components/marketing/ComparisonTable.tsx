@@ -10,14 +10,14 @@ interface Row {
   values: (boolean | string)[];
 }
 
-const COMPETITORS = ['Sunbiz Express', 'LegalZoom', 'ZenBusiness', 'Bizee'];
+const COMPETITORS = ['IncServices', 'LegalZoom', 'ZenBusiness', 'Bizee'];
 
 const ROWS: Row[] = [
   { labelKey: 'feat_freeRA', values: [true, false, '$199/yr', true] },
   { labelKey: 'feat_einIncluded', values: [true, '$99', true, '$199+ tier'] },
-  { labelKey: 'feat_expedited', values: [true, '$249 tier', true, true] },
-  { labelKey: 'feat_itemized', values: [true, false, false, false] },
-  { labelKey: 'feat_noUpsells', values: [true, false, false, false] },
+  { labelKey: 'feat_sameDayPrep', values: [true, '$249 tier', true, true] },
+  { labelKey: 'feat_allInPricing', values: [true, false, false, false] },
+  { labelKey: 'feat_noSurpriseFees', values: [true, false, false, false] },
   { labelKey: 'feat_oa', values: [true, '$99', true, true] },
   { labelKey: 'feat_reminders', values: [true, '$99/yr', '$199/yr', '$99/yr'] },
   { labelKey: 'feat_privacy', values: [true, false, false, true] },

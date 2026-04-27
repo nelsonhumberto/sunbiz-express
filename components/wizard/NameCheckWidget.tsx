@@ -140,6 +140,13 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
             {result.message}
           </p>
 
+          {result.available && (
+            <p className="mt-2 text-xs text-success/90 leading-relaxed">
+              Florida won't reserve this name until your formation is filed. Lock it in by
+              continuing now — we submit the same business day.
+            </p>
+          )}
+
           {result.conflicts.length > 0 && (
             <div className="mt-3 space-y-1">
               <p className="text-xs font-semibold text-ink uppercase tracking-wider">

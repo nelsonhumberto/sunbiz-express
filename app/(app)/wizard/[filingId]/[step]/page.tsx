@@ -9,7 +9,6 @@ import { Step4Address } from '@/components/wizard/steps/Step4Address';
 import { Step5Mailing } from '@/components/wizard/steps/Step5Mailing';
 import { Step6RegisteredAgent } from '@/components/wizard/steps/Step6RegisteredAgent';
 import { Step7Members } from '@/components/wizard/steps/Step7Members';
-import { Step8Correspondence } from '@/components/wizard/steps/Step8Correspondence';
 import { Step9Optional } from '@/components/wizard/steps/Step9Optional';
 import { Step10Review } from '@/components/wizard/steps/Step10Review';
 import { Step11AddOns } from '@/components/wizard/steps/Step11AddOns';
@@ -24,7 +23,13 @@ interface PageProps {
 
 export default async function WizardStepPage({ params }: PageProps) {
   const stepNum = parseInt(params.step, 10);
-  if (isNaN(stepNum) || stepNum < 1 || stepNum > TOTAL_STEPS) redirect(`/wizard/${params.filingId}/1`);
+  if (isNaN(stepNum) || stepNum < 1) redirect(`/wizard/${params.filingId}/1`);
+
+  // Backwards-compat for old 12-step URLs created before the correspondence
+  // step was removed. Anything past the new total maps onto the new last step.
+  if (stepNum > TOTAL_STEPS) {
+    redirect(`/wizard/${params.filingId}/${TOTAL_STEPS}`);
+  }
 
   const filing = await getWizardFiling(params.filingId);
   if (filing.status !== 'DRAFT') {
@@ -50,11 +55,10 @@ export default async function WizardStepPage({ params }: PageProps) {
       {stepNum === 5 && <Step5Mailing filing={filing} />}
       {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
       {stepNum === 7 && <Step7Members filing={filing} />}
-      {stepNum === 8 && <Step8Correspondence filing={filing} />}
-      {stepNum === 9 && <Step9Optional filing={filing} />}
-      {stepNum === 10 && <Step10Review filing={filing} />}
-      {stepNum === 11 && <Step11AddOns filing={filing} />}
-      {stepNum === 12 && <Step12Payment filing={filing} />}
+      {stepNum === 8 && <Step9Optional filing={filing} />}
+      {stepNum === 9 && <Step10Review filing={filing} />}
+      {stepNum === 10 && <Step11AddOns filing={filing} />}
+      {stepNum === 11 && <Step12Payment filing={filing} />}
     </WizardShell>
   );
 }

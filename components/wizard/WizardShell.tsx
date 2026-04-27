@@ -8,7 +8,13 @@ import { useEffect, useState } from 'react';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { Progress } from '@/components/ui/progress';
-import { TOTAL_STEPS, phaseForStep } from '@/lib/wizard-constants';
+import {
+  TOTAL_DISPLAYED_STEPS,
+  displayStepNumber,
+  isBonusStep,
+  phaseForStep,
+  progressFraction,
+} from '@/lib/wizard-constants';
 import { CostSidebar } from './CostSidebar';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +40,9 @@ export function WizardShell({ filingId: _filingId, step, children, costData, sav
   const phase = phaseForStep(step);
   const phaseLabel = t(`phase_${phase}` as never);
 
-  const progress = (step / TOTAL_STEPS) * 100;
+  const displayed = displayStepNumber(step);
+  const bonus = isBonusStep(step);
+  const progress = progressFraction(step) * 100;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -56,11 +64,23 @@ export function WizardShell({ filingId: _filingId, step, children, costData, sav
         <div className="container pb-4">
           <div className="flex items-center justify-between mb-2 text-xs">
             <span className="text-ink-muted font-medium">
-              <span className="inline-flex items-center gap-1.5 mr-2 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase tracking-wider text-[10px]">
-                {phaseLabel}
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 mr-2 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider text-[10px]',
+                  bonus
+                    ? 'bg-accent/10 text-accent-700'
+                    : 'bg-primary/10 text-primary',
+                )}
+              >
+                {bonus ? t('bonusStepLabel') : phaseLabel}
               </span>
-              {t('stepOf', { current: step, total: TOTAL_STEPS })} ·{' '}
-              <span className="text-primary font-semibold">{title}</span>
+              {bonus
+                ? t('bonusStepCounter')
+                : t('stepOf', {
+                    current: displayed ?? TOTAL_DISPLAYED_STEPS,
+                    total: TOTAL_DISPLAYED_STEPS,
+                  })}{' '}
+              · <span className="text-primary font-semibold">{title}</span>
             </span>
             <span className="text-ink-subtle">{Math.round(progress)}%</span>
           </div>

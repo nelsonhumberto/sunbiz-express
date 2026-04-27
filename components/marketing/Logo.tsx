@@ -42,7 +42,7 @@ export function Logo({ className, size = 'default', href = '/', asLink = true }:
           size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-lg'
         )}
       >
-        Sunbiz<span className="text-primary">·</span>Express
+        Inc<span className="text-primary">·</span>Services
       </span>
     </Wrapper>
   );

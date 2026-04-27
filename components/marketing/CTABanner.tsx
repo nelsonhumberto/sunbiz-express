@@ -5,12 +5,18 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 
-export function CTABanner() {
+interface CTABannerProps {
+  /** Resolved marketing state. Defaults to Florida (active). */
+  state?: MarketingState;
+}
+
+export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
 
   return (
-    <section className="py-16 md:py-24">
+    <section data-marketing-state={state.code} className="py-16 md:py-24">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 30 }}

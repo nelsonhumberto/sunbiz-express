@@ -6,12 +6,25 @@ import { useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 
-export function Hero() {
+interface HeroProps {
+  /**
+   * Resolved marketing state. Defaults to Florida. Non-Florida states are
+   * rendered by `ComingSoonLanding` rather than this component, so we keep
+   * this hero focused on the Florida funnel.
+   */
+  state?: MarketingState;
+}
+
+export function Hero({ state = FLORIDA }: HeroProps = {}) {
   const t = useTranslations('hero');
 
   return (
-    <section className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden">
+    <section
+      data-marketing-state={state.code}
+      className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden"
+    >
       <div className="absolute inset-0 mesh-bg" />
       <div className="aurora" />
       <div

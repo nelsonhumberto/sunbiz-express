@@ -19,8 +19,9 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
-import { WizardActions } from '../WizardShell';
 import { Badge } from '@/components/ui/badge';
 import {
   ADD_ONS,
@@ -28,11 +29,15 @@ import {
   computeCost,
   preferredOperatingAgreementSlug,
   tierBundledAddOns,
-  TIER_BY_SLUG,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import {
+  addOnBadgeKey,
+  addOnDescKey,
+  addOnNameKey,
+} from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { WizardFiling } from '../types';
 
@@ -51,10 +56,12 @@ const ICONS: Record<string, LucideIcon> = {
 
 export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
+  const tCommon = useTranslations('common');
+  const tPricing = useTranslations('pricing');
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const entityType = filing.entityType as EntityType;
   const bundled = new Set(tierBundledAddOns(tier));
-  const tierName = TIER_BY_SLUG[tier]?.name ?? tier;
+  const tierName = tPricing(`tier_${tier}` as never);
 
   // Pick the right Operating Agreement card based on the recorded member
   // count. We hide the other variant entirely so users don't have two OA
@@ -123,7 +130,9 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
         return;
       }
       setTier(upgradeTarget);
-      toast.success(t('tierUpgraded', { tier: upgradeTarget }));
+      toast.success(
+        t('tierUpgraded', { tier: tPricing(`tier_${upgradeTarget}` as never) }),
+      );
       router.refresh();
     });
   };
@@ -150,6 +159,21 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
       const res = await saveStep11({
         filingId: filing.id,
         addOnSlugs: Array.from(selected),
+      });
+      if (!res.ok) return;
+      router.push(`/wizard/${filing.id}/11`);
+    });
+  };
+
+  // "Skip" persists the bundled-only selection (registered agent stays
+  // because it is mandatory) and jumps straight to payment.
+  const onSkip = () => {
+    start(async () => {
+      const baseline = new Set<string>(['registered_agent']);
+      tierBundledAddOns(tier).forEach((slug) => baseline.add(slug));
+      const res = await saveStep11({
+        filingId: filing.id,
+        addOnSlugs: Array.from(baseline),
       });
       if (!res.ok) return;
       router.push(`/wizard/${filing.id}/11`);
@@ -201,7 +225,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   return (
     <div className="space-y-5">
       {showUpgradeHint && upgradeTarget && (() => {
-        const upgradeName = TIER_BY_SLUG[upgradeTarget]?.name ?? upgradeTarget;
+        const upgradeName = tPricing(`tier_${upgradeTarget}` as never);
         return (
           <div className="rounded-2xl border-2 border-success/30 bg-gradient-to-br from-success-subtle/60 via-white to-white p-5 flex items-start gap-4">
             <div className="h-11 w-11 rounded-xl bg-success text-white flex items-center justify-center shrink-0">
@@ -253,7 +277,8 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
                   className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary hover:text-white transition-colors"
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />
-                  {addon.name} · {formatCurrency(addOnPriceCents(addon.slug, entityType))}
+                  {t(addOnNameKey(addon.slug))} ·{' '}
+                  {formatCurrency(addOnPriceCents(addon.slug, entityType))}
                 </button>
               );
             })}
@@ -299,13 +324,24 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-ink leading-tight">{addon.name}</h3>
+                    <h3 className="font-semibold text-ink leading-tight">
+                      {t(addOnNameKey(addon.slug))}
+                    </h3>
                     {isBundled && (
                       <Badge variant="success" size="sm">
                         {t('addOnIncludedInTier', { tier: tierName })}
                       </Badge>
                     )}
-                    {!isBundled && addon.badge && <Badge variant="success" size="sm">{addon.badge}</Badge>}
+                    {!isBundled &&
+                      (() => {
+                        const badgeKey = addOnBadgeKey(addon.slug);
+                        if (!badgeKey) return null;
+                        return (
+                          <Badge variant="success" size="sm">
+                            {t(badgeKey)}
+                          </Badge>
+                        );
+                      })()}
                   </div>
                 </div>
                 {isSelected && (
@@ -315,16 +351,21 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
                 )}
               </div>
 
-              <p className="text-sm text-ink-muted leading-relaxed">{addon.description}</p>
+              <p className="text-sm text-ink-muted leading-relaxed">
+                {t(addOnDescKey(addon.slug))}
+              </p>
 
               <div className="flex items-baseline justify-between">
                 <span className="font-display text-2xl font-medium text-ink">
                   {isBundled
-                    ? 'Included'
+                    ? t('addOnIncluded')
                     : formatCurrency(addOnPriceCents(addon.slug, entityType), { showZero: true })}
                 </span>
-                {addon.recurring && (
-                  <span className="text-xs text-ink-subtle">/ {addon.recurring}</span>
+                {addon.recurring === 'annually' && (
+                  <span className="text-xs text-ink-subtle">{t('perAnnual')}</span>
+                )}
+                {addon.recurring === 'monthly' && (
+                  <span className="text-xs text-ink-subtle">{t('perMonthly')}</span>
                 )}
               </div>
             </button>
@@ -332,12 +373,38 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
         })}
       </div>
 
-      <WizardActions
-        prevHref={`/wizard/${filing.id}/9`}
-        onNext={onContinue}
-        pending={pending}
-        nextLabel={t('reviewPayment')}
-      />
+      <div className="mt-10 pt-6 border-t border-border flex items-center justify-between gap-4">
+        <Link
+          href={`/wizard/${filing.id}/9`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {tCommon('back')}
+        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={pending}
+            className="text-sm font-medium text-ink-muted hover:text-ink underline-offset-4 hover:underline transition-colors disabled:opacity-50"
+          >
+            {t('addOnsSkipToPayment')}
+          </button>
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={pending}
+            className={cn(
+              'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
+              'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
+            )}
+          >
+            {pending ? tCommon('saving') : t('reviewPayment')}
+            {!pending && <span className="text-lg leading-none">→</span>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

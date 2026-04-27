@@ -16,7 +16,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency, formatDate, formatRelative, safeParseJson } from '@/lib/utils';
-import { TOTAL_STEPS } from '@/lib/wizard-constants';
+import {
+  TOTAL_DISPLAYED_STEPS,
+  displayStepNumber,
+} from '@/lib/wizard-constants';
 import { StartFilingButton } from './start-filing-button';
 
 export const dynamic = 'force-dynamic';
@@ -102,9 +105,11 @@ export default async function DashboardPage() {
                 </h2>
                 <p className="text-sm text-ink-muted mt-1">
                   {t('resumeStepHint', {
-                    current: latestDraft.currentStep,
-                    total: TOTAL_STEPS,
-                    completed: latestDraftCompleted,
+                    current:
+                      displayStepNumber(latestDraft.currentStep ?? 1) ??
+                      TOTAL_DISPLAYED_STEPS,
+                    total: TOTAL_DISPLAYED_STEPS,
+                    completed: Math.min(latestDraftCompleted, TOTAL_DISPLAYED_STEPS),
                   })}
                 </p>
                 <p className="text-sm text-primary font-medium mt-1.5 inline-flex items-center gap-1.5">
@@ -112,7 +117,13 @@ export default async function DashboardPage() {
                   {t('resumeUrgency')}
                 </p>
                 <div className="mt-3 max-w-md">
-                  <Progress value={(latestDraftCompleted / TOTAL_STEPS) * 100} />
+                  <Progress
+                    value={
+                      (Math.min(latestDraftCompleted, TOTAL_DISPLAYED_STEPS) /
+                        TOTAL_DISPLAYED_STEPS) *
+                      100
+                    }
+                  />
                 </div>
               </div>
               <Link
@@ -274,8 +285,11 @@ async function EmptyState() {
 async function DraftCard({ filing }: { filing: any }) {
   const t = await getTranslations('dashboard');
   const completedSteps = safeParseJson<number[]>(filing.completedSteps, []);
-  const progress = (completedSteps.length / TOTAL_STEPS) * 100;
+  const visibleCompleted = Math.min(completedSteps.length, TOTAL_DISPLAYED_STEPS);
+  const progress = (visibleCompleted / TOTAL_DISPLAYED_STEPS) * 100;
   const stepRoute = filing.currentStep ?? 1;
+  const visibleCurrent =
+    displayStepNumber(filing.currentStep ?? 1) ?? TOTAL_DISPLAYED_STEPS;
 
   return (
     <Card className="hover:shadow-card transition-shadow group">
@@ -295,7 +309,7 @@ async function DraftCard({ filing }: { filing: any }) {
         <div className="space-y-1.5 mb-4">
           <div className="flex justify-between text-xs">
             <span className="text-ink-muted">
-              {t('step', { current: filing.currentStep, total: TOTAL_STEPS })}
+              {t('step', { current: visibleCurrent, total: TOTAL_DISPLAYED_STEPS })}
             </span>
             <span className="text-ink-muted">{Math.round(progress)}%</span>
           </div>

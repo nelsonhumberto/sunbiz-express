@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { Trash2, UserPlus, Users, UserCog, HelpCircle, FileText } from 'lucide-react';
+import { Trash2, UserPlus, Users, UserCog, HelpCircle, FileText, Copy } from 'lucide-react';
 import { saveStep7 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,32 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { safeParseJson, cn } from '@/lib/utils';
+import type { AddressValue } from '../AddressForm';
 import type { WizardFiling } from '../types';
+
+interface AddressSource {
+  id: string;
+  /** Pre-translated label shown on the chip. */
+  label: string;
+  address: AddressValue;
+}
+
+/** Returns true if every street/city/zip slot is empty (an address skeleton). */
+function isEmptyAddress(a: Partial<AddressValue> | null | undefined): boolean {
+  if (!a) return true;
+  return !(a.street1?.trim() || a.city?.trim() || a.zip?.trim());
+}
+
+/** Returns true if two addresses are visually identical (so we hide dupes). */
+function sameAddress(a: AddressValue, b: AddressValue): boolean {
+  return (
+    (a.street1 ?? '').trim() === (b.street1 ?? '').trim() &&
+    (a.street2 ?? '').trim() === (b.street2 ?? '').trim() &&
+    (a.city ?? '').trim() === (b.city ?? '').trim() &&
+    (a.state ?? '').trim() === (b.state ?? '').trim() &&
+    (a.zip ?? '').trim() === (b.zip ?? '').trim()
+  );
+}
 
 type ManagementType = 'member-managed' | 'manager-managed';
 
@@ -133,6 +158,84 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
   const removeMember = (idx: number) => {
     if (members.length === 1) return;
     setMembers((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Surface previously-entered addresses (principal, mailing, external RA,
+  // earlier members) as one-tap quick-fill chips on every member's address
+  // field. Members commonly share a home or office address with the
+  // company, so reducing this to one click meaningfully cuts wizard
+  // friction.
+  const principalAddress = safeParseJson<AddressValue | null>(
+    filing.principalAddress,
+    null,
+  );
+  const rawMailing = safeParseJson<unknown>(filing.mailingAddress, null);
+  const mailingAddress: AddressValue | null =
+    rawMailing && typeof rawMailing === 'object'
+      ? (rawMailing as AddressValue)
+      : null; // 'SAME_AS_PRINCIPAL' → no separate value to copy from
+  const raStored = safeParseJson<
+    (AddressValue & { useOurService?: boolean; name?: string }) | null
+  >(filing.registeredAgent, null);
+  const externalRaAddress: AddressValue | null =
+    raStored && raStored.useOurService === false
+      ? {
+          street1: raStored.street1 ?? '',
+          street2: raStored.street2 ?? '',
+          city: raStored.city ?? '',
+          state: raStored.state ?? 'FL',
+          zip: raStored.zip ?? '',
+        }
+      : null;
+
+  /**
+   * Build the list of address sources the member at `idx` can copy from.
+   * We exclude the member's own row, drop empty addresses, and de-dupe
+   * against earlier sources so we never surface "Principal" and "Mailing"
+   * chips that resolve to the same value.
+   */
+  const sourcesForMember = (idx: number): AddressSource[] => {
+    const list: AddressSource[] = [];
+    const push = (source: AddressSource) => {
+      if (isEmptyAddress(source.address)) return;
+      if (list.some((s) => sameAddress(s.address, source.address))) return;
+      list.push(source);
+    };
+    if (principalAddress) {
+      push({ id: 'principal', label: t('copyFromPrincipal'), address: principalAddress });
+    }
+    if (mailingAddress) {
+      push({ id: 'mailing', label: t('copyFromMailing'), address: mailingAddress });
+    }
+    if (externalRaAddress) {
+      push({ id: 'ra', label: t('copyFromRA'), address: externalRaAddress });
+    }
+    members.forEach((m, i) => {
+      if (i === idx) return;
+      const addr: AddressValue = {
+        street1: m.street1 ?? '',
+        city: m.city ?? '',
+        state: m.state ?? 'FL',
+        zip: m.zip ?? '',
+      };
+      if (isEmptyAddress(addr)) return;
+      const labelKey = isLLC ? 'copyFromMember' : 'copyFromOfficer';
+      push({
+        id: `member-${i}`,
+        label: t(labelKey, { idx: i + 1 }),
+        address: addr,
+      });
+    });
+    return list;
+  };
+
+  const copyAddressTo = (idx: number, src: AddressValue) => {
+    updateMember(idx, {
+      street1: src.street1 ?? '',
+      city: src.city ?? '',
+      state: (src.state ?? 'FL').toUpperCase(),
+      zip: src.zip ?? '',
+    });
   };
 
   const totalOwnership =
@@ -332,6 +435,28 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
                 {t('addressLabel')}
                 <span className="text-xs font-normal text-ink-subtle">{t('optionalRecommended')}</span>
               </Label>
+              {(() => {
+                const sources = sourcesForMember(idx);
+                if (sources.length === 0) return null;
+                return (
+                  <div className="flex items-center flex-wrap gap-1.5 pb-0.5">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-subtle">
+                      <Copy className="h-3 w-3" />
+                      {t('copyAddressLabel')}
+                    </span>
+                    {sources.map((src) => (
+                      <button
+                        key={src.id}
+                        type="button"
+                        onClick={() => copyAddressTo(idx, src.address)}
+                        className="inline-flex items-center rounded-full border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors"
+                      >
+                        {src.label}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-6 gap-2">
                 <Input
                   className="col-span-6 md:col-span-3"

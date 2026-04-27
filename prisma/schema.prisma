@@ -375,3 +375,21 @@ model AnalyticsEvent {
 
   @@index([userId, eventType, createdAt])
 }
+
+// Email + state lead captured from non-Florida marketing pages so we can
+// notify visitors when their state's filing flow opens. We never use these
+// rows for Florida filings — they exist purely to feed early-access email
+// outreach for `coming_soon` states defined in `lib/marketing-states.ts`.
+model MarketingLead {
+  id        String   @id @default(cuid())
+  email     String
+  state     String   // USPS code, e.g. "GA", "TX"
+  locale    String   @default("en")
+  source    String?  // utm_source / referrer host / "homepage"
+  campaign  String?  // utm_campaign value if present
+  createdAt DateTime @default(now())
+
+  @@unique([email, state])
+  @@index([state, createdAt])
+}
+

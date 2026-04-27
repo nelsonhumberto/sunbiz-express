@@ -5,7 +5,14 @@ import { useTranslations } from 'next-intl';
 import { Sparkles, ShieldCheck, Receipt } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import {
+  computeCost,
+  type AddOnSlug,
+  type CostBreakdownLine,
+  type EntityType,
+  type TierSlug,
+} from '@/lib/pricing';
+import { addOnNameKey, recurringKey } from '@/lib/pricing-i18n';
 import { formatCurrency } from '@/lib/utils';
 
 interface CostSidebarProps {
@@ -16,7 +23,13 @@ interface CostSidebarProps {
 
 export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) {
   const t = useTranslations('wizard');
+  const tPricing = useTranslations('pricing');
   const breakdown = computeCost({ entityType, tier, addOnSlugs });
+
+  const labelFor = (line: CostBreakdownLine) =>
+    localizedLineLabel(line, entityType, t, tPricing);
+  const detailFor = (line: CostBreakdownLine) =>
+    localizedLineDetail(line, t);
 
   return (
     <Card className="overflow-hidden">
@@ -38,9 +51,9 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
             .map((line) => (
               <CostRow
                 key={line.key}
-                label={line.label}
+                label={labelFor(line)}
                 cents={line.cents}
-                sublabel={line.detail ?? t('filingFeeIncludedNote')}
+                sublabel={detailFor(line) ?? t('filingFeeIncludedNote')}
               />
             ))}
         </div>
@@ -55,9 +68,9 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
               .map((line) => (
                 <CostRow
                   key={line.key}
-                  label={line.label}
+                  label={labelFor(line)}
                   cents={line.cents}
-                  sublabel={line.detail}
+                  sublabel={detailFor(line)}
                 />
               ))}
           </div>
@@ -112,4 +125,44 @@ function CostRow({
       </span>
     </div>
   );
+}
+
+/**
+ * Translates a `CostBreakdownLine` label into the user's locale. The line
+ * itself stays English (server actions and PDFs reuse it verbatim) — we just
+ * pick the matching i18n key when rendering for the customer.
+ */
+export function localizedLineLabel(
+  line: CostBreakdownLine,
+  entityType: EntityType,
+  tWizard: (key: string, vars?: Record<string, string | number>) => string,
+  tPricing: (key: string) => string,
+): string {
+  if (line.category === 'package' && line.tierSlug) {
+    return tWizard('packageLineLabel', {
+      tierName: tPricing(`tier_${line.tierSlug}`),
+      entityShort:
+        entityType === 'LLC' ? tWizard('entityShortLLC') : tWizard('entityShortCorp'),
+    });
+  }
+  if (line.category === 'addon' && line.addOnSlug) {
+    return tWizard(addOnNameKey(line.addOnSlug));
+  }
+  return line.label;
+}
+
+/**
+ * Translates the optional sub-label beneath a line. For add-ons it's the
+ * cadence ("Annual subscription"); for packages we leave it null so the
+ * caller can fall back to the generic "filing fee included" note.
+ */
+export function localizedLineDetail(
+  line: CostBreakdownLine,
+  tWizard: (key: string) => string,
+): string | undefined {
+  if (line.category === 'addon' && line.recurring) {
+    const key = recurringKey(line.recurring);
+    if (key) return tWizard(key);
+  }
+  return undefined;
 }

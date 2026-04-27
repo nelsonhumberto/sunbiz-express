@@ -1,7 +1,49 @@
 // Constants used by the wizard. Kept separate from actions/wizard.ts because
 // "use server" files can only export async functions.
 
+/**
+ * Number of routable steps (URL `/wizard/<id>/<step>`). The add-ons screen
+ * is one of these — the user can land on it by URL — but it is intentionally
+ * presented as a bonus offer, not as a required form step. See
+ * {@link TOTAL_DISPLAYED_STEPS}, {@link displayStepNumber}, and
+ * {@link isBonusStep} for the customer-facing numbering.
+ */
 export const TOTAL_STEPS = 11;
+
+/**
+ * Customer-facing step count. Add-ons are framed as an optional offer
+ * between Review and Payment, so the wizard advertises "10 steps" to the
+ * customer instead of 11. The progress bar, the "Step X of Y" counter, and
+ * the dashboard "resume" widget all use this number.
+ */
+export const TOTAL_DISPLAYED_STEPS = 10;
+
+/** The route step that hosts the bonus add-ons offer. */
+export const BONUS_STEP = 10;
+
+/** Returns the displayed step number for a route step (or null on bonus). */
+export function displayStepNumber(step: number): number | null {
+  if (step < 1) return 1;
+  if (step <= 9) return step;
+  if (step === BONUS_STEP) return null;
+  return TOTAL_DISPLAYED_STEPS; // payment is the last visible step
+}
+
+/** True for the bonus add-ons step (so the UI can swap the counter chip). */
+export function isBonusStep(step: number): boolean {
+  return step === BONUS_STEP;
+}
+
+/**
+ * Fractional progress for the progress bar. The bonus step doesn't advance
+ * the counter, so we keep it parked at the "Review" position visually.
+ */
+export function progressFraction(step: number): number {
+  if (step < 1) return 0;
+  if (step <= 9) return step / TOTAL_DISPLAYED_STEPS;
+  if (step === BONUS_STEP) return 9 / TOTAL_DISPLAYED_STEPS;
+  return 1;
+}
 
 /**
  * Customer-facing journey phases. The 11 form steps are grouped into 5

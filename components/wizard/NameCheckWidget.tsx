@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, AlertTriangle, X, Loader2, Sparkles, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ interface NameCheckWidgetProps {
 }
 
 export function NameCheckWidget({ initialName, entityType, onChange }: NameCheckWidgetProps) {
+  const t = useTranslations('wizard');
   const [name, setName] = useState(initialName ?? '');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<NameCheckResult | null>(null);
@@ -63,11 +65,23 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
   const suffixOk = entityType === 'LLC' ? hasLLCSuffix(name) : hasCorpSuffix(name);
   const trimmed = name.trim();
 
+  // Localized message for the green/yellow/red status banner. We deliberately
+  // ignore the server-supplied `result.message` (English-only) and pick a
+  // translated string keyed by status, so the wizard reads naturally in the
+  // user's selected locale.
+  const statusMessage = (() => {
+    if (!result) return '';
+    if (result.available) return t('nameStatusAvailable');
+    if (result.status === 'exact_conflict') return t('nameStatusExactConflict');
+    if (result.status === 'similar_conflict') return t('nameStatusSimilar');
+    return result.message || t('nameStatusError');
+  })();
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="businessName" className="text-base">
-          Business name <span className="text-destructive">*</span>
+          {t('businessName')} <span className="text-destructive">*</span>
         </Label>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-subtle pointer-events-none" />
@@ -75,7 +89,11 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
             id="businessName"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={entityType === 'LLC' ? 'e.g., Sunshine Coast Ventures LLC' : 'e.g., Atlantic Holdings Inc.'}
+            placeholder={
+              entityType === 'LLC'
+                ? t('namePlaceholderLLC')
+                : t('namePlaceholderCorp')
+            }
             className="pl-10 pr-32 h-14 text-lg"
             autoComplete="organization"
             autoFocus
@@ -84,23 +102,23 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
             {loading ? (
               <Badge variant="outline">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Checking…
+                {t('checking')}
               </Badge>
             ) : result ? (
               result.available ? (
                 <Badge variant="success">
                   <Check className="h-3 w-3" strokeWidth={3} />
-                  Available
+                  {t('available')}
                 </Badge>
               ) : result.status === 'exact_conflict' ? (
                 <Badge variant="danger">
                   <X className="h-3 w-3" />
-                  Taken
+                  {t('taken')}
                 </Badge>
               ) : (
                 <Badge variant="warn">
                   <AlertTriangle className="h-3 w-3" />
-                  Similar
+                  {t('similar')}
                 </Badge>
               )
             ) : null}
@@ -109,9 +127,7 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
         {trimmed.length > 1 && !suffixOk && (
           <p className="text-xs text-warn flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {entityType === 'LLC'
-              ? 'Florida LLC names must end with LLC, L.L.C., or Limited Liability Company.'
-              : 'Florida corporation names must end with Corp, Corporation, Inc, Incorporated, Co, or Company.'}
+            {entityType === 'LLC' ? t('suffixWarnLLC') : t('suffixWarnCorp')}
           </p>
         )}
       </div>
@@ -137,20 +153,19 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
                   : 'text-warn'
             )}
           >
-            {result.message}
+            {statusMessage}
           </p>
 
           {result.available && (
             <p className="mt-2 text-xs text-success/90 leading-relaxed">
-              Florida won't reserve this name until your formation is filed. Lock it in by
-              continuing now — we submit the same business day.
+              {t('nameLockUrgency')}
             </p>
           )}
 
           {result.conflicts.length > 0 && (
             <div className="mt-3 space-y-1">
               <p className="text-xs font-semibold text-ink uppercase tracking-wider">
-                Conflicting entities on Sunbiz
+                {t('conflictsHeader')}
               </p>
               <ul className="space-y-1">
                 {result.conflicts.map((c) => (
@@ -172,7 +187,7 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
             <div className="mt-4">
               <p className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3" />
-                Try these instead
+                {t('tryInstead')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {result.suggestions.map((s) => (

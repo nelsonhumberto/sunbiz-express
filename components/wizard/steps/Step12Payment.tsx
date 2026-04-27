@@ -18,6 +18,7 @@ import { WizardActions } from '../WizardShell';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { computeCost, type AddOnSlug, type TierSlug, TIER_BY_SLUG } from '@/lib/pricing';
+import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency } from '@/lib/utils';
 import type { WizardFiling } from '../types';
 
@@ -30,12 +31,14 @@ const PAYMENTS_DEMO_MODE = process.env.NEXT_PUBLIC_PAYMENTS_DEMO_MODE === 'true'
 
 export function Step12Payment({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
+  const tPricing = useTranslations('pricing');
 
+  const entityType = filing.entityType as 'LLC' | 'CORP';
   const addOnSlugs = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug
   );
   const breakdown = computeCost({
-    entityType: filing.entityType as 'LLC' | 'CORP',
+    entityType,
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
   });
@@ -90,19 +93,23 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
       <div className="rounded-lg border border-border bg-white p-5">
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
         <div className="space-y-2.5">
-          {breakdown.lines.map((line) => (
-            <div key={line.key} className="flex items-baseline justify-between text-sm gap-3">
-              <div className="min-w-0">
-                <p className="text-ink leading-snug">{line.label}</p>
-                {line.detail && (
-                  <p className="text-xs text-ink-subtle leading-snug">{line.detail}</p>
-                )}
+          {breakdown.lines.map((line) => {
+            const label = localizedLineLabel(line, entityType, t, tPricing);
+            const detail = localizedLineDetail(line, t);
+            return (
+              <div key={line.key} className="flex items-baseline justify-between text-sm gap-3">
+                <div className="min-w-0">
+                  <p className="text-ink leading-snug">{label}</p>
+                  {detail && (
+                    <p className="text-xs text-ink-subtle leading-snug">{detail}</p>
+                  )}
+                </div>
+                <span className="font-medium shrink-0">
+                  {formatCurrency(line.cents, { showZero: true })}
+                </span>
               </div>
-              <span className="font-medium shrink-0">
-                {formatCurrency(line.cents, { showZero: true })}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
           <span className="font-semibold">{t('totalToday')}</span>

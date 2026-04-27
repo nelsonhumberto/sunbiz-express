@@ -16,7 +16,9 @@ import {
   progressFraction,
 } from '@/lib/wizard-constants';
 import { CostSidebar } from './CostSidebar';
+import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
 import { cn } from '@/lib/utils';
+import type { TierSlug } from '@/lib/pricing';
 
 interface WizardShellProps {
   filingId: string;
@@ -45,6 +47,10 @@ export function WizardShell({ filingId: _filingId, step, children, costData, sav
   const progress = progressFraction(step) * 100;
 
   return (
+    <WizardCostPreviewProvider
+      step={step}
+      serverTier={costData.tier as TierSlug}
+    >
     <div className="min-h-screen bg-surface flex flex-col">
       <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-border">
         <div className="container flex h-16 items-center justify-between gap-4">
@@ -121,15 +127,32 @@ export function WizardShell({ filingId: _filingId, step, children, costData, sav
           </div>
 
           <aside className="lg:sticky lg:top-32 lg:self-start">
-            <CostSidebar
-              entityType={costData.entityType}
-              tier={costData.tier as any}
-              addOnSlugs={costData.addOnSlugs as any}
-            />
+            <LiveCostSidebar costData={costData} step={step} />
           </aside>
         </div>
       </div>
     </div>
+    </WizardCostPreviewProvider>
+  );
+}
+
+function LiveCostSidebar({
+  costData,
+  step,
+}: {
+  costData: WizardShellProps['costData'];
+  step: number;
+}) {
+  const { tierPreview } = useWizardCostPreview();
+  const tier = (
+    step === 3 && tierPreview !== null ? tierPreview : (costData.tier as TierSlug)
+  ) as TierSlug;
+  return (
+    <CostSidebar
+      entityType={costData.entityType}
+      tier={tier}
+      addOnSlugs={costData.addOnSlugs as any}
+    />
   );
 }
 

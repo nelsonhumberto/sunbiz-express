@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Check, Minus, Sparkles } from 'lucide-react';
 import { saveStep3 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { TIERS, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('pricing');
+  const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -36,7 +38,10 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
             <button
               key={tierDef.slug}
               type="button"
-              onClick={() => setTier(tierDef.slug)}
+              onClick={() => {
+                setTier(tierDef.slug);
+                setTierPreview(tierDef.slug);
+              }}
               className={cn(
                 'relative text-left rounded-2xl border-2 p-5 transition-all flex flex-col',
                 isSelected

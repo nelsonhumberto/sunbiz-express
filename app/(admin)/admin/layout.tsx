@@ -7,9 +7,10 @@ import { signOutAction } from '@/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import { AdminNavLink } from '@/components/admin/AdminNavLink';
 
-const NAV: { href: string; label: string; iconName: 'LayoutDashboard' | 'FileText' | 'Mail' | 'BarChart3' }[] = [
+const NAV: { href: string; label: string; iconName: 'LayoutDashboard' | 'FileText' | 'Mail' | 'BarChart3' | 'AlertTriangle' }[] = [
   { href: '/admin', label: 'Overview', iconName: 'LayoutDashboard' },
   { href: '/admin/filings', label: 'Filings', iconName: 'FileText' },
+  { href: '/admin/drafts', label: 'Drafts & abandoned', iconName: 'AlertTriangle' },
   { href: '/admin/outbox', label: 'Email outbox', iconName: 'Mail' },
   { href: '/admin/analytics', label: 'Analytics', iconName: 'BarChart3' },
 ];

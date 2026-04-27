@@ -7,7 +7,6 @@ import { useTranslations } from 'next-intl';
 import { saveStep2 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { NameCheckWidget, type NameCheckResult } from '../NameCheckWidget';
-import { hasLLCSuffix, hasCorpSuffix } from '@/lib/florida';
 import type { WizardFiling } from '../types';
 
 export function Step2Name({ filing }: { filing: WizardFiling }) {
@@ -17,9 +16,9 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const [pending, start] = useTransition();
   const router = useRouter();
 
-  const suffixOk =
-    filing.entityType === 'LLC' ? hasLLCSuffix(name) : hasCorpSuffix(name);
-  const canContinue = name.trim().length >= 2 && suffixOk;
+  // The name widget owns the suffix dropdown so the suffix is always valid;
+  // only gate Continue on having an actual base name (>= 2 chars) here.
+  const canContinue = name.trim().length >= 2;
 
   const onContinue = () => {
     if (!canContinue) return;

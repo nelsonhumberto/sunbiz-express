@@ -99,6 +99,10 @@ model Filing {
   updatedAt                DateTime @updatedAt
   submittedAt              DateTime?
   abandonedAt              DateTime?
+  // Set when the customer chooses to remove a draft from their dashboard.
+  // The row is NOT deleted — admins still see the draft (and the step the
+  // customer reached) for retention / outreach. NULL = visible on dashboard.
+  userArchivedAt           DateTime?
 
   steps                    FilingStep[]
   managersMembers          ManagerMember[]

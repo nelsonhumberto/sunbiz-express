@@ -21,6 +21,7 @@ import {
   displayStepNumber,
 } from '@/lib/wizard-constants';
 import { StartFilingButton } from './start-filing-button';
+import { ArchiveDraftButton } from '@/components/dashboard/ArchiveDraftButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,17 @@ export default async function DashboardPage() {
 
   const [filings, upcomingReports, upcomingRaRenewals] = await Promise.all([
     prisma.filing.findMany({
-      where: { userId: session.user.id },
+      // Hide drafts the customer chose to remove from their dashboard.
+      // Submitted/approved/etc. filings always stay visible — only DRAFTs
+      // can be archived (see actions/dashboard.ts). The row itself is
+      // preserved for admin retention reporting.
+      where: {
+        userId: session.user.id,
+        OR: [
+          { userArchivedAt: null },
+          { status: { not: 'DRAFT' } },
+        ],
+      },
       orderBy: { updatedAt: 'desc' },
       include: {
         documents: { select: { id: true } },
@@ -126,13 +137,16 @@ export default async function DashboardPage() {
                   />
                 </div>
               </div>
-              <Link
-                href={`/wizard/${latestDraft.id}/${latestDraft.currentStep ?? 1}`}
-                className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors shrink-0"
-              >
-                {t('resumeFiling')}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="flex items-center gap-3 shrink-0">
+                <ArchiveDraftButton filingId={latestDraft.id} iconOnly />
+                <Link
+                  href={`/wizard/${latestDraft.id}/${latestDraft.currentStep ?? 1}`}
+                  className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors"
+                >
+                  {t('resumeFiling')}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -320,13 +334,16 @@ async function DraftCard({ filing }: { filing: any }) {
           <span className="text-xs text-ink-subtle">
             {t('lastUpdated', { time: formatRelative(filing.updatedAt) })}
           </span>
-          <Link
-            href={`/wizard/${filing.id}/${stepRoute}`}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary-hover transition-colors"
-          >
-            {t('continueBtn')}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex items-center gap-1">
+            <ArchiveDraftButton filingId={filing.id} iconOnly />
+            <Link
+              href={`/wizard/${filing.id}/${stepRoute}`}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary-hover transition-colors"
+            >
+              {t('continueBtn')}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
       </CardContent>
     </Card>

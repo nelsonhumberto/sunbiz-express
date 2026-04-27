@@ -151,6 +151,82 @@ export function hasCorpSuffix(name: string): boolean {
   });
 }
 
+// ─── Suffix picker support ────────────────────────────────────────────────
+//
+// The wizard exposes the entity suffix as a dedicated dropdown so customers
+// pick the legal ending explicitly instead of guessing it. The display value
+// is what we render and persist (e.g. "LLC", "Limited Liability Company");
+// the matcher is the loose pattern used to detect the suffix when parsing
+// an existing draft's saved name.
+
+export const LLC_SUFFIX_OPTIONS = [
+  { value: 'LLC', label: 'LLC' },
+  { value: 'L.L.C.', label: 'L.L.C.' },
+  { value: 'Limited Liability Company', label: 'Limited Liability Company' },
+] as const;
+
+export const CORP_SUFFIX_OPTIONS = [
+  { value: 'Corp', label: 'Corp' },
+  { value: 'Corporation', label: 'Corporation' },
+  { value: 'Inc', label: 'Inc' },
+  { value: 'Incorporated', label: 'Incorporated' },
+  { value: 'Co', label: 'Co' },
+  { value: 'Company', label: 'Company' },
+] as const;
+
+export type EntitySuffixOption =
+  | (typeof LLC_SUFFIX_OPTIONS)[number]
+  | (typeof CORP_SUFFIX_OPTIONS)[number];
+
+/**
+ * Split a saved entity name into a base name and a recognized suffix.
+ *
+ * Used when re-opening a draft so we can pre-populate both the base-name
+ * input and the suffix dropdown. Picks the longest matching suffix so
+ * "Acme Limited Liability Company" doesn't degrade to "Acme Limited
+ * Liability" + "Company".
+ *
+ * Returns `matched: false` when no suffix is recognized; the caller should
+ * fall back to a default (typically the first option for the entity type).
+ */
+export function splitEntityName(
+  name: string,
+  entityType: 'LLC' | 'CORP',
+): { base: string; suffix: string; matched: boolean } {
+  const options =
+    entityType === 'LLC' ? LLC_SUFFIX_OPTIONS : CORP_SUFFIX_OPTIONS;
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) {
+    return { base: '', suffix: options[0].value, matched: false };
+  }
+
+  const sortedByLength = [...options].sort(
+    (a, b) => b.value.length - a.value.length,
+  );
+
+  for (const opt of sortedByLength) {
+    const escaped = opt.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Allow comma OR whitespace before the suffix and an optional trailing period.
+    const pattern = `(?:,\\s*|\\s+)${escaped}\\.?\\s*$`;
+    const re = new RegExp(pattern, 'i');
+    if (re.test(trimmed)) {
+      const base = trimmed.replace(re, '').trim();
+      return { base, suffix: opt.value, matched: true };
+    }
+  }
+
+  return { base: trimmed, suffix: options[0].value, matched: false };
+}
+
+/** Combine a base name and suffix into the canonical entity name. */
+export function joinEntityName(base: string, suffix: string): string {
+  const cleanBase = (base ?? '').trim();
+  const cleanSuffix = (suffix ?? '').trim();
+  if (!cleanBase) return cleanSuffix;
+  if (!cleanSuffix) return cleanBase;
+  return `${cleanBase} ${cleanSuffix}`;
+}
+
 /**
  * Reduce a token to its singular/non-possessive base for the distinguishability
  * comparison. Handles the FL FAQ examples:

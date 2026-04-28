@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Link2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,19 @@ export const dynamic = 'force-dynamic';
 export default async function AdminFilingsPage() {
   const t = await getTranslations('admin');
   const filings = await prisma.filing.findMany({
-    include: { user: true, _count: { select: { documents: true, payments: true } } },
+    include: {
+      user: true,
+      _count: { select: { documents: true } },
+      payments: {
+        where: { status: 'SUCCEEDED' },
+        select: { amountCents: true },
+      },
+      annualReports: {
+        select: { status: true, reportYear: true, totalCostCents: true },
+        orderBy: { reportYear: 'desc' },
+        take: 1,
+      },
+    },
     orderBy: { updatedAt: 'desc' },
   });
 
@@ -39,10 +51,13 @@ export default async function AdminFilingsPage() {
                   {t('tableStatus')}
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  {t('tableTier')}
+                  Source
+                </th>
+                <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
+                  Annual Report
                 </th>
                 <th className="text-right px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
-                  {t('tableAmount')}
+                  Revenue
                 </th>
                 <th className="text-left px-6 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
                   {t('tableUpdated')}
@@ -60,45 +75,71 @@ export default async function AdminFilingsPage() {
                   </td>
                 </tr>
               ) : (
-                filings.map((filing) => (
-                  <tr key={filing.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/admin/filings/${filing.id}`}
-                        className="font-medium hover:text-primary inline-flex items-center gap-1.5"
-                      >
-                        {filing.businessName ?? <span className="italic text-ink-subtle">untitled</span>}
-                        <ArrowUpRight className="h-3 w-3" />
-                      </Link>
-                      <p className="text-xs text-ink-subtle font-mono">
-                        {filing.entityType} · {filing.id.slice(0, 8)}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-medium">
-                        {filing.user.firstName} {filing.user.lastName}
-                      </p>
-                      <p className="text-xs text-ink-subtle">{filing.user.email}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={filing.status} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline">{filing.serviceTier}</Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium">
-                      {formatCurrency(filing.totalCents, { showZero: true })}
-                    </td>
-                    <td className="px-6 py-4 text-ink-muted text-xs">
-                      {formatRelative(filing.updatedAt)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/admin/filings/${filing.id}`}>{t('open')}</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                filings.map((filing) => {
+                  const totalRevenue = filing.payments.reduce((s, p) => s + p.amountCents, 0);
+                  const latestAr = filing.annualReports[0];
+                  return (
+                    <tr key={filing.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-6 py-4">
+                        <Link
+                          href={`/admin/filings/${filing.id}`}
+                          className="font-medium hover:text-primary inline-flex items-center gap-1.5"
+                        >
+                          {filing.businessName ?? <span className="italic text-ink-subtle">untitled</span>}
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                        <p className="text-xs text-ink-subtle font-mono">
+                          {filing.entityType} · {filing.sunbizFilingNumber ?? filing.id.slice(0, 8)}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-medium">
+                          {filing.user.firstName} {filing.user.lastName}
+                        </p>
+                        <p className="text-xs text-ink-subtle">{filing.user.email}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={filing.status} />
+                      </td>
+                      <td className="px-6 py-4">
+                        {filing.filingSource === 'LINKED' ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Link2 className="h-3 w-3" /> Linked
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">{filing.serviceTier}</Badge>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {latestAr ? (
+                          <div className="text-xs">
+                            <span className={`font-medium ${latestAr.status === 'FILED' ? 'text-success' : 'text-amber-600'}`}>
+                              {latestAr.reportYear} · {latestAr.status}
+                            </span>
+                            {latestAr.status === 'FILED' && (
+                              <p className="text-ink-subtle">{formatCurrency(latestAr.totalCostCents)}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-ink-subtle">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right font-medium tabular-nums">
+                        {totalRevenue > 0
+                          ? <span className="text-success">{formatCurrency(totalRevenue)}</span>
+                          : <span className="text-ink-subtle">$0.00</span>}
+                      </td>
+                      <td className="px-6 py-4 text-ink-muted text-xs">
+                        {formatRelative(filing.updatedAt)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/admin/filings/${filing.id}`}>{t('open')}</Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

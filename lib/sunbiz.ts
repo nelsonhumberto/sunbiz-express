@@ -15,6 +15,8 @@
 // All failure modes return a typed `SunbizError` — never a silent empty list.
 
 import * as cheerio from 'cheerio';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { normalizeDistinguishableName, stripSuffix } from './florida';
 
 export interface SunbizEntity {
@@ -41,6 +43,7 @@ export class SunbizError extends Error {
     public readonly code:
       | 'cloudflare'
       | 'http'
+      | 'not_found'
       | 'timeout'
       | 'parse'
       | 'auth'
@@ -650,4 +653,380 @@ function generateSuggestions(query: string, entityType: 'LLC' | 'CORP'): string[
     `${base} & Co ${suffix}`,
     `The ${base} ${suffix}`,
   ];
+}
+
+// ─── Entity detail by document number (Sunbiz Daily API) ─────────────────
+
+/** Shape returned by `GET /api/v1/filings/{corporation_number}/` (see sunbizdaily developers docs). */
+export interface SunbizDailyAddress {
+  address_1?: string;
+  address_2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+}
+
+export interface SunbizDailyOfficer {
+  position?: number;
+  name?: string;
+  title?: string;
+  officer_type?: string;
+}
+
+export interface FloridaEntityDetail {
+  corporation_number: string;
+  corporation_name: string;
+  filing_type?: string;
+  filing_type_display?: string;
+  status?: string;
+  file_date?: string;
+  source_date?: string;
+  fei_number?: string;
+  principal_address?: SunbizDailyAddress | null;
+  mailing_address?: SunbizDailyAddress | null;
+  registered_agent?: {
+    name?: string;
+    agent_type?: string;
+    address?: SunbizDailyAddress | null;
+  } | null;
+  officers?: SunbizDailyOfficer[];
+  industries?: { label?: string; is_primary?: boolean }[];
+  url?: string;
+}
+
+/**
+ * Normalize pasted Florida document numbers: trim, strip invisible chars,
+ * uppercase, and fix common mistake (letter O vs digit 0) in the numeric tail.
+ */
+export function normalizeFloridaDocumentNumber(raw: string): string {
+  let s = raw
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .toUpperCase();
+  if (s.length >= 2) {
+    const head = s[0];
+    const tail = s
+      .slice(1)
+      .replace(/O/g, '0')
+      .replace(/[^A-Z0-9]/g, '');
+    s = head + tail;
+  }
+  return s;
+}
+
+function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
+  const b = body as FloridaEntityDetail;
+  return {
+    corporation_number: String(b.corporation_number ?? ''),
+    corporation_name: String(b.corporation_name ?? ''),
+    filing_type: b.filing_type,
+    filing_type_display: b.filing_type_display,
+    status: b.status,
+    file_date: b.file_date,
+    source_date: b.source_date,
+    fei_number: b.fei_number,
+    principal_address: b.principal_address ?? null,
+    mailing_address: b.mailing_address ?? null,
+    registered_agent: b.registered_agent ?? null,
+    officers: Array.isArray(b.officers) ? b.officers : [],
+    industries: Array.isArray(b.industries) ? b.industries : [],
+    url: b.url,
+  };
+}
+
+async function fetchFloridaEntityFromSunbizDaily(
+  documentNumber: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail> {
+  const url = `${SUNBIZDAILY_BASE_URL}/filings/${encodeURIComponent(documentNumber)}/`;
+  return withTimeout(async (s) => {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-API-Key': apiKey,
+          Accept: 'application/json',
+          'User-Agent': 'IncServices/1.0 (+entity-detail)',
+        },
+        signal: s,
+        cache: 'no-store',
+      });
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw new SunbizError('timeout', 'sunbizdaily entity detail timed out');
+      }
+      throw new SunbizError(
+        'unknown',
+        `sunbizdaily detail failed: ${(err as Error)?.message ?? String(err)}`,
+        err,
+      );
+    }
+
+    if (res.status === 404) {
+      throw new SunbizError(
+        'not_found',
+        'No match in Sunbiz Daily for that document number (older or unindexed entities). ' +
+          'Add the legal entity name as on Sunbiz.org and try again, or confirm the number on the state site.',
+      );
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new SunbizError(
+        'auth',
+        'sunbizdaily rejected the API key (401/403). Check SUNBIZDAILY_API_KEY.',
+      );
+    }
+    if (res.status === 429) {
+      throw new SunbizError('rate_limit', 'sunbizdaily rate limit exceeded. Try again shortly.');
+    }
+    if (!res.ok) {
+      throw new SunbizError('http', `sunbizdaily returned HTTP ${res.status}`);
+    }
+
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch (err) {
+      throw new SunbizError('parse', 'sunbizdaily returned non-JSON', err);
+    }
+    return mapSunbizDailyDetailBody(body);
+  }, signal);
+}
+
+type SeedEntityRow = {
+  name: string;
+  documentNumber: string;
+  status: string;
+  filingDate: string;
+  type: 'LLC' | 'CORP';
+};
+
+function detailFromLocalSeed(documentNumber: string): FloridaEntityDetail | null {
+  if (process.env.LINK_ENTITY_ALLOW_SEED_LOOKUP !== 'true') return null;
+  try {
+    const p = join(process.cwd(), 'data', 'sunbiz-seed.json');
+    const seedData = JSON.parse(readFileSync(p, 'utf8')) as SeedEntityRow[];
+    const norm = normalizeFloridaDocumentNumber(documentNumber);
+    const row = seedData.find((r) => r.documentNumber.toUpperCase() === norm);
+    if (!row) return null;
+    return {
+      corporation_number: row.documentNumber,
+      corporation_name: row.name,
+      filing_type: row.type === 'LLC' ? 'FLAL' : 'DOMP',
+      filing_type_display: row.type === 'LLC' ? 'Florida Limited Liability' : 'Foreign Profit Corporation',
+      status: row.status === 'Active' ? 'A' : 'I',
+      file_date: row.filingDate,
+      principal_address: null,
+      mailing_address: null,
+      registered_agent: null,
+      officers: [],
+      industries: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function inferFilingTypeDisplayFromDocumentNumber(doc: string): string {
+  const c = doc.charAt(0).toUpperCase();
+  if (c === 'L') return 'Florida Limited Liability Company';
+  if (c === 'P' || c === 'F') return 'Florida Profit Corporation';
+  return 'Florida Corporation';
+}
+
+/** Minimal detail when only Sunbiz Daily list row or Sunbiz.org search row is available (no detail API). */
+function detailFromSunbizEntityHit(hit: SunbizEntity): FloridaEntityDetail {
+  const doc = normalizeFloridaDocumentNumber(hit.documentNumber);
+  return {
+    corporation_number: doc,
+    corporation_name: hit.name,
+    filing_type_display: inferFilingTypeDisplayFromDocumentNumber(doc),
+    status: hit.status?.charAt(0) ?? undefined,
+    principal_address: null,
+    mailing_address: null,
+    registered_agent: null,
+    officers: [],
+    industries: [],
+  };
+}
+
+async function findViaSunbizDailyNameSearch(
+  docNorm: string,
+  legalName: string,
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail | null> {
+  const entities = await searchSunbizDaily(legalName, apiKey, { limit: 100, signal });
+  const hit = entities.find((e) => normalizeFloridaDocumentNumber(e.documentNumber) === docNorm);
+  if (!hit) return null;
+  try {
+    return await fetchFloridaEntityFromSunbizDaily(docNorm, apiKey, signal);
+  } catch (err) {
+    if (err instanceof SunbizError && err.code === 'not_found') {
+      return detailFromSunbizEntityHit(hit);
+    }
+    throw err;
+  }
+}
+
+async function findViaSunbizOrgNameScrape(
+  docNorm: string,
+  legalName: string,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail | null> {
+  try {
+    const entities = await searchSunbizScrape(legalName, { limit: 100, signal });
+    const hit = entities.find((e) => normalizeFloridaDocumentNumber(e.documentNumber) === docNorm);
+    if (!hit) return null;
+    return detailFromSunbizEntityHit(hit);
+  } catch {
+    return null;
+  }
+}
+
+export interface FetchFloridaEntityOptions {
+  signal?: AbortSignal;
+  /**
+   * Legal name as shown on Sunbiz.org — enables fallback name search when
+   * Sunbiz Daily has no row for the document number alone.
+   */
+  legalNameHint?: string;
+}
+
+/**
+ * Call the local Python cloudscraper sidecar (`scripts/sunbiz-scraper/app.py`)
+ * when `SUNBIZ_LOCAL_PROXY_URL` is set (e.g. `http://localhost:3334`).
+ * This bypasses Cloudflare using the user's residential IP and a real TLS fingerprint.
+ */
+async function fetchFloridaEntityFromLocalProxy(
+  documentNumber: string,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail> {
+  const base = process.env.SUNBIZ_LOCAL_PROXY_URL!.replace(/\/$/, '');
+  const url = `${base}/entity?doc=${encodeURIComponent(documentNumber)}`;
+
+  return withTimeout(async (s) => {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: s,
+        cache: 'no-store',
+      });
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw new SunbizError('timeout', 'Local Sunbiz proxy timed out.');
+      }
+      throw new SunbizError(
+        'unknown',
+        `Local Sunbiz proxy unreachable: ${(err as Error)?.message ?? String(err)}. ` +
+          'Make sure the scraper is running: cd scripts/sunbiz-scraper && python app.py',
+        err,
+      );
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await res.json()) as Record<string, unknown>;
+    } catch {
+      throw new SunbizError('parse', 'Local Sunbiz proxy returned non-JSON.');
+    }
+
+    if (!res.ok) {
+      const code = body?.code as string | undefined;
+      const msg = (body?.error as string) ?? `HTTP ${res.status}`;
+      if (res.status === 404 || code === 'not_found') {
+        throw new SunbizError('not_found', msg);
+      }
+      throw new SunbizError('unknown', msg);
+    }
+
+    return mapSunbizDailyDetailBody(body);
+  }, signal);
+}
+
+/**
+ * Full Florida entity record for a Division of Corporations document number.
+ *
+ * Resolution order:
+ *   0. SUNBIZ_LOCAL_PROXY_URL set → call local Python cloudscraper sidecar (dev)
+ *   1. Sunbiz Daily detail API `GET /filings/{corporation_number}/`
+ *   2. If 404 and `legalNameHint`: Sunbiz Daily name search → exact document# match
+ *   3. If still missing and `legalNameHint`: official search.sunbiz.org scrape (needs
+ *      `SUNBIZ_SCRAPER_PROXY` on most hosts due to Cloudflare)
+ *   4. Local seed when `LINK_ENTITY_ALLOW_SEED_LOOKUP=true` and no API key
+ */
+export async function fetchFloridaEntityDetailByDocumentNumber(
+  rawDocumentNumber: string,
+  opts: FetchFloridaEntityOptions = {},
+): Promise<FloridaEntityDetail> {
+  const documentNumber = normalizeFloridaDocumentNumber(rawDocumentNumber);
+  if (documentNumber.length < 5 || documentNumber.length > 20) {
+    throw new SunbizError('parse', 'Enter a valid Florida document number (e.g. L15000063512).');
+  }
+
+  // ── Step 0: local cloudscraper sidecar (highest priority in dev) ────────
+  const localProxy = process.env.SUNBIZ_LOCAL_PROXY_URL?.trim();
+  if (localProxy) {
+    return fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal);
+  }
+
+  const apiKey = process.env.SUNBIZDAILY_API_KEY?.trim();
+  const legal = opts.legalNameHint?.trim();
+
+  if (apiKey) {
+    try {
+      return await fetchFloridaEntityFromSunbizDaily(documentNumber, apiKey, opts.signal);
+    } catch (err) {
+      if (!(err instanceof SunbizError) || err.code !== 'not_found') throw err;
+
+      if (legal) {
+        const viaNameDaily = await findViaSunbizDailyNameSearch(
+          documentNumber,
+          legal,
+          apiKey,
+          opts.signal,
+        );
+        if (viaNameDaily) return viaNameDaily;
+
+        const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
+        if (viaScrape) return viaScrape;
+
+        throw new SunbizError(
+          'not_found',
+          `No entity found with document number ${documentNumber} when searching for "${legal}". ` +
+            'Check spelling against Sunbiz.org or try the official document search.',
+        );
+      }
+
+      throw new SunbizError(
+        'not_found',
+        err.message +
+          ' If your company is older, paste the **legal entity name** (as on Sunbiz) into the optional field and look up again — we will match by name and confirm the document number.',
+      );
+    }
+  }
+
+  const seedDetail = detailFromLocalSeed(documentNumber);
+  if (seedDetail) return seedDetail;
+
+  if (legal) {
+    const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
+    if (viaScrape) return viaScrape;
+    throw new SunbizError(
+      'not_found',
+      `No match for document ${documentNumber} when searching Sunbiz for "${legal}". ` +
+        'Set SUNBIZDAILY_API_KEY for primary lookup, and/or SUNBIZ_SCRAPER_PROXY for live Sunbiz name search from servers behind Cloudflare.',
+    );
+  }
+
+  throw new SunbizError(
+    'not_configured',
+    'Entity lookup requires SUNBIZDAILY_API_KEY, or set LINK_ENTITY_ALLOW_SEED_LOOKUP=true for local seed data. ' +
+      'You can also add the legal name and set SUNBIZ_SCRAPER_PROXY to search live Sunbiz.org.',
+  );
 }

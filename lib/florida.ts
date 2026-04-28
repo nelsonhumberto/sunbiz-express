@@ -44,8 +44,12 @@ export const FL = {
   // URLs (per sunbiz_technical_analysis.md)
   urls: {
     search: 'https://search.sunbiz.org/Inquiry/CorporationSearch/ByName',
+    searchByDocumentNumber:
+      'https://search.sunbiz.org/Inquiry/CorporationSearch/ByDocumentNumber',
     llcWizard: 'https://efile.sunbiz.org/llc_file.html',
     documentProcessingDates: 'https://dos.fl.gov/sunbiz/document-processing-dates/',
+    /** Official Division of Corporations online annual report intake */
+    annualReportFiling: 'https://services.sunbiz.org/Filings/AnnualReport/FilingStart',
   },
 } as const;
 

@@ -88,6 +88,8 @@ function errorCodeToHttp(code: SunbizError['code']): number {
     case 'http':
     case 'parse':
       return 502;
+    case 'not_found':
+      return 404;
     default:
       return 500;
   }
@@ -107,6 +109,8 @@ function errorCodeToUserMessage(code: SunbizError['code']): string {
     case 'http':
     case 'parse':
       return 'Could not reach the Florida Sunbiz registry right now. Please try again.';
+    case 'not_found':
+      return 'No matching records.';
     default:
       return 'Unexpected error checking name availability.';
   }

@@ -21,6 +21,7 @@ import {
   displayStepNumber,
 } from '@/lib/wizard-constants';
 import { StartFilingButton } from './start-filing-button';
+import { AddExistingCompanyButton } from '@/components/dashboard/AddExistingCompanyButton';
 import { ArchiveDraftButton } from '@/components/dashboard/ArchiveDraftButton';
 
 export const dynamic = 'force-dynamic';
@@ -95,7 +96,10 @@ export default async function DashboardPage() {
           </p>
           <h1 className="font-display text-4xl font-medium tracking-tight mt-1">{t('title')}</h1>
         </div>
-        <StartFilingButton />
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <AddExistingCompanyButton />
+          <StartFilingButton />
+        </div>
       </div>
 
       {filings.length === 0 && <EmptyState />}
@@ -279,7 +283,8 @@ async function EmptyState() {
       </div>
       <h2 className="font-display text-2xl font-medium">{t('emptyTitle')}</h2>
       <p className="mt-2 text-ink-muted max-w-md mx-auto">{t('emptyBody')}</p>
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+        <AddExistingCompanyButton />
         <StartFilingButton />
       </div>
       <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-ink-subtle">

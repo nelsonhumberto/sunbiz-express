@@ -95,6 +95,20 @@ export const TIER_BY_SLUG: Record<TierSlug, TierDef> = TIERS.reduce(
   {} as Record<TierSlug, TierDef>
 );
 
+/** Linking an existing Florida entity is free — revenue comes from annual report renewals. */
+export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
+
+/**
+ * Our service fee for filing an annual report (excluding the Florida state fee).
+ *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + FL state fee
+ *   LLC  total: $80 + $138.75 = $218.75
+ *   Corp total: $80 + $150.00 = $230.00
+ */
+export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
+
+/** Optional Registered Agent service upsell added to annual report checkout. */
+export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
+
 // ─── Add-on services ──────────────────────────────────────────────────────
 
 export type AddOnSlug =

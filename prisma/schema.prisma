@@ -75,6 +75,11 @@ model Filing {
 
   // Step 11 add-ons captured via FilingAdditionalService
 
+  // WIZARD = formation flow; LINKED = existing FL entity added by document number
+  filingSource             String   @default("WIZARD") // WIZARD | LINKED
+  // Raw JSON from Sunbiz Daily detail API (compliance / annual report prep)
+  linkedEntitySnapshot     String?
+
   // Status
   status                   String   @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | ABANDONED
   currentStep              Int      @default(1)

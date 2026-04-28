@@ -3,12 +3,14 @@ import { notFound } from 'next/navigation';
 import {
   ArrowLeft,
   Building2,
+  Calendar,
   CheckCircle2,
   Clock,
   CreditCard,
   Download,
   FileText,
   Hash,
+  Link2,
   Mail,
   ShieldCheck,
   Upload,
@@ -54,6 +56,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
       documents: { orderBy: { generatedAt: 'desc' } },
       raServices: { orderBy: { createdAt: 'desc' }, take: 1 },
       filingAdditionalServices: { include: { service: true } },
+      annualReports: { orderBy: { reportYear: 'desc' } },
     },
   });
   if (!filing) notFound();
@@ -81,6 +84,10 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     useOurService?: boolean;
     signature?: string;
   } | null>(filing.registeredAgent, null);
+
+  const totalRevenue = filing.payments
+    .filter((p) => p.status === 'SUCCEEDED')
+    .reduce((s, p) => s + p.amountCents, 0);
 
   const pendingDocs = filing.documents.filter((d) => d.pendingState);
   const issuedTypes = new Set(
@@ -132,14 +139,23 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                   <span className="font-mono">{filing.sunbizFilingNumber}</span>
                 </Badge>
               )}
-              <Badge variant="outline">{filing.serviceTier}</Badge>
+              {filing.filingSource === 'LINKED' ? (
+                <Badge variant="secondary" className="gap-1">
+                  <Link2 className="h-3 w-3" /> Linked entity
+                </Badge>
+              ) : (
+                <Badge variant="outline">{filing.serviceTier}</Badge>
+              )}
             </div>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 text-right">
           <p className="text-xs text-ink-subtle uppercase tracking-wider">{t('totalPaidLabel')}</p>
-          <p className="font-display text-2xl font-medium">
-            {formatCurrency(filing.totalCents, { showZero: true })}
+          <p className={`font-display text-2xl font-medium ${totalRevenue > 0 ? 'text-success' : 'text-ink-subtle'}`}>
+            {formatCurrency(totalRevenue, { showZero: true })}
+          </p>
+          <p className="text-xs text-ink-subtle">
+            {filing.payments.filter((p) => p.status === 'SUCCEEDED').length} payment(s)
           </p>
           <p className="text-xs text-ink-subtle">
             {t('submittedShort', {
@@ -381,6 +397,46 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
+          {/* Annual Reports */}
+          {filing.annualReports.length > 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-ink-subtle flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-ink-muted" />
+                  Annual Reports
+                </h3>
+                <ul className="space-y-3 text-sm">
+                  {filing.annualReports.map((ar) => (
+                    <li key={ar.id} className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{ar.reportYear}</p>
+                        <p className="text-xs text-ink-subtle">
+                          Due {formatDate(ar.dueDate)}
+                          {ar.filedDate ? ` · Filed ${formatDate(ar.filedDate)}` : ''}
+                        </p>
+                        {ar.notes && (
+                          <p className="text-xs text-ink-subtle mt-0.5 italic">{ar.notes}</p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <Badge
+                          variant={ar.status === 'FILED' ? 'success' : ar.status === 'OVERDUE' ? 'danger' : 'outline'}
+                          size="sm"
+                        >
+                          {ar.status}
+                        </Badge>
+                        {ar.totalCostCents > 0 && (
+                          <p className="text-xs font-medium mt-1">{formatCurrency(ar.totalCostCents)}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Payments */}
           <Card>
             <CardContent className="p-6">
               <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-ink-subtle flex items-center gap-2">
@@ -390,20 +446,32 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               {filing.payments.length === 0 ? (
                 <p className="text-sm text-ink-muted">{t('noPayments')}</p>
               ) : (
-                <ul className="space-y-2 text-sm">
+                <ul className="divide-y divide-border text-sm">
                   {filing.payments.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between">
-                      <span>
-                        <span className="font-mono text-xs">
-                          {p.cardBrand} •••• {p.cardLast4}
-                        </span>{' '}
-                        · {p.status}
-                      </span>
-                      <span className="font-medium">
-                        {formatCurrency(p.amountCents, { showZero: true })}
-                      </span>
+                    <li key={p.id} className="py-2 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs">{p.cardBrand} •••• {p.cardLast4}</span>
+                        <span className={`font-semibold ${p.status === 'SUCCEEDED' ? 'text-success' : 'text-ink-muted'}`}>
+                          {formatCurrency(p.amountCents, { showZero: true })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-ink-subtle">
+                        <span>{p.status} · {formatDate(p.completedAt ?? p.createdAt)}</span>
+                      </div>
+                      {/* Breakdown */}
+                      {p.stateFilingFeeCents > 0 && (
+                        <div className="text-xs text-ink-subtle space-y-0.5 pt-1 border-t border-border">
+                          <div className="flex justify-between"><span>State fee</span><span>{formatCurrency(p.stateFilingFeeCents)}</span></div>
+                          {p.formationServiceFeeCents > 0 && <div className="flex justify-between"><span>Service fee</span><span>{formatCurrency(p.formationServiceFeeCents)}</span></div>}
+                          {p.registeredAgentY1Cents > 0 && <div className="flex justify-between"><span>Registered Agent</span><span>{formatCurrency(p.registeredAgentY1Cents)}</span></div>}
+                        </div>
+                      )}
                     </li>
                   ))}
+                  <li className="pt-2 flex justify-between font-semibold text-sm">
+                    <span>Total revenue</span>
+                    <span className="text-success">{formatCurrency(totalRevenue)}</span>
+                  </li>
                 </ul>
               )}
             </CardContent>

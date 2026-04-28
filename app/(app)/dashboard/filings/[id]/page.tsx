@@ -27,6 +27,7 @@ import {
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import { FL } from '@/lib/florida';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,7 +95,11 @@ export default async function FilingDetailPage({ params }: PageProps) {
     state: string;
     zip: string;
     useOurService?: boolean;
+    agentCountry?: string;
   } | null>(filing.registeredAgent, null);
+
+  const nonUsRegisteredAgent =
+    !!ra?.agentCountry && ra.agentCountry !== 'US' && ra.agentCountry !== '';
 
   return (
     <div className="container max-w-5xl py-10 space-y-8">
@@ -121,6 +126,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
             </h1>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge status={filing.status} />
+              {filing.filingSource === 'LINKED' && (
+                <Badge variant="secondary">{t('linkedEntityBadge')}</Badge>
+              )}
               {filing.sunbizFilingNumber && (
                 <Badge variant="outline">
                   <Hash className="h-3 w-3" />
@@ -137,6 +145,76 @@ export default async function FilingDetailPage({ params }: PageProps) {
           </Link>
         </Button>
       </div>
+
+      {/* Annual report action card */}
+      {(filing.status === 'APPROVED' || filing.filingSource === 'LINKED') && (() => {
+        const filedReport = filing.annualReports.find((r) => r.status === 'FILED');
+        const pendingReport = filing.annualReports.find(
+          (r) => r.status === 'PENDING' || r.status === 'OVERDUE',
+        );
+        return (
+          <div className="space-y-4">
+            {/* Filed confirmation receipt */}
+            {filedReport && (
+              <Card className="border-success/30 bg-success-subtle/20">
+                <CardContent className="p-6 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                    <h3 className="font-semibold text-ink">{t('arFiledTitle')}</h3>
+                  </div>
+                  <p className="text-sm text-ink-muted">
+                    {t('arFiledBody', { year: filedReport.reportYear })}
+                  </p>
+                  <div className="text-xs text-ink-subtle space-y-0.5 pt-1">
+                    <p>{t('arFiledDate')}: {filedReport.filedDate ? formatDate(filedReport.filedDate) : '—'}</p>
+                    <p>{t('arFiledAmount')}: {formatCurrency(filedReport.totalCostCents)}</p>
+                    {filedReport.notes && <p>{filedReport.notes}</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* File / pending CTA */}
+            {pendingReport && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-6 space-y-3">
+                  <h3 className="font-semibold text-ink">{t('linkedAnnualTitle')}</h3>
+                  <p className="text-sm text-ink-muted">{t('linkedAnnualBody')}</p>
+                  <Button asChild>
+                    <Link href={`/dashboard/filings/${filing.id}/annual-report`}>
+                      {t('fileAnnualReport')}
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Show file button even when no report row exists yet */}
+            {!pendingReport && !filedReport && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-6 space-y-3">
+                  <h3 className="font-semibold text-ink">{t('linkedAnnualTitle')}</h3>
+                  <p className="text-sm text-ink-muted">{t('linkedAnnualBody')}</p>
+                  <Button asChild>
+                    <Link href={`/dashboard/filings/${filing.id}/annual-report`}>
+                      {t('fileAnnualReport')}
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {nonUsRegisteredAgent && (
+              <Card className="border-warn/30 bg-warn-subtle/30">
+                <CardContent className="p-6 space-y-2">
+                  <h3 className="font-semibold text-ink">{t('nonUsRaTitle')}</h3>
+                  <p className="text-sm text-ink-muted">{t('nonUsRaBody')}</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Status timeline */}
       <Card>
@@ -340,26 +418,35 @@ export default async function FilingDetailPage({ params }: PageProps) {
               <CreditCard className="h-4 w-4 text-ink-muted" />
               {t('payment')}
             </h3>
-            {filing.payments.length === 0 ? (
-              <p className="text-sm text-ink-muted">{t('noPayments')}</p>
-            ) : (
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-ink-muted">{t('totalPaid')}</span>
-                  <span className="font-semibold">{formatCurrency(filing.totalCents)}</span>
+            {(() => {
+              const succeeded = filing.payments.filter((p) => p.status === 'SUCCEEDED');
+              const totalPaid = succeeded.reduce((s, p) => s + p.amountCents, 0);
+              const latest = succeeded[0];
+              if (succeeded.length === 0) {
+                return <p className="text-sm text-ink-muted">{t('noPayments')}</p>;
+              }
+              return (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">{t('totalPaid')}</span>
+                    <span className="font-semibold">{formatCurrency(totalPaid)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">{t('method')}</span>
+                    <span className="font-mono text-xs">
+                      {latest.cardBrand} •••• {latest.cardLast4}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink-muted">{t('date')}</span>
+                    <span>{formatDate(latest.completedAt ?? latest.createdAt)}</span>
+                  </div>
+                  {succeeded.length > 1 && (
+                    <p className="text-xs text-ink-subtle">{succeeded.length} payments total</p>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-ink-muted">{t('method')}</span>
-                  <span className="font-mono text-xs">
-                    {filing.payments[0].cardBrand} •••• {filing.payments[0].cardLast4}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-ink-muted">{t('date')}</span>
-                  <span>{formatDate(filing.payments[0].completedAt ?? filing.payments[0].createdAt)}</span>
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </CardContent>
         </Card>
       </div>

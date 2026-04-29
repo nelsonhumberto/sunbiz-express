@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   Search, Loader2, CheckCircle2, ChevronDown,
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { lookupEntityPublic, submitGuestAnnualReport } from '@/actions/annual-report';
 import type { FloridaEntityDetail } from '@/lib/sunbiz';
+import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,6 +83,7 @@ export function GuestAnnualReportForm() {
   const [entityType, setEntityType] = useState<'LLC' | 'CORP'>('LLC');
   const [guestEmail, setGuestEmail] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [cardholderName, setCardholderName] = useState('');
 
   // Editing drafts
   const [editRa, setEditRa] = useState(false);
@@ -96,14 +98,8 @@ export function GuestAnnualReportForm() {
   const [newOfficerName, setNewOfficerName] = useState('');
   const [newOfficerTitle, setNewOfficerTitle] = useState('MGR');
 
-  // Payment
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
-  const [expMonth, setExpMonth] = useState('');
-  const [expYear, setExpYear] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [billingZip, setBillingZip] = useState('');
-  const formatCard = (v: string) => v.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})/g, '$1 ').trim();
+  // Stripe
+  const cardRef = useRef<StripeCardHandle>(null);
 
   const stateFee = entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
@@ -132,10 +128,18 @@ export function GuestAnnualReportForm() {
     if (!signingOfficer) { toast.error('Please select an officer to sign.'); return; }
     if (!termsAccepted) { toast.error('Please accept the terms.'); return; }
     if (!guestEmail) { toast.error('Email is required to receive your confirmation.'); return; }
-    if (cardNumber.replace(/\s+/g, '').length < 13) { toast.error('Card number is too short.'); return; }
     if (!cardholderName.trim()) { toast.error('Cardholder name is required.'); return; }
 
     startSubmit(async () => {
+      // 1. Confirm payment with Stripe client-side
+      const stripeResult = await cardRef.current!.confirm({
+        amountCents: totalCents,
+        cardholderName,
+        metadata: { documentNumber: docNumber.trim(), guestEmail },
+      });
+      if ('error' in stripeResult) { toast.error(stripeResult.error); return; }
+
+      // 2. Record everything server-side
       const res = await submitGuestAnnualReport({
         documentNumber: docNumber.trim(),
         guestEmail,
@@ -150,12 +154,7 @@ export function GuestAnnualReportForm() {
         mailingAddress: mailing,
         officers,
         signingOfficerName: signingOfficer,
-        cardNumber,
-        cardholderName,
-        expMonth,
-        expYear,
-        cvc,
-        zip: billingZip,
+        paymentIntentId: stripeResult.paymentIntentId,
       });
 
       if (!res.ok) { toast.error(res.error); return; }
@@ -382,14 +381,11 @@ export function GuestAnnualReportForm() {
             <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>Total</span><span>{formatCurrency(totalCents)}</span></div>
           </div>
           <div className="grid gap-3">
-            <div className="space-y-1.5"><Label>Card number</Label><Input value={cardNumber} onChange={(e) => setCardNumber(formatCard(e.target.value))} placeholder="4242 4242 4242 4242" autoComplete="cc-number" /></div>
-            <div className="space-y-1.5"><Label>Name on card</Label><Input value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} autoComplete="cc-name" /></div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1.5"><Label>MM</Label><Input value={expMonth} onChange={(e) => setExpMonth(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>YY</Label><Input value={expYear} onChange={(e) => setExpYear(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>CVC</Label><Input value={cvc} onChange={(e) => setCvc(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Name on card</Label><Input value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} autoComplete="cc-name" placeholder="Full name" /></div>
+            <div className="space-y-1.5">
+              <Label>Card details</Label>
+              <StripeCardInput ref={cardRef} />
             </div>
-            <div className="space-y-1.5"><Label>Billing ZIP</Label><Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} /></div>
           </div>
         </CardContent>
       </Card>

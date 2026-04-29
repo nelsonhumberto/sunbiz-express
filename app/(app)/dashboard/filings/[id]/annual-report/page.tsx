@@ -58,7 +58,7 @@ export default async function AnnualReportPage({ params }: PageProps) {
         where: { status: 'SUCCEEDED' },
         orderBy: { completedAt: 'desc' },
         take: 1,
-        select: { cardLast4: true, cardBrand: true, cardholderName: true },
+        select: { cardLast4: true, cardBrand: true, cardholderName: true, stripePaymentMethodId: true },
       },
     },
   });
@@ -147,6 +147,7 @@ export default async function AnnualReportPage({ params }: PageProps) {
           last4: lastPayment.cardLast4,
           brand: lastPayment.cardBrand ?? 'Card',
           cardholderName: lastPayment.cardholderName ?? '',
+          paymentMethodId: lastPayment.stripePaymentMethodId ?? undefined,
         }
       : null;
 

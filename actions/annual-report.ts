@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { detectBrand, maskCardLast4 } from '@/lib/stripe-mock';
+import { stripe } from '@/lib/stripe';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import { FL } from '@/lib/florida';
 import {
@@ -42,14 +42,8 @@ const SubmitSchema = z.object({
   officers: z.array(OfficerSchema).min(1),
   signingOfficerName: z.string().min(1),
 
-  // Payment — empty strings allowed when using saved card
-  cardNumber: z.string().min(1),
-  cardholderName: z.string().min(2).trim(),
-  expMonth: z.string(),
-  expYear: z.string(),
-  cvc: z.string(),
-  zip: z.string(),
-  useSavedCard: z.boolean().optional(),
+  // Real Stripe PaymentIntent confirmed on the client
+  paymentIntentId: z.string().min(1),
 });
 
 // Guest schema — no auth required
@@ -107,13 +101,26 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
     return { ok: false as const, error: 'This annual report has already been filed.' };
   }
 
-  const digits = data.cardNumber.replace(/\s+/g, '');
-  if (digits.length < 13) {
-    return { ok: false as const, error: 'Card number is too short.' };
+  // Verify the Stripe PaymentIntent
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(data.paymentIntentId, {
+      expand: ['payment_method'],
+    });
+  } catch {
+    return { ok: false as const, error: 'Could not verify payment. Please try again.' };
   }
-  if (digits === '4000000000000002') {
-    return { ok: false as const, error: 'Your card was declined. Try a different card.' };
+  if (pi.status !== 'succeeded') {
+    return { ok: false as const, error: `Payment not completed (${pi.status}). Please try again.` };
   }
+
+  const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
+  const cardLast4 = pm?.card?.last4 ?? null;
+  const cardBrand = pm?.card?.brand
+    ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
+    : null;
+  const pmCardholderName = pm?.billing_details?.name ?? null;
+  const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
   const stateFee =
     filing.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
@@ -185,8 +192,9 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
         data: {
           filingId: data.filingId,
           userId,
-          stripePaymentIntentId: `pi_ar_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-          amountCents: totalCents,
+          stripePaymentIntentId: pi.id,
+          stripePaymentMethodId: pmId,
+          amountCents: pi.amount,
           status: 'SUCCEEDED',
           stateFilingFeeCents: stateFee,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
@@ -196,9 +204,9 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
           domainCents: 0,
           certificatesCopiesCents: 0,
           otherServicesCents: 0,
-          cardLast4: maskCardLast4(data.cardNumber),
-          cardBrand: detectBrand(data.cardNumber),
-          cardholderName: data.cardholderName,
+          cardLast4,
+          cardBrand,
+          cardholderName: pmCardholderName,
           completedAt: new Date(),
         },
       });
@@ -229,15 +237,37 @@ export async function lookupEntityPublic(
 export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitSchema>) {
   const data = GuestSubmitSchema.parse(input);
 
-  const digits = data.cardNumber.replace(/\s+/g, '');
-  if (digits.length < 13) return { ok: false as const, error: 'Card number is too short.' };
-  if (digits === '4000000000000002') return { ok: false as const, error: 'Card declined.' };
+  // Verify the Stripe PaymentIntent before touching the DB
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(data.paymentIntentId, {
+      expand: ['payment_method'],
+    });
+  } catch {
+    return { ok: false as const, error: 'Could not verify payment. Please try again.' };
+  }
+  if (pi.status !== 'succeeded') {
+    return { ok: false as const, error: `Payment not completed (${pi.status}). Please try again.` };
+  }
+
+  const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
+  const cardLast4 = pm?.card?.last4 ?? null;
+  const cardBrand = pm?.card?.brand
+    ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
+    : null;
+  const pmCardholderName = pm?.billing_details?.name ?? null;
+  const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
   const stateFee =
     data.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
   const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
   const email = data.guestEmail.toLowerCase().trim();
+
+  // Verify Stripe amount matches our expected total (±1 cent for rounding)
+  if (Math.abs(pi.amount - totalCents) > 1) {
+    return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
+  }
 
   try {
     // Find or create a guest user account by email
@@ -308,8 +338,9 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
         data: {
           filingId: filing.id,
           userId: user!.id,
-          stripePaymentIntentId: `pi_guest_ar_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-          amountCents: totalCents,
+          stripePaymentIntentId: pi.id,
+          stripePaymentMethodId: pmId,
+          amountCents: pi.amount,
           status: 'SUCCEEDED',
           stateFilingFeeCents: stateFee,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
@@ -319,9 +350,9 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           domainCents: 0,
           certificatesCopiesCents: 0,
           otherServicesCents: 0,
-          cardLast4: maskCardLast4(data.cardNumber),
-          cardBrand: detectBrand(data.cardNumber),
-          cardholderName: data.cardholderName,
+          cardLast4,
+          cardBrand,
+          cardholderName: pmCardholderName,
           completedAt: new Date(),
         },
       });

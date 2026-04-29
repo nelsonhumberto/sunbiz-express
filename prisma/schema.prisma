@@ -42,6 +42,7 @@ model User {
   payments        Payment[]
   notifications   EmailNotification[]
   analyticsEvents AnalyticsEvent[]
+  stripeCustomerId String? @unique
 }
 
 model Filing {
@@ -159,6 +160,7 @@ model Payment {
   user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   stripePaymentIntentId    String?  @unique
   stripeChargeId           String?
+  stripePaymentMethodId    String?
   amountCents              Int
   currency                 String   @default("usd")
   status                   String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED

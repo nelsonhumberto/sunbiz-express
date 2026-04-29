@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import {
   ChevronDown, User, CreditCard,
 } from 'lucide-react';
 import { submitAnnualReport } from '@/actions/annual-report';
+import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +30,7 @@ type Address = {
 
 type Officer = { id?: string; name: string; title: string };
 
-export type SavedCard = { last4: string; brand: string; cardholderName: string };
+export type SavedCard = { last4: string; brand: string; cardholderName: string; paymentMethodId?: string };
 
 export type AnnualReportFormProps = {
   filingId: string;
@@ -146,24 +147,13 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
   const [newOfficerName, setNewOfficerName] = useState('');
   const [newOfficerTitle, setNewOfficerTitle] = useState('MGR');
 
-  // ── Payment ──
+  // ── Payment (Stripe) ──
   const hasSaved = !!props.savedCard;
   const [useSavedCard, setUseSavedCard] = useState(hasSaved);
-  const [cardNumber, setCardNumber] = useState('');
   const [cardholderName, setCardholderName] = useState(
     hasSaved ? props.savedCard!.cardholderName : '',
   );
-  const [expMonth, setExpMonth] = useState('');
-  const [expYear, setExpYear] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [billingZip, setBillingZip] = useState('');
-
-  const formatCard = (v: string) =>
-    v.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})/g, '$1 ').trim();
-
-  // Effective card number for validation
-  const effectiveCard = useSavedCard ? `4242424242424242` : cardNumber;
-  const cardValid = effectiveCard.replace(/\s+/g, '').length >= 13;
+  const cardRef = useRef<StripeCardHandle>(null);
 
   // ── Dynamic total ──
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
@@ -174,19 +164,24 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
     signingOfficer.length > 0 &&
     termsAccepted &&
     officers.length > 0 &&
-    cardValid &&
     (useSavedCard || cardholderName.trim().length >= 2);
 
   const onSubmit = () => {
-    if (!canSubmit) {
-      if (!signingOfficer) { toast.error(t('selectOfficerRequired')); return; }
-      if (!termsAccepted) { toast.error(t('termsRequired')); return; }
-      if (!cardValid) { toast.error(t('cardShort')); return; }
-      if (!useSavedCard && !cardholderName.trim()) { toast.error(t('cardholderRequired')); return; }
-      return;
-    }
+    if (!signingOfficer) { toast.error(t('selectOfficerRequired')); return; }
+    if (!termsAccepted) { toast.error(t('termsRequired')); return; }
+    if (!useSavedCard && !cardholderName.trim()) { toast.error(t('cardholderRequired')); return; }
 
     startTransition(async () => {
+      // 1. Confirm payment with Stripe
+      const stripeResult = await cardRef.current!.confirm({
+        amountCents: totalCents,
+        cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
+        filingId: props.filingId,
+        savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
+      });
+      if ('error' in stripeResult) { toast.error(stripeResult.error); return; }
+
+      // 2. Record the filing + payment server-side
       const res = await submitAnnualReport({
         filingId: props.filingId,
         annualReportId: props.annualReportId,
@@ -198,14 +193,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
         mailingAddress: mailing,
         officers,
         signingOfficerName: signingOfficer,
-        // When using saved card, pass a mock-valid number so server validation passes
-        cardNumber: useSavedCard ? '4242424242424242' : cardNumber,
-        cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
-        expMonth: useSavedCard ? '12' : expMonth,
-        expYear: useSavedCard ? '99' : expYear,
-        cvc: useSavedCard ? '000' : cvc,
-        zip: useSavedCard ? '00000' : billingZip,
-        useSavedCard,
+        paymentIntentId: stripeResult.paymentIntentId,
       });
 
       if (!res.ok) { toast.error(res.error); return; }
@@ -449,29 +437,26 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
             </div>
           )}
 
-          {/* New card inputs */}
+          {/* Stripe card element — hidden for saved card, shown for new card */}
           {!useSavedCard && (
-            <div className="grid gap-3">
-              <div className="space-y-1.5">
-                <Label>Card number</Label>
-                <Input value={cardNumber} onChange={(e) => setCardNumber(formatCard(e.target.value))}
-                  placeholder="4242 4242 4242 4242" autoComplete="cc-number" />
-              </div>
+            <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label>Name on card</Label>
-                <Input value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} autoComplete="cc-name" />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1.5"><Label>MM</Label><Input value={expMonth} onChange={(e) => setExpMonth(e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>YY</Label><Input value={expYear} onChange={(e) => setExpYear(e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>CVC</Label><Input value={cvc} onChange={(e) => setCvc(e.target.value)} /></div>
+                <Input
+                  value={cardholderName}
+                  onChange={(e) => setCardholderName(e.target.value)}
+                  autoComplete="cc-name"
+                  placeholder="Full name"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label>Billing ZIP</Label>
-                <Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} autoComplete="postal-code" />
+                <Label>Card details</Label>
+                <StripeCardInput ref={cardRef} />
               </div>
             </div>
           )}
+          {/* Hidden Stripe ref for saved card confirm (no CardElement needed) */}
+          {useSavedCard && <StripeCardInput ref={cardRef} showCardElement={false} />}
         </CardContent>
       </Card>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -15,19 +15,13 @@ import {
 } from 'lucide-react';
 import { processCheckout } from '@/actions/payments';
 import { WizardActions } from '../WizardShell';
-import { Input } from '@/components/ui/input';
+import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { computeCost, type AddOnSlug, type TierSlug, TIER_BY_SLUG } from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency } from '@/lib/utils';
 import type { WizardFiling } from '../types';
-
-// Demo mode pre-fills test card data and shows a "(demo mode)" badge so
-// developers can run the mock checkout end-to-end. In any production-like
-// build (NEXT_PUBLIC_PAYMENTS_DEMO_MODE !== 'true') the form starts blank
-// and the trust copy stays neutral — we never want a real customer to see
-// "Stripe (mock)" or pre-typed card numbers.
-const PAYMENTS_DEMO_MODE = process.env.NEXT_PUBLIC_PAYMENTS_DEMO_MODE === 'true';
 
 export function Step12Payment({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
@@ -35,7 +29,7 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug
+    (fas) => fas.service.serviceSlug as AddOnSlug,
   );
   const breakdown = computeCost({
     entityType,
@@ -44,40 +38,29 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
   });
   const tier = TIER_BY_SLUG[filing.serviceTier as TierSlug];
 
-  const [cardNumber, setCardNumber] = useState(PAYMENTS_DEMO_MODE ? '4242 4242 4242 4242' : '');
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
-  const [expMonth, setExpMonth] = useState(PAYMENTS_DEMO_MODE ? '12' : '');
-  const [expYear, setExpYear] = useState(PAYMENTS_DEMO_MODE ? '29' : '');
-  const [cvc, setCvc] = useState(PAYMENTS_DEMO_MODE ? '123' : '');
-  const [zip, setZip] = useState(PAYMENTS_DEMO_MODE ? '33131' : '');
   const [pending, start] = useTransition();
   const router = useRouter();
-
-  const formatCardNumber = (v: string) =>
-    v
-      .replace(/\D/g, '')
-      .slice(0, 19)
-      .replace(/(\d{4})/g, '$1 ')
-      .trim();
+  const cardRef = useRef<StripeCardHandle>(null);
 
   const onPay = () => {
-    if (cardNumber.replace(/\s+/g, '').length < 13) {
-      toast.error(t('errorCardShort'));
-      return;
-    }
     if (!cardholderName.trim()) {
       toast.error(t('errorCardholder'));
       return;
     }
     start(async () => {
+      const result = await cardRef.current!.confirm({
+        amountCents: breakdown.totalCents,
+        cardholderName,
+        filingId: filing.id,
+      });
+      if ('error' in result) {
+        toast.error(result.error);
+        return;
+      }
       const res = await processCheckout({
         filingId: filing.id,
-        cardNumber,
-        cardholderName,
-        expMonth,
-        expYear,
-        cvc,
-        zip,
+        paymentIntentId: result.paymentIntentId,
       });
       if (res.error) {
         toast.error(res.error);
@@ -145,81 +128,23 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
             {t('paymentDetails')}
           </h3>
           <span className="inline-flex items-center gap-1 text-xs text-ink-subtle">
-            <Lock className="h-3 w-3" />{' '}
-            {PAYMENTS_DEMO_MODE ? t('stripeBadgeDemo') : t('stripeBadge')}
+            <Lock className="h-3 w-3" /> {t('stripeBadge')}
           </span>
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="card">{t('cardNumber')}</Label>
+          <Label>{t('cardholderName')}</Label>
           <Input
-            id="card"
-            value={cardNumber}
-            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-            placeholder="4242 4242 4242 4242"
-            inputMode="numeric"
-            className="h-12 font-mono"
-            autoComplete="cc-number"
+            value={cardholderName}
+            onChange={(e) => setCardholderName(e.target.value)}
+            placeholder={tier?.name ?? ''}
+            autoComplete="cc-name"
           />
-          {PAYMENTS_DEMO_MODE && (
-            <p className="text-xs text-ink-subtle">
-              {t('testCardsHint', {
-                success: '4242 4242 4242 4242',
-                decline: '4000 0000 0000 0002',
-              })}
-            </p>
-          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label>MM</Label>
-            <Input
-              value={expMonth}
-              onChange={(e) => setExpMonth(e.target.value)}
-              maxLength={2}
-              autoComplete="cc-exp-month"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>YY</Label>
-            <Input
-              value={expYear}
-              onChange={(e) => setExpYear(e.target.value)}
-              maxLength={2}
-              autoComplete="cc-exp-year"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>CVC</Label>
-            <Input
-              value={cvc}
-              onChange={(e) => setCvc(e.target.value)}
-              maxLength={4}
-              autoComplete="cc-csc"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>{t('cardholderName')}</Label>
-            <Input
-              value={cardholderName}
-              onChange={(e) => setCardholderName(e.target.value)}
-              placeholder={tier?.name ?? ''}
-              autoComplete="cc-name"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t('billingZip')}</Label>
-            <Input
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-              maxLength={10}
-              autoComplete="postal-code"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label>Card details</Label>
+          <StripeCardInput ref={cardRef} />
         </div>
       </div>
 

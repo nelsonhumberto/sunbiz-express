@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { stripe } from '@/lib/stripe';
 import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { sendEmail } from '@/lib/email-mock';
-import { detectBrand, maskCardLast4 } from '@/lib/stripe-mock';
 import { submitFilingToState } from './filings';
 
 export interface CheckoutResult {
@@ -17,12 +17,7 @@ export interface CheckoutResult {
 
 export async function processCheckout(input: {
   filingId: string;
-  cardNumber: string;
-  cardholderName: string;
-  expMonth: string;
-  expYear: string;
-  cvc: string;
-  zip: string;
+  paymentIntentId: string;
 }): Promise<CheckoutResult> {
   const session = await auth();
   if (!session?.user?.id) return { error: 'Please sign in.' };
@@ -36,16 +31,23 @@ export async function processCheckout(input: {
   if (!filing || filing.userId !== session.user.id) return { error: 'Filing not found.' };
   if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
 
-  // Validate the card
-  const digits = input.cardNumber.replace(/\s+/g, '');
-  if (digits.length < 13) return { error: 'Card number is too short.' };
-  if (digits === '4000000000000002') {
-    return { error: 'Your card was declined. Try a different card.' };
+  // Verify the PaymentIntent with Stripe
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(input.paymentIntentId, {
+      expand: ['payment_method'],
+    });
+  } catch {
+    return { error: 'Could not verify payment. Please try again.' };
   }
 
-  // Recompute cost
+  if (pi.status !== 'succeeded') {
+    return { error: `Payment not completed (status: ${pi.status}). Please try again.` };
+  }
+
+  // Recompute cost to ensure server-side integrity
   const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug
+    (fas) => fas.service.serviceSlug as AddOnSlug,
   );
   const breakdown = computeCost({
     entityType: filing.entityType as 'LLC' | 'CORP',
@@ -53,32 +55,38 @@ export async function processCheckout(input: {
     addOnSlugs,
   });
 
-  // Create Payment row. We still split the amount into legacy accounting
-  // fields, but they now reflect the package-pricing ledger:
-  //   stateFilingFeeCents      → total government remittance (filing fee +
-  //                              cert pass-through fees from add-ons)
-  //   formationServiceFeeCents → IncServices margin from the tier package
-  //   otherServicesCents       → customer-paid add-on subtotal
-  const payment = await prisma.payment.create({
+  // Verify amount matches (allow ±1 cent for rounding)
+  if (Math.abs(pi.amount - breakdown.totalCents) > 1) {
+    return { error: 'Payment amount mismatch. Please contact support.' };
+  }
+
+  // Extract card details from Stripe's PaymentMethod
+  const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
+  const cardLast4 = pm?.card?.last4 ?? null;
+  const cardBrand = pm?.card?.brand
+    ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
+    : null;
+  const cardholderName = pm?.billing_details?.name ?? null;
+  const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
+
+  await prisma.payment.create({
     data: {
       filingId: filing.id,
       userId: session.user.id,
-      stripePaymentIntentId: `pi_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      amountCents: breakdown.totalCents,
+      stripePaymentIntentId: pi.id,
+      stripePaymentMethodId: pmId,
+      amountCents: pi.amount,
       status: 'SUCCEEDED',
       stateFilingFeeCents: breakdown.governmentRemittanceCents,
       formationServiceFeeCents: breakdown.packageMarginCents,
       otherServicesCents: breakdown.addOnsCents,
-      cardLast4: maskCardLast4(input.cardNumber),
-      cardBrand: detectBrand(input.cardNumber),
-      cardholderName: input.cardholderName,
+      cardLast4,
+      cardBrand,
+      cardholderName,
       completedAt: new Date(),
     },
   });
 
-  // Update Filing with the same accounting snapshot. The customer never
-  // sees this split — it's used for receipts, cover letters, and revenue
-  // reporting.
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
@@ -90,7 +98,6 @@ export async function processCheckout(input: {
     },
   });
 
-  // Email confirmation
   await sendEmail({
     type: 'PAYMENT_CONFIRMATION',
     to: session.user.email!,
@@ -102,7 +109,6 @@ export async function processCheckout(input: {
     },
   });
 
-  // Submit to state (generates docs, marks SUBMITTED)
   await submitFilingToState(filing.id);
 
   revalidatePath('/dashboard');

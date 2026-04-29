@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+
+// Never statically analyse this route — it needs the Stripe key at runtime.
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/stripe/payment-intent
@@ -14,6 +17,7 @@ import { prisma } from '@/lib/db';
  */
 export async function POST(request: NextRequest) {
   try {
+    const stripe = getStripe();
     const body = await request.json();
     const { amountCents, filingId, metadata = {} } = body as {
       amountCents: number;

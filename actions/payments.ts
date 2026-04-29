@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { sendEmail } from '@/lib/email-mock';
 import { submitFilingToState } from './filings';
@@ -34,7 +34,7 @@ export async function processCheckout(input: {
   // Verify the PaymentIntent with Stripe
   let pi;
   try {
-    pi = await stripe.paymentIntents.retrieve(input.paymentIntentId, {
+    pi = await getStripe().paymentIntents.retrieve(input.paymentIntentId, {
       expand: ['payment_method'],
     });
   } catch {

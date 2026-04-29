@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import { FL } from '@/lib/florida';
 import {
@@ -104,7 +104,7 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   // Verify the Stripe PaymentIntent
   let pi;
   try {
-    pi = await stripe.paymentIntents.retrieve(data.paymentIntentId, {
+    pi = await getStripe().paymentIntents.retrieve(data.paymentIntentId, {
       expand: ['payment_method'],
     });
   } catch {
@@ -240,7 +240,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   // Verify the Stripe PaymentIntent before touching the DB
   let pi;
   try {
-    pi = await stripe.paymentIntents.retrieve(data.paymentIntentId, {
+    pi = await getStripe().paymentIntents.retrieve(data.paymentIntentId, {
       expand: ['payment_method'],
     });
   } catch {

@@ -9,6 +9,7 @@ import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { Testimonials } from '@/components/marketing/Testimonials';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { AnnualReportSection } from '@/components/marketing/AnnualReportSection';
 import { ComingSoonLanding } from '@/components/marketing/ComingSoonLanding';
 import {
   localizedStateName,
@@ -82,6 +83,7 @@ export default function HomePage({
       <HowItWorks />
       <PricingTable />
       <ComparisonTable />
+      <AnnualReportSection />
       <Testimonials />
       <FAQSection state={state} />
       <CTABanner state={state} />

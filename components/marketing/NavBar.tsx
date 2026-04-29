@@ -24,6 +24,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   const NAV_LINKS = [
     { href: '/pricing', label: t('pricing') },
     { href: '/services', label: t('services') },
+    { href: '/file-annual-report', label: t('annualReport') },
     { href: '/about', label: t('about') },
     { href: '/faq', label: t('faq') },
   ];

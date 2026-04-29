@@ -25,12 +25,6 @@ export default async function SignInPage() {
       </div>
 
       <SignInForm />
-
-      <div className="rounded-md border border-dashed border-border bg-muted/40 p-3 text-xs text-ink-muted">
-        <p className="font-medium text-ink mb-2">{t('demoCredentials')}</p>
-        <p className="font-mono">demo@inc.demo · Demo1234!</p>
-        <p className="font-mono">admin@inc.demo · Demo1234!</p>
-      </div>
     </div>
   );
 }

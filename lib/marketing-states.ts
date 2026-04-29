@@ -86,6 +86,17 @@ export const ALL_MARKETING_STATES: readonly MarketingState[] = ALL_STATES;
 
 export const FLORIDA: MarketingState = ALL_STATES.find((s) => s.code === 'FL')!;
 
+/**
+ * USPS state code → URL slug for every non-FL state in the registry.
+ * Used by middleware (Edge runtime) for zero-cost geo → redirect lookup.
+ */
+export const STATE_CODE_TO_SLUG: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    ALL_STATES
+      .filter((s) => s.code !== 'FL')
+      .map((s) => [s.code, s.slug]),
+  );
+
 const BY_CODE: Record<string, MarketingState> = Object.fromEntries(
   ALL_STATES.map((s) => [s.code, s]),
 );

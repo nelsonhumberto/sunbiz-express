@@ -40,7 +40,7 @@ export function Footer() {
       <div className="container py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-16">
           <div className="col-span-2 md:col-span-1 space-y-4">
-            <Logo mono />
+            <Logo variant="dark" />
             <p className="text-sm text-white/60 leading-relaxed max-w-xs">{tFooter('tagline')}</p>
             <div className="flex items-center gap-2 text-xs text-white/40">
               <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse-soft" />

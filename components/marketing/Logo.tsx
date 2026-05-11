@@ -7,8 +7,11 @@ interface LogoProps {
   size?: 'sm' | 'default' | 'lg';
   href?: string;
   asLink?: boolean;
-  /** Use the monochrome (navy) variant — for dark backgrounds */
-  mono?: boolean;
+  /**
+   * dark — renders wordmark in white for dark backgrounds (no image icon,
+   *         avoids the white-box artifact on dark surfaces)
+   */
+  variant?: 'light' | 'dark';
 }
 
 export function Logo({
@@ -16,7 +19,7 @@ export function Logo({
   size = 'default',
   href = '/',
   asLink = true,
-  mono = false,
+  variant = 'light',
 }: LogoProps) {
   const Wrapper: React.ElementType = asLink ? Link : 'div';
   const wrapperProps = asLink ? { href } : {};
@@ -29,27 +32,40 @@ export function Logo({
         ? 'text-2xl'
         : 'text-xl';
 
+  const isDark = variant === 'dark';
+
   return (
     <Wrapper
       {...wrapperProps}
       className={cn('inline-flex items-center gap-2 group shrink-0', className)}
     >
+      {/* mix-blend-mode: multiply makes the white PNG background invisible
+          on any light surface — no white box artifact */}
       <Image
-        src={mono ? '/images/logo-mono.png' : '/images/logo-icon.png'}
+        src="/images/logo-icon.png"
         alt="LaunchForma icon"
         width={iconSize}
         height={iconSize}
-        className="shrink-0 object-contain"
+        className={cn(
+          'shrink-0 object-contain',
+          isDark ? 'brightness-0 invert' : 'mix-blend-multiply'
+        )}
         priority
       />
       <span
-        className={cn(
-          'font-bold leading-none tracking-tight select-none',
-          textClass
-        )}
+        className={cn('font-bold leading-none tracking-tight select-none', textClass)}
       >
-        <span className="text-primary">Launch</span>
-        <span className="text-accent">Forma</span>
+        {isDark ? (
+          <>
+            <span className="text-white">Launch</span>
+            <span className="text-accent">Forma</span>
+          </>
+        ) : (
+          <>
+            <span className="text-primary">Launch</span>
+            <span className="text-accent">Forma</span>
+          </>
+        )}
       </span>
     </Wrapper>
   );

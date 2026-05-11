@@ -1,31 +1,25 @@
 import type { Metadata } from 'next';
-import { Inter, Fraunces } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
   display: 'swap',
-});
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
-  display: 'swap',
-  axes: ['SOFT', 'WONK', 'opsz'],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: 'LaunchForma — Form your Florida LLC in minutes',
+    default: 'LaunchForma — Incorporate. Empower. Elevate.',
     template: '%s · LaunchForma',
   },
   description:
-    'The transparent, modern way to form a Florida LLC or Corporation. Free Year-1 Registered Agent, no hidden fees, automatic compliance reminders. Filed in 1 business day.',
+    'LaunchForma simplifies Florida business formation. File your LLC or Corporation online — same-business-day submission, free Year-1 Registered Agent, transparent pricing, zero hidden fees.',
   keywords: [
     'Florida LLC',
     'Florida Corporation',
@@ -36,9 +30,9 @@ export const metadata: Metadata = {
     'incorporate Florida',
   ],
   openGraph: {
-    title: 'LaunchForma — Form your Florida business in minutes',
+    title: 'LaunchForma — Incorporate. Empower. Elevate.',
     description:
-      'The transparent, modern alternative to LegalZoom. Free Registered Agent for one year. Filed in 1 business day.',
+      'Simplifying Florida business formation. Same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. No hidden fees, ever.',
     type: 'website',
     locale: 'en_US',
   },
@@ -55,7 +49,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body
-        className={cn(inter.variable, fraunces.variable, 'font-sans')}
+        className={cn(poppins.variable, 'font-sans')}
         suppressHydrationWarning
       >
         <NextIntlClientProvider locale={locale} messages={messages}>

@@ -33,7 +33,7 @@ export function Logo({
       className={cn('inline-flex items-center gap-2 group shrink-0', className)}
     >
       <Image
-        src="/images/logo-icon.png"
+        src={isDark ? '/images/logo-icon-dark.png' : '/images/logo-icon.png'}
         alt="LaunchForma"
         width={iconSize}
         height={iconSize}

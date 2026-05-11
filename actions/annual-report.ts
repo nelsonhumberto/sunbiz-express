@@ -9,6 +9,7 @@ import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/
 import { FL } from '@/lib/florida';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
+  searchSunbiz,
   SunbizError,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
@@ -230,6 +231,40 @@ export async function lookupEntityPublic(
   } catch (err) {
     if (err instanceof SunbizError) return { ok: false, error: err.message };
     return { ok: false, error: 'Could not load that entity. Please try again.' };
+  }
+}
+
+export interface EntitySearchHit {
+  name: string;
+  documentNumber: string;
+  status: string;
+}
+
+/**
+ * Search Florida active entities by company name.
+ * Returns up to 10 ACTIVE results — used by the guest annual report form
+ * so visitors who don't know their document number can find their company.
+ */
+export async function searchEntitiesByName(
+  query: string,
+): Promise<{ ok: true; results: EntitySearchHit[] } | { ok: false; error: string }> {
+  if (!query.trim() || query.trim().length < 2) {
+    return { ok: false, error: 'Enter at least 2 characters.' };
+  }
+  try {
+    const { entities } = await searchSunbiz(query.trim(), { limit: 50 });
+    const active = entities
+      .filter((e) => e.status === 'Active' || e.status?.toUpperCase() === 'ACTIVE')
+      .slice(0, 10)
+      .map<EntitySearchHit>((e) => ({
+        name: e.name,
+        documentNumber: e.documentNumber,
+        status: e.status,
+      }));
+    return { ok: true, results: active };
+  } catch (err) {
+    if (err instanceof SunbizError) return { ok: false, error: err.message };
+    return { ok: false, error: 'Search failed. Please try again.' };
   }
 }
 

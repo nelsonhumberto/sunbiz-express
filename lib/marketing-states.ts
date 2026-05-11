@@ -1,6 +1,6 @@
 // Marketing-only state registry.
 //
-// IncServices currently files only in Florida. Other US states are surfaced
+// LaunchForma currently files only in Florida. Other US states are surfaced
 // as "coming soon" funnels: the marketing site shows a state-targeted hero
 // and a waitlist instead of dragging a Georgia or Texas visitor into the
 // Florida-specific filing wizard.

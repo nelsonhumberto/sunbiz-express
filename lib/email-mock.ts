@@ -40,11 +40,11 @@ const TEMPLATES: Record<
   (ctx: EmailContext) => { subject: string; body: string }
 > = {
   WELCOME: ({ firstName }) => ({
-    subject: 'Welcome to IncServices ☀️',
+    subject: 'Welcome to LaunchForma ☀️',
     body: html`
       <h1>Welcome, ${firstName ?? 'there'}!</h1>
       <p>You're moments away from forming your Florida business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
-      <a class="cta" href="https://incservices.example/dashboard">Go to Dashboard</a>
+      <a class="cta" href="https://launchforma.com/dashboard">Go to Dashboard</a>
       <p class="muted">Need a hand? Reply to this email and a real person will help.</p>
     `,
   }),
@@ -60,7 +60,7 @@ const TEMPLATES: Record<
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
       <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the Florida Department of State the same business day.</p>
-      <a class="cta" href="https://incservices.example/dashboard">Resume Filing</a>
+      <a class="cta" href="https://launchforma.com/dashboard">Resume Filing</a>
       <p class="muted">Most owners finish in 5 minutes from where you left off.</p>
     `,
   }),
@@ -69,7 +69,7 @@ const TEMPLATES: Record<
     body: html`
       <h1>Your name isn't locked in yet</h1>
       <p>${firstName ?? 'Hi'} — Florida only reserves a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
-      <a class="cta" href="https://incservices.example/dashboard">Finish my filing</a>
+      <a class="cta" href="https://launchforma.com/dashboard">Finish my filing</a>
       <p class="muted">We'll prepare and submit your Articles to the Florida Department of State the same business day you complete checkout.</p>
     `,
   }),
@@ -78,7 +78,7 @@ const TEMPLATES: Record<
     body: html`
       <h1>Stuck on a step?</h1>
       <p>${firstName ?? 'Hi'} — your draft is still saved. If something is unclear, reply to this email and a Florida specialist will walk you through the rest. No charge.</p>
-      <a class="cta" href="https://incservices.example/dashboard">Resume Filing</a>
+      <a class="cta" href="https://launchforma.com/dashboard">Resume Filing</a>
     `,
   }),
   RA_RENEWAL_60: ({ businessName }) => ({
@@ -86,7 +86,7 @@ const TEMPLATES: Record<
     body: html`
       <h1>Heads up — RA renewal in 60 days</h1>
       <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year — well below LegalZoom's $249/year — and keeps your home address off the public Florida record.</p>
-      <a class="cta" href="https://incservices.example/dashboard">Manage Registered Agent</a>
+      <a class="cta" href="https://launchforma.com/dashboard">Manage Registered Agent</a>
     `,
   }),
   RA_RENEWAL_30: ({ businessName }) => ({
@@ -195,11 +195,11 @@ function wrap(inner: string) {
   </style></head><body>
     <div style="text-align:center; padding-bottom:16px;">
       <span style="display:inline-block; width:32px; height:32px; background:#0B7A6B; border-radius:8px; color:#fff; font-weight:bold; line-height:32px;">IS</span>
-      <span style="margin-left:8px; font-weight:600;">IncServices</span>
+      <span style="margin-left:8px; font-weight:600;">LaunchForma</span>
     </div>
     ${inner}
     <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>
-    <p class="muted" style="text-align:center;">IncServices · 1234 Sunshine Blvd, Miami FL 33101 · <a href="#" style="color:#475A56;">Unsubscribe</a></p>
+    <p class="muted" style="text-align:center;">LaunchForma · 1234 Sunshine Blvd, Miami FL 33101 · <a href="#" style="color:#475A56;">Unsubscribe</a></p>
   </body></html>`;
 }
 

@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/utils';
 import { CheckCircle2, X } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'File Your Florida Annual Report | IncServices',
+  title: 'File Your Florida Annual Report | LaunchForma',
   description:
     'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee — cheaper than LegalZoom or FilingServices.com.',
 };
@@ -31,7 +31,7 @@ const competitors = [
     highlight: false,
   },
   {
-    name: 'IncServices',
+    name: 'LaunchForma',
     serviceFee: OUR_SERVICE_FEE,
     llcTotal: LLC_TOTAL,
     corpTotal: CORP_TOTAL,

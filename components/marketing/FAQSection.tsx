@@ -37,7 +37,7 @@ export function FAQSection({ state = FLORIDA }: FAQSectionProps) {
           </h2>
         </div>
 
-        <Accordion type="single" collapsible className="rounded-2xl border border-border bg-white px-6 shadow-soft">
+        <Accordion type="single" collapsible defaultValue="item-0" className="rounded-2xl border border-border bg-white px-6 shadow-soft">
           {faqItems.map((item, i) => (
             <AccordionItem key={i} value={`item-${i}`}>
               <AccordionTrigger>{item.q}</AccordionTrigger>
@@ -48,7 +48,7 @@ export function FAQSection({ state = FLORIDA }: FAQSectionProps) {
 
         <p className="mt-8 text-center text-sm text-ink-muted">
           {t('stillHaveQuestions')}{' '}
-          <a href="mailto:hello@incservices.example" className="text-primary font-medium hover:underline">
+          <a href="mailto:hello@launchforma.com" className="text-primary font-medium hover:underline">
             {t('emailUs')}
           </a>{' '}
           {t('respondWithin')}

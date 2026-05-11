@@ -25,8 +25,8 @@ interface RAStored extends AddressValue {
 }
 
 const INTERNAL_AGENT = {
-  name: 'IncServices RA Services LLC',
-  email: 'agent@incservices.example',
+  name: 'LaunchForma RA Services LLC',
+  email: 'agent@launchforma.com',
   phone: '+1 (305) 555-0100',
   street1: '1234 Sunshine Boulevard',
   street2: 'Suite 200',

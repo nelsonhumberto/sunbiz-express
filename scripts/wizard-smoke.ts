@@ -81,7 +81,7 @@ check('preferredOperatingAgreementSlug(3)', preferredOperatingAgreementSlug(3), 
 
 console.log('\n--- Add-on pricing (flat, all-in) ---');
 // Add-ons are billed at the same customer-facing price across LLC and Corp.
-// Internal state-fee differences are absorbed into IncServices margin.
+// Internal state-fee differences are absorbed into LaunchForma margin.
 check('LLC cert_status', addOnPriceCents('cert_status', 'LLC'), 3_900);
 check('CORP cert_status', addOnPriceCents('cert_status', 'CORP'), 3_900);
 check('LLC cert_copy', addOnPriceCents('cert_copy', 'LLC'), 5_900);
@@ -152,7 +152,7 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
   );
 }
 {
-  // Government remittance never includes IncServices margin — even on add-ons
+  // Government remittance never includes LaunchForma margin — even on add-ons
   // that pass through a state fee, the customer-facing price is higher.
   const llcCertCopy = computeCost({
     entityType: 'LLC',
@@ -252,13 +252,13 @@ const baseFiling = {
   },
   mailingAddress: 'SAME_AS_PRINCIPAL' as const,
   registeredAgent: {
-    name: 'IncServices RA Services LLC',
+    name: 'LaunchForma RA Services LLC',
     street1: '1234 Sunshine Blvd',
     street2: 'Suite 200',
     city: 'Miami',
     state: 'FL',
     zip: '33101',
-    signature: 'IncServices RA Services LLC',
+    signature: 'LaunchForma RA Services LLC',
     useOurService: true,
   },
   managersMembers: [
@@ -369,7 +369,7 @@ const baseFiling = {
   const html = generateArticlesOfOrganization(baseFiling);
   check(
     'Internal RA signature renders entity name + officer',
-    /IncServices RA Services LLC, by [A-Z]/.test(html),
+    /LaunchForma RA Services LLC, by [A-Z]/.test(html),
     true,
   );
 }

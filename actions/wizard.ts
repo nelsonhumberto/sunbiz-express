@@ -110,7 +110,7 @@ async function recomputeCost(filingId: string) {
       // Customer-facing pricing is presented as a single all-in package; the
       // DB columns now act as the internal accounting ledger:
       //   stateFeeCents     = total amount we forward to Florida
-      //   serviceFeeCents   = IncServices margin baked into the package
+      //   serviceFeeCents   = LaunchForma margin baked into the package
       //   addOnsTotalCents  = customer-paid add-on subtotal
       stateFeeCents: breakdown.governmentRemittanceCents,
       serviceFeeCents: breakdown.packageMarginCents,

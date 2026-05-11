@@ -48,7 +48,7 @@ interface FilingForDoc {
 }
 
 // Internal officer who signs as our Registered Agent on filings where the
-// customer chose IncServices RA Services LLC. The customer never sees this
+// customer chose LaunchForma RA Services LLC. The customer never sees this
 // name in the wizard; it appears only on the executed Articles.
 const INTERNAL_RA_OFFICER_NAME = 'Maria Acosta';
 const INTERNAL_RA_OFFICER_TITLE = 'Authorized Signer';
@@ -110,7 +110,7 @@ function filingStatusHeader(filing: FilingForDoc): string {
 
 /**
  * Renders the registered agent acceptance signature block. When the customer
- * picked IncServices as their Registered Agent, the agent (us) signs by an
+ * picked LaunchForma as their Registered Agent, the agent (us) signs by an
  * internal authorized officer — the customer never types it. Otherwise we
  * print the externally-typed signature.
  */
@@ -407,7 +407,7 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
         .join('')}
     </div>
 
-    <p class="footer-note">DISCLAIMER: This Operating Agreement is provided as a convenience based on information you supplied. IncServices is not a law firm and does not provide legal advice. We recommend reviewing this document with an attorney before relying on it for material business decisions.</p>
+    <p class="footer-note">DISCLAIMER: This Operating Agreement is provided as a convenience based on information you supplied. LaunchForma is not a law firm and does not provide legal advice. We recommend reviewing this document with an attorney before relying on it for material business decisions.</p>
   `;
   return docShell('Operating Agreement', html);
 }
@@ -499,7 +499,7 @@ export function generateCoverLetter(args: {
       Tallahassee, FL 32303
     </p>
 
-    <p class="footer-note">INTERNAL — IncServices. This cover letter accompanies the Articles to the Florida Department of State and is not part of the customer's deliverable set.</p>
+    <p class="footer-note">INTERNAL — LaunchForma. This cover letter accompanies the Articles to the Florida Department of State and is not part of the customer's deliverable set.</p>
   `;
   return docShell('Cover Letter', html);
 }
@@ -537,11 +537,11 @@ export function generateReceipt(args: {
 
     <p style="margin-top:16px; font-size:12px; color:#525B5A;">
       Filing package pricing includes the required Florida Department of State filing
-      fee and IncServices preparation and submission. IncServices remits the state
+      fee and LaunchForma preparation and submission. LaunchForma remits the state
       filing fee to Florida on your behalf.
     </p>
 
-    <p class="footer-note">IncServices · 1234 Sunshine Blvd, Miami FL 33101 · support@incservices.example</p>
+    <p class="footer-note">LaunchForma · 1234 Sunshine Blvd, Miami FL 33101 · support@launchforma.com</p>
   `;
   return docShell('Receipt', html);
 }

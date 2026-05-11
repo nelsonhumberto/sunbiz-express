@@ -185,7 +185,7 @@ async function searchSunbizDaily(
         headers: {
           'X-API-Key': apiKey,
           Accept: 'application/json',
-          'User-Agent': 'IncServices/1.0 (+name-availability)',
+          'User-Agent': 'LaunchForma/1.0 (+name-availability)',
         },
         signal,
         cache: 'no-store',
@@ -750,7 +750,7 @@ async function fetchFloridaEntityFromSunbizDaily(
         headers: {
           'X-API-Key': apiKey,
           Accept: 'application/json',
-          'User-Agent': 'IncServices/1.0 (+entity-detail)',
+          'User-Agent': 'LaunchForma/1.0 (+entity-detail)',
         },
         signal: s,
         cache: 'no-store',

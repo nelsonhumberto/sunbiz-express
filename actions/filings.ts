@@ -171,7 +171,7 @@ export async function submitFilingToState(filingId: string) {
   // The cover letter goes to the Florida Department of State alongside the
   // money order / check. It MUST reflect the actual amount we are remitting
   // to Florida — never the customer's all-in package price (which includes
-  // IncServices' margin and add-ons that are not paid to FL).
+  // LaunchForma's margin and add-ons that are not paid to FL).
   const coverLetter = generateCoverLetter({
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
     contactName: filing.incorporatorSignature ?? session.user.email ?? 'Authorized Person',

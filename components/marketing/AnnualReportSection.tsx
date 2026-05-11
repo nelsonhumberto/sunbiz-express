@@ -15,7 +15,7 @@ const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $80
 const competitors = [
   { name: 'LegalZoom',         fee: 9_900,  icon: 'x' },
   { name: 'FilingServices.com', fee: 14_900, icon: 'x' },
-  { name: 'IncServices',        fee: OUR_FEE, icon: 'check', us: true },
+  { name: 'LaunchForma',        fee: OUR_FEE, icon: 'check', us: true },
 ];
 
 export function AnnualReportSection() {
@@ -89,7 +89,7 @@ export function AnnualReportSection() {
                     <td colSpan={2} className="px-5 py-2.5 text-xs text-ink-subtle">
                       State fee: {formatCurrency(LLC_STATE_FEE)} (LLC) · {formatCurrency(CORP_STATE_FEE)} (Corp)
                       &nbsp;·&nbsp; Totals: {formatCurrency(OUR_FEE + LLC_STATE_FEE)} LLC /
-                      {' '}{formatCurrency(OUR_FEE + CORP_STATE_FEE)} Corp all-in with IncServices
+                      {' '}{formatCurrency(OUR_FEE + CORP_STATE_FEE)} Corp all-in with LaunchForma
                     </td>
                   </tr>
                 </tfoot>

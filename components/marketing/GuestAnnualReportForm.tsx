@@ -4,9 +4,9 @@ import { useState, useTransition, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   Search, Loader2, CheckCircle2, ChevronDown,
-  Plus, Trash2, Shield, CreditCard, User, Check, X, Pencil,
+  Plus, Trash2, Shield, CreditCard, User, Check, X, Pencil, Building2,
 } from 'lucide-react';
-import { lookupEntityPublic, submitGuestAnnualReport } from '@/actions/annual-report';
+import { lookupEntityPublic, submitGuestAnnualReport, searchEntitiesByName, type EntitySearchHit } from '@/actions/annual-report';
 import type { FloridaEntityDetail } from '@/lib/sunbiz';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Button } from '@/components/ui/button';
@@ -65,12 +65,60 @@ function addrFrom(a?: { address_1?: string; city?: string; state?: string; zip?:
 
 export function GuestAnnualReportForm() {
   const [lookupPending, startLookup] = useTransition();
+  const [searchPending, startSearch] = useTransition();
   const [submitPending, startSubmit] = useTransition();
 
+  // ── Lookup state ──
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<EntitySearchHit[] | null>(null);
+  const [searchError, setSearchError] = useState('');
   const [docNumber, setDocNumber] = useState('');
   const [detail, setDetail] = useState<FloridaEntityDetail | null>(null);
   const [lookupError, setLookupError] = useState('');
   const [done, setDone] = useState(false);
+
+  const isDocNumber = (q: string) => /^[A-Za-z]\d/.test(q.trim());
+
+  const onSearch = () => {
+    setSearchError('');
+    setSearchResults(null);
+    const q = query.trim();
+    if (!q) { setSearchError('Enter a company name or document number.'); return; }
+
+    if (isDocNumber(q)) {
+      // Treat as direct document number lookup
+      startLookup(async () => {
+        setLookupError('');
+        const res = await lookupEntityPublic(q);
+        if (!res.ok) { setLookupError(res.error); return; }
+        setDocNumber(q);
+        populateForm(res.detail);
+      });
+      return;
+    }
+
+    // Name search → show result list
+    startSearch(async () => {
+      const res = await searchEntitiesByName(q);
+      if (!res.ok) { setSearchError(res.error); return; }
+      if (res.results.length === 0) {
+        setSearchError('No active Florida companies found with that name. Try a different spelling or enter the document number directly.');
+        return;
+      }
+      setSearchResults(res.results);
+    });
+  };
+
+  const onSelectResult = (hit: EntitySearchHit) => {
+    setSearchResults(null);
+    startLookup(async () => {
+      setLookupError('');
+      const res = await lookupEntityPublic(hit.documentNumber);
+      if (!res.ok) { setLookupError(res.error); return; }
+      setDocNumber(hit.documentNumber);
+      populateForm(res.detail);
+    });
+  };
 
   // Form fields
   const [raName, setRaName] = useState('');
@@ -84,6 +132,17 @@ export function GuestAnnualReportForm() {
   const [guestEmail, setGuestEmail] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [cardholderName, setCardholderName] = useState('');
+
+  const populateForm = (d: FloridaEntityDetail) => {
+    setDetail(d);
+    const isCorpType = d.filing_type?.toUpperCase().includes('CORP') || d.filing_type?.toUpperCase().includes('INC');
+    setEntityType(isCorpType ? 'CORP' : 'LLC');
+    setRaName(d.registered_agent?.name ?? '');
+    setRaAddr(addrFrom(d.registered_agent?.address ?? undefined));
+    setPrincipal(addrFrom(d.principal_address ?? undefined));
+    setMailing(addrFrom(d.mailing_address ?? undefined));
+    setOfficers((d.officers ?? []).map((o) => ({ name: o.name ?? '', title: o.title ?? 'MGR' })));
+  };
 
   // Editing drafts
   const [editRa, setEditRa] = useState(false);
@@ -105,24 +164,6 @@ export function GuestAnnualReportForm() {
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raAddon;
   const reportYear = new Date().getFullYear();
-
-  const onLookup = () => {
-    setLookupError('');
-    if (!docNumber.trim()) { setLookupError('Please enter a document number.'); return; }
-    startLookup(async () => {
-      const res = await lookupEntityPublic(docNumber.trim());
-      if (!res.ok) { setLookupError(res.error); return; }
-      const d = res.detail;
-      setDetail(d);
-      const isCorpType = d.filing_type?.toUpperCase().includes('CORP') || d.filing_type?.toUpperCase().includes('INC');
-      setEntityType(isCorpType ? 'CORP' : 'LLC');
-      setRaName(d.registered_agent?.name ?? '');
-      setRaAddr(addrFrom(d.registered_agent?.address ?? undefined));
-      setPrincipal(addrFrom(d.principal_address ?? undefined));
-      setMailing(addrFrom(d.mailing_address ?? undefined));
-      setOfficers((d.officers ?? []).map((o) => ({ name: o.name ?? '', title: o.title ?? 'MGR' })));
-    });
-  };
 
   const onSubmit = () => {
     if (!signingOfficer) { toast.error('Please select an officer to sign.'); return; }
@@ -187,27 +228,62 @@ export function GuestAnnualReportForm() {
     return (
       <Card>
         <CardContent className="p-6 space-y-4">
-          <h3 className="font-semibold text-ink">Enter your Florida document number</h3>
+          <h3 className="font-semibold text-ink">Find your Florida company</h3>
           <p className="text-sm text-ink-muted">
-            Find it on your filed Articles or at{' '}
-            <a href="https://search.sunbiz.org" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-              search.sunbiz.org
-            </a>.
+            Type your company name or document number (e.g.&nbsp;L15000063512) and press Search.
           </p>
           <div className="flex gap-2">
             <Input
-              placeholder="e.g. L15000063512"
-              value={docNumber}
-              onChange={(e) => setDocNumber(e.target.value.trim())}
-              onKeyDown={(e) => e.key === 'Enter' && onLookup()}
-              className="font-mono"
+              placeholder="Company name or document number"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+              autoFocus
             />
-            <Button onClick={onLookup} disabled={lookupPending}>
-              {lookupPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              &nbsp;Look up
+            <Button onClick={onSearch} disabled={lookupPending || searchPending}>
+              {(lookupPending || searchPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              &nbsp;Search
             </Button>
           </div>
-          {lookupError && <p className="text-sm text-red-500">{lookupError}</p>}
+
+          {(searchError || lookupError) && (
+            <p className="text-sm text-red-500">{searchError || lookupError}</p>
+          )}
+
+          {/* Name search results */}
+          {searchResults && searchResults.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
+                Select your company to file the annual report
+              </p>
+              <div className="divide-y divide-border rounded-lg border overflow-hidden">
+                {searchResults.map((hit) => (
+                  <button
+                    key={hit.documentNumber}
+                    type="button"
+                    onClick={() => onSelectResult(hit)}
+                    disabled={lookupPending}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-ink truncate">{hit.name}</p>
+                      <p className="text-xs text-ink-muted font-mono">{hit.documentNumber}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+                        Active
+                      </span>
+                      <Building2 className="h-4 w-4 text-ink-muted" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-ink-subtle">
+                Don&apos;t see your company? Try a more specific name or enter the document number directly.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -396,7 +472,7 @@ export function GuestAnnualReportForm() {
           <label className="flex items-start gap-3 cursor-pointer">
             <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5 accent-primary h-4 w-4 shrink-0" />
             <p className="text-xs text-ink-muted leading-relaxed">
-              I certify that I am an authorized representative and that all information is true and accurate. I authorize IncServices to file this annual report with the Florida Division of Corporations on my behalf. Submitting false information constitutes a third degree felony.
+              I certify that I am an authorized representative and that all information is true and accurate. I authorize LaunchForma to file this annual report with the Florida Division of Corporations on my behalf. Submitting false information constitutes a third degree felony.
             </p>
           </label>
           <Button type="button" className="w-full" size="lg" disabled={submitPending} onClick={onSubmit}>

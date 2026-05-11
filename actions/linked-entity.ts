@@ -274,7 +274,7 @@ export async function confirmLinkedEntity(input: z.infer<typeof ConfirmSchema>) 
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return {
         ok: false as const,
-        error: 'This document number is already linked to an IncServices account.',
+        error: 'This document number is already linked to an LaunchForma account.',
       };
     }
     throw e;
@@ -360,7 +360,7 @@ export async function manualConfirmLinkedEntity(input: z.infer<typeof ManualConf
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return {
         ok: false as const,
-        error: 'This document number is already linked to an IncServices account.',
+        error: 'This document number is already linked to an LaunchForma account.',
       };
     }
     throw e;

@@ -21,8 +21,8 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'IncServices — Form your Florida LLC in minutes',
-    template: '%s · IncServices',
+    default: 'LaunchForma — Form your Florida LLC in minutes',
+    template: '%s · LaunchForma',
   },
   description:
     'The transparent, modern way to form a Florida LLC or Corporation. Free Year-1 Registered Agent, no hidden fees, automatic compliance reminders. Filed in 1 business day.',
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     'incorporate Florida',
   ],
   openGraph: {
-    title: 'IncServices — Form your Florida business in minutes',
+    title: 'LaunchForma — Form your Florida business in minutes',
     description:
       'The transparent, modern alternative to LegalZoom. Free Registered Agent for one year. Filed in 1 business day.',
     type: 'website',

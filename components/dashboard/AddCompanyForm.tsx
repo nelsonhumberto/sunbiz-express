@@ -20,6 +20,7 @@ import {
   manualConfirmLinkedEntity,
   previewLinkedEntity,
 } from '@/actions/linked-entity';
+import { searchEntitiesByName, type EntitySearchHit } from '@/actions/annual-report';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,10 +46,14 @@ export function AddCompanyForm() {
   const t = useTranslations('addCompany');
   const router = useRouter();
 
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<EntitySearchHit[] | null>(null);
+  const [searchError, setSearchError] = useState('');
   const [docInput, setDocInput] = useState('');
   const [legalNameInput, setLegalNameInput] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [lookupPending, startLookup] = useTransition();
+  const [searchPending, startSearch] = useTransition();
   const [confirmPending, startConfirm] = useTransition();
 
   // Manual entry fallback (when Sunbiz lookup fails)
@@ -56,24 +61,50 @@ export function AddCompanyForm() {
   const [manualName, setManualName] = useState('');
   const [manualEntityType, setManualEntityType] = useState<'LLC' | 'CORP'>('LLC');
 
-  const onLookup = () => {
-    const raw = docInput.trim();
-    if (raw.length < 5) {
-      toast.error(t('docTooShort'));
+  const isDocNumber = (q: string) => /^[A-Za-z]\d/.test(q.trim());
+
+  const onSearch = () => {
+    setSearchError('');
+    setSearchResults(null);
+    const q = query.trim();
+    if (!q || q.length < 2) { setSearchError(t('docTooShort')); return; }
+
+    if (isDocNumber(q)) {
+      // Treat as direct document number lookup
+      setDocInput(q);
+      setPreview(null);
+      setShowManual(false);
+      startLookup(async () => {
+        const res = await previewLinkedEntity({
+          documentNumber: q,
+          legalNameHint: legalNameInput.trim() || undefined,
+        });
+        if (!res.ok) { toast.error(res.error); setShowManual(true); return; }
+        setPreview(res.detail);
+      });
       return;
     }
+
+    // Name search → show result list
+    startSearch(async () => {
+      const res = await searchEntitiesByName(q);
+      if (!res.ok) { setSearchError(res.error); return; }
+      if (res.results.length === 0) {
+        setSearchError('No active Florida companies found. Try a different spelling or enter the document number directly.');
+        return;
+      }
+      setSearchResults(res.results);
+    });
+  };
+
+  const onSelectResult = (hit: EntitySearchHit) => {
+    setSearchResults(null);
+    setDocInput(hit.documentNumber);
     setPreview(null);
     setShowManual(false);
     startLookup(async () => {
-      const res = await previewLinkedEntity({
-        documentNumber: raw,
-        legalNameHint: legalNameInput.trim() || undefined,
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        setShowManual(true);
-        return;
-      }
+      const res = await previewLinkedEntity({ documentNumber: hit.documentNumber });
+      if (!res.ok) { toast.error(res.error); setShowManual(true); return; }
       setPreview(res.detail);
     });
   };
@@ -129,24 +160,25 @@ export function AddCompanyForm() {
             </div>
             <div>
               <h2 className="font-display text-lg font-medium">{t('lookupTitle')}</h2>
-              <p className="text-sm text-ink-muted mt-1">{t('lookupHint')}</p>
+              <p className="text-sm text-ink-muted mt-1">
+                Enter your company name or document number (e.g. L15000063512)
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="doc">{t('docLabel')}</Label>
+            <Label htmlFor="query">Company name or document number</Label>
             <div className="flex gap-2">
               <Input
-                id="doc"
-                value={docInput}
-                onChange={(e) => setDocInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && onLookup()}
-                placeholder={t('docPlaceholder')}
-                className="font-mono uppercase"
+                id="query"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+                placeholder="e.g. My Company LLC or L15000063512"
                 autoComplete="off"
               />
-              <Button type="button" onClick={onLookup} disabled={lookupPending}>
-                {lookupPending ? (
+              <Button type="button" onClick={onSearch} disabled={lookupPending || searchPending}>
+                {(lookupPending || searchPending) ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Search className="h-4 w-4" />
@@ -156,17 +188,39 @@ export function AddCompanyForm() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="legalName">{t('legalNameLabel')}</Label>
-            <Input
-              id="legalName"
-              value={legalNameInput}
-              onChange={(e) => setLegalNameInput(e.target.value)}
-              placeholder={t('legalNamePlaceholder')}
-              autoComplete="organization"
-            />
-            <p className="text-xs text-ink-subtle">{t('legalNameHelp')}</p>
-          </div>
+          {searchError && <p className="text-sm text-red-500">{searchError}</p>}
+
+          {/* Name search results */}
+          {searchResults && searchResults.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
+                Select your company
+              </p>
+              <div className="divide-y divide-border rounded-lg border overflow-hidden">
+                {searchResults.map((hit) => (
+                  <button
+                    key={hit.documentNumber}
+                    type="button"
+                    onClick={() => onSelectResult(hit)}
+                    disabled={lookupPending}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-ink truncate">{hit.name}</p>
+                      <p className="text-xs text-ink-muted font-mono">{hit.documentNumber}</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+                      Active
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-ink-subtle">
+                Don&apos;t see your company? Try a more specific name or enter the document number directly.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -109,7 +109,7 @@ function HeroPreview() {
           <span className="h-3 w-3 rounded-full bg-yellow-300" />
           <span className="h-3 w-3 rounded-full bg-green-300" />
           <div className="ml-3 px-3 py-1 rounded-md bg-white border border-border text-xs text-ink-muted">
-            incservices.example/wizard/your-llc/2
+            launchforma.com/wizard/your-llc/2
           </div>
         </div>
 

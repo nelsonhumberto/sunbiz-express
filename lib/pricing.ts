@@ -1,11 +1,11 @@
-// Pricing catalog for IncServices formation packages and add-ons.
+// Pricing catalog for LaunchForma formation packages and add-ons.
 //
 // Customer-facing pricing model: ONE all-in package price per tier (no
 // itemized "+ state fee" math at the surface). Internally we still split each
 // transaction into two ledgers:
 //
 //   - governmentRemittanceCents : amount we forward to Florida (or IRS).
-//   - incServicesRevenueCents   : the rest — margin retained by IncServices.
+//   - incServicesRevenueCents   : the rest — margin retained by LaunchForma.
 //
 // All values are in cents.
 
@@ -22,7 +22,7 @@ export interface TierDef {
   description: string;
   /**
    * All-in package price. The package already covers Florida's filing fee
-   * and IncServices' preparation/submission work. We charge the same price
+   * and LaunchForma' preparation/submission work. We charge the same price
    * regardless of entity type so the customer sees a single confident
    * number; the LLC vs Corp margin difference is absorbed internally.
    */
@@ -45,9 +45,6 @@ export const TIERS: TierDef[] = [
       { label: 'Same-business-day filing', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
-      { label: 'EIN Acquisition (IRS Form SS-4)', included: false },
-      { label: 'Operating Agreement (custom)', included: false },
-      { label: 'Compliance reminders', included: false },
       { label: 'Free .com domain', included: false },
     ],
   },
@@ -262,7 +259,7 @@ export function stateFilingFee(entityType: EntityType): number {
 
 /**
  * Customer-facing add-on price. Flat across LLC and Corp — internal state
- * fee differences are absorbed in the IncServices margin.
+ * fee differences are absorbed in the LaunchForma margin.
  */
 export function addOnPriceCents(slug: AddOnSlug, _entityType: EntityType): number {
   return ADD_ON_BY_SLUG[slug]?.priceCents ?? 0;
@@ -342,7 +339,7 @@ export interface CostBreakdown {
   totalCents: number;
   /** Internal — total amount remitted to Florida (filing fee + cert fees). */
   governmentRemittanceCents: number;
-  /** Internal — IncServices revenue retained from this filing. */
+  /** Internal — LaunchForma revenue retained from this filing. */
   incServicesRevenueCents: number;
   /** Internal — package margin only (totalCents minus state pass-through on the package). */
   packageMarginCents: number;

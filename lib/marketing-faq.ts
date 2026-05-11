@@ -53,11 +53,11 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Are you a law firm?',
-    a: "No. IncServices is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
+    a: "No. LaunchForma is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
   },
   {
     q: "What's your refund policy?",
-    a: "The IncServices portion of your package is refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida has accepted the filing, the state filing fee portion is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
+    a: "The LaunchForma portion of your package is refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida has accepted the filing, the state filing fee portion is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
   },
 ];
 
@@ -96,11 +96,11 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
-    a: 'No. IncServices es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
+    a: 'No. LaunchForma es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
   },
   {
     q: '¿Cuál es su política de reembolso?',
-    a: 'La parte de IncServices de tu plan es reembolsable por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el trámite, la porción de la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
+    a: 'La parte de LaunchForma de tu plan es reembolsable por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el trámite, la porción de la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
   },
 ];
 
@@ -108,7 +108,7 @@ function buildComingSoonFaqEn(state: MarketingState): MarketingFaqItem[] {
   const name = state.name;
   return [
     {
-      q: `Is IncServices available in ${name} yet?`,
+      q: `Is LaunchForma available in ${name} yet?`,
       a: `Not yet. We launched in Florida and we're rolling out new states based on demand. Joining the ${name} early-access list is the fastest way to see it sooner — every signup helps us prioritize.`,
     },
     {
@@ -134,7 +134,7 @@ function buildComingSoonFaqEs(state: MarketingState): MarketingFaqItem[] {
   const name = state.nameEs;
   return [
     {
-      q: `¿IncServices ya está disponible en ${name}?`,
+      q: `¿LaunchForma ya está disponible en ${name}?`,
       a: `Aún no. Lanzamos en Florida y vamos abriendo nuevos estados según la demanda. Unirte a la lista de acceso anticipado de ${name} es la forma más rápida de ayudarnos a priorizarlo.`,
     },
     {

@@ -467,7 +467,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
             <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)}
               className="mt-0.5 accent-primary h-4 w-4 shrink-0" />
             <p className="text-xs text-ink-muted leading-relaxed">
-              By checking this box, I certify that I am an authorized representative empowered to file this annual report and that all information is true and accurate. I understand that IncServices will file this with the Florida Department of State on my behalf and that submitting false information constitutes a third degree felony.
+              By checking this box, I certify that I am an authorized representative empowered to file this annual report and that all information is true and accurate. I understand that LaunchForma will file this with the Florida Department of State on my behalf and that submitting false information constitutes a third degree felony.
             </p>
           </label>
           <div className="flex gap-3">

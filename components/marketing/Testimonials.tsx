@@ -6,7 +6,7 @@ import { Star } from 'lucide-react';
 
 const TESTIMONIALS_EN = [
   {
-    quote: "I'd done LegalZoom twice and dreaded it both times. IncServices felt like ordering a sandwich — pick what you want, pay once, done.",
+    quote: "I'd done LegalZoom twice and dreaded it both times. LaunchForma felt like ordering a sandwich — pick what you want, pay once, done.",
     name: 'Mariana C.',
     role: 'Founder · Coral Gables Realty Group',
     avatar: 'MC',
@@ -18,7 +18,7 @@ const TESTIMONIALS_EN = [
     avatar: 'JT',
   },
   {
-    quote: 'I needed an Operating Agreement my bank would actually accept. IncServices delivered one in the format Wells Fargo wanted on the first try.',
+    quote: 'I needed an Operating Agreement my bank would actually accept. LaunchForma delivered one in the format Wells Fargo wanted on the first try.',
     name: 'Aisha N.',
     role: 'Co-Founder · Brickell Capital LLC',
     avatar: 'AN',
@@ -45,7 +45,7 @@ const TESTIMONIALS_EN = [
 
 const TESTIMONIALS_ES = [
   {
-    quote: 'Hice LegalZoom dos veces y temí ambas. IncServices se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
+    quote: 'Hice LegalZoom dos veces y temí ambas. LaunchForma se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
     name: 'Mariana C.',
     role: 'Fundadora · Coral Gables Realty Group',
     avatar: 'MC',
@@ -57,7 +57,7 @@ const TESTIMONIALS_ES = [
     avatar: 'JT',
   },
   {
-    quote: 'Necesitaba un Acuerdo Operativo que mi banco realmente aceptara. IncServices me dio uno en el formato que Wells Fargo quería al primer intento.',
+    quote: 'Necesitaba un Acuerdo Operativo que mi banco realmente aceptara. LaunchForma me dio uno en el formato que Wells Fargo quería al primer intento.',
     name: 'Aisha N.',
     role: 'Cofundadora · Brickell Capital LLC',
     avatar: 'AN',

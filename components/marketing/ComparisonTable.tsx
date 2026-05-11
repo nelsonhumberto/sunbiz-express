@@ -10,7 +10,7 @@ interface Row {
   values: (boolean | string)[];
 }
 
-const COMPETITORS = ['IncServices', 'LegalZoom', 'ZenBusiness', 'Bizee'];
+const COMPETITORS = ['LaunchForma', 'LegalZoom', 'ZenBusiness', 'Bizee'];
 
 const ROWS: Row[] = [
   { labelKey: 'feat_freeRA', values: [true, false, '$199/yr', true] },

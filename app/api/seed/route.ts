@@ -173,8 +173,8 @@ export async function POST(req: NextRequest) {
       registeredAgent: JSON.stringify({
         type: 'internal',
         useOurService: true,
-        name: 'IncServices RA Services LLC',
-        email: 'agent@incservices.example',
+        name: 'LaunchForma RA Services LLC',
+        email: 'agent@launchforma.com',
         street1: '1234 Sunshine Blvd',
         city: 'Miami',
         state: 'FL',

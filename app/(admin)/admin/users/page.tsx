@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { Users, ShieldCheck, Ban, CheckCircle2 } from 'lucide-react';
+import { Users, ShieldCheck, Ban, CheckCircle2, KeyRound, Trash2 } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRelative } from '@/lib/utils';
-import { setUserStatus, setUserRole } from '@/actions/admin-users';
+import { setUserStatus, setUserRole, adminSendPasswordReset, deleteUser } from '@/actions/admin-users';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,34 +131,47 @@ export default async function AdminUsersPage({
                     <td className="px-5 py-3 text-ink-muted text-xs whitespace-nowrap">
                       {user.lastLogin ? formatRelative(user.lastLogin) : '—'}
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        {/* Ban / Activate */}
-                        {user.accountStatus === 'ACTIVE' ? (
-                          <form action={setUserStatus.bind(null, user.id, 'SUSPENDED')}>
-                            <Button size="sm" variant="outline" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/5">
-                              <Ban className="h-3 w-3" /> Suspend
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {/* Ban / Activate */}
+                          {user.accountStatus === 'ACTIVE' ? (
+                            <form action={setUserStatus.bind(null, user.id, 'SUSPENDED')}>
+                              <Button size="sm" variant="outline" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/5 text-xs">
+                                <Ban className="h-3 w-3" /> Suspend
+                              </Button>
+                            </form>
+                          ) : (
+                            <form action={setUserStatus.bind(null, user.id, 'ACTIVE')}>
+                              <Button size="sm" variant="outline" className="gap-1 text-success border-success/30 hover:bg-success/5 text-xs">
+                                <CheckCircle2 className="h-3 w-3" /> Activate
+                              </Button>
+                            </form>
+                          )}
+                          {/* Role toggle */}
+                          {user.role === 'USER' ? (
+                            <form action={setUserRole.bind(null, user.id, 'ADMIN')}>
+                              <Button size="sm" variant="ghost" className="text-xs">→ Admin</Button>
+                            </form>
+                          ) : (
+                            <form action={setUserRole.bind(null, user.id, 'USER')}>
+                              <Button size="sm" variant="ghost" className="text-xs">→ User</Button>
+                            </form>
+                          )}
+                          {/* Send password reset */}
+                          <form action={adminSendPasswordReset.bind(null, user.id)}>
+                            <Button size="sm" variant="ghost" className="gap-1 text-xs text-ink-muted" title="Send password reset email">
+                              <KeyRound className="h-3 w-3" /> Reset pwd
                             </Button>
                           </form>
-                        ) : (
-                          <form action={setUserStatus.bind(null, user.id, 'ACTIVE')}>
-                            <Button size="sm" variant="outline" className="gap-1 text-success border-success/30 hover:bg-success/5">
-                              <CheckCircle2 className="h-3 w-3" /> Activate
+                          {/* Delete user */}
+                          <form action={deleteUser.bind(null, user.id)}
+                            onSubmit={(e) => { if (!confirm(`Delete ${user.email} and all their data? This cannot be undone.`)) e.preventDefault(); }}>
+                            <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" title="Delete user">
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </form>
-                        )}
-                        {/* Role toggle */}
-                        {user.role === 'USER' ? (
-                          <form action={setUserRole.bind(null, user.id, 'ADMIN')}>
-                            <Button size="sm" variant="ghost" className="text-xs">→ Admin</Button>
-                          </form>
-                        ) : (
-                          <form action={setUserRole.bind(null, user.id, 'USER')}>
-                            <Button size="sm" variant="ghost" className="text-xs">→ User</Button>
-                          </form>
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
                   </tr>
                 ))
               )}

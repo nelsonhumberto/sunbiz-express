@@ -38,11 +38,12 @@ model User {
   updatedAt       DateTime  @updatedAt
   lastLogin       DateTime?
 
-  filings         Filing[]
-  payments        Payment[]
-  notifications   EmailNotification[]
-  analyticsEvents AnalyticsEvent[]
-  stripeCustomerId String? @unique
+  filings            Filing[]
+  payments           Payment[]
+  notifications      EmailNotification[]
+  analyticsEvents    AnalyticsEvent[]
+  passwordResetTokens PasswordResetToken[]
+  stripeCustomerId   String? @unique
 }
 
 model Filing {
@@ -474,6 +475,19 @@ model MarketingLead {
 
   @@unique([email, state])
   @@index([state, createdAt])
+}
+
+// Password reset tokens — expire after 1 hour, single-use
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
 }
 
 // Discount / promo codes managed from /admin/coupons

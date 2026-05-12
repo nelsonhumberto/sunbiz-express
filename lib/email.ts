@@ -33,7 +33,8 @@ export type NotificationType =
   | 'ANNUAL_REPORT_60'
   | 'ANNUAL_REPORT_30'
   | 'ANNUAL_REPORT_FINAL'
-  | 'COMPLIANCE_ALERT';
+  | 'COMPLIANCE_ALERT'
+  | 'PASSWORD_RESET';
 
 interface EmailContext {
   firstName?: string;
@@ -46,6 +47,7 @@ interface EmailContext {
   rejectionReason?: string;
   dueDate?: Date;
   daysUntilDue?: number;
+  resetUrl?: string;
 }
 
 export interface SendEmailArgs {
@@ -203,6 +205,15 @@ const TEMPLATES: Record<
       <h1>Compliance alert</h1>
       <p>We noticed something that needs your attention — sign in to review.</p>
       <a class="cta" href="${siteUrl}/dashboard">Review now</a>
+    `,
+  }),
+  PASSWORD_RESET: ({ firstName, resetUrl }) => ({
+    subject: 'Reset your LaunchForma password',
+    body: html`
+      <h1>Password reset request</h1>
+      <p>Hi ${firstName ?? 'there'} — we received a request to reset the password for your LaunchForma account.</p>
+      <a class="cta" href="${resetUrl ?? '#'}">Reset my password</a>
+      <p class="muted">This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your password won't change.</p>
     `,
   }),
 };

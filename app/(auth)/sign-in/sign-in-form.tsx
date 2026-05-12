@@ -37,7 +37,7 @@ export function SignInForm() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="password">{t('password')}</Label>
-          <Link href="#" className="text-xs text-ink-muted hover:text-primary">
+          <Link href="/forgot-password" className="text-xs text-ink-muted hover:text-primary">
             {t('forgotPassword')}
           </Link>
         </div>

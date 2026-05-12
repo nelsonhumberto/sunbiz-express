@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { sendEmail } from '@/lib/email-mock';
+import { sendEmail } from '@/lib/email';
 import {
   generateArticlesOfOrganization,
   generateArticlesOfIncorporation,

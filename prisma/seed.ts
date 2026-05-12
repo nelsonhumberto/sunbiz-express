@@ -175,12 +175,13 @@ async function main() {
 
   // ─── Demo users ─────────────────────────────────────────────────
   const demoPassword = await bcrypt.hash('Demo1234!', 10);
+  const adminPassword = await bcrypt.hash('DiegoVickyEli', 10);
 
   await prisma.user.create({
     data: {
-      email: 'admin@inc.demo',
-      passwordHash: demoPassword,
-      firstName: 'Ada',
+      email: 'laura@launchforma.com',
+      passwordHash: adminPassword,
+      firstName: 'Laura',
       lastName: 'Admin',
       role: 'ADMIN',
       emailVerified: true,
@@ -356,7 +357,7 @@ async function main() {
   console.log('✅ Seed complete.');
   console.log('');
   console.log('   Demo accounts:');
-  console.log('   • admin@inc.demo / Demo1234!  (admin)');
+  console.log('   • laura@launchforma.com / DiegoVickyEli  (admin)');
   console.log('   • demo@inc.demo  / Demo1234!  (user with sample filing)');
 }
 

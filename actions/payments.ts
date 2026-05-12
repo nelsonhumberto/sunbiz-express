@@ -11,7 +11,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { filingIncludesEin } from '@/lib/ein';
-import { sendEmail } from '@/lib/email-mock';
+import { sendEmail } from '@/lib/email';
 import { safeParseJson } from '@/lib/utils';
 import { submitFilingToState } from './filings';
 

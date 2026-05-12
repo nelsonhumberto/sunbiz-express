@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/lib/auth';
-import { sendEmail } from '@/lib/email-mock';
+import { sendEmail } from '@/lib/email';
 import { AuthError } from 'next-auth';
 
 const SignUpSchema = z
@@ -120,7 +120,13 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
     if ((err as Error)?.message?.includes('NEXT_REDIRECT')) throw err;
     return { error: 'Something went wrong. Try again.' };
   }
-  redirect('/dashboard');
+
+  // Redirect admins straight to the admin panel
+  const user = await prisma.user.findUnique({
+    where: { email: parsed.data.email.toLowerCase() },
+    select: { role: true },
+  });
+  redirect(user?.role === 'ADMIN' ? '/admin' : '/dashboard');
 }
 
 export async function signOutAction() {

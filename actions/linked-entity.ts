@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { computeNextAnnualReport, FL } from '@/lib/florida';
-import { sendEmail } from '@/lib/email-mock';
+import { sendEmail } from '@/lib/email';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   normalizeFloridaDocumentNumber,

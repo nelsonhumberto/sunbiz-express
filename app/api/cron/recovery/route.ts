@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { sendEmail, type NotificationType } from '@/lib/email-mock';
+import { sendEmail, type NotificationType } from '@/lib/email';
 
 // Recovery + retention scheduler.
 //

@@ -242,8 +242,11 @@ function wrap(inner: string) {
     code { background: #EEF2F1; padding: 2px 8px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 13px; }
     blockquote { border-left: 3px solid #F4A261; padding: 8px 16px; margin: 16px 0; background: #FEF6EE; color: #6E3F18; }
   </style></head><body>
-    <div style="text-align:center; padding-bottom:16px;">
-      <img src="${siteUrl}/images/logo-full.png" alt="LaunchForma" style="height:36px; max-width:180px;" />
+    <div style="text-align:center; padding-bottom:20px;">
+      <a href="${siteUrl}" style="text-decoration:none; display:inline-flex; align-items:center; gap:10px;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#0B7A6B; border-radius:9px; color:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; font-size:15px; font-weight:800; letter-spacing:-0.5px;">LF</span>
+        <span style="font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; font-size:18px; font-weight:700; color:#0F1F1C; letter-spacing:-0.3px;">LaunchForma</span>
+      </a>
     </div>
     ${inner}
     <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>

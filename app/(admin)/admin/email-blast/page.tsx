@@ -236,8 +236,11 @@ function CustomEmail() {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #0F1F1C; background: #F8FAF9; }
         .muted { color: #8A9A95; font-size: 13px; }
       </style></head><body>
-        <div style="text-align:center; padding-bottom:16px;">
-          <img src="${siteUrl}/images/logo-full.png" alt="LaunchForma" style="height:36px; max-width:180px;" />
+        <div style="text-align:center; padding-bottom:20px;">
+          <span style="display:inline-flex; align-items:center; gap:10px; text-decoration:none;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#0B7A6B; border-radius:9px; color:#fff; font-size:15px; font-weight:800;">LF</span>
+            <span style="font-size:18px; font-weight:700; color:#0F1F1C;">LaunchForma</span>
+          </span>
         </div>
         <div style="white-space:pre-wrap; line-height:1.7; color:#475A56;">${body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
         <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>

@@ -12,12 +12,17 @@ import {
   CheckCircle2,
   FileText,
   CalendarClock,
+  Tag,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { processCheckout } from '@/actions/payments';
+import { validateCoupon, type CouponValidationResult } from '@/actions/coupons';
 import { WizardActions } from '../WizardShell';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { computeCost, type AddOnSlug, type TierSlug, TIER_BY_SLUG } from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
@@ -76,6 +81,35 @@ export function Step12Payment({
   const router = useRouter();
   const cardRef = useRef<StripeCardHandle>(null);
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [couponPending, startCoupon] = useTransition();
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [couponError, setCouponError] = useState('');
+
+  const discountCents = appliedCoupon?.discountCents ?? 0;
+  const finalTotal = Math.max(0, breakdown.totalCents - discountCents);
+
+  const applyCode = () => {
+    if (!couponInput.trim()) return;
+    setCouponError('');
+    startCoupon(async () => {
+      const result = await validateCoupon(couponInput, breakdown.totalCents);
+      if (result.ok) {
+        setAppliedCoupon(result);
+        setCouponInput('');
+      } else {
+        setCouponError(result.error ?? 'Invalid coupon.');
+      }
+    });
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError('');
+    setCouponInput('');
+  };
+
   const onPay = () => {
     if (einRequired && !einComplete) {
       toast.error(t('einRequiredBeforePayment'));
@@ -87,7 +121,7 @@ export function Step12Payment({
     }
     start(async () => {
       const result = await cardRef.current!.confirm({
-        amountCents: breakdown.totalCents,
+        amountCents: finalTotal,
         cardholderName,
         filingId: filing.id,
       });
@@ -98,6 +132,9 @@ export function Step12Payment({
       const res = await processCheckout({
         filingId: filing.id,
         paymentIntentId: result.paymentIntentId,
+        couponId: appliedCoupon?.couponId,
+        couponCode: appliedCoupon?.code,
+        discountCents,
       });
       if (res.error) {
         toast.error(res.error);
@@ -131,13 +168,71 @@ export function Step12Payment({
             );
           })}
         </div>
+        {/* Discount line */}
+        {discountCents > 0 && appliedCoupon && (
+          <div className="flex items-baseline justify-between text-sm gap-3 text-success">
+            <div className="flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5" />
+              <span>Coupon <strong>{appliedCoupon.code}</strong>
+                {appliedCoupon.type === 'PERCENT' ? ` (${appliedCoupon.value}% off)` : ''}
+              </span>
+            </div>
+            <span className="font-medium shrink-0">−{formatCurrency(discountCents)}</span>
+          </div>
+        )}
+
         <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
           <span className="font-semibold">{t('totalToday')}</span>
-          <span className="font-display text-2xl font-medium">
-            {formatCurrency(breakdown.totalCents, { showZero: true })}
-          </span>
+          <div className="text-right">
+            {discountCents > 0 && (
+              <p className="text-sm text-ink-subtle line-through">{formatCurrency(breakdown.totalCents, { showZero: true })}</p>
+            )}
+            <span className="font-display text-2xl font-medium">
+              {formatCurrency(finalTotal, { showZero: true })}
+            </span>
+          </div>
         </div>
         <p className="mt-2 text-xs text-ink-subtle leading-snug">{t('packageDisclosure')}</p>
+
+        {/* Coupon code input */}
+        <div className="border-t border-border pt-4 mt-2">
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between rounded-md bg-success/10 border border-success/20 px-3 py-2 text-sm text-success">
+              <span className="flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5" />
+                <strong>{appliedCoupon.code}</strong> applied
+                {appliedCoupon.description && <span className="text-xs opacity-70">— {appliedCoupon.description}</span>}
+              </span>
+              <button type="button" onClick={removeCoupon} className="hover:opacity-70">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-xs text-ink-muted flex items-center gap-1"><Tag className="h-3 w-3" /> Have a coupon code?</p>
+              <div className="flex gap-2">
+                <Input
+                  value={couponInput}
+                  onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyCode())}
+                  placeholder="LAUNCHXX"
+                  className="uppercase tracking-widest font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={applyCode}
+                  disabled={couponPending || !couponInput.trim()}
+                  className="shrink-0"
+                >
+                  {couponPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
+                </Button>
+              </div>
+              {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+            </div>
+          )}
+        </div>
       </div>
 
       {einRequired && (
@@ -212,7 +307,7 @@ export function Step12Payment({
         pending={pending}
         nextDisabled={einRequired && !einComplete}
         nextLabel={t('pay', {
-          amount: formatCurrency(breakdown.totalCents, { showZero: true }),
+          amount: formatCurrency(finalTotal, { showZero: true }),
         })}
       />
     </div>

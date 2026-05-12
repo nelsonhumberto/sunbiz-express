@@ -31,6 +31,9 @@ export interface CheckoutResult {
 export async function processCheckout(input: {
   filingId: string;
   paymentIntentId: string;
+  couponId?: string;
+  couponCode?: string;
+  discountCents?: number;
 }): Promise<CheckoutResult> {
   const session = await auth();
   if (!session?.user?.id) return { error: 'Please sign in.' };
@@ -106,8 +109,11 @@ export async function processCheckout(input: {
     processingOptionId,
   });
 
+  const discountCents = input.discountCents ?? 0;
+  const expectedTotal = Math.max(0, breakdown.totalCents - discountCents);
+
   // Verify amount matches (allow ±1 cent for rounding)
-  if (Math.abs(pi.amount - breakdown.totalCents) > 1) {
+  if (Math.abs(pi.amount - expectedTotal) > 1) {
     return { error: 'Payment amount mismatch. Please contact support.' };
   }
 
@@ -134,6 +140,8 @@ export async function processCheckout(input: {
       cardLast4,
       cardBrand,
       cardholderName,
+      couponCode: input.couponCode ?? null,
+      discountCents,
       completedAt: new Date(),
     },
   });
@@ -144,10 +152,21 @@ export async function processCheckout(input: {
       stateFeeCents: breakdown.governmentRemittanceCents,
       serviceFeeCents: breakdown.packageMarginCents,
       addOnsTotalCents: breakdown.addOnsCents,
-      totalCents: breakdown.totalCents,
+      discountCents,
+      totalCents: expectedTotal,
+      couponCode: input.couponCode ?? null,
+      couponId: input.couponId ?? null,
       completedSteps: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     },
   });
+
+  // Increment coupon usage counter
+  if (input.couponId) {
+    await prisma.coupon.update({
+      where: { id: input.couponId },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
 
   await sendEmail({
     type: 'PAYMENT_CONFIRMATION',
@@ -156,7 +175,7 @@ export async function processCheckout(input: {
     filingId: filing.id,
     context: {
       businessName: filing.businessName ?? '',
-      totalCents: breakdown.totalCents,
+      totalCents: expectedTotal,
     },
   });
 

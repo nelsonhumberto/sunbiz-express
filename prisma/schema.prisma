@@ -98,7 +98,13 @@ model Filing {
   stateFeeCents            Int      @default(0)
   serviceFeeCents          Int      @default(0)
   addOnsTotalCents         Int      @default(0)
+  discountCents            Int      @default(0)
   totalCents               Int      @default(0)
+
+  // Coupon applied at checkout
+  couponCode               String?
+  couponId                 String?
+  coupon                   Coupon?  @relation(fields: [couponId], references: [id])
 
   notes                    String?
   createdAt                DateTime @default(now())
@@ -187,6 +193,8 @@ model Payment {
   cardBrand                String?
   cardholderName           String?
   errorMessage             String?
+  couponCode               String?
+  discountCents            Int      @default(0)
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
@@ -466,5 +474,22 @@ model MarketingLead {
 
   @@unique([email, state])
   @@index([state, createdAt])
+}
+
+// Discount / promo codes managed from /admin/coupons
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique // uppercase, e.g. LAUNCH20
+  description String?
+  type        String    @default("PERCENT") // PERCENT | FIXED
+  value       Int       // percent (1–100) or cents
+  maxUses     Int?      // null = unlimited
+  usedCount   Int       @default(0)
+  active      Boolean   @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  filings     Filing[]
 }
 

@@ -18,6 +18,7 @@ const NAV: { href: string; label: string; iconName: string }[] = [
   { href: '/admin/drafts',        label: 'Drafts',           iconName: 'AlertTriangle' },
   { href: '/admin/users',         label: 'Users',            iconName: 'Users' },
   { href: '/admin/annual-reports',label: 'Annual Reports',   iconName: 'Calendar' },
+  { href: '/admin/coupons',       label: 'Coupons',          iconName: 'Tag' },
   { href: '/admin/email-blast',   label: 'Email blast',      iconName: 'Send' },
   { href: '/admin/outbox',        label: 'Email outbox',     iconName: 'Mail' },
   { href: '/admin/analytics',     label: 'Analytics',        iconName: 'BarChart3' },

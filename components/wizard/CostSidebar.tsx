@@ -174,11 +174,9 @@ export function localizedLineLabel(
   tPricing: (key: string) => string,
 ): string {
   if (line.category === 'package' && line.tierSlug) {
-    return tWizard('packageLineLabel', {
-      tierName: tPricing(`tier_${line.tierSlug}`),
-      entityShort:
-        entityType === 'LLC' ? tWizard('entityShortLLC') : tWizard('entityShortCorp'),
-    });
+    // line.label already contains the state-aware label from computeCost
+    // (e.g. "Bank-Ready Filing — Wyoming LLC"), so use it directly.
+    return line.label;
   }
   if (line.category === 'addon' && line.addOnSlug) {
     return tWizard(addOnNameKey(line.addOnSlug));

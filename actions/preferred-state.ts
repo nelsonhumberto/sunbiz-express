@@ -3,8 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
-
-export const PREFERRED_STATE_COOKIE = 'preferred_state';
+import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
 
 /**
  * Persist the visitor's chosen formation state. Called by the marketing

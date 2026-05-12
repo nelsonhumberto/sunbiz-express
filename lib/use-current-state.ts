@@ -8,7 +8,7 @@ import {
   resolveMarketingState,
   type MarketingState,
 } from '@/lib/marketing-states';
-import { PREFERRED_STATE_COOKIE } from '@/actions/preferred-state';
+import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
 
 /**
  * Resolve the marketing state currently in effect on the client.

@@ -1,6 +1,4 @@
-// Build-time constants. Centralized so they don't differ between
-// server and client renders (which would trigger hydration mismatches).
+/** Cookie name used to persist the visitor's chosen formation state. */
+export const PREFERRED_STATE_COOKIE = 'preferred_state';
 
-export const COPYRIGHT_YEAR = 2026;
-export const APP_NAME = 'LaunchForma';
-export const SUPPORT_EMAIL = 'hello@launchforma.com';
+export const COPYRIGHT_YEAR = new Date().getFullYear();

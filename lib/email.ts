@@ -243,7 +243,7 @@ function wrap(inner: string) {
     blockquote { border-left: 3px solid #F4A261; padding: 8px 16px; margin: 16px 0; background: #FEF6EE; color: #6E3F18; }
   </style></head><body>
     <div style="text-align:center; padding-bottom:16px;">
-      <img src="${siteUrl}/logo.png" alt="LaunchForma" style="height:32px;" />
+      <img src="${siteUrl}/images/logo-full.png" alt="LaunchForma" style="height:36px; max-width:180px;" />
     </div>
     ${inner}
     <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>
@@ -252,6 +252,18 @@ function wrap(inner: string) {
       <a href="#" style="color:#8A9A95;">Unsubscribe</a>
     </p>
   </body></html>`;
+}
+
+// ─── Public helper — render a template without sending ────────────────────────
+
+export function renderTemplate(
+  type: NotificationType,
+  ctx: Parameters<typeof TEMPLATES[NotificationType]>[0] = {},
+): { subject: string; html: string } {
+  const tpl = TEMPLATES[type];
+  if (!tpl) throw new Error(`Unknown email type: ${type}`);
+  const { subject, body } = tpl(ctx);
+  return { subject, html: body };
 }
 
 // ─── Sender ───────────────────────────────────────────────────────────────────
@@ -269,6 +281,10 @@ function wrap(inner: string) {
 //   EMAIL_FROM=LaunchForma <admin@launchforma.com>
 
 const FROM = process.env.EMAIL_FROM ?? 'LaunchForma <no-reply@launchforma.com>';
+
+export async function deliverEmailDirect(to: string, subject: string, html: string) {
+  return deliverEmail(to, subject, html);
+}
 
 async function deliverEmail(to: string, subject: string, html: string) {
   const resendKey = process.env.RESEND_API_KEY;

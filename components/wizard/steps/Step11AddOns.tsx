@@ -34,6 +34,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import { trackAddOnToggled } from '@/lib/analytics';
 import {
   addOnBadgeKey,
   addOnDescKey,
@@ -148,14 +149,15 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
     if (bundled.has(slug as AddOnSlug)) return;
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
+      const wasSelected = next.has(slug);
+      if (wasSelected) next.delete(slug);
       else next.add(slug);
-      // Keep only one OA variant selected at a time.
       if (slug === 'operating_agreement_single' && next.has('operating_agreement_single')) {
         next.delete('operating_agreement_multi');
       } else if (slug === 'operating_agreement_multi' && next.has('operating_agreement_multi')) {
         next.delete('operating_agreement_single');
       }
+      trackAddOnToggled(slug, wasSelected ? 'removed' : 'added', tier, stateCode);
       return next;
     });
   };

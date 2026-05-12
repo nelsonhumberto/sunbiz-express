@@ -11,6 +11,7 @@ import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
 import { isActiveFormationState, type StateCode, getFormationState } from '@/lib/formation-states';
+import { trackTierSelected } from '@/lib/analytics';
 import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
@@ -51,6 +52,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
               onClick={() => {
                 setTier(tierDef.slug);
                 setTierPreview(tierDef.slug);
+                trackTierSelected(tierDef.slug, stateCode, entityType, 'wizard');
               }}
               className={cn(
                 'relative text-left rounded-2xl border-2 p-5 transition-all flex flex-col',

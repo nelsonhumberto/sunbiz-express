@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState } from '@/lib/formation-states';
+import { trackCtaClicked } from '@/lib/analytics';
 
 interface PricingTableProps {
   showHeader?: boolean;
@@ -155,6 +156,12 @@ export function PricingTable({
                   >
                     <Link
                       href={`/sign-up?tier=${tier.slug}${state.code !== 'FL' ? `&state=${state.code}` : ''}`}
+                      onClick={() =>
+                        trackCtaClicked('pricing_choose', {
+                          tier: tier.slug,
+                          state: state.code,
+                        })
+                      }
                     >
                       {t('chooseTier', { name: tierName })}
                     </Link>

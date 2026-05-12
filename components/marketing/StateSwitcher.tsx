@@ -16,6 +16,7 @@ import {
   localizedStateName,
   type MarketingState,
 } from '@/lib/marketing-states';
+import { trackStateSwitched } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 interface StateSwitcherProps {
@@ -46,6 +47,7 @@ export function StateSwitcher({
 
   const switchTo = (state: MarketingState) => {
     if (state.code === currentState.code) return;
+    trackStateSwitched(currentState.code, state.code, 'marketing_nav');
     start(async () => {
       await setPreferredStateAction(state.code);
       const target = state.code === 'FL' ? '/' : `/states/${state.slug}`;

@@ -10,6 +10,7 @@ import { Logo } from './Logo';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { StateSwitcher } from './StateSwitcher';
 import { useCurrentMarketingState } from '@/lib/use-current-state';
+import { trackCtaClicked } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -98,6 +99,9 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                     currentState.code === 'FL'
                       ? '/sign-up'
                       : `/sign-up?state=${currentState.code}`
+                  }
+                  onClick={() =>
+                    trackCtaClicked('nav_start', { state: currentState.code })
                   }
                 >
                   {t('startFiling')}

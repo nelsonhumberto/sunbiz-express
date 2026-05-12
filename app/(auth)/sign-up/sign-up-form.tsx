@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { trackSignupStarted } from '@/lib/analytics';
 
 const initial: ActionResult = {};
 
@@ -18,7 +19,11 @@ export function SignUpForm() {
   const [showPwd, setShowPwd] = useState(false);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      action={formAction}
+      onSubmit={() => trackSignupStarted()}
+      className="space-y-4"
+    >
       <div className="grid grid-cols-2 gap-3">
         <Field
           name="firstName"

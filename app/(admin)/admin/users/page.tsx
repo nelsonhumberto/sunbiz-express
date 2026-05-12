@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Users, ShieldCheck, Ban, CheckCircle2, KeyRound, Trash2 } from 'lucide-react';
+import { Users, ShieldCheck, Ban, CheckCircle2, KeyRound } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRelative } from '@/lib/utils';
-import { setUserStatus, setUserRole, adminSendPasswordReset, deleteUser } from '@/actions/admin-users';
+import { setUserStatus, setUserRole, adminSendPasswordReset } from '@/actions/admin-users';
+import { DeleteUserButton } from '@/components/admin/DeleteUserButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,12 +165,7 @@ export default async function AdminUsersPage({
                             </Button>
                           </form>
                           {/* Delete user */}
-                          <form action={deleteUser.bind(null, user.id)}
-                            onSubmit={(e) => { if (!confirm(`Delete ${user.email} and all their data? This cannot be undone.`)) e.preventDefault(); }}>
-                            <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" title="Delete user">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </form>
+                          <DeleteUserButton userId={user.id} email={user.email} />
                         </div>
                       </td>
                   </tr>

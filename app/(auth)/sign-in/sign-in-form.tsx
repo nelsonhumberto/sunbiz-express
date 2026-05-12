@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useTranslations } from 'next-intl';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signInAction, type ActionResult } from '@/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ const initial: ActionResult = {};
 export function SignInForm() {
   const t = useTranslations('auth');
   const [state, formAction] = useFormState(signInAction, initial);
+  const [showPwd, setShowPwd] = useState(false);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -39,14 +41,24 @@ export function SignInForm() {
             {t('forgotPassword')}
           </Link>
         </div>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder=""
-          autoComplete="current-password"
-          required
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPwd ? 'text' : 'password'}
+            placeholder=""
+            autoComplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPwd((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-muted"
+            aria-label={showPwd ? 'Hide password' : 'Show password'}
+          >
+            {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {state.fieldErrors?.password && (
           <p className="text-xs text-destructive">{state.fieldErrors.password}</p>
         )}

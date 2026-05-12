@@ -17,6 +17,7 @@ export function SignUpForm() {
   const t = useTranslations('auth');
   const [state, formAction] = useFormState(signUpAction, initial);
   const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   return (
     <form
@@ -77,15 +78,31 @@ export function SignUpForm() {
         )}
       </div>
 
-      <Field
-        name="confirmPassword"
-        type="password"
-        label={t('confirmPassword')}
-        placeholder={t('reenterPassword')}
-        error={state.fieldErrors?.confirmPassword}
-        required
-        autoComplete="new-password"
-      />
+      <div className="space-y-1.5">
+        <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>
+        <div className="relative">
+          <Input
+            id="confirmPassword"
+            name="confirmPassword"
+            type={showConfirm ? 'text' : 'password'}
+            placeholder={t('reenterPassword')}
+            autoComplete="new-password"
+            required
+            className={state.fieldErrors?.confirmPassword ? 'border-destructive focus-visible:ring-destructive/30' : ''}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-muted"
+            aria-label={showConfirm ? 'Hide password' : 'Show password'}
+          >
+            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {state.fieldErrors?.confirmPassword && (
+          <p className="text-xs text-destructive">{state.fieldErrors.confirmPassword}</p>
+        )}
+      </div>
 
       <div className="flex items-start gap-3 pt-1">
         <Checkbox id="acceptTerms" name="acceptTerms" required />

@@ -7,9 +7,10 @@ import { Check, Minus, Sparkles } from 'lucide-react';
 import { saveStep3 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
-import { TIERS, type TierSlug } from '@/lib/pricing';
+import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
+import { isActiveFormationState, type StateCode, getFormationState } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
@@ -18,6 +19,15 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const stateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
+  const entityType = (filing.entityType as EntityType) || 'LLC';
+  const formationState = getFormationState(stateCode);
+  const filingFeeCopy =
+    stateCode === 'FL'
+      ? t('filingFeeIncluded')
+      : `${formationState.name} filing fee included`;
 
   const onContinue = () => {
     start(async () => {
@@ -59,11 +69,13 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                 <div>
                   <h3 className="font-display text-xl font-medium">{tierName}</h3>
                   <p className="font-display text-3xl font-medium mt-1">
-                    {formatCurrency(tierDef.packagePriceCents)}{' '}
+                    {formatCurrency(
+                      tierPackagePriceCents(tierDef.slug, entityType, stateCode),
+                    )}{' '}
                     <span className="text-xs font-normal text-ink-subtle">{t('allIn')}</span>
                   </p>
                   <p className="text-[11px] font-medium text-primary mt-0.5">
-                    ✓ {t('filingFeeIncluded')}
+                    ✓ {filingFeeCopy}
                   </p>
                   <p className="text-[11px] text-ink-subtle mt-0.5">{bestFor}</p>
                 </div>

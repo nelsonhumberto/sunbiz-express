@@ -77,6 +77,9 @@ interface AddressFormProps {
   value: AddressValue;
   onChange: (next: AddressValue) => void;
   showInCareOf?: boolean;
+  /** Lock the state field to a specific USPS code (e.g. registered agents). */
+  lockedStateCode?: string;
+  /** Back-compat alias — `floridaOnly` is equivalent to `lockedStateCode="FL"`. */
   floridaOnly?: boolean;
   prefix?: string;
 }
@@ -85,9 +88,11 @@ export function AddressForm({
   value,
   onChange,
   showInCareOf,
+  lockedStateCode,
   floridaOnly,
   prefix = '',
 }: AddressFormProps) {
+  const lockState = lockedStateCode ?? (floridaOnly ? 'FL' : undefined);
   const t = useTranslations('wizard');
   const set = <K extends keyof AddressValue>(key: K, v: AddressValue[K]) =>
     onChange({ ...value, [key]: v });
@@ -153,8 +158,8 @@ export function AddressForm({
         <Label htmlFor={id('state')}>
           {t('addrState')} <span className="text-destructive">*</span>
         </Label>
-        {floridaOnly ? (
-          <Input id={id('state')} value="FL" disabled />
+        {lockState ? (
+          <Input id={id('state')} value={lockState} disabled />
         ) : (
           <Select value={value.state || 'FL'} onValueChange={(v) => set('state', v)}>
             <SelectTrigger id={id('state')}>

@@ -1,5 +1,12 @@
 // Florida-specific business formation rules and constants
 // Sources: incorporation_app_developer_guide.md, florida_requirements.md
+//
+// Most multi-state work has been moved to `lib/formation-states.ts` and
+// `lib/formation-validation.ts`. This file remains the home for:
+//   - the legacy `FL` constant (still imported widely)
+//   - Florida's distinguishability normalizer (used by Sunbiz lookups)
+//   - thin re-exports of the new state-aware validators bound to FL so
+//     legacy imports keep compiling without churn.
 
 export const FL = {
   stateCode: 'FL',
@@ -318,6 +325,11 @@ export function namesAreNotDistinguishable(a: string, b: string): boolean {
   return na === nb;
 }
 
+/**
+ * Florida-only business name validator (back-compat wrapper). Newer code
+ * should call {@link import('./formation-validation').validateBusinessName}
+ * with an explicit state code.
+ */
 export function validateBusinessName(
   name: string,
   entityType: 'LLC' | 'CORP'
@@ -351,8 +363,6 @@ export function validateBusinessName(
     };
   }
 
-  // Bare suffix-only check after distinguishability normalization (e.g.
-  // "Inc" or "The LLC" would normalize to empty).
   if (!normalizeDistinguishableName(trimmed)) {
     return {
       valid: false,

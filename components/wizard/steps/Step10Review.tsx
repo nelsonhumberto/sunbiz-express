@@ -17,6 +17,11 @@ import {
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import {
+  isActiveFormationState,
+  resolveProcessingOption,
+  type StateCode,
+} from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 import type { AddressValue } from '../AddressForm';
 
@@ -53,6 +58,8 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
     authorizedShares?: number;
     businessPurpose?: string;
     managementType?: ManagementType;
+    processingOption?: string;
+    foreignRegistrationInterest?: boolean;
   } | null>(filing.optionalDetails, null);
 
   const [signature, setSignature] = useState(filing.incorporatorSignature ?? '');
@@ -176,17 +183,43 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         </p>
       </ReviewSection>
 
-      {opt && (opt.effectiveDate || opt.authorizedShares || opt.businessPurpose) && (
-        <ReviewSection title={t('optionalDetails')} stepHref={stepHref(8)} editLabel={tCommon('edit')}>
-          {opt.effectiveDate && (
-            <Row label={t('effectiveDate')} value={formatDate(opt.effectiveDate)} />
-          )}
-          {opt.authorizedShares != null && (
-            <Row label={t('authorizedShares')} value={opt.authorizedShares.toLocaleString()} />
-          )}
-          {opt.businessPurpose && <Row label={t('businessPurpose')} value={opt.businessPurpose} />}
-        </ReviewSection>
-      )}
+      {opt &&
+        (opt.effectiveDate ||
+          opt.authorizedShares ||
+          opt.businessPurpose ||
+          opt.processingOption ||
+          opt.foreignRegistrationInterest) && (
+          <ReviewSection title={t('optionalDetails')} stepHref={stepHref(8)} editLabel={tCommon('edit')}>
+            {opt.effectiveDate && (
+              <Row label={t('effectiveDate')} value={formatDate(opt.effectiveDate)} />
+            )}
+            {opt.authorizedShares != null && (
+              <Row label={t('authorizedShares')} value={opt.authorizedShares.toLocaleString()} />
+            )}
+            {opt.businessPurpose && (
+              <Row label={t('businessPurpose')} value={opt.businessPurpose} />
+            )}
+            {(() => {
+              const stateCode: StateCode = isActiveFormationState(filing.state)
+                ? (filing.state as StateCode)
+                : 'FL';
+              const proc = resolveProcessingOption(stateCode, opt.processingOption);
+              const fee = proc.feeCents > 0 ? ` · $${(proc.feeCents / 100).toFixed(2)}` : '';
+              return (
+                <Row
+                  label="Processing speed"
+                  value={`${proc.label} (${proc.estimate})${fee}`}
+                />
+              );
+            })()}
+            {opt.foreignRegistrationInterest && (
+              <Row
+                label="Foreign-state operations"
+                value="Customer indicated interest in foreign qualification"
+              />
+            )}
+          </ReviewSection>
+        )}
 
       {/* Signature */}
       <div className="rounded-lg border border-border bg-white p-5 space-y-4">

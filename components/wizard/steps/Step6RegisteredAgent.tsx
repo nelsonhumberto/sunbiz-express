@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { safeParseJson, cn } from '@/lib/utils';
-import { isPoBox } from '@/lib/florida';
+import { isPoBox } from '@/lib/formation-validation';
+import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 interface RAStored extends AddressValue {
@@ -24,20 +25,12 @@ interface RAStored extends AddressValue {
   signature?: string;
 }
 
-const INTERNAL_AGENT = {
-  name: 'LaunchForma RA Services LLC',
-  email: 'agent@launchforma.com',
-  phone: '+1 (305) 555-0100',
-  street1: '1234 Sunshine Boulevard',
-  street2: 'Suite 200',
-  city: 'Miami',
-  state: 'FL',
-  zip: '33101',
-};
-
 export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
+  const stateCode = (filing.state ?? 'FL') as StateCode;
+  const stateRule = FORMATION_STATES[stateCode] ?? FORMATION_STATES.FL;
+  const internalAgent = stateRule.registeredAgent;
   const stored = safeParseJson<RAStored | null>(filing.registeredAgent, null);
   const [useOurService, setUseOurService] = useState(stored?.useOurService ?? true);
   const [external, setExternal] = useState({
@@ -48,7 +41,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
       street1: stored?.useOurService ? '' : stored?.street1 ?? '',
       street2: stored?.useOurService ? '' : stored?.street2 ?? '',
       city: stored?.useOurService ? '' : stored?.city ?? '',
-      state: 'FL',
+      state: stateCode,
       zip: stored?.useOurService ? '' : stored?.zip ?? '',
     } as AddressValue,
   });
@@ -71,6 +64,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
     external.address.street1.trim().length > 0 &&
     external.address.city.trim().length > 0 &&
     external.address.zip.trim().length > 0 &&
+    external.address.state.toUpperCase() === stateCode &&
     !isPoBox(external.address.street1);
 
   const canContinue = useOurService
@@ -83,18 +77,15 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
         ? {
             filingId: filing.id,
             useOurService: true,
-            name: INTERNAL_AGENT.name,
-            email: INTERNAL_AGENT.email,
-            phone: INTERNAL_AGENT.phone,
-            street1: INTERNAL_AGENT.street1,
-            street2: INTERNAL_AGENT.street2,
-            city: INTERNAL_AGENT.city,
-            state: 'FL',
-            zip: INTERNAL_AGENT.zip,
-            // Auto-fill the RA acceptance signature with our entity name.
-            // We sign as the agent on the document; the customer's consent
-            // toggle above is what authorizes us to do so.
-            signature: INTERNAL_AGENT.name,
+            name: internalAgent.name,
+            email: internalAgent.email,
+            phone: internalAgent.phone,
+            street1: internalAgent.street1,
+            street2: internalAgent.street2,
+            city: internalAgent.city,
+            state: stateCode,
+            zip: internalAgent.zip,
+            signature: internalAgent.name,
           }
         : {
             filingId: filing.id,
@@ -105,7 +96,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             street1: external.address.street1,
             street2: external.address.street2 ?? '',
             city: external.address.city,
-            state: 'FL',
+            state: stateCode,
             zip: external.address.zip,
             signature: externalSignature,
           };
@@ -145,10 +136,10 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             </div>
           </div>
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
-            <li>· {t('useOurAgentP1')}</li>
-            <li>· {t('useOurAgentP2')}</li>
-            <li>· {t('useOurAgentP3')}</li>
-            <li>· {t('useOurAgentP4')}</li>
+            <li>· {stateRule.name} physical address provided</li>
+            <li>· Service of process scanned &amp; forwarded</li>
+            <li>· Year-1 free, then ${(internalAgent.renewalCents / 100).toFixed(0)}/year (cancel anytime)</li>
+            <li>· Keeps your home address off the public record</li>
           </ul>
         </button>
 
@@ -172,10 +163,10 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             </div>
           </div>
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
-            <li>· {t('useOwnAgentP1')}</li>
-            <li>· {t('useOwnAgentP2')}</li>
-            <li>· {t('useOwnAgentP3')}</li>
-            <li>· {t('useOwnAgentP4')}</li>
+            <li>· Must have a {stateRule.name} physical address (no P.O. Box)</li>
+            <li>· Must consent to acting as agent</li>
+            <li>· Available during business hours</li>
+            <li>· You'll need to update {stateRule.name} if they change</li>
           </ul>
         </button>
       </div>
@@ -204,14 +195,15 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">{t('nameLabel')}</p>
-                <p className="font-medium">{INTERNAL_AGENT.name}</p>
+                <p className="font-medium">{internalAgent.name}</p>
               </div>
               <div>
                 <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">{t('addressLabel')}</p>
                 <p className="font-medium leading-tight">
-                  {INTERNAL_AGENT.street1}, {INTERNAL_AGENT.street2}
+                  {internalAgent.street1}
+                  {internalAgent.street2 ? `, ${internalAgent.street2}` : ''}
                   <br />
-                  {INTERNAL_AGENT.city}, {INTERNAL_AGENT.state} {INTERNAL_AGENT.zip}
+                  {internalAgent.city}, {internalAgent.state} {internalAgent.zip}
                 </p>
               </div>
             </div>
@@ -226,7 +218,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             />
             <span className="text-sm text-ink leading-relaxed">
               {t.rich('raInternalConsent', {
-                agentName: INTERNAL_AGENT.name,
+                agentName: internalAgent.name,
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </span>
@@ -266,16 +258,18 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
 
           <div>
             <Label className="mb-2 block">
-              {t('floridaPhysicalAddress')} <span className="text-destructive">*</span>
+              {stateRule.name} physical address <span className="text-destructive">*</span>
             </Label>
             <AddressForm
               value={external.address}
               onChange={(v) => setExternal({ ...external, address: v })}
-              floridaOnly
+              lockedStateCode={stateCode}
               prefix="ra-"
             />
             {external.address.street1 && isPoBox(external.address.street1) && (
-              <p className="text-xs text-destructive mt-2">{t('poBoxRejection')}</p>
+              <p className="text-xs text-destructive mt-2">
+                P.O. Boxes are not allowed for registered agents — {stateRule.name} law requires a physical street address.
+              </p>
             )}
           </div>
         </div>

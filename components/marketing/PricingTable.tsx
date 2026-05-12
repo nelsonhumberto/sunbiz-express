@@ -3,19 +3,24 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { Check, Minus, Sparkles } from 'lucide-react';
+import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TIERS, type TierSlug } from '@/lib/pricing';
+import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { getFormationState } from '@/lib/formation-states';
 
 interface PricingTableProps {
   showHeader?: boolean;
   className?: string;
+  /** Resolved marketing state (controls the per-state footnote). */
+  state?: MarketingState;
 }
 
 const FEATURE_KEYS: Record<string, string> = {
   'Florida filing fee included': 'feat_floridaFee',
+  'State filing fee included': 'feat_floridaFee',
   'Articles of Organization / Incorporation prepared & submitted': 'feat_articles',
   'Same-business-day filing': 'feat_sameDay',
   'Same-business-day preparation and submission': 'feat_sameDayPrep',
@@ -40,8 +45,32 @@ const FEATURE_KEYS: Record<string, string> = {
   'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
 };
 
-export function PricingTable({ showHeader = true, className }: PricingTableProps) {
+export function PricingTable({
+  showHeader = true,
+  className,
+  state = FLORIDA,
+}: PricingTableProps) {
   const t = useTranslations('pricing');
+  const formationState = getFormationState(state.code);
+  const llcStateFee = formatCurrency(formationState.fees.llcTotal);
+  const corpStateFee = formatCurrency(formationState.fees.corpTotal);
+  const footnoteCopy =
+    state.code === 'FL'
+      ? t('footnote')
+      : `Each package includes the required ${formationState.name} state filing fee (${llcStateFee} LLC / ${corpStateFee} Corporation). LaunchForma remits the state fee on your behalf.`;
+  const filingFeeCopy =
+    state.code === 'FL'
+      ? t('filingFeeIncluded')
+      : `${formationState.name} filing fee included`;
+  // Headline price shown on each card is the LLC price for the active state
+  // (LLC is the most common formation). When the corp price differs by more
+  // than $1, surface it as a small subtitle so customers see both.
+  const tierPrice = (tierSlug: TierSlug) => {
+    const llc = tierPackagePriceCents(tierSlug, 'LLC', formationState.code);
+    const corp = tierPackagePriceCents(tierSlug, 'CORP', formationState.code);
+    const corpDiffers = Math.abs(llc - corp) > 100;
+    return { llc, corp, corpDiffers };
+  };
 
   return (
     <section id="pricing" className={cn('py-20 md:py-28', className)}>
@@ -62,6 +91,7 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
           {TIERS.map((tier, i) => {
             const tierName = t(`tier_${tier.slug}` as never);
             const tierDesc = t(`tier_${tier.slug}_desc` as never);
+            const prices = tierPrice(tier.slug);
             return (
               <motion.div
                 key={tier.slug}
@@ -101,15 +131,20 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
                   <p className="mt-1.5 text-sm text-ink-muted leading-snug min-h-[40px]">{tierDesc}</p>
                   <div className="mt-6 flex items-baseline gap-1.5">
                     <span className="font-display text-5xl font-medium">
-                      {formatCurrency(tier.packagePriceCents)}
+                      {formatCurrency(prices.llc)}
                     </span>
                     <span className="text-ink-subtle text-sm">{t('allIn')}</span>
                   </div>
+                  {prices.corpDiffers && (
+                    <p className="mt-1 text-xs text-ink-subtle">
+                      {`Corporation: ${formatCurrency(prices.corp)}`}
+                    </p>
+                  )}
                   <p className="mt-1.5 text-xs text-ink-subtle">
                     {t(`bestFor_${tier.slug}` as never)}
                   </p>
                   <p className="mt-1 text-xs font-medium text-primary">
-                    ✓ {t('filingFeeIncluded')}
+                    ✓ {filingFeeCopy}
                   </p>
 
                   <Button
@@ -118,7 +153,9 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
                     variant={tier.recommended ? 'default' : 'outline'}
                     className="mt-6 w-full"
                   >
-                    <Link href={`/sign-up?tier=${tier.slug}`}>
+                    <Link
+                      href={`/sign-up?tier=${tier.slug}${state.code !== 'FL' ? `&state=${state.code}` : ''}`}
+                    >
                       {t('chooseTier', { name: tierName })}
                     </Link>
                   </Button>
@@ -164,7 +201,14 @@ export function PricingTable({ showHeader = true, className }: PricingTableProps
           })}
         </div>
 
-        <p className="text-center text-xs text-ink-subtle mt-10">{t('footnote')}</p>
+        <p className="text-center text-xs text-ink-subtle mt-10">{footnoteCopy}</p>
+
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-ink-muted">
+          <ShieldCheck className="h-4 w-4 text-success shrink-0" />
+          <span>
+            14-day money-back guarantee on LaunchForma&apos;s service fee — no questions asked.
+          </span>
+        </div>
       </div>
     </section>
   );

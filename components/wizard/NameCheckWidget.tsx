@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, AlertTriangle, X, Loader2, Sparkles, Search } from 'lucide-react';
+import {
+  Check,
+  AlertTriangle,
+  X,
+  Loader2,
+  Sparkles,
+  Search,
+  Info,
+  ExternalLink,
+  FileText,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +24,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { joinEntityName, splitEntityName } from '@/lib/florida';
 import {
-  CORP_SUFFIX_OPTIONS,
-  LLC_SUFFIX_OPTIONS,
-  joinEntityName,
-  splitEntityName,
-} from '@/lib/florida';
+  assessBusinessName,
+  suffixOptionsFor,
+  type BusinessNameAssessment,
+} from '@/lib/formation-validation';
+import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 
 export interface NameCheckResult {
   query: string;
@@ -30,24 +41,41 @@ export interface NameCheckResult {
   suggestions: string[];
 }
 
+export type { BusinessNameAssessment };
+
 interface NameCheckWidgetProps {
   initialName?: string | null;
   entityType: 'LLC' | 'CORP';
+  /** Formation state code; controls suffix list + whether live name search runs. */
+  formationState?: StateCode;
   /**
    * Fires whenever the visible name changes. The widget intentionally emits
    * `result: null` synchronously on every keystroke / suffix change so the
    * parent's "Continue" gate can update immediately, then re-emits with the
    * server result once the availability check resolves.
+   *
+   * The third argument is the rule-based assessment (state-specific
+   * warnings / manual-review flags) computed locally from the typed name.
    */
-  onChange: (name: string, result: NameCheckResult | null) => void;
+  onChange: (
+    name: string,
+    result: NameCheckResult | null,
+    assessment: BusinessNameAssessment | null,
+  ) => void;
 }
 
-export function NameCheckWidget({ initialName, entityType, onChange }: NameCheckWidgetProps) {
+export function NameCheckWidget({
+  initialName,
+  entityType,
+  formationState = 'FL',
+  onChange,
+}: NameCheckWidgetProps) {
   const t = useTranslations('wizard');
+  const stateRule = FORMATION_STATES[formationState] ?? FORMATION_STATES.FL;
 
   const suffixOptions = useMemo(
-    () => (entityType === 'LLC' ? LLC_SUFFIX_OPTIONS : CORP_SUFFIX_OPTIONS),
-    [entityType],
+    () => suffixOptionsFor(formationState, entityType),
+    [entityType, formationState],
   );
 
   const initialSplit = useMemo(
@@ -86,6 +114,15 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
     return splitEntityName(trimmedBase, entityType).matched;
   }, [trimmedBase, entityType]);
 
+  // Assess the combined name against the state-specific rules (manual-review
+  // patterns, restricted-word groups, subjective-review notes). This runs
+  // client-side and is independent of the live name search — even Florida
+  // names need this to surface restricted-word warnings.
+  const assessment: BusinessNameAssessment | null = useMemo(() => {
+    if (!combinedName || trimmedBase.length < 2) return null;
+    return assessBusinessName(combinedName, entityType, formationState);
+  }, [combinedName, trimmedBase, entityType, formationState]);
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -94,10 +131,43 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
     // result; it will be replaced when the fetch (below) resolves. Without
     // this, a typed-but-not-yet-checked name would leave the parent state
     // stale, which is the original "button stays grayed out" bug.
-    onChange(combinedName, null);
+    onChange(combinedName, null, assessment);
 
     if (trimmedBase.length < 2) {
       setResult(null);
+      return;
+    }
+
+    // Only Florida has a live name-search endpoint wired up. For other states
+    // we surface a "we'll verify with the state at submission" notice instead
+    // of pretending an instant result. Wyoming customers get an extra hint to
+    // run the official search themselves, since it's the most accurate way
+    // to spot conflicts before submission.
+    if (!stateRule.hasLiveNameSearch) {
+      const baseMessage =
+        stateRule.code === 'WY'
+          ? `We'll verify availability with the Wyoming Secretary of State at submission. We strongly recommend running the WyoBiz "Contains" search yourself first — see the link below.`
+          : `We'll verify availability with ${stateRule.name} at submission. Names that conflict with an existing ${stateRule.name} entity will be rejected; we'll contact you to choose an alternative.`;
+      setResult({
+        query: combinedName,
+        available: true,
+        status: 'available',
+        message: baseMessage,
+        conflicts: [],
+        suggestions: [],
+      });
+      onChange(
+        combinedName,
+        {
+          query: combinedName,
+          available: true,
+          status: 'available',
+          message: '',
+          conflicts: [],
+          suggestions: [],
+        },
+        assessment,
+      );
       return;
     }
 
@@ -117,7 +187,7 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
         const data = (await res.json()) as NameCheckResult;
         if (id === fetchIdRef.current) {
           setResult(data);
-          onChange(combinedName, data);
+          onChange(combinedName, data, assessment);
         }
       } catch {
         if (id === fetchIdRef.current) setResult(null);
@@ -131,9 +201,9 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
     };
     // onChange is intentionally excluded — it's expected to be stable from
     // the parent's perspective and we only want the effect to fire when the
-    // typed name or entity type changes.
+    // typed name, entity type, or formation state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combinedName, entityType]);
+  }, [combinedName, entityType, formationState, assessment]);
 
   // Localized status banner — see previous version for rationale.
   const statusMessage = (() => {
@@ -307,6 +377,79 @@ export function NameCheckWidget({ initialName, entityType, onChange }: NameCheck
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/*
+        Manual-review and restricted-word warnings produced by
+        assessBusinessName. These are independent of the live name search and
+        explain when a name will need paper / admin review (Wyoming "A" rule,
+        special characters, regulated words) or when the state may refuse the
+        name on subjective grounds (Delaware Division of Corporations).
+      */}
+      {assessment && assessment.warnings.length > 0 && (
+        <div className="space-y-2">
+          {assessment.warnings.map((w) => {
+            const tone =
+              w.kind === 'subjective_review'
+                ? 'border-border bg-muted/40 text-ink-muted'
+                : w.kind === 'restricted_word_block'
+                  ? 'border-destructive/30 bg-destructive/5 text-destructive'
+                  : 'border-warn/30 bg-warn-subtle/40 text-ink';
+            const Icon =
+              w.kind === 'subjective_review'
+                ? Info
+                : w.kind === 'restricted_word_block'
+                  ? X
+                  : AlertTriangle;
+            return (
+              <div
+                key={`${w.kind}-${w.id}`}
+                className={cn('rounded-lg border p-3 flex items-start gap-2.5 text-xs leading-relaxed', tone)}
+              >
+                <Icon className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{w.message}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/*
+        Wyoming-only: link to the official WyoBiz search and naming PDF so the
+        customer can do their own diligence before we submit.
+      */}
+      {stateRule.code === 'WY' && (
+        <div className="rounded-lg border border-border bg-white p-3 text-xs text-ink-muted leading-relaxed flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <span>
+              Wyoming uses a strict "distinguishable" rule. Run the official search with the
+              <strong> "Contains"</strong> option and the naming PDF below before submitting.
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <a
+              href={stateRule.urls.search}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] font-medium text-ink hover:border-primary/40 hover:text-primary"
+            >
+              <Search className="h-3 w-3" />
+              WyoBiz search
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <a
+              href="https://sos.wyo.gov/Business/Docs/HowToChooseACompanyName.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] font-medium text-ink hover:border-primary/40 hover:text-primary"
+            >
+              <FileText className="h-3 w-3" />
+              Naming PDF
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
       )}
     </div>

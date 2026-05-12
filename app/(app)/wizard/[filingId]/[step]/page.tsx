@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { getWizardFiling } from '@/actions/wizard';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { WizardShell } from '@/components/wizard/WizardShell';
@@ -14,6 +16,8 @@ import { Step10Review } from '@/components/wizard/steps/Step10Review';
 import { Step11AddOns } from '@/components/wizard/steps/Step11AddOns';
 import { Step12Payment } from '@/components/wizard/steps/Step12Payment';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import { safeParseJson } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,11 +44,53 @@ export default async function WizardStepPage({ params }: PageProps) {
     (fas) => fas.service.serviceSlug as AddOnSlug
   );
 
+  const optional = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
+  const processingOptionId =
+    optional && typeof optional.processingOption === 'string'
+      ? (optional.processingOption as string)
+      : null;
+
   const cost = {
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
+    state: (isActiveFormationState(filing.state) ? filing.state : 'FL') as StateCode,
+    processingOptionId,
   };
+
+  // Pre-fetch the EIN application snapshot for the payment step so the panel
+  // renders in its "saved" state on a refresh without an extra round-trip.
+  // We deliberately only forward non-sensitive fields (no encrypted payload,
+  // no plaintext SSN/passport — only the last-4 tail).
+  let einInitial: import('@/components/wizard/EinResponsiblePartyPanel').EinPanelInitialState = {
+    collected: false,
+  };
+  let defaultEmail: string | undefined;
+  if (stepNum === 11) {
+    const session = await auth();
+    defaultEmail = session?.user?.email ?? undefined;
+    const ein = await prisma.einApplication.findUnique({
+      where: { filingId: filing.id },
+    });
+    if (ein) {
+      einInitial = {
+        collected:
+          ein.status === 'ready_online' ||
+          ein.status === 'manual_foreign' ||
+          ein.status === 'submitted' ||
+          ein.status === 'delivered',
+        pathway: ein.responsiblePartyType as 'us' | 'foreign',
+        legalName: ein.legalName ?? undefined,
+        title: ein.title ?? undefined,
+        phone: ein.phone ?? undefined,
+        email: ein.email ?? undefined,
+        taxIdLast4: ein.taxIdLast4,
+        taxIdType: ein.taxIdType,
+        passportLast4: ein.passportLast4,
+        countryOfCitizenship: ein.countryOfCitizenship,
+      };
+    }
+  }
 
   return (
     <WizardShell filingId={filing.id} step={stepNum} costData={cost}>
@@ -58,7 +104,13 @@ export default async function WizardStepPage({ params }: PageProps) {
       {stepNum === 8 && <Step9Optional filing={filing} />}
       {stepNum === 9 && <Step10Review filing={filing} />}
       {stepNum === 10 && <Step11AddOns filing={filing} />}
-      {stepNum === 11 && <Step12Payment filing={filing} />}
+      {stepNum === 11 && (
+        <Step12Payment
+          filing={filing}
+          einInitial={einInitial}
+          defaultEmail={defaultEmail}
+        />
+      )}
     </WizardShell>
   );
 }

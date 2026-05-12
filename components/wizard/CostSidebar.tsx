@@ -12,6 +12,7 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import type { StateCode } from '@/lib/formation-states';
 import { addOnNameKey, recurringKey } from '@/lib/pricing-i18n';
 import { formatCurrency } from '@/lib/utils';
 
@@ -19,12 +20,28 @@ interface CostSidebarProps {
   entityType: 'LLC' | 'CORP';
   tier: TierSlug;
   addOnSlugs: AddOnSlug[];
+  /** Defaults to FL when not provided so legacy callers keep working. */
+  state?: StateCode;
+  /** Customer-selected processing-speed option id (per state). */
+  processingOptionId?: string | null;
 }
 
-export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) {
+export function CostSidebar({
+  entityType,
+  tier,
+  addOnSlugs,
+  state,
+  processingOptionId,
+}: CostSidebarProps) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
-  const breakdown = computeCost({ entityType, tier, addOnSlugs });
+  const breakdown = computeCost({
+    entityType,
+    tier,
+    addOnSlugs,
+    state,
+    processingOptionId: processingOptionId ?? undefined,
+  });
 
   const labelFor = (line: CostBreakdownLine) =>
     localizedLineLabel(line, entityType, t, tPricing);
@@ -71,6 +88,24 @@ export function CostSidebar({ entityType, tier, addOnSlugs }: CostSidebarProps) 
                   label={labelFor(line)}
                   cents={line.cents}
                   sublabel={detailFor(line)}
+                />
+              ))}
+          </div>
+        )}
+
+        {breakdown.lines.some((l) => l.category === 'processing') && (
+          <div className="space-y-2 pt-3 border-t border-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+              State expedite fee
+            </p>
+            {breakdown.lines
+              .filter((l) => l.category === 'processing')
+              .map((line) => (
+                <CostRow
+                  key={line.key}
+                  label={line.label}
+                  cents={line.cents}
+                  sublabel={line.detail}
                 />
               ))}
           </div>

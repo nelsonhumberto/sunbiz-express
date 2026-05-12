@@ -33,6 +33,7 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import {
   addOnBadgeKey,
   addOnDescKey,
@@ -60,6 +61,9 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const tPricing = useTranslations('pricing');
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const entityType = filing.entityType as EntityType;
+  const stateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
   const bundled = new Set(tierBundledAddOns(tier));
   const tierName = tPricing(`tier_${tier}` as never);
 
@@ -107,12 +111,14 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
     entityType,
     tier,
     addOnSlugs: Array.from(selected) as AddOnSlug[],
+    state: stateCode,
   });
   const upgradedCost = upgradeTarget
     ? computeCost({
         entityType,
         tier: upgradeTarget,
         addOnSlugs: Array.from(selected) as AddOnSlug[],
+        state: stateCode,
       })
     : null;
   // Only surface the prompt when the upgrade would actually save money.
@@ -278,7 +284,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />
                   {t(addOnNameKey(addon.slug))} ·{' '}
-                  {formatCurrency(addOnPriceCents(addon.slug, entityType))}
+                  {formatCurrency(addOnPriceCents(addon.slug, entityType, stateCode))}
                 </button>
               );
             })}
@@ -359,7 +365,9 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
                 <span className="font-display text-2xl font-medium text-ink">
                   {isBundled
                     ? t('addOnIncluded')
-                    : formatCurrency(addOnPriceCents(addon.slug, entityType), { showZero: true })}
+                    : formatCurrency(addOnPriceCents(addon.slug, entityType, stateCode), {
+                        showZero: true,
+                      })}
                 </span>
                 {addon.recurring === 'annually' && (
                   <span className="text-xs text-ink-subtle">{t('perAnnual')}</span>

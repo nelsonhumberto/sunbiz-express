@@ -7,6 +7,7 @@ import { LayoutDashboard, FileText, CalendarCheck, ShieldCheck, LogOut } from 'l
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
+import { DashboardStateSwitcher } from './DashboardStateSwitcher';
 import { signOutAction } from '@/actions/auth';
 
 interface DashboardNavProps {
@@ -73,7 +74,8 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
       </nav>
 
       <div className="px-3 py-4 border-t border-border space-y-1">
-        <div className="px-1 py-1 mb-1">
+        <div className="px-1 py-1 mb-1 space-y-1">
+          <DashboardStateSwitcher />
           <LanguageSwitcher variant="full" className="w-full justify-start" />
         </div>
         <div className="px-3 py-2">

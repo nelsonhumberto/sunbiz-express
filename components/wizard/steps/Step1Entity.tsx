@@ -3,18 +3,29 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Building2, Briefcase, Check } from 'lucide-react';
+import { Building2, Briefcase, Check, MapPin } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { cn } from '@/lib/utils';
+import {
+  ACTIVE_FORMATION_STATES,
+  FORMATION_STATES,
+  type StateCode,
+} from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step1Entity({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
   const [selected, setSelected] = useState<'LLC' | 'CORP'>(filing.entityType as 'LLC' | 'CORP');
+  const [stateCode, setStateCode] = useState<StateCode>(
+    (filing.state && ACTIVE_FORMATION_STATES.includes(filing.state as StateCode)
+      ? filing.state
+      : 'FL') as StateCode,
+  );
   const [pending, start] = useTransition();
   const router = useRouter();
+  const stateRule = FORMATION_STATES[stateCode];
 
   const ENTITY_OPTIONS = [
     {
@@ -36,13 +47,55 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
 
   const onContinue = () => {
     start(async () => {
-      await saveStep1({ filingId: filing.id, entityType: selected });
+      await saveStep1({ filingId: filing.id, entityType: selected, state: stateCode });
       router.push(`/wizard/${filing.id}/2`);
     });
   };
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-2">
+          <MapPin className="h-3.5 w-3.5" />
+          Filing state
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ACTIVE_FORMATION_STATES.map((code) => {
+            const rule = FORMATION_STATES[code];
+            const active = code === stateCode;
+            return (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setStateCode(code)}
+                className={cn(
+                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors',
+                  active
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-ink border-border hover:border-primary/40',
+                )}
+              >
+                <span className="font-mono text-xs">{code}</span>
+                {rule.name}
+              </button>
+            );
+          })}
+        </div>
+        {stateRule.quirks.customerNote && (
+          <p className="mt-3 text-xs text-ink-muted leading-relaxed">
+            {stateRule.quirks.customerNote}
+          </p>
+        )}
+        {(stateRule.code === 'WY' || stateRule.code === 'DE') && (
+          <p className="mt-2 text-xs text-ink-muted leading-relaxed">
+            <strong>Heads up:</strong> Forming in {stateRule.name} doesn't authorize you to do
+            business in another state. If you'll have an office, employees, or significant
+            operations elsewhere, that state usually requires a separate "foreign qualification"
+            filing. We'll ask about this later in the wizard and follow up after formation.
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ENTITY_OPTIONS.map((option) => {
           const isSelected = selected === option.value;

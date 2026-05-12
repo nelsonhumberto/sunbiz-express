@@ -25,17 +25,37 @@ import {
   generatePin,
   safeParseJson,
 } from '@/lib/utils';
-import { computeNextAnnualReport, FL } from '@/lib/florida';
+import {
+  ACTIVE_FORMATION_STATES,
+  annualComplianceFor,
+  defaultProcessingOption,
+  getFormationState,
+  resolveProcessingOption,
+  type StateCode,
+} from '@/lib/formation-states';
+import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 
-export async function createFiling(input?: { entityType?: 'LLC' | 'CORP'; tier?: TierSlug }) {
+export async function createFiling(input?: {
+  entityType?: 'LLC' | 'CORP';
+  tier?: TierSlug;
+  /** USPS code of the state to file in. Defaults to FL. */
+  state?: string;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect('/sign-in');
+
+  const requestedState = (input?.state ?? 'FL').toUpperCase();
+  const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
+    requestedState as StateCode,
+  )
+    ? (requestedState as StateCode)
+    : 'FL';
 
   const filing = await prisma.filing.create({
     data: {
       userId: session.user.id,
       entityType: input?.entityType ?? 'LLC',
-      state: 'FL',
+      state: stateCode,
       serviceTier: input?.tier ?? 'STANDARD',
       currentStep: 1,
     },
@@ -91,6 +111,7 @@ export async function submitFilingToState(filingId: string) {
     id: filing.id,
     businessName: filing.businessName ?? '',
     entityType: filing.entityType as 'LLC' | 'CORP',
+    state: filing.state,
     principalAddress: safeParseJson(filing.principalAddress, null),
     mailingAddress: safeParseJson<unknown>(filing.mailingAddress, null) as
       | string
@@ -135,10 +156,26 @@ export async function submitFilingToState(filingId: string) {
   // (filing package + add-ons), not the internal state-vs-margin split. We
   // reconstruct the lines directly from `computeCost` so the receipt always
   // matches what the wizard cost sidebar showed.
+  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
+    filing.state.toUpperCase() as StateCode,
+  )
+    ? (filing.state.toUpperCase() as StateCode)
+    : 'FL';
+  const stateRule = getFormationState(filingStateCode);
+  const optionalForCost = safeParseJson<Record<string, unknown> | null>(
+    filing.optionalDetails,
+    null,
+  );
+  const processingOptionId =
+    optionalForCost && typeof optionalForCost.processingOption === 'string'
+      ? (optionalForCost.processingOption as string)
+      : undefined;
   const breakdownForReceipt = computeCost({
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs: filingAddOnSlugs,
+    state: filingStateCode,
+    processingOptionId,
   });
   const payment = filing.payments.find((p) => p.status === 'SUCCEEDED');
   const receipt = generateReceipt({
@@ -148,6 +185,7 @@ export async function submitFilingToState(filingId: string) {
     lines: breakdownForReceipt.lines.map((l) => ({ label: l.label, cents: l.cents })),
     paidAt: payment?.completedAt ?? submittedAt,
     cardLast4: payment?.cardLast4 ?? undefined,
+    state: filingStateCode,
   });
 
   // Cover letter — admin-only, mirrors the cover sheet on CR2E047. Customer
@@ -172,6 +210,18 @@ export async function submitFilingToState(filingId: string) {
   // money order / check. It MUST reflect the actual amount we are remitting
   // to Florida — never the customer's all-in package price (which includes
   // LaunchForma's margin and add-ons that are not paid to FL).
+  // Resolve the chosen processing option so it lands on the cover letter
+  // when expedited (matches what we'll actually pay the state).
+  const chosenProcessing = resolveProcessingOption(filingStateCode, processingOptionId);
+  const defaultProcessing = defaultProcessingOption(filingStateCode);
+  const processingOptionForLetter =
+    chosenProcessing.id !== defaultProcessing.id && chosenProcessing.feeCents > 0
+      ? {
+          label: chosenProcessing.label,
+          estimate: chosenProcessing.estimate,
+          feeCents: chosenProcessing.feeCents,
+        }
+      : null;
   const coverLetter = generateCoverLetter({
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
     contactName: filing.incorporatorSignature ?? session.user.email ?? 'Authorized Person',
@@ -180,6 +230,7 @@ export async function submitFilingToState(filingId: string) {
     totalFeeCents: filing.stateFeeCents, // government remittance only
     certificateOfStatus: wantsCertStatus,
     certifiedCopy: wantsCertCopy,
+    processingOption: processingOptionForLetter,
   });
 
   type DocRow = {
@@ -192,11 +243,15 @@ export async function submitFilingToState(filingId: string) {
     pendingState?: boolean;
   };
 
+  const articlesTitle =
+    filing.entityType === 'LLC'
+      ? stateRule.documentLabels.llcArticles
+      : stateRule.documentLabels.corpArticles;
   const documents: DocRow[] = [
     {
       filingId: filing.id,
       documentType: filing.entityType === 'LLC' ? 'ARTICLES_ORG' : 'ARTICLES_INC',
-      title: filing.entityType === 'LLC' ? 'Articles of Organization' : 'Articles of Incorporation',
+      title: articlesTitle,
       base64: encodeDocument(articles),
       mimeType: 'text/html',
       fileSizeBytes: articles.length,
@@ -204,7 +259,7 @@ export async function submitFilingToState(filingId: string) {
     {
       filingId: filing.id,
       documentType: 'COVER_LETTER',
-      title: 'Cover Letter (admin only)',
+      title: `${stateRule.documentLabels.coverLetter} (admin only)`,
       base64: encodeDocument(coverLetter),
       mimeType: 'text/html',
       fileSizeBytes: coverLetter.length,
@@ -302,17 +357,25 @@ export async function submitFilingToState(filingId: string) {
     });
   }
 
-  // Annual report record
-  const next = computeNextAnnualReport(submittedAt);
+  // Annual report record. State-aware: FL files an Annual Report by May 1,
+  // WY files on the first day of the anniversary month, DE LLCs pay an
+  // Annual Tax by June 1, DE corps file an Annual Report + Franchise Tax by
+  // March 1. The shared lookup yields the correct amount + due date and we
+  // mirror it verbatim into the AnnualReport row.
+  const compliance = annualComplianceFor(stateRule, filing.entityType as 'LLC' | 'CORP');
+  const nextDeadline = computeNextAnnualCompliance(
+    submittedAt,
+    filingStateCode,
+    filing.entityType as 'LLC' | 'CORP',
+    submittedAt,
+  );
   await prisma.annualReport.create({
     data: {
       filingId: filing.id,
-      reportYear: next.reportYear,
-      dueDate: next.dueDate,
-      filingFeeCents:
-        filing.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp,
-      totalCostCents:
-        filing.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp,
+      reportYear: nextDeadline.reportYear,
+      dueDate: nextDeadline.dueDate,
+      filingFeeCents: compliance.baseFeeCents,
+      totalCostCents: compliance.baseFeeCents,
       status: 'PENDING',
     },
   });

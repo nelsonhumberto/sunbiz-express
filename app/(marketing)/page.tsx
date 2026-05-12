@@ -81,9 +81,9 @@ export default function HomePage({
       <StatsBar />
       <FeatureGrid />
       <HowItWorks />
-      <PricingTable />
+      <PricingTable state={state} />
       <ComparisonTable />
-      <AnnualReportSection />
+      <AnnualReportSection state={state} />
       <Testimonials />
       <FAQSection state={state} />
       <CTABanner state={state} />

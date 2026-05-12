@@ -11,6 +11,7 @@ import type { AddOnSlug } from './pricing';
  * `pricing.feat_*` translation keys shared with PricingTable. */
 export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Florida filing fee included': 'feat_floridaFee',
+  'State filing fee included': 'feat_floridaFee',
   'Articles of Organization / Incorporation prepared & submitted': 'feat_articles',
   'Same-business-day filing': 'feat_sameDay',
   'Same-business-day preparation and submission': 'feat_sameDayPrep',

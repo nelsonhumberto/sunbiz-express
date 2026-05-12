@@ -20,23 +20,56 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { computeCost, type AddOnSlug, type TierSlug, TIER_BY_SLUG } from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, safeParseJson } from '@/lib/utils';
 import type { WizardFiling } from '../types';
+import { filingIncludesEin } from '@/lib/ein';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import {
+  EinResponsiblePartyPanel,
+  type EinPanelInitialState,
+} from '../EinResponsiblePartyPanel';
 
-export function Step12Payment({ filing }: { filing: WizardFiling }) {
+export function Step12Payment({
+  filing,
+  einInitial,
+  defaultEmail,
+}: {
+  filing: WizardFiling;
+  einInitial: EinPanelInitialState;
+  defaultEmail?: string;
+}) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
+  const stateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
   const addOnSlugs = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
+  const optionalDetails = safeParseJson<Record<string, unknown> | null>(
+    filing.optionalDetails,
+    null,
+  );
+  const processingOptionId =
+    optionalDetails && typeof optionalDetails.processingOption === 'string'
+      ? (optionalDetails.processingOption as string)
+      : undefined;
   const breakdown = computeCost({
     entityType,
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
+    state: stateCode,
+    processingOptionId,
   });
   const tier = TIER_BY_SLUG[filing.serviceTier as TierSlug];
+
+  const einRequired = filingIncludesEin({
+    tier: filing.serviceTier as TierSlug,
+    addOnSlugs,
+  });
+  const [einComplete, setEinComplete] = useState(einInitial.collected);
 
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
   const [pending, start] = useTransition();
@@ -44,6 +77,10 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
   const cardRef = useRef<StripeCardHandle>(null);
 
   const onPay = () => {
+    if (einRequired && !einComplete) {
+      toast.error(t('einRequiredBeforePayment'));
+      return;
+    }
     if (!cardholderName.trim()) {
       toast.error(t('errorCardholder'));
       return;
@@ -102,6 +139,15 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
         </div>
         <p className="mt-2 text-xs text-ink-subtle leading-snug">{t('packageDisclosure')}</p>
       </div>
+
+      {einRequired && (
+        <EinResponsiblePartyPanel
+          filingId={filing.id}
+          initial={einInitial}
+          defaultEmail={defaultEmail}
+          onSaved={() => setEinComplete(true)}
+        />
+      )}
 
       {/* What happens after payment — calms anxiety, keeps customer oriented. */}
       <div className="rounded-lg border border-border bg-paper-soft p-5">
@@ -164,6 +210,7 @@ export function Step12Payment({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
         pending={pending}
+        nextDisabled={einRequired && !einComplete}
         nextLabel={t('pay', {
           amount: formatCurrency(breakdown.totalCents, { showZero: true }),
         })}

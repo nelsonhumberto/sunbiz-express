@@ -27,7 +27,12 @@ import {
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
-import { FL } from '@/lib/florida';
+import {
+  getFormationState,
+  isActiveFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
+import { filingIncludesEin } from '@/lib/ein';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,9 +56,23 @@ export default async function FilingDetailPage({ params }: PageProps) {
       raServices: { orderBy: { createdAt: 'desc' }, take: 1 },
       annualReports: { orderBy: { dueDate: 'asc' } },
       filingAdditionalServices: { include: { service: true } },
+      einApplication: true,
     },
   });
   if (!filing || filing.userId !== session.user.id) notFound();
+
+  // Resolve the formation state — defaults to FL for legacy filings that
+  // pre-date the multi-state launch. We use the registry for state-specific
+  // labels (Articles of Organization vs Certificate of Formation, "Annual
+  // Report" vs "Annual Tax", etc.) instead of hardcoding Florida copy.
+  const stateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
+  const stateRule = getFormationState(stateCode);
+  // The annual-report self-service flow currently only ships for Florida
+  // (because the Sunbiz lookup is FL-only). For non-FL filings we surface
+  // the state's official portal link instead of the in-app flow.
+  const showInAppAnnualReport = stateCode === 'FL';
 
   // Hide Operating Agreements from Basic Filing customers who didn't add the
   // OA service. Legacy filings may still have an OPERATING_AGREEMENT row
@@ -119,7 +138,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
           </div>
           <div>
             <p className="text-xs text-ink-subtle uppercase tracking-wider font-medium">
-              {filing.entityType === 'LLC' ? tDocs('floridaLLCFull') : tDocs('floridaCorpFull')}
+              {stateRule.name} {filing.entityType === 'LLC' ? 'Limited Liability Company' : 'Profit Corporation'}
             </p>
             <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight mt-1">
               {filing.businessName}
@@ -146,8 +165,8 @@ export default async function FilingDetailPage({ params }: PageProps) {
         </Button>
       </div>
 
-      {/* Annual report action card */}
-      {(filing.status === 'APPROVED' || filing.filingSource === 'LINKED') && (() => {
+      {/* Annual report action card — only for FL filings (in-app flow) */}
+      {showInAppAnnualReport && (filing.status === 'APPROVED' || filing.filingSource === 'LINKED') && (() => {
         const filedReport = filing.annualReports.find((r) => r.status === 'FILED');
         const pendingReport = filing.annualReports.find(
           (r) => r.status === 'PENDING' || r.status === 'OVERDUE',
@@ -216,6 +235,77 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
+      {/* For non-FL filings, point at the state's official annual compliance
+          portal — we don't auto-file annual reports outside Florida yet. */}
+      {!showInAppAnnualReport && filing.status === 'APPROVED' && (() => {
+        const compliance = stateRule.annualCompliance.find(
+          (c) => c.entityType === filing.entityType,
+        );
+        if (!compliance) return null;
+        return (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-6 space-y-3">
+              <h3 className="font-semibold text-ink">
+                {stateRule.name} {compliance.label}
+              </h3>
+              <p className="text-sm text-ink-muted">{compliance.description}</p>
+              <Button asChild variant="outline">
+                <Link href={stateRule.urls.annualReport} target="_blank" rel="noopener">
+                  Open {stateRule.shortName} portal
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* EIN status card — only when the customer's package includes EIN. */}
+      {filingIncludesEin({
+        tier: filing.serviceTier as TierSlug,
+        addOnSlugs: filingAddOnSlugs,
+      }) && (() => {
+        const ein = filing.einApplication;
+        const status = ein?.status ?? 'needs_info';
+        const headline =
+          status === 'delivered'
+            ? `EIN delivered${ein?.einNumberLast4 ? ` — ●●●●●${ein.einNumberLast4}` : ''}`
+            : status === 'submitted'
+              ? 'EIN submitted to the IRS — awaiting confirmation'
+              : status === 'manual_foreign'
+                ? 'EIN — manual processing in progress (foreign applicant)'
+                : status === 'ready_online'
+                  ? 'EIN — IRS online filing scheduled'
+                  : 'EIN — responsible-party details required';
+        const body =
+          status === 'manual_foreign'
+            ? 'Foreign applicants cannot use the IRS online EIN Assistant. We are preparing your SS-4 manually and will submit it by phone or fax. Typical turnaround is 4–6 business days.'
+            : status === 'ready_online'
+              ? "We'll file your SS-4 with the IRS online as soon as your formation is approved. You can expect your EIN letter in your dashboard within 1 business day."
+              : status === 'submitted'
+                ? "Your SS-4 is with the IRS. We'll upload your EIN confirmation letter (CP 575) to the dashboard as soon as it arrives."
+                : status === 'delivered'
+                  ? 'Your EIN confirmation letter is available in the documents section.'
+                  : 'Open this filing\'s payment step to add your responsible-party details.';
+        return (
+          <Card className="border-primary/15">
+            <CardContent className="p-6 space-y-2">
+              <h3 className="font-semibold text-ink">{headline}</h3>
+              <p className="text-sm text-ink-muted">{body}</p>
+              {ein?.responsiblePartyType === 'us' && ein.taxIdLast4 && (
+                <p className="text-xs text-ink-subtle">
+                  Tax ID on file: ●●●-●●-{ein.taxIdLast4}
+                </p>
+              )}
+              {ein?.responsiblePartyType === 'foreign' && ein.passportLast4 && (
+                <p className="text-xs text-ink-subtle">
+                  Passport on file: ends in {ein.passportLast4} ({ein.passportCountry ?? '—'})
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Status timeline */}
       <Card>
         <CardContent className="p-6">
@@ -225,7 +315,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
           <div className="space-y-4">
             <TimelineEvent
               icon={<CheckCircle2 className="h-4 w-4" />}
-              title={t('submittedToState')}
+              title={`Submitted to ${stateRule.name} ${stateRule.code === 'DE' ? 'Division of Corporations' : 'Secretary of State'}`}
               detail={
                 filing.sunbizSubmittedAt
                   ? formatDateLong(filing.sunbizSubmittedAt)
@@ -235,7 +325,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
             />
             <TimelineEvent
               icon={<CheckCircle2 className="h-4 w-4" />}
-              title={t('stateApproved')}
+              title={`${stateRule.name} approved`}
               detail={
                 filing.sunbizApprovedAt
                   ? formatDateLong(filing.sunbizApprovedAt)

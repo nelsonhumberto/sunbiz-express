@@ -16,8 +16,19 @@ import {
   validateRegisteredAgentAddress,
   validateGeneralAddress,
   isValidEffectiveDate,
-} from '@/lib/florida';
+} from '@/lib/formation-validation';
+import {
+  ACTIVE_FORMATION_STATES,
+  type StateCode,
+} from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
+
+function asStateCode(input: string | null | undefined): StateCode {
+  const upper = (input ?? 'FL').toUpperCase();
+  return ACTIVE_FORMATION_STATES.includes(upper as StateCode)
+    ? (upper as StateCode)
+    : 'FL';
+}
 
 // ─── Internal helpers ─────────────────────────────────────────────────────
 
@@ -99,10 +110,17 @@ async function recomputeCost(filingId: string) {
   const addOnSlugs = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug
   );
+  const optional = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
+  const processingOptionId =
+    optional && typeof optional.processingOption === 'string'
+      ? (optional.processingOption as string)
+      : undefined;
   const breakdown = computeCost({
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
+    state: asStateCode(filing.state),
+    processingOptionId,
   });
   await prisma.filing.update({
     where: { id: filingId },
@@ -125,15 +143,19 @@ async function recomputeCost(filingId: string) {
 const Step1Schema = z.object({
   filingId: z.string(),
   entityType: z.enum(['LLC', 'CORP']),
+  /** USPS code of the state to file in. Defaults to existing filing state. */
+  state: z.enum(['FL', 'WY', 'DE']).optional(),
 });
 
 export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const data = Step1Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const nextState = data.state ?? asStateCode(filing.state);
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
       entityType: data.entityType,
+      state: nextState,
       currentStep: Math.max(filing.currentStep, 2),
       completedSteps: markStepComplete(filing.completedSteps, 1),
     },
@@ -154,7 +176,11 @@ export async function saveStep2(input: z.infer<typeof Step2Schema>) {
   const data = Step2Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
 
-  const validation = validateBusinessName(data.businessName, filing.entityType as 'LLC' | 'CORP');
+  const validation = validateBusinessName(
+    data.businessName,
+    filing.entityType as 'LLC' | 'CORP',
+    asStateCode(filing.state),
+  );
   if (!validation.valid) {
     return { ok: false, error: validation.error };
   }
@@ -282,13 +308,16 @@ export async function saveStep6(input: z.infer<typeof RegisteredAgentSchema>) {
   const { filing } = await getFilingForUser(data.filingId);
 
   if (!data.useOurService) {
-    const v = validateRegisteredAgentAddress({
-      street1: data.street1,
-      street2: data.street2 ?? undefined,
-      city: data.city,
-      state: data.state,
-      zip: data.zip,
-    });
+    const v = validateRegisteredAgentAddress(
+      {
+        street1: data.street1,
+        street2: data.street2 ?? undefined,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+      },
+      asStateCode(filing.state),
+    );
     if (!v.valid) return { ok: false, error: v.error };
   }
 
@@ -335,12 +364,26 @@ const MemberSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   ownershipPercentage: z.number().min(0).max(100).optional(),
+  /** Owner type: "individual" (default) or "business" for entity owners. */
+  ownerType: z.enum(['individual', 'business']).optional(),
+  /** Business owner: legal entity name (for printed documents). */
+  businessLegalName: z.string().optional(),
+  /** Business owner: state/country of formation. */
+  businessJurisdiction: z.string().optional(),
+  /** Business owner: optional contact/authorized signer name. */
+  signerName: z.string().optional(),
 });
 
 const Step7Schema = z.object({
   filingId: z.string(),
   managementType: ManagementTypeSchema,
   members: z.array(MemberSchema).min(1),
+  /**
+   * Delaware-only: customer preference about whether to include the initial
+   * LLC member information on the publicly-filed Certificate of Formation.
+   * Delaware does not require it; we default to NOT disclosing for privacy.
+   */
+  includeMembersOnArticles: z.boolean().optional(),
 });
 
 export async function saveStep7(input: z.infer<typeof Step7Schema>) {
@@ -398,22 +441,63 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
     for (const m of members) m.ownershipPercentage = undefined;
   }
 
+  // Validate business owners — if ownerType="business" we need a legal name
+  // and jurisdiction. Individual owners just need name + (optional) address.
+  for (const m of members) {
+    if (m.ownerType === 'business') {
+      if (!m.businessLegalName?.trim()) {
+        return {
+          ok: false,
+          error: 'Business owners require a legal entity name.',
+        };
+      }
+      if (!m.businessJurisdiction?.trim()) {
+        return {
+          ok: false,
+          error: 'Business owners require a state or country of formation.',
+        };
+      }
+    }
+  }
+
   await prisma.managerMember.deleteMany({ where: { filingId: filing.id } });
   await prisma.managerMember.createMany({
     data: members.map((m, idx) => ({
       filingId: filing.id,
       title: m.title,
-      name: m.name,
+      // For business owners, the publicly-printed name is the legal entity
+      // name. We populate `name` with that value so legacy callers (PDF
+      // generation, dashboard cards) keep working without branching.
+      name: m.ownerType === 'business' ? (m.businessLegalName ?? m.name) : m.name,
       street1: m.street1,
       city: m.city,
       state: m.state,
       zip: m.zip,
       ownershipPercentage: m.ownershipPercentage,
       position: idx,
+      ownerType: m.ownerType ?? 'individual',
+      businessLegalName: m.ownerType === 'business' ? m.businessLegalName : null,
+      businessJurisdiction: m.ownerType === 'business' ? m.businessJurisdiction : null,
+      signerName: m.ownerType === 'business' ? m.signerName ?? null : null,
     })),
   });
 
   await persistManagementType(filing.id, filing.optionalDetails, data.managementType, entityType);
+
+  // Persist Delaware LLC member-disclosure choice into optionalDetails so the
+  // PDF generator (and admin views) can honour it.
+  if (filing.state?.toUpperCase() === 'DE' && entityType === 'LLC') {
+    const prev = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null) ?? {};
+    await prisma.filing.update({
+      where: { id: filing.id },
+      data: {
+        optionalDetails: JSON.stringify({
+          ...prev,
+          includeMembersOnArticles: data.includeMembersOnArticles ?? false,
+        }),
+      },
+    });
+  }
 
   // Auto-populate correspondence contact from the authenticated user's email,
   // since the standalone correspondence step was removed.
@@ -439,8 +523,22 @@ const Step9Schema = z.object({
   filingId: z.string(),
   effectiveDate: z.string().optional(),
   authorizedShares: z.number().int().min(1).optional(),
+  /** Delaware corp only: par value per share (cents). 0 = no par value. */
+  parValueCents: z.number().int().min(0).optional(),
   professionalPurpose: z.string().optional(),
   businessPurpose: z.string().optional(),
+  /** Wyoming consent flag: required for organizer's electronic service. */
+  electronicServiceConsent: z.boolean().optional(),
+  /** Wyoming requires the organizer's email on the Articles. */
+  organizerEmail: z.string().email().optional().or(z.literal('')),
+  /** Customer-selected processing-speed option id, looked up per state. */
+  processingOption: z.string().optional(),
+  /**
+   * Customer expressed interest in foreign-qualifying this entity in another
+   * state after formation. Captured here so we can follow up post-formation
+   * once the dedicated foreign-qualification product launches.
+   */
+  foreignRegistrationInterest: z.boolean().optional(),
 });
 
 export async function saveStep9(
@@ -454,7 +552,7 @@ export async function saveStep9(
     if (Number.isNaN(parsed.getTime())) {
       return { ok: false, error: 'Effective date is not a valid date.' };
     }
-    const v = isValidEffectiveDate(parsed);
+    const v = isValidEffectiveDate(parsed, asStateCode(filing.state));
     if (!v.valid) return { ok: false, error: v.error };
   }
 
@@ -467,13 +565,21 @@ export async function saveStep9(
         ...prev,
         effectiveDate: data.effectiveDate || undefined,
         authorizedShares: data.authorizedShares,
+        parValueCents: data.parValueCents,
         professionalPurpose: data.professionalPurpose || undefined,
         businessPurpose: data.businessPurpose || undefined,
+        electronicServiceConsent: data.electronicServiceConsent,
+        organizerEmail: data.organizerEmail || undefined,
+        processingOption: data.processingOption || undefined,
+        foreignRegistrationInterest: data.foreignRegistrationInterest,
       }),
       currentStep: Math.max(filing.currentStep, 9),
       completedSteps: markStepComplete(filing.completedSteps, 8),
     },
   });
+  // Processing option affects pricing — recompute so the customer sees the
+  // new total in the cost sidebar before reaching payment.
+  await recomputeCost(filing.id);
   return { ok: true };
 }
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
@@ -6,6 +7,10 @@ import { Logo } from '@/components/marketing/Logo';
 import { signOutAction } from '@/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import { AdminNavLink } from '@/components/admin/AdminNavLink';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const NAV: { href: string; label: string; iconName: 'LayoutDashboard' | 'FileText' | 'Mail' | 'BarChart3' | 'AlertTriangle' }[] = [
   { href: '/admin', label: 'Overview', iconName: 'LayoutDashboard' },

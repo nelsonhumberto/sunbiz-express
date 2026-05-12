@@ -120,6 +120,7 @@ model Filing {
   filingAdditionalServices FilingAdditionalService[]
   adminActions             AdminAction[]
   analyticsEvents          AnalyticsEvent[]
+  einApplication           EinApplication?
 
   @@index([userId, status, createdAt])
 }
@@ -149,6 +150,14 @@ model ManagerMember {
   zip                 String?
   ownershipPercentage Float?
   position            Int      @default(0)
+  // Owner type — "individual" (default) or "business" for company/entity owners.
+  ownerType           String   @default("individual")
+  // Business-owner fields (only used when ownerType = "business").
+  // The publicly-printed party name still goes in `name` for back-compat;
+  // these fields capture the structured legal entity details.
+  businessLegalName   String?
+  businessJurisdiction String?  // State/country of formation for the owner entity.
+  signerName          String?  // Optional contact/authorized signer for the owner entity.
   createdAt           DateTime @default(now())
 }
 
@@ -385,6 +394,61 @@ model AnalyticsEvent {
   createdAt DateTime @default(now())
 
   @@index([userId, eventType, createdAt])
+}
+
+// EIN responsible-party data collected for the IRS Form SS-4. Sensitive
+// fields (SSN/ITIN, passport number, DOB) are stored encrypted via
+// `lib/encryption.ts`. Non-sensitive fields are kept in plaintext for
+// admin queue display + customer status updates. There is at most one
+// EinApplication per Filing.
+//
+// `status` lifecycle:
+//   not_needed   → the customer's package does not include EIN
+//   needs_info   → EIN is included but the form has not been completed
+//   ready_online → US responsible party with SSN/ITIN — straight-through IRS online filing
+//   manual_foreign → foreign responsible party — staff must call/fax the IRS
+//   submitted    → SS-4 sent to IRS
+//   delivered    → EIN letter received and uploaded as a Document
+model EinApplication {
+  id                          String   @id @default(cuid())
+  filingId                    String   @unique
+  filing                      Filing   @relation(fields: [filingId], references: [id], onDelete: Cascade)
+
+  responsiblePartyType        String   @default("us") // us | foreign
+  legalName                   String?
+  title                       String?
+  phone                       String?
+  email                       String?
+
+  // US-only.
+  taxIdType                   String?  // SSN | ITIN | EIN
+  // Encrypted tax id (AES-256-GCM, see lib/encryption.ts).
+  taxIdEncrypted              String?
+  taxIdLast4                  String?  // unencrypted last 4 for admin display
+  dobEncrypted                String?  // optional, only when IRS asks
+
+  // Foreign-only.
+  countryOfCitizenship        String?
+  passportCountry             String?
+  passportEncrypted           String?
+  passportLast4               String?
+  identityVerificationConsent Boolean  @default(false)
+
+  // Common.
+  consentToFile               Boolean  @default(false)
+  consentToShare              Boolean  @default(false)
+  status                      String   @default("needs_info")
+  staffNotes                  String?
+
+  submittedAt                 DateTime?
+  deliveredAt                 DateTime?
+  einNumberLast4              String?  // displayed in admin once delivered
+  einNumberEncrypted          String?
+
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@index([status])
 }
 
 // Email + state lead captured from non-Florida marketing pages so we can

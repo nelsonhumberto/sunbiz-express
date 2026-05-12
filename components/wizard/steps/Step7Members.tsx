@@ -5,7 +5,17 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { Trash2, UserPlus, Users, UserCog, HelpCircle, FileText, Copy } from 'lucide-react';
+import {
+  Trash2,
+  UserPlus,
+  Users,
+  UserCog,
+  HelpCircle,
+  FileText,
+  Copy,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { saveStep7 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { Input } from '@/components/ui/input';
@@ -61,6 +71,14 @@ interface Member {
   state?: string;
   zip?: string;
   ownershipPercentage?: number;
+  /** "individual" (default) or "business" for entity owners. */
+  ownerType?: 'individual' | 'business';
+  /** Business owner: legal entity name (also copied into `name`). */
+  businessLegalName?: string;
+  /** Business owner: state/country of formation. */
+  businessJurisdiction?: string;
+  /** Business owner: optional contact/authorized signer. */
+  signerName?: string;
 }
 
 export function Step7Members({ filing }: { filing: WizardFiling }) {
@@ -81,12 +99,18 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
     { value: 'DIRECTOR', label: t('titleDirector') },
   ];
 
-  const storedOptional = safeParseJson<{ managementType?: ManagementType } | null>(
-    filing.optionalDetails,
-    null,
-  );
+  const storedOptional = safeParseJson<{
+    managementType?: ManagementType;
+    includeMembersOnArticles?: boolean;
+  } | null>(filing.optionalDetails, null);
   const [managementType, setManagementType] = useState<ManagementType>(
     storedOptional?.managementType ?? 'member-managed',
+  );
+  // Delaware-only: defaults to NOT disclosing (privacy is the main reason
+  // founders pick Delaware). Customer can opt-in.
+  const isDelawareLlc = filing.state?.toUpperCase() === 'DE' && isLLC;
+  const [includeMembersOnArticles, setIncludeMembersOnArticles] = useState<boolean>(
+    storedOptional?.includeMembersOnArticles ?? false,
   );
 
   const initial: Member[] =
@@ -99,6 +123,10 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
           state: m.state ?? 'FL',
           zip: m.zip ?? '',
           ownershipPercentage: m.ownershipPercentage ?? undefined,
+          ownerType: (m.ownerType as 'individual' | 'business' | null) ?? 'individual',
+          businessLegalName: m.businessLegalName ?? '',
+          businessJurisdiction: m.businessJurisdiction ?? '',
+          signerName: m.signerName ?? '',
         }))
       : [
           {
@@ -108,6 +136,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
             city: '',
             state: 'FL',
             zip: '',
+            ownerType: 'individual',
           },
         ];
 
@@ -152,6 +181,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
         city: '',
         state: 'FL',
         zip: '',
+        ownerType: 'individual',
       },
     ]);
 
@@ -278,6 +308,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
           ownershipPercentage:
             oaEntitled && m.ownershipPercentage != null ? Number(m.ownershipPercentage) : undefined,
         })),
+        includeMembersOnArticles: isDelawareLlc ? includeMembersOnArticles : undefined,
       });
       if (!res.ok) {
         toast.error(res.error ?? t('errorSaveGeneric'));
@@ -396,6 +427,42 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
             )}
           </div>
 
+          {/*
+            Owner-type toggle. Most owners are individuals, but it's
+            increasingly common (esp. holding companies, family trusts) for
+            an existing entity to be the owner / member / manager. Switching
+            to "Business" replaces the personal-name field with structured
+            entity fields (legal name + jurisdiction + optional signer).
+          */}
+          <div className="inline-flex items-center rounded-md bg-muted/40 p-0.5 border border-border">
+            <button
+              type="button"
+              onClick={() => updateMember(idx, { ownerType: 'individual' })}
+              aria-pressed={(member.ownerType ?? 'individual') === 'individual'}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded transition-colors',
+                (member.ownerType ?? 'individual') === 'individual'
+                  ? 'bg-white text-ink shadow-sm'
+                  : 'text-ink-muted hover:text-ink',
+              )}
+            >
+              Individual
+            </button>
+            <button
+              type="button"
+              onClick={() => updateMember(idx, { ownerType: 'business' })}
+              aria-pressed={member.ownerType === 'business'}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded transition-colors',
+                member.ownerType === 'business'
+                  ? 'bg-white text-ink shadow-sm'
+                  : 'text-ink-muted hover:text-ink',
+              )}
+            >
+              Business / entity
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>
@@ -418,17 +485,61 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
               </Select>
             </div>
 
-            <div className="md:col-span-2 space-y-1.5">
-              <Label>
-                {t('fullName')} <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={member.name}
-                onChange={(e) => updateMember(idx, { name: e.target.value })}
-                placeholder={t('fullNamePlaceholder')}
-                autoComplete="name"
-              />
-            </div>
+            {member.ownerType === 'business' ? (
+              <>
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label>
+                    Legal entity name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={member.businessLegalName ?? ''}
+                    onChange={(e) =>
+                      updateMember(idx, {
+                        businessLegalName: e.target.value,
+                        // Mirror to `name` so legacy callers (PDF/admin) still see something.
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Acme Holdings, LLC"
+                    autoComplete="organization"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>
+                    State / country of formation <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={member.businessJurisdiction ?? ''}
+                    onChange={(e) => updateMember(idx, { businessJurisdiction: e.target.value })}
+                    placeholder="Delaware"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label>
+                    Authorized signer / contact{' '}
+                    <span className="text-xs font-normal text-ink-subtle">(optional)</span>
+                  </Label>
+                  <Input
+                    value={member.signerName ?? ''}
+                    onChange={(e) => updateMember(idx, { signerName: e.target.value })}
+                    placeholder="Jane Doe, Manager"
+                    autoComplete="name"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="md:col-span-2 space-y-1.5">
+                <Label>
+                  {t('fullName')} <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={member.name}
+                  onChange={(e) => updateMember(idx, { name: e.target.value })}
+                  placeholder={t('fullNamePlaceholder')}
+                  autoComplete="name"
+                />
+              </div>
+            )}
 
             <div className="md:col-span-3 space-y-1.5">
               <Label className="flex items-center gap-2">
@@ -553,6 +664,67 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
 
       {isLLC && !oaEntitled && members.length <= 1 && (
         <p className="text-xs text-ink-muted">{t('oaUpsellLine')}</p>
+      )}
+
+      {/*
+        Delaware LLC member-disclosure preference. Delaware does not require
+        members to be listed on the Certificate of Formation — most founders
+        leave them off for privacy. We default to "do not include" and let
+        the customer opt in if they prefer the public disclosure.
+      */}
+      {isDelawareLlc && (
+        <div className="rounded-lg border border-border bg-white p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            {includeMembersOnArticles ? (
+              <Eye className="h-5 w-5 text-primary mt-0.5" />
+            ) : (
+              <EyeOff className="h-5 w-5 text-primary mt-0.5" />
+            )}
+            <div>
+              <p className="font-semibold text-ink">
+                Delaware Certificate — initial member disclosure
+              </p>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Delaware lets you choose whether to list initial member names and addresses on the
+                publicly-filed Certificate of Formation. Most founders leave them off for privacy.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setIncludeMembersOnArticles(false)}
+              aria-pressed={!includeMembersOnArticles}
+              className={cn(
+                'text-left rounded-lg border-2 p-4 transition-all space-y-1',
+                !includeMembersOnArticles
+                  ? 'border-primary bg-primary/5 shadow-glow'
+                  : 'border-border bg-white hover:border-primary/30',
+              )}
+            >
+              <p className="font-semibold text-ink">Do not include (recommended)</p>
+              <p className="text-xs text-ink-muted">
+                Member info stays in your private records. Default Delaware behavior.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIncludeMembersOnArticles(true)}
+              aria-pressed={includeMembersOnArticles}
+              className={cn(
+                'text-left rounded-lg border-2 p-4 transition-all space-y-1',
+                includeMembersOnArticles
+                  ? 'border-primary bg-primary/5 shadow-glow'
+                  : 'border-border bg-white hover:border-primary/30',
+              )}
+            >
+              <p className="font-semibold text-ink">Include initial members</p>
+              <p className="text-xs text-ink-muted">
+                Names and addresses listed on the public Certificate of Formation.
+              </p>
+            </button>
+          </div>
+        </div>
       )}
 
       <WizardActions

@@ -7,18 +7,26 @@ import { ArrowRight, Sparkles, Clock, Shield, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { getFormationState, type StateCode } from '@/lib/formation-states';
+import { tierPackagePriceCents } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+import { trackCtaClicked } from '@/lib/analytics';
 
 interface HeroProps {
   /**
-   * Resolved marketing state. Defaults to Florida. Non-Florida states are
-   * rendered by `ComingSoonLanding` rather than this component, so we keep
-   * this hero focused on the Florida funnel.
+   * Resolved marketing state. Defaults to Florida. Active states (FL/WY/DE)
+   * render the full hero with a state badge; coming-soon states are routed
+   * to `ComingSoonLanding` upstream.
    */
   state?: MarketingState;
 }
 
 export function Hero({ state = FLORIDA }: HeroProps = {}) {
   const t = useTranslations('hero');
+  const formationState = getFormationState(state.code);
+  const startFilingHref = state.code === 'FL'
+    ? '/sign-up'
+    : `/sign-up?state=${state.code}`;
 
   return (
     <section
@@ -44,22 +52,32 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {t('badge')}
+            {state.code === 'FL'
+              ? t('badge')
+              : `Built for ${state.name} entrepreneurs`}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.05] tracking-tight text-balance">
-            {t('headlineLine1')} <br className="hidden md:block" />
+            {state.code === 'FL'
+              ? t('headlineLine1')
+              : `Form your ${state.name} business`}{' '}
+            <br className="hidden md:block" />
             <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
           <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
-            {t('subhead')}
+            {state.code === 'FL'
+              ? t('subhead')
+              : `File your LLC or Corporation with the State of ${state.name} — without the LegalZoom upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Button asChild size="lg" className="group">
-              <Link href="/sign-up">
+              <Link
+                href={startFilingHref}
+                onClick={() => trackCtaClicked('hero_start', { state: state.code })}
+              >
                 {t('startFiling')}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
@@ -76,7 +94,9 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              {t('filedIn1Day')}
+              {state.code === 'FL'
+                ? t('filedIn1Day')
+                : formationState.marketingTiming.badgeFallback}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Star className="h-3.5 w-3.5 text-accent fill-accent" />
@@ -91,15 +111,30 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mt-20 max-w-5xl mx-auto"
         >
-          <HeroPreview />
+          <HeroPreview state={state} />
         </motion.div>
       </div>
     </section>
   );
 }
 
-function HeroPreview() {
+function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
   const t = useTranslations('hero');
+  const formationState = getFormationState(state.code);
+  const stateCode = (state.code as StateCode) || 'FL';
+  const previewPrice = tierPackagePriceCents('STANDARD', 'LLC', stateCode);
+  const previewPriceFormatted = formatCurrency(previewPrice);
+  const sampleName =
+    state.code === 'WY'
+      ? 'Mountain Ridge Ventures LLC'
+      : state.code === 'DE'
+        ? 'First State Holdings LLC'
+        : 'Sunshine Coast Ventures LLC';
+  const searchUrl =
+    state.code === 'FL'
+      ? 'launchforma.com/wizard/your-llc/2'
+      : `launchforma.com/wizard/your-${formationState.slug}-llc/2`;
+
   return (
     <div className="relative">
       <div className="absolute -top-8 -left-8 -bottom-8 -right-8 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 rounded-3xl blur-2xl opacity-60" />
@@ -109,7 +144,7 @@ function HeroPreview() {
           <span className="h-3 w-3 rounded-full bg-yellow-300" />
           <span className="h-3 w-3 rounded-full bg-green-300" />
           <div className="ml-3 px-3 py-1 rounded-md bg-white border border-border text-xs text-ink-muted">
-            launchforma.com/wizard/your-llc/2
+            {searchUrl}
           </div>
         </div>
 
@@ -123,7 +158,7 @@ function HeroPreview() {
 
             <div className="relative">
               <input
-                value="Sunshine Coast Ventures LLC"
+                value={sampleName}
                 readOnly
                 className="w-full h-12 px-4 pr-32 rounded-md border border-input bg-card text-base font-medium"
               />
@@ -147,8 +182,8 @@ function HeroPreview() {
             <div className="mt-4 space-y-3">
               <SummaryRow
                 label={t('previewBankReady')}
-                sublabel={t('previewBankReadyDetail')}
-                amount="$299.00"
+                sublabel={`${formationState.name} LLC · all-in`}
+                amount={previewPriceFormatted}
               />
               <SummaryRow label={t('previewRA')} amount={t('previewIncluded')} muted />
               <SummaryRow label={t('previewOA')} amount={t('previewIncluded')} muted />
@@ -157,7 +192,7 @@ function HeroPreview() {
             <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
               <span className="text-sm font-medium">{t('previewTotalToday')}</span>
               <span className="font-display text-2xl font-medium">
-                $299<span className="text-sm">.00</span>
+                {previewPriceFormatted}
               </span>
             </div>
             <div className="mt-3 text-xs text-ink-subtle leading-relaxed">

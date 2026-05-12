@@ -3,12 +3,23 @@
 
 import { formatCurrency, formatDateLong, safeParseJson } from './utils';
 import type { AddressInput } from './florida';
-import { FL } from './florida';
+import {
+  FORMATION_STATES,
+  certificateOfStatusFeeCents,
+  certifiedCopyFeeCents,
+  formationDocumentLabel,
+  getFormationState,
+  stateFilingFeeCents,
+  type FormationStateRule,
+  type StateCode,
+} from './formation-states';
 
 interface FilingForDoc {
   id: string;
   businessName: string;
   entityType: 'LLC' | 'CORP';
+  /** USPS state code where the filing is being made. Defaults to FL. */
+  state?: string | null;
   principalAddress: AddressInput | null;
   mailingAddress: AddressInput | string | null;
   registeredAgent: {
@@ -31,14 +42,37 @@ interface FilingForDoc {
     state?: string | null;
     zip?: string | null;
     ownershipPercentage?: number | null;
+    /** "individual" (default) or "business" — printed differently on Articles. */
+    ownerType?: string | null;
+    /** Business-owner legal name (when ownerType = "business"). */
+    businessLegalName?: string | null;
+    /** Business-owner state/country of formation. */
+    businessJurisdiction?: string | null;
+    /** Business-owner authorized signer / contact name. */
+    signerName?: string | null;
   }[];
   correspondenceContact: { email?: string; phone?: string } | null;
   optionalDetails: {
     effectiveDate?: string;
     authorizedShares?: number;
+    /** Delaware corp only: par value per share, in cents. */
+    parValueCents?: number;
     professionalPurpose?: string;
     businessPurpose?: string;
     managementType?: 'member-managed' | 'manager-managed';
+    /** Wyoming organizer email (printed on the Articles). */
+    organizerEmail?: string;
+    /** Wyoming consent for electronic service of process. */
+    electronicServiceConsent?: boolean;
+    /**
+     * Delaware LLC only: whether to publicly disclose initial member
+     * info on the filed Certificate of Formation. Defaults to false.
+     */
+    includeMembersOnArticles?: boolean;
+    /** Customer-selected processing-speed option id (per state). */
+    processingOption?: string;
+    /** Customer indicated interest in foreign-state qualification. */
+    foreignRegistrationInterest?: boolean;
   } | null;
   incorporatorSignature: string | null;
   incorporatorSignedAt: Date | null;
@@ -47,11 +81,19 @@ interface FilingForDoc {
   submittedAt: Date | null;
 }
 
-// Internal officer who signs as our Registered Agent on filings where the
-// customer chose LaunchForma RA Services LLC. The customer never sees this
-// name in the wizard; it appears only on the executed Articles.
-const INTERNAL_RA_OFFICER_NAME = 'Maria Acosta';
-const INTERNAL_RA_OFFICER_TITLE = 'Authorized Signer';
+/**
+ * Resolve the formation state rule for a filing, defaulting to Florida.
+ * Centralised here so callers don't need to know about the registry.
+ */
+function ruleFor(filing: FilingForDoc): FormationStateRule {
+  return getFormationState(filing.state ?? 'FL');
+}
+
+// Internal officers who sign as our Registered Agent on filings where the
+// customer chose LaunchForma's in-house RA. The customer never sees this
+// name in the wizard; it appears only on the executed Articles. We pull
+// these from the per-state registered agent profile so the right officer
+// signs for FL/WY/DE.
 
 // ─── Helper to wrap HTML as a styled "document" ───────────────────────────
 
@@ -83,19 +125,20 @@ function docShell(title: string, body: string) {
 }
 
 /**
- * Filing-status header rendered at the top of the Articles. Florida only
- * applies a real "FILED" stamp + filing number once the document has been
- * accepted by the Department of State. Until then we render a clearly
- * non-binding "submitted, awaiting approval" badge instead of a fake stamp.
+ * Filing-status header rendered at the top of the Articles. State Secretaries
+ * of State only apply a real "FILED" stamp + filing number once the document
+ * has been accepted. Until then we render a clearly non-binding "submitted,
+ * awaiting approval" badge instead of a fake stamp.
  */
 function filingStatusHeader(filing: FilingForDoc): string {
+  const rule = ruleFor(filing);
   if (filing.sunbizFilingNumber) {
     const date = filing.sunbizApprovedAt ?? filing.submittedAt;
     return `
       <div class="filing-stamp">
         <h4>FILED</h4>
         <div>${date ? formatDateLong(date) : ''}</div>
-        <div>FL Dept. of State</div>
+        <div>${escapeHtml(rule.shortName)} Dept. of State</div>
         <div>${escapeHtml(filing.sunbizFilingNumber)}</div>
       </div>
     `;
@@ -103,7 +146,7 @@ function filingStatusHeader(filing: FilingForDoc): string {
   return `
     <div class="pending-badge">
       <strong>SUBMITTED</strong>
-      <div>Awaiting Florida Department of State approval. The official filing number will appear here once issued.</div>
+      <div>Awaiting ${escapeHtml(rule.name)} ${escapeHtml(rule.code === 'DE' ? 'Division of Corporations' : 'Secretary of State')} approval. The official filing number will appear here once issued.</div>
     </div>
   `;
 }
@@ -114,15 +157,39 @@ function filingStatusHeader(filing: FilingForDoc): string {
  * internal authorized officer — the customer never types it. Otherwise we
  * print the externally-typed signature.
  */
-function raAcceptanceBlock(ra: FilingForDoc['registeredAgent']): string {
+/**
+ * Render an Authorized Person / Officer table row. Handles both individual
+ * owners (printed name + address) and business owners (legal entity name +
+ * jurisdiction + optional signer). Keeping this in one helper means the
+ * LLC and Corp generators stay consistent.
+ */
+function renderMemberRow(m: FilingForDoc['managersMembers'][number]): string {
+  const isBusiness = m.ownerType === 'business' && !!m.businessLegalName;
+  const nameCell = isBusiness
+    ? `${escapeHtml(m.businessLegalName ?? m.name)}<br/><span class="legend">Entity owner — ${escapeHtml(m.businessJurisdiction ?? '—')}${
+        m.signerName ? ` · by ${escapeHtml(m.signerName)}` : ''
+      }</span>`
+    : escapeHtml(m.name);
+  const addressCell = escapeHtml(
+    [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', '),
+  );
+  return `<tr><td>${escapeHtml(m.title)}</td><td>${nameCell}</td><td>${addressCell}</td></tr>`;
+}
+
+function raAcceptanceBlock(
+  ra: FilingForDoc['registeredAgent'],
+  rule: FormationStateRule,
+): string {
   if (!ra) return '';
   const date = ra.signedAt ? formatDateLong(new Date(ra.signedAt)) : 'Date of filing';
   if (ra.useOurService) {
+    const officerName = rule.registeredAgent.signingOfficerName;
+    const officerTitle = rule.registeredAgent.signingOfficerTitle;
     return `
       <div class="signature-line">
         <span>
-          <span class="signature-name">${escapeHtml(`${ra.name}, by ${INTERNAL_RA_OFFICER_NAME}`)}</span>
-          <br/>Registered Agent's Signature (REQUIRED) — ${escapeHtml(ra.name)}, by ${escapeHtml(INTERNAL_RA_OFFICER_NAME)}, ${escapeHtml(INTERNAL_RA_OFFICER_TITLE)}
+          <span class="signature-name">${escapeHtml(`${ra.name}, by ${officerName}`)}</span>
+          <br/>Registered Agent's Signature (REQUIRED) — ${escapeHtml(ra.name)}, by ${escapeHtml(officerName)}, ${escapeHtml(officerTitle)}
         </span>
         <span>Date: ${date}</span>
       </div>
@@ -139,9 +206,11 @@ function raAcceptanceBlock(ra: FilingForDoc['registeredAgent']): string {
   `;
 }
 
-// ─── Articles of Organization (LLC) ───────────────────────────────────────
+// ─── Articles of Organization / Certificate of Formation (LLC) ───────────
 
 export function generateArticlesOfOrganization(filing: FilingForDoc): string {
+  const rule = ruleFor(filing);
+  const docTitle = formationDocumentLabel(rule, 'LLC');
   const ra = filing.registeredAgent;
   const principal = filing.principalAddress;
   const mailing =
@@ -153,31 +222,48 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
   // Authorized-persons table (Article IV) — the section is OPTIONAL on
   // CR2E047, but most banks and the Department of Financial Services rely on
   // it, so we render whatever the user supplied.
-  const authorizedPersons =
-    filing.managersMembers.length > 0
+  const authorizedPersonsLegend =
+    rule.code === 'FL'
+      ? 'Title key — AMBR: Authorized Member · MGR: Manager · MGRM: Managing Member.'
+      : 'Title key — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member · OFFICER: Officer.';
+  // Delaware lets LLCs withhold initial member info from the publicly-filed
+  // Certificate of Formation. When the customer opted out (default), we
+  // replace the table with a privacy notice so the document still flags the
+  // choice but doesn't expose member identities to the public record.
+  const deWithholdsMembers = rule.code === 'DE' && opt?.includeMembersOnArticles !== true;
+  const authorizedPersons = deWithholdsMembers
+    ? `<p><em>Initial member information is intentionally omitted from this Certificate of Formation, as permitted under ${escapeHtml(rule.statuteReferences.llc)}. Member records are maintained at the Limited Liability Company's principal office.</em></p>`
+    : filing.managersMembers.length > 0
       ? `<table>
           <tr><td class="label">Title</td><td class="label">Name</td><td class="label">Address</td></tr>
-          ${filing.managersMembers
-            .map(
-              (m) =>
-                `<tr><td>${escapeHtml(m.title)}</td><td>${escapeHtml(m.name)}</td><td>${escapeHtml(
-                  [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', '),
-                )}</td></tr>`,
-            )
-            .join('')}
+          ${filing.managersMembers.map((m) => renderMemberRow(m)).join('')}
         </table>
-        <p class="legend">Title key — AMBR: Authorized Member · MGR: Manager · MGRM: Managing Member.</p>`
-      : '<p><em>No authorized persons listed at filing. (Optional under s.605.0201 — most banks require this section to open accounts.)</em></p>';
+        <p class="legend">${escapeHtml(authorizedPersonsLegend)}</p>`
+      : `<p><em>No authorized persons listed at filing. (Optional under ${escapeHtml(rule.statuteReferences.llc)} — most banks require this section to open accounts.)</em></p>`;
 
   const otherProvisions = opt?.businessPurpose
     ? `<h3>Article VI — Other Provisions</h3><p>${escapeHtml(opt.businessPurpose)}</p>`
     : '';
 
+  // Wyoming-only block: organizer email + electronic-service consent are
+  // required on the Articles of Organization per the WY Sec. of State form.
+  const wyExtras =
+    rule.code === 'WY'
+      ? `
+        <h3>Article VII — Organizer Email &amp; Electronic Service of Process</h3>
+        <table>
+          <tr><td class="label">Organizer Email</td><td>${escapeHtml(opt?.organizerEmail ?? '')}</td></tr>
+          <tr><td class="label">Electronic Service Consent</td><td>${opt?.electronicServiceConsent ? 'YES — Organizer consents to electronic service of process by the Wyoming Secretary of State.' : 'NO — Organizer has not consented.'}</td></tr>
+        </table>
+      `
+      : '';
+
+  const officeLabel = rule.code === 'DE' ? "Registered Office" : "Registered Office";
   const html = `
     ${filingStatusHeader(filing)}
-    <h1>Articles of Organization</h1>
-    <h2>For Florida Limited Liability Company</h2>
-    <p>Pursuant to s.605.0201 of the Florida Statutes, the undersigned, desiring to form a limited liability company under the laws of the State of Florida, hereby submits the following Articles of Organization:</p>
+    <h1>${escapeHtml(docTitle)}</h1>
+    <h2>For ${escapeHtml(rule.name)} Limited Liability Company</h2>
+    <p>Pursuant to ${escapeHtml(rule.statuteReferences.llc)}, the undersigned, desiring to form a limited liability company under the laws of the State of ${escapeHtml(rule.name)}, hereby submits the following ${escapeHtml(docTitle)}:</p>
 
     <h3>Article I — Name</h3>
     <p>The name of the limited liability company is:</p>
@@ -195,14 +281,14 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
       </tr>
     </table>
 
-    <h3>Article III — Registered Agent, Registered Office, &amp; Registered Agent's Signature</h3>
-    <p>The Limited Liability Company cannot serve as its own Registered Agent. The name and the Florida street address of the registered agent are:</p>
+    <h3>Article III — Registered Agent, ${escapeHtml(officeLabel)}, &amp; Registered Agent's Signature</h3>
+    <p>The Limited Liability Company cannot serve as its own Registered Agent. The name and the ${escapeHtml(rule.name)} street address of the registered agent are:</p>
     <table>
       <tr><td class="label">Name</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
-      <tr><td class="label">Florida Street Address</td><td>${addressLines(ra)}</td></tr>
+      <tr><td class="label">${escapeHtml(rule.name)} Street Address</td><td>${addressLines(ra)}</td></tr>
     </table>
-    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated limited liability company at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in Chapter 605, Florida Statutes.</em></p>
-    ${raAcceptanceBlock(ra)}
+    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated limited liability company at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.llc)}.</em></p>
+    ${raAcceptanceBlock(ra, rule)}
 
     <h3>Article IV — Authorized Persons</h3>
     <p>The name and address of each person authorized to manage and control the Limited Liability Company:</p>
@@ -216,6 +302,7 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
     }</p>
 
     ${otherProvisions}
+    ${wyExtras}
 
     <div class="signature-block">
       <p><strong>Required Signature — Signature of a member or an authorized representative of a member:</strong></p>
@@ -223,17 +310,19 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
         <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
         <span>Date: ${filing.incorporatorSignedAt ? formatDateLong(filing.incorporatorSignedAt) : 'Date of filing'}</span>
       </div>
-      <p style="font-size:9pt; color:#475A56;">This document is executed in accordance with section 605.0203(1)(b), Florida Statutes. The undersigned is aware that any false information submitted in a document to the Department of State constitutes a third degree felony as provided for in s.817.155, Florida Statutes.</p>
+      <p style="font-size:9pt; color:#475A56;">The undersigned is aware that any false information submitted in a document to the State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
     </div>
 
-    <p class="footer-note">Filed pursuant to Chapter 605, Florida Statutes — Florida Department of State, Division of Corporations.</p>
+    <p class="footer-note">Filed pursuant to ${escapeHtml(rule.statuteReferences.llc)} — ${escapeHtml(rule.filingMailingAddress.label)}.</p>
   `;
-  return docShell('Articles of Organization', html);
+  return docShell(docTitle, html);
 }
 
-// ─── Articles of Incorporation (Corporation) ──────────────────────────────
+// ─── Articles of Incorporation / Certificate of Incorporation (Corp) ─────
 
 export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
+  const rule = ruleFor(filing);
+  const docTitle = formationDocumentLabel(rule, 'CORP');
   const ra = filing.registeredAgent;
   const principal = filing.principalAddress;
   const mailing =
@@ -242,16 +331,10 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
       : filing.mailingAddress;
   const opt = filing.optionalDetails;
 
-  // Article V — Initial officers/directors. Optional under s.607.0202; we
-  // render whatever the customer entered as initial directors/officers.
-  const officers = filing.managersMembers
-    .map(
-      (m) =>
-        `<tr><td>${escapeHtml(m.title)}</td><td>${escapeHtml(m.name)}</td><td>${escapeHtml(
-          [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', '),
-        )}</td></tr>`,
-    )
-    .join('');
+  // Article V — Initial officers/directors. Optional under most state
+  // statutes; we render whatever the customer entered as initial
+  // directors/officers.
+  const officers = filing.managersMembers.map((m) => renderMemberRow(m)).join('');
 
   const officersBlock =
     filing.managersMembers.length > 0
@@ -260,17 +343,29 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
           ${officers}
         </table>
         <p class="legend">Title key — P: President · VP: Vice President · S: Secretary · T: Treasurer · D: Director.</p>`
-      : '<p><em>None listed at filing. (Optional under s.607.0202.)</em></p>';
+      : `<p><em>None listed at filing. (Optional under ${escapeHtml(rule.statuteReferences.corp)}.)</em></p>`;
 
   const purpose = opt?.businessPurpose
     ? escapeHtml(opt.businessPurpose)
-    : 'The general purpose for which this corporation is organized is to engage in any lawful act or activity for which corporations may be organized under Chapter 607 of the Florida Statutes.';
+    : `The general purpose for which this corporation is organized is to engage in any lawful act or activity for which corporations may be organized under ${escapeHtml(rule.statuteReferences.corp)}.`;
+
+  // Capital stock — Delaware requires both authorized share count AND par
+  // value (or explicit "no par value"). Other states only require the count.
+  const authorizedShares = opt?.authorizedShares ?? (rule.code === 'DE' ? 1500 : 1000);
+  const parValueClause =
+    rule.code === 'DE'
+      ? opt?.parValueCents === 0
+        ? ' Each share has <strong>no par value</strong>.'
+        : opt?.parValueCents != null
+          ? ` Each share has a par value of <strong>${formatCurrency(opt.parValueCents)}</strong>.`
+          : ' Each share has <strong>no par value</strong>.'
+      : '';
 
   const html = `
     ${filingStatusHeader(filing)}
-    <h1>Articles of Incorporation</h1>
-    <h2>For Florida Profit Corporation</h2>
-    <p>Pursuant to s.607.0202 of the Florida Statutes, the undersigned, acting as incorporator, hereby submits these Articles of Incorporation:</p>
+    <h1>${escapeHtml(docTitle)}</h1>
+    <h2>For ${escapeHtml(rule.name)} ${rule.code === 'DE' ? 'Stock Corporation' : 'Profit Corporation'}</h2>
+    <p>Pursuant to ${escapeHtml(rule.statuteReferences.corp)}, the undersigned, acting as incorporator, hereby submits this ${escapeHtml(docTitle)}:</p>
 
     <h3>Article I — Name</h3>
     <p style="text-align:center; font-weight:bold; font-size:14pt;">${escapeHtml(filing.businessName)}</p>
@@ -285,19 +380,19 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
     <p>${purpose}</p>
 
     <h3>Article IV — Capital Stock</h3>
-    <p>The number of shares of stock that this corporation is authorized to issue is: <strong>${opt?.authorizedShares ?? 1000}</strong> shares of common stock, all of one class.</p>
+    <p>The number of shares of stock that this corporation is authorized to issue is: <strong>${authorizedShares}</strong> shares of common stock, all of one class.${parValueClause}</p>
 
     <h3>Article V — Initial Officers and/or Directors</h3>
     ${officersBlock}
 
     <h3>Article VI — Registered Agent, Registered Office, &amp; Registered Agent's Signature</h3>
-    <p>The Corporation cannot serve as its own Registered Agent. The name and the Florida street address of the registered agent are:</p>
+    <p>The Corporation cannot serve as its own Registered Agent. The name and the ${escapeHtml(rule.name)} street address of the registered agent are:</p>
     <table>
       <tr><td class="label">Name</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
-      <tr><td class="label">Florida Street Address</td><td>${addressLines(ra)}</td></tr>
+      <tr><td class="label">${escapeHtml(rule.name)} Street Address</td><td>${addressLines(ra)}</td></tr>
     </table>
-    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated corporation at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in Chapter 607, Florida Statutes.</em></p>
-    ${raAcceptanceBlock(ra)}
+    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated corporation at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.corp)}.</em></p>
+    ${raAcceptanceBlock(ra, rule)}
 
     <h3>Article VII — Effective Date</h3>
     <p>${
@@ -315,17 +410,18 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
         <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
         <span>Date: ${filing.incorporatorSignedAt ? formatDateLong(filing.incorporatorSignedAt) : 'Date of filing'}</span>
       </div>
-      <p style="font-size:9pt; color:#475A56;">The undersigned is aware that any false information submitted in a document to the Department of State constitutes a third degree felony as provided for in s.817.155, Florida Statutes.</p>
+      <p style="font-size:9pt; color:#475A56;">The undersigned is aware that any false information submitted in a document to the State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
     </div>
 
-    <p class="footer-note">Filed pursuant to Chapter 607, Florida Statutes — Florida Department of State, Division of Corporations.</p>
+    <p class="footer-note">Filed pursuant to ${escapeHtml(rule.statuteReferences.corp)} — ${escapeHtml(rule.filingMailingAddress.label)}.</p>
   `;
-  return docShell('Articles of Incorporation', html);
+  return docShell(docTitle, html);
 }
 
 // ─── Operating Agreement (single- or multi-member) ────────────────────────
 
 export function generateOperatingAgreement(filing: FilingForDoc): string {
+  const rule = ruleFor(filing);
   const memberCount = filing.managersMembers.length;
   const isMulti = memberCount > 1;
   const title = isMulti ? 'Multi-Member Operating Agreement' : 'Single-Member Operating Agreement';
@@ -364,10 +460,10 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
     <h1>Operating Agreement</h1>
     <h2>${title} of ${escapeHtml(filing.businessName)}</h2>
 
-    <p>This Operating Agreement (this "Agreement") of <strong>${escapeHtml(filing.businessName)}</strong> (the "Company"), a Florida limited liability company, is entered into as of ${today}, by and among the Company and the Member(s) listed below.</p>
+    <p>This Operating Agreement (this "Agreement") of <strong>${escapeHtml(filing.businessName)}</strong> (the "Company"), a ${escapeHtml(rule.name)} limited liability company, is entered into as of ${today}, by and among the Company and the Member(s) listed below.</p>
 
     <h3>1. Formation</h3>
-    <p>The Company was organized as a Florida limited liability company on ${filing.submittedAt ? formatDateLong(filing.submittedAt) : 'the date of filing'} by the filing of Articles of Organization with the Florida Department of State pursuant to Chapter 605 of the Florida Statutes.</p>
+    <p>The Company was organized as a ${escapeHtml(rule.name)} limited liability company on ${filing.submittedAt ? formatDateLong(filing.submittedAt) : 'the date of filing'} by the filing of ${escapeHtml(rule.documentLabels.llcArticles)} with the ${escapeHtml(rule.filingMailingAddress.label)} pursuant to ${escapeHtml(rule.statuteReferences.llc)}.</p>
 
     <h3>2. Name and Principal Office</h3>
     <p>The name of the Company is <strong>${escapeHtml(filing.businessName)}</strong>. The principal office is located at:</p>
@@ -389,13 +485,13 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
     <p>Distributions and allocations of profits and losses shall be made to the Members in proportion to their ownership interests stated above, at such times and in such amounts as determined by ${managementLabel === 'manager-managed' ? 'the Managers' : 'the Members'}.</p>
 
     <h3>7. Liability of Members</h3>
-    <p>No Member shall be personally liable for any debt, obligation, or liability of the Company solely by reason of being a Member, except as required by Florida law.</p>
+    <p>No Member shall be personally liable for any debt, obligation, or liability of the Company solely by reason of being a Member, except as required by ${escapeHtml(rule.name)} law.</p>
 
     <h3>8. Dissolution</h3>
     <p>The Company shall be dissolved upon ${isMulti ? 'the written consent of Members holding more than fifty percent (50%) of the ownership interests' : 'the written election of the sole Member'} or by operation of law.</p>
 
     <h3>9. Governing Law</h3>
-    <p>This Agreement shall be governed by the laws of the State of Florida.</p>
+    <p>This Agreement shall be governed by the laws of the State of ${escapeHtml(rule.name)}.</p>
 
     <div class="signature-block">
       <p><strong>IN WITNESS WHEREOF</strong>, the parties have executed this Agreement as of the date first written above.</p>
@@ -427,23 +523,21 @@ export function generateCoverLetter(args: {
   totalFeeCents: number;
   certificateOfStatus: boolean;
   certifiedCopy: boolean;
+  /**
+   * Optional processing-speed selection. When the customer chose an
+   * expedited tier, we add a dedicated line to the cover letter so the
+   * remitting clerk applies the right service code at the state.
+   */
+  processingOption?: { label: string; estimate: string; feeCents: number } | null;
 }): string {
-  const subjectLine =
-    args.filing.entityType === 'LLC'
-      ? `Articles of Organization — ${args.filing.businessName}`
-      : `Articles of Incorporation — ${args.filing.businessName}`;
+  const rule = ruleFor(args.filing);
+  const docTitle = formationDocumentLabel(rule, args.filing.entityType);
+  const subjectLine = `${docTitle} — ${args.filing.businessName}`;
+  const baseFee = stateFilingFeeCents(rule, args.filing.entityType);
+  const certStatusFee = certificateOfStatusFeeCents(rule, args.filing.entityType);
+  const certCopyFee = certifiedCopyFeeCents(rule, args.filing.entityType);
 
-  const baseFee = args.filing.entityType === 'LLC' ? FL.fees.llcTotal : FL.fees.corpTotal;
-  const certStatusFee =
-    args.filing.entityType === 'LLC'
-      ? FL.fees.certificateOfStatusLLC
-      : FL.fees.certificateOfStatusCorp;
-  const certCopyFee =
-    args.filing.entityType === 'LLC'
-      ? FL.fees.certifiedCopyLLC
-      : FL.fees.certifiedCopyCorp;
-
-  // CR2E047 cover letter is a four-checkbox grid: base fee · base + status ·
+  // Cover letter has a four-checkbox grid: base fee · base + status ·
   // base + copy · base + status + copy. We render it with the matching one
   // checked based on the customer's add-on selections.
   const checked = (on: boolean) => (on ? '☑' : '☐');
@@ -452,14 +546,18 @@ export function generateCoverLetter(args: {
   const wantsCopy = args.certifiedCopy && !args.certificateOfStatus;
   const wantsBase = !args.certificateOfStatus && !args.certifiedCopy;
 
+  const mailingAddressLines = rule.filingMailingAddress.lines
+    .map((l) => escapeHtml(l))
+    .join('<br/>');
+
   const html = `
-    <h1>Cover Letter</h1>
+    <h1>${escapeHtml(rule.documentLabels.coverLetter)}</h1>
     <h2>${escapeHtml(subjectLine)}</h2>
 
-    <p><strong>TO:</strong> New Filing Section, Division of Corporations</p>
+    <p><strong>TO:</strong> ${escapeHtml(rule.filingMailingAddress.label)}</p>
     <p><strong>SUBJECT:</strong> ${escapeHtml(args.filing.businessName)}</p>
 
-    <p>The enclosed ${args.filing.entityType === 'LLC' ? 'Articles of Organization' : 'Articles of Incorporation'} and fee(s) are submitted for filing.</p>
+    <p>The enclosed ${escapeHtml(docTitle)} and fee(s) are submitted for filing.</p>
 
     <p>Please return all correspondence concerning this matter to the following:</p>
     <table>
@@ -482,26 +580,22 @@ export function generateCoverLetter(args: {
       </tr>
     </table>
 
+    ${
+      args.processingOption && args.processingOption.feeCents > 0
+        ? `<p><strong>Processing service requested:</strong> ${escapeHtml(args.processingOption.label)} — ${escapeHtml(args.processingOption.estimate)} · expedite fee ${formatCurrency(args.processingOption.feeCents, { showZero: true })} included in remittance.</p>`
+        : ''
+    }
+
     <p style="margin-top:24px;"><strong>Total submitted with this cover letter:</strong> ${formatCurrency(args.totalFeeCents, { showZero: true })}</p>
 
     <p style="margin-top:32px;">
       <strong>Mailing Address</strong><br/>
-      New Filing Section<br/>
-      Division of Corporations<br/>
-      P.O. Box 6327<br/>
-      Tallahassee, FL 32314
-    </p>
-    <p>
-      <strong>Street / Courier Address</strong><br/>
-      New Filing Section, Division of Corporations<br/>
-      The Centre of Tallahassee<br/>
-      2415 N. Monroe Street, Suite 810<br/>
-      Tallahassee, FL 32303
+      ${mailingAddressLines}
     </p>
 
-    <p class="footer-note">INTERNAL — LaunchForma. This cover letter accompanies the Articles to the Florida Department of State and is not part of the customer's deliverable set.</p>
+    <p class="footer-note">INTERNAL — LaunchForma. This cover letter accompanies the ${escapeHtml(docTitle)} to the ${escapeHtml(rule.filingMailingAddress.label)} and is not part of the customer's deliverable set.</p>
   `;
-  return docShell('Cover Letter', html);
+  return docShell(rule.documentLabels.coverLetter, html);
 }
 
 // ─── Receipt ──────────────────────────────────────────────────────────────
@@ -513,7 +607,10 @@ export function generateReceipt(args: {
   lines: { label: string; cents: number }[];
   paidAt: Date;
   cardLast4?: string;
+  /** Defaults to FL when not provided so legacy callers stay valid. */
+  state?: StateCode;
 }): string {
+  const rule = FORMATION_STATES[args.state ?? 'FL'] ?? FORMATION_STATES.FL;
   const html = `
     <h1>Payment Receipt</h1>
     <h2>${escapeHtml(args.businessName)}</h2>
@@ -536,12 +633,12 @@ export function generateReceipt(args: {
     </table>
 
     <p style="margin-top:16px; font-size:12px; color:#525B5A;">
-      Filing package pricing includes the required Florida Department of State filing
-      fee and LaunchForma preparation and submission. LaunchForma remits the state
-      filing fee to Florida on your behalf.
+      Filing package pricing includes the required ${escapeHtml(rule.name)} filing
+      fee and LaunchForma preparation and submission. LaunchForma remits the
+      state filing fee to ${escapeHtml(rule.name)} on your behalf.
     </p>
 
-    <p class="footer-note">LaunchForma · 1234 Sunshine Blvd, Miami FL 33101 · support@launchforma.com</p>
+    <p class="footer-note">LaunchForma · support@launchforma.com</p>
   `;
   return docShell('Receipt', html);
 }

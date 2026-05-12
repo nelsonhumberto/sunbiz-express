@@ -19,6 +19,7 @@ import { CostSidebar } from './CostSidebar';
 import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
 import { cn } from '@/lib/utils';
 import type { TierSlug } from '@/lib/pricing';
+import type { StateCode } from '@/lib/formation-states';
 
 interface WizardShellProps {
   filingId: string;
@@ -28,6 +29,9 @@ interface WizardShellProps {
     entityType: 'LLC' | 'CORP';
     tier: string;
     addOnSlugs: string[];
+    state?: StateCode;
+    /** Customer-selected processing-speed option id (per state). */
+    processingOptionId?: string | null;
   };
   saved?: boolean;
 }
@@ -152,6 +156,8 @@ function LiveCostSidebar({
       entityType={costData.entityType}
       tier={tier}
       addOnSlugs={costData.addOnSlugs as any}
+      state={costData.state}
+      processingOptionId={costData.processingOptionId ?? null}
     />
   );
 }

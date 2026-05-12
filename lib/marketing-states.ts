@@ -1,17 +1,17 @@
 // Marketing-only state registry.
 //
-// LaunchForma currently files only in Florida. Other US states are surfaced
-// as "coming soon" funnels: the marketing site shows a state-targeted hero
-// and a waitlist instead of dragging a Georgia or Texas visitor into the
-// Florida-specific filing wizard.
+// LaunchForma currently files in Florida, Wyoming, and Delaware.
+// Other US states are surfaced as "coming soon" funnels: the marketing site
+// shows a state-targeted hero and a waitlist instead of dragging a Georgia
+// or Texas visitor into the formation wizard.
 //
 // This file is the single source of truth for:
 //   - which states exist in our marketing world
 //   - which are bookable today (`active`)
 //   - which are accepting early-access leads (`coming_soon`)
 //
-// The actual legal filing rules still live in `lib/florida.ts` and friends —
-// keep them out of this file so the wizard stays unmistakably Florida-only.
+// The legal filing rules for active states live in `lib/formation-states.ts`
+// (FL/WY/DE) and `lib/florida.ts` (FL distinguishability for Sunbiz lookups).
 
 export type StateAvailability = 'active' | 'coming_soon';
 
@@ -36,7 +36,7 @@ const ALL_STATES: MarketingState[] = [
   { code: 'CA', name: 'California', slug: 'california', nameEs: 'California', availability: 'coming_soon' },
   { code: 'CO', name: 'Colorado', slug: 'colorado', nameEs: 'Colorado', availability: 'coming_soon' },
   { code: 'CT', name: 'Connecticut', slug: 'connecticut', nameEs: 'Connecticut', availability: 'coming_soon' },
-  { code: 'DE', name: 'Delaware', slug: 'delaware', nameEs: 'Delaware', availability: 'coming_soon' },
+  { code: 'DE', name: 'Delaware', slug: 'delaware', nameEs: 'Delaware', availability: 'active' },
   { code: 'DC', name: 'District of Columbia', slug: 'district-of-columbia', nameEs: 'Distrito de Columbia', availability: 'coming_soon' },
   { code: 'FL', name: 'Florida', slug: 'florida', nameEs: 'Florida', availability: 'active' },
   { code: 'GA', name: 'Georgia', slug: 'georgia', nameEs: 'Georgia', availability: 'coming_soon' },
@@ -79,7 +79,7 @@ const ALL_STATES: MarketingState[] = [
   { code: 'WA', name: 'Washington', slug: 'washington', nameEs: 'Washington', availability: 'coming_soon' },
   { code: 'WV', name: 'West Virginia', slug: 'west-virginia', nameEs: 'Virginia Occidental', availability: 'coming_soon' },
   { code: 'WI', name: 'Wisconsin', slug: 'wisconsin', nameEs: 'Wisconsin', availability: 'coming_soon' },
-  { code: 'WY', name: 'Wyoming', slug: 'wyoming', nameEs: 'Wyoming', availability: 'coming_soon' },
+  { code: 'WY', name: 'Wyoming', slug: 'wyoming', nameEs: 'Wyoming', availability: 'active' },
 ];
 
 export const ALL_MARKETING_STATES: readonly MarketingState[] = ALL_STATES;
@@ -87,15 +87,18 @@ export const ALL_MARKETING_STATES: readonly MarketingState[] = ALL_STATES;
 export const FLORIDA: MarketingState = ALL_STATES.find((s) => s.code === 'FL')!;
 
 /**
- * USPS state code → URL slug for every non-FL state in the registry.
- * Used by middleware (Edge runtime) for zero-cost geo → redirect lookup.
+ * USPS state code → URL slug for every state in the registry. Used by
+ * middleware for geo-aware redirects: Wyoming visitors land on
+ * `/states/wyoming`, Delaware visitors on `/states/delaware`, and visitors
+ * from coming-soon states land on the corresponding waitlist slug.
  */
 export const STATE_CODE_TO_SLUG: Readonly<Record<string, string>> =
-  Object.fromEntries(
-    ALL_STATES
-      .filter((s) => s.code !== 'FL')
-      .map((s) => [s.code, s.slug]),
-  );
+  Object.fromEntries(ALL_STATES.map((s) => [s.code, s.slug]));
+
+/** Active formation states sorted alphabetically for switcher UI. */
+export const ACTIVE_MARKETING_STATES: readonly MarketingState[] = ALL_STATES
+  .filter((s) => s.availability === 'active')
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 const BY_CODE: Record<string, MarketingState> = Object.fromEntries(
   ALL_STATES.map((s) => [s.code, s]),

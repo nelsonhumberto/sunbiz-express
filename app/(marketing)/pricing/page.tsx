@@ -1,13 +1,27 @@
+import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { resolveMarketingState } from '@/lib/marketing-states';
+
+interface PricingPageProps {
+  searchParams?: { state?: string | string[] };
+}
+
+function pickFirst(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
 
 export const metadata = { title: 'Pricing' };
 
-export default async function PricingPage() {
+export default async function PricingPage({ searchParams }: PricingPageProps) {
   const t = await getTranslations('pricing');
+  const explicitState = pickFirst(searchParams?.state);
+  const preferred = cookies().get('preferred_state')?.value;
+  const state = resolveMarketingState(explicitState ?? preferred);
 
   return (
     <>
@@ -22,10 +36,10 @@ export default async function PricingPage() {
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">{t('subhead')}</p>
         </div>
       </section>
-      <PricingTable showHeader={false} />
+      <PricingTable showHeader={false} state={state} />
       <ComparisonTable />
-      <FAQSection />
-      <CTABanner />
+      <FAQSection state={state} />
+      <CTABanner state={state} />
     </>
   );
 }

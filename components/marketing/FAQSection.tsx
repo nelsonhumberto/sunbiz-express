@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/accordion';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
 interface FAQSectionProps {
   /** Resolved marketing state. Defaults to Florida for backwards compatibility. */
@@ -25,6 +26,7 @@ export function FAQSection({ state = FLORIDA }: FAQSectionProps) {
 
   return (
     <section className="py-20 md:py-28">
+      {isActive && <JsonLd data={faqPageJsonLd(faqItems)} />}
       <div className="container max-w-3xl">
         <div className="text-center mb-12">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">

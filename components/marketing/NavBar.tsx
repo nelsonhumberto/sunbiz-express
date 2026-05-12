@@ -8,6 +8,8 @@ import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { StateSwitcher } from './StateSwitcher';
+import { useCurrentMarketingState } from '@/lib/use-current-state';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -18,6 +20,7 @@ interface NavBarProps {
 export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   const t = useTranslations('nav');
   const pathname = usePathname();
+  const currentState = useCurrentMarketingState();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -68,6 +71,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
+          <StateSwitcher currentState={currentState} />
           <LanguageSwitcher />
           {isAuthed ? (
             <>
@@ -89,7 +93,15 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                 <Link href="/sign-in">{t('signIn')}</Link>
               </Button>
               <Button asChild>
-                <Link href="/sign-up">{t('startFiling')}</Link>
+                <Link
+                  href={
+                    currentState.code === 'FL'
+                      ? '/sign-up'
+                      : `/sign-up?state=${currentState.code}`
+                  }
+                >
+                  {t('startFiling')}
+                </Link>
               </Button>
             </>
           )}
@@ -120,6 +132,11 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               </Link>
             ))}
             <div className="border-t border-border mt-2 pt-3 flex flex-col gap-2">
+              <StateSwitcher
+                currentState={currentState}
+                variant="full"
+                className="w-full justify-start"
+              />
               <LanguageSwitcher variant="full" className="w-full justify-start" />
               {isAuthed ? (
                 <Button asChild variant="outline">
@@ -131,7 +148,15 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                     <Link href="/sign-in">{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link href="/sign-up">{t('startFiling')}</Link>
+                    <Link
+                      href={
+                        currentState.code === 'FL'
+                          ? '/sign-up'
+                          : `/sign-up?state=${currentState.code}`
+                      }
+                    >
+                      {t('startFiling')}
+                    </Link>
                   </Button>
                 </>
               )}

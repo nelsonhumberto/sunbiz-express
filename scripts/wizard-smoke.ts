@@ -79,15 +79,22 @@ check(
 check('preferredOperatingAgreementSlug(1)', preferredOperatingAgreementSlug(1), 'operating_agreement_single');
 check('preferredOperatingAgreementSlug(3)', preferredOperatingAgreementSlug(3), 'operating_agreement_multi');
 
-console.log('\n--- Add-on pricing (flat, all-in) ---');
-// Add-ons are billed at the same customer-facing price across LLC and Corp.
-// Internal state-fee differences are absorbed into LaunchForma margin.
-check('LLC cert_status', addOnPriceCents('cert_status', 'LLC'), 3_900);
-check('CORP cert_status', addOnPriceCents('cert_status', 'CORP'), 3_900);
-check('LLC cert_copy', addOnPriceCents('cert_copy', 'LLC'), 5_900);
-check('CORP cert_copy', addOnPriceCents('cert_copy', 'CORP'), 5_900);
-check('LLC ein', addOnPriceCents('ein', 'LLC'), 7_900);
-check('CORP ein', addOnPriceCents('ein', 'CORP'), 7_900);
+console.log('\n--- Add-on pricing (per-state, per-entity) ---');
+// State-fee add-ons surface the actual government remittance + LaunchForma's
+// service margin. Federal services (EIN, OA, domain) stay flat across states
+// and entities. Default state is Florida.
+check('FL LLC cert_status', addOnPriceCents('cert_status', 'LLC'), 3_900);
+check('FL CORP cert_status', addOnPriceCents('cert_status', 'CORP'), 4_275); // 3400 service + 875 FL CORP fee
+check('WY LLC cert_status', addOnPriceCents('cert_status', 'LLC', 'WY'), 5_900); // 3400 + 2500
+check('DE LLC cert_status', addOnPriceCents('cert_status', 'LLC', 'DE'), 8_400); // 3400 + 5000
+check('FL LLC cert_copy', addOnPriceCents('cert_copy', 'LLC'), 5_900);
+check('FL CORP cert_copy', addOnPriceCents('cert_copy', 'CORP'), 3_775); // 2900 service + 875 FL CORP fee
+check('WY LLC cert_copy', addOnPriceCents('cert_copy', 'LLC', 'WY'), 5_900);
+check('DE LLC cert_copy', addOnPriceCents('cert_copy', 'LLC', 'DE'), 7_900); // 2900 + 5000
+check('FL LLC ein (federal — flat)', addOnPriceCents('ein', 'LLC'), 7_900);
+check('FL CORP ein (federal — flat)', addOnPriceCents('ein', 'CORP'), 7_900);
+check('WY LLC ein (federal — flat)', addOnPriceCents('ein', 'LLC', 'WY'), 7_900);
+check('DE CORP ein (federal — flat)', addOnPriceCents('ein', 'CORP', 'DE'), 7_900);
 
 console.log('\n--- Cost scenarios (all-in package pricing) ---');
 {
@@ -126,8 +133,11 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['cert_status', 'cert_copy'],
   });
-  // 15500 package + 3900 cert_status + 5900 cert_copy = 25300
-  check('CORP Basic + cert_status + cert_copy total', corpBasicCerts.totalCents, 25_300);
+  // FL CORP BASIC: 3000 service + 7000 FL corp fee = 10000 package
+  // cert_status FL CORP: 3400 + 875 = 4275
+  // cert_copy FL CORP: 2900 + 875 = 3775
+  // Total: 10000 + 4275 + 3775 = 18050
+  check('FL CORP Basic + cert_status + cert_copy total', corpBasicCerts.totalCents, 18_050);
 }
 {
   const llcBasicCerts = computeCost({

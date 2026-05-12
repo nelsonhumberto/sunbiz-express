@@ -5,11 +5,14 @@ import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, X, AlertTriangle, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
-import { FL } from '@/lib/florida';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import {
+  FORMATION_STATES,
+  annualComplianceFor,
+  type StateCode,
+} from '@/lib/formation-states';
 
-const LLC_STATE_FEE = FL.fees.annualReportLLC;   // $138.75
-const CORP_STATE_FEE = FL.fees.annualReportCorp; // $150.00
 const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $80
 
 const competitors = [
@@ -18,7 +21,38 @@ const competitors = [
   { name: 'LaunchForma',        fee: OUR_FEE, icon: 'check', us: true },
 ];
 
-export function AnnualReportSection() {
+interface AnnualReportSectionProps {
+  /** Resolved marketing state. Section only renders for Florida today. */
+  state?: MarketingState;
+}
+
+export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProps = {}) {
+  const stateCode = (state.code as StateCode) || 'FL';
+  const rule = FORMATION_STATES[stateCode];
+  if (!rule) return null;
+  const llcCompliance = annualComplianceFor(rule, 'LLC');
+  const corpCompliance = annualComplianceFor(rule, 'CORP');
+  const llcFee = llcCompliance.baseFeeCents;
+  const corpFee = corpCompliance.baseFeeCents;
+  const llcLate = llcCompliance.lateFeeCents;
+
+  const deadlineCopy =
+    state.code === 'FL'
+      ? 'Florida deadline: May 1 — $400 non-waivable late penalty after that'
+      : state.code === 'WY'
+        ? 'Wyoming: annual report due on your anniversary month each year'
+        : state.code === 'DE'
+          ? 'Delaware LLC: $300 annual tax due June 1 — $200 penalty after that'
+          : `${state.name}: file on time to avoid late penalties`;
+
+  const headlineCopy =
+    `Already have a ${state.name} company?`;
+
+  const subtitleCopy =
+    state.code === 'FL'
+      ? 'No account needed. Enter your document number, review your info, and we file with the Florida Division of Corporations on the same day.'
+      : `Let us handle your ${state.name} annual compliance. We prepare, review, and submit your filing on time so you never miss a deadline.`;
+
   return (
     <section className="py-20 md:py-28 bg-gradient-to-b from-white to-primary/5">
       <div className="container max-w-6xl">
@@ -29,19 +63,17 @@ export function AnnualReportSection() {
           transition={{ duration: 0.5 }}
           className="text-center space-y-4 mb-12"
         >
-          {/* Urgency banner */}
           <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-4 py-2 rounded-full">
             <AlertTriangle className="h-3.5 w-3.5" />
-            Florida deadline: May 1 — $400 non-waivable late penalty after that
+            {deadlineCopy}
           </div>
 
           <h2 className="font-display text-4xl md:text-5xl font-medium tracking-tight">
-            Already have a Florida company?<br className="hidden md:block" />
+            {headlineCopy}<br className="hidden md:block" />
             <span className="gradient-text italic"> File your annual report with us.</span>
           </h2>
           <p className="text-lg text-ink-muted max-w-2xl mx-auto">
-            No account needed. Enter your document number, review your info, and we file with
-            the Florida Division of Corporations on the same day.
+            {subtitleCopy}
           </p>
         </motion.div>
 
@@ -57,7 +89,7 @@ export function AnnualReportSection() {
             {/* Price comparison table */}
             <div className="rounded-2xl overflow-hidden border border-border shadow-card bg-white">
               <div className="bg-muted/40 px-5 py-3 text-xs font-semibold uppercase tracking-widest text-ink-subtle">
-                Service fee comparison (+ Florida state fee)
+                Service fee comparison (+ {state.name} state fee)
               </div>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border">
@@ -87,9 +119,9 @@ export function AnnualReportSection() {
                 <tfoot>
                   <tr className="bg-muted/30">
                     <td colSpan={2} className="px-5 py-2.5 text-xs text-ink-subtle">
-                      State fee: {formatCurrency(LLC_STATE_FEE)} (LLC) · {formatCurrency(CORP_STATE_FEE)} (Corp)
-                      &nbsp;·&nbsp; Totals: {formatCurrency(OUR_FEE + LLC_STATE_FEE)} LLC /
-                      {' '}{formatCurrency(OUR_FEE + CORP_STATE_FEE)} Corp all-in with LaunchForma
+                      {state.name} fee: {formatCurrency(llcFee)} ({llcCompliance.label})
+                      {corpFee !== llcFee && ` · ${formatCurrency(corpFee)} (${corpCompliance.label})`}
+                      &nbsp;·&nbsp; Totals from {formatCurrency(OUR_FEE + llcFee)} all-in with LaunchForma
                     </td>
                   </tr>
                 </tfoot>
@@ -118,18 +150,22 @@ export function AnnualReportSection() {
             {[
               {
                 icon: <Calendar className="h-5 w-5 text-primary" />,
-                title: 'Avoid the $400 late penalty',
-                body: 'Florida imposes a $400 non-waivable penalty on annual reports filed after May 1. We make sure yours lands on time.',
+                title: llcLate > 0
+                  ? `Avoid the ${formatCurrency(llcLate)} late penalty`
+                  : 'Never miss a deadline',
+                body: llcLate > 0
+                  ? `${state.name} imposes a ${formatCurrency(llcLate)} penalty on late filings. We make sure yours lands on time.`
+                  : `${state.name} can administratively dissolve companies that miss annual filings. We make sure yours lands on time.`,
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
-                title: 'Pre-filled from state records',
-                body: 'We pull your current company data directly from Sunbiz so you only review and confirm — no manual data entry.',
+                title: 'We handle the paperwork',
+                body: `We prepare your ${state.name} annual compliance filing so you only review and confirm — no manual data entry.`,
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
                 title: 'Officers & addresses you control',
-                body: 'Update any officer, address, or registered agent on the same form before we file — changes go live on Sunbiz.',
+                body: `Update any officer, address, or registered agent on the same form before we file — changes go live with the ${state.name} Secretary of State.`,
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,

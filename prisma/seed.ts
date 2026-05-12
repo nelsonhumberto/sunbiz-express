@@ -50,9 +50,59 @@ async function main() {
     },
   });
 
+  // Wyoming (active for production)
+  await prisma.state.create({
+    data: {
+      stateCode: 'WY',
+      stateName: 'Wyoming',
+      llcFilingFeeCents: 10_000,
+      corpFilingFeeCents: 10_000,
+      raFeeCents: 0,
+      llcAnnualReportFeeCents: 6_000,
+      corpAnnualReportFeeCents: 6_000,
+      annualReportLateFeeCents: 0,
+      standardProcessingDays: 5,
+      expressProcessingDays: 1,
+      requiresAnnualReport: true,
+      annualReportDueMonth: 1,
+      annualReportDueDay: 1,
+      annualReportEndMonth: 12,
+      annualReportEndDay: 31,
+      allowsOnlineFiling: true,
+      enabled: true,
+      formationWizardUrl: 'https://wyobiz.wyo.gov/business/RegistrationInstr.aspx',
+      searchUrl: 'https://wyobiz.wyo.gov/Business/FilingSearch.aspx',
+    },
+  });
+
+  // Delaware (active for production)
+  await prisma.state.create({
+    data: {
+      stateCode: 'DE',
+      stateName: 'Delaware',
+      llcFilingFeeCents: 11_000,
+      corpFilingFeeCents: 10_900,
+      raFeeCents: 0,
+      llcAnnualReportFeeCents: 30_000,
+      corpAnnualReportFeeCents: 22_500,
+      annualReportLateFeeCents: 20_000,
+      standardProcessingDays: 5,
+      expressProcessingDays: 1,
+      requiresAnnualReport: true,
+      annualReportDueMonth: 6,
+      annualReportDueDay: 1,
+      annualReportEndMonth: 6,
+      annualReportEndDay: 1,
+      allowsOnlineFiling: true,
+      enabled: true,
+      formationWizardUrl: 'https://corp.delaware.gov/howtoform/',
+      searchUrl: 'https://icis.corp.delaware.gov/Ecorp/EntitySearch/NameSearch.aspx',
+    },
+  });
+
   // States we list as "Coming soon" for the marketing UI
   const comingSoon = [
-    ['CA', 'California'], ['NY', 'New York'], ['TX', 'Texas'], ['DE', 'Delaware'],
+    ['CA', 'California'], ['NY', 'New York'], ['TX', 'Texas'],
     ['NV', 'Nevada'], ['IL', 'Illinois'], ['GA', 'Georgia'], ['NC', 'North Carolina'],
   ];
   for (const [code, name] of comingSoon) {

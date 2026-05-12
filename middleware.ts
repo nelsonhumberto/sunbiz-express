@@ -1,69 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { STATE_CODE_TO_SLUG } from '@/lib/marketing-states';
 
+const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
+
 /**
- * Geo-routing middleware.
+ * Geo + preference-aware routing middleware.
  *
- * On a plain "/" hit (no explicit ?state= param) Vercel populates two headers:
- *   x-vercel-ip-country        → "US", "MX", "GB", …
- *   x-vercel-ip-country-region → US state code: "FL", "GA", "TX", …
- *
- * If the visitor is in the US but outside Florida we 302-redirect them to
- * the state-specific landing page (/states/georgia, /states/texas, …).
- * Florida visitors and non-US visitors land on the default FL homepage.
- *
- * The cookie `geo_redirected` is set after the first redirect so the user
- * can freely navigate back to "/" without being bounced again in the same
- * browser session.
+ * Behavior:
+ *   - On every request: if `?state=XX` is present and XX is an active
+ *     formation state (FL/WY/DE), persist the choice in the `preferred_state`
+ *     cookie so subsequent navigations (sign-up → dashboard → wizard) carry
+ *     it forward without polluting URLs.
+ *   - At "/" only:
+ *       1. If `?state=` is in the URL, render whatever the page does with it.
+ *       2. If `preferred_state` cookie is set, stick to "/" (the homepage
+ *          honors the preference for hero/pricing/CTA).
+ *       3. If `geo_redirected` cookie is set, skip auto-redirect.
+ *       4. Otherwise look at Vercel geo headers and redirect to the matching
+ *          `/states/<slug>` landing page.
  */
+const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
+const UTM_COOKIE = 'lf_utm';
+const UTM_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Only intercept the root homepage.
-  if (pathname !== '/') return NextResponse.next();
+  let response: NextResponse | null = null;
 
-  // Respect an explicit ?state= override — user or campaign link chose a state.
-  if (searchParams.has('state')) return NextResponse.next();
+  // Capture full UTM attribution set into a single JSON cookie so it
+  // survives page navigations and lands on the sign-up / wizard actions.
+  const hasUtm = UTM_PARAMS.some((p) => searchParams.has(p));
+  if (hasUtm) {
+    const utmData: Record<string, string> = {};
+    for (const key of UTM_PARAMS) {
+      const val = searchParams.get(key);
+      if (val) utmData[key] = val;
+    }
+    if (Object.keys(utmData).length > 0) {
+      if (!response) response = NextResponse.next();
+      response.cookies.set(UTM_COOKIE, JSON.stringify(utmData), {
+        path: '/',
+        sameSite: 'lax',
+        maxAge: UTM_MAX_AGE,
+      });
+    }
+  }
 
-  // Don't loop: if we already redirected this session, let them browse freely.
-  if (request.cookies.has('geo_redirected')) return NextResponse.next();
+  // Capture explicit ?state=XX choices from anywhere in the marketing/auth
+  // funnel into the preferred-state cookie.
+  const stateParam = searchParams.get('state');
+  if (stateParam) {
+    const upper = stateParam.toUpperCase();
+    if (ACTIVE_FORMATION_STATES.has(upper) && request.cookies.get('preferred_state')?.value !== upper) {
+      if (!response) response = NextResponse.next();
+      response.cookies.set('preferred_state', upper, {
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365,
+      });
+    }
+  }
 
-  // Vercel sets these in production; they're absent locally so we fall through.
+  if (pathname !== '/') return response ?? NextResponse.next();
+  if (searchParams.has('state')) return response ?? NextResponse.next();
+  if (request.cookies.has('preferred_state')) return response ?? NextResponse.next();
+  if (request.cookies.has('geo_redirected')) return response ?? NextResponse.next();
+
   const country = request.headers.get('x-vercel-ip-country') ?? '';
   const region = request.headers.get('x-vercel-ip-country-region') ?? '';
 
-  // Non-US visitors or missing headers → default Florida homepage.
-  if (country !== 'US' || !region) return NextResponse.next();
-
-  // Florida is home — no redirect needed.
-  if (region === 'FL') return NextResponse.next();
+  if (country !== 'US' || !region) return response ?? NextResponse.next();
+  if (region === 'FL') return response ?? NextResponse.next();
 
   const slug = STATE_CODE_TO_SLUG[region];
+  if (!slug) return response ?? NextResponse.next();
 
-  // Unknown / unregistered territory → fall back to Florida homepage.
-  if (!slug) return NextResponse.next();
-
-  // Redirect to the dedicated state landing page.
   const target = request.nextUrl.clone();
   target.pathname = `/states/${slug}`;
   target.search = '';
 
-  const response = NextResponse.redirect(target, { status: 302 });
-
-  // Remember for the rest of the browser session so back-navigation works.
-  response.cookies.set('geo_redirected', '1', {
+  const redirectResponse = NextResponse.redirect(target, { status: 302 });
+  redirectResponse.cookies.set('geo_redirected', '1', {
     path: '/',
     sameSite: 'lax',
-    // No maxAge → session cookie; cleared when the browser closes.
   });
-
-  return response;
+  return redirectResponse;
 }
 
 export const config = {
-  /**
-   * Run on every non-asset, non-API, non-Next-internal request.
-   * The negative lookahead keeps static files and API routes unaffected.
-   */
   matcher: ['/((?!api|_next/static|_next/image|favicon|robots|sitemap|.*\\..*).*)'],
 };

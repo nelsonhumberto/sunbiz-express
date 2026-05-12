@@ -6,8 +6,21 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import {
+  ACTIVE_FORMATION_STATES,
+  type StateCode,
+} from '@/lib/formation-states';
+import { filingIncludesEin } from '@/lib/ein';
 import { sendEmail } from '@/lib/email-mock';
+import { safeParseJson } from '@/lib/utils';
 import { submitFilingToState } from './filings';
+
+function asStateCode(input: string | null | undefined): StateCode {
+  const upper = (input ?? 'FL').toUpperCase();
+  return ACTIVE_FORMATION_STATES.includes(upper as StateCode)
+    ? (upper as StateCode)
+    : 'FL';
+}
 
 export interface CheckoutResult {
   ok?: boolean;
@@ -26,10 +39,37 @@ export async function processCheckout(input: {
     where: { id: input.filingId },
     include: {
       filingAdditionalServices: { include: { service: true } },
+      einApplication: true,
     },
   });
   if (!filing || filing.userId !== session.user.id) return { error: 'Filing not found.' };
   if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
+
+  // EIN gate: if the customer's package includes EIN, the responsible-party
+  // form MUST have been completed before we accept payment. Otherwise we'd
+  // submit the filing without the data needed to actually file Form SS-4.
+  const addOnSlugsForGate = filing.filingAdditionalServices.map(
+    (fas) => fas.service.serviceSlug as AddOnSlug,
+  );
+  if (
+    filingIncludesEin({
+      tier: filing.serviceTier as TierSlug,
+      addOnSlugs: addOnSlugsForGate,
+    })
+  ) {
+    const ein = filing.einApplication;
+    const completed =
+      !!ein &&
+      (ein.status === 'ready_online' ||
+        ein.status === 'manual_foreign' ||
+        ein.status === 'submitted' ||
+        ein.status === 'delivered');
+    if (!completed) {
+      return {
+        error: 'EIN responsible-party details are required before checkout.',
+      };
+    }
+  }
 
   // Verify the PaymentIntent with Stripe
   let pi;
@@ -45,14 +85,25 @@ export async function processCheckout(input: {
     return { error: `Payment not completed (status: ${pi.status}). Please try again.` };
   }
 
-  // Recompute cost to ensure server-side integrity
-  const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug,
+  // Recompute cost to ensure server-side integrity. Pricing is state-aware
+  // for internal remittance accounting; the customer-facing total is the
+  // same across FL/WY/DE for a given tier+add-on selection, but the
+  // government-remittance slice differs per state.
+  const addOnSlugs = addOnSlugsForGate;
+  const optionalDetails = safeParseJson<Record<string, unknown> | null>(
+    filing.optionalDetails,
+    null,
   );
+  const processingOptionId =
+    optionalDetails && typeof optionalDetails.processingOption === 'string'
+      ? (optionalDetails.processingOption as string)
+      : undefined;
   const breakdown = computeCost({
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
+    state: asStateCode(filing.state),
+    processingOptionId,
   });
 
   // Verify amount matches (allow ±1 cent for rounding)

@@ -1,18 +1,49 @@
 // Pricing catalog for LaunchForma formation packages and add-ons.
 //
-// Customer-facing pricing model: ONE all-in package price per tier (no
-// itemized "+ state fee" math at the surface). Internally we still split each
-// transaction into two ledgers:
+// Customer-facing pricing model: the customer ALWAYS sees a single all-in
+// number per tier, but that number is now state-aware. Each tier carries a
+// {@link TierDef.serviceMarginCents} (LaunchForma's labor charge — the same
+// across states) and bundles in the actual government fees for the chosen
+// state and entity type. Wyoming has lower formation fees than Florida, so
+// the customer sees a lower headline price; Delaware has higher certificate
+// fees, so packages that bundle certificates (Standard / Premium) cost more
+// in DE than in FL. EIN, Operating Agreement, domain, and the other federal
+// or service-only items stay flat — they have no state-fee component.
 //
-//   - governmentRemittanceCents : amount we forward to Florida (or IRS).
-//   - incServicesRevenueCents   : the rest — margin retained by LaunchForma.
+// Internally, every transaction still splits into:
+//
+//   - governmentRemittanceCents : amount we forward to the Secretary of
+//     State (or IRS).
+//   - incServicesRevenueCents   : margin retained by LaunchForma.
 //
 // All values are in cents.
 
-import { FL } from './florida';
+import {
+  FORMATION_STATES,
+  certificateOfStatusFeeCents,
+  certifiedCopyFeeCents,
+  defaultProcessingOption,
+  resolveProcessingOption,
+  stateFilingFeeCents,
+  type StateCode,
+} from './formation-states';
 
 export type TierSlug = 'BASIC' | 'STANDARD' | 'PREMIUM';
 export type EntityType = 'LLC' | 'CORP';
+
+/**
+ * State-fee add-ons that a tier bundles in. These drive the per-state
+ * package price — Standard and Premium include a Certificate of Status and
+ * Certified Copy, both of which cost different amounts in different states.
+ */
+const TIER_BUNDLED_STATE_FEE_ADDONS: Record<
+  TierSlug,
+  readonly ('cert_status' | 'cert_copy')[]
+> = {
+  BASIC: [],
+  STANDARD: ['cert_status', 'cert_copy'],
+  PREMIUM: ['cert_status', 'cert_copy'],
+};
 
 export interface TierDef {
   slug: TierSlug;
@@ -21,10 +52,16 @@ export interface TierDef {
   bestFor: string;
   description: string;
   /**
-   * All-in package price. The package already covers Florida's filing fee
-   * and LaunchForma' preparation/submission work. We charge the same price
-   * regardless of entity type so the customer sees a single confident
-   * number; the LLC vs Corp margin difference is absorbed internally.
+   * LaunchForma's portion of the package price (the labor / service charge).
+   * Customer-facing total = serviceMarginCents + bundled government fees for
+   * the chosen state and entity type. Calibrated so Florida LLC pricing
+   * matches our historical headline tier prices ($155 / $299 / $499).
+   */
+  serviceMarginCents: number;
+  /**
+   * @deprecated — use {@link tierPackagePriceCents}. This is the Florida LLC
+   * reference price, computed at module load time. Kept for callers (DB
+   * seeds, snapshot writes) that haven't been state-aware-ified yet.
    */
   packagePriceCents: number;
   recommended?: boolean;
@@ -32,16 +69,22 @@ export interface TierDef {
   features: { label: string; included: boolean; highlight?: boolean }[];
 }
 
-export const TIERS: TierDef[] = [
+const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
   {
     slug: 'BASIC',
     name: 'Basic Filing',
     bestFor: 'I only need the legal filing',
-    description: 'The legal filing, prepared and submitted by Florida specialists.',
-    packagePriceCents: 15_500,
+    description:
+      'The legal filing, prepared and submitted by LaunchForma specialists.',
+    // FL LLC reference: $30 service + $125 FL filing = $155 (unchanged).
+    // FL CORP: $30 + $70 = $100. WY: $30 + $100 = $130. DE: $30 + $110 = $140.
+    serviceMarginCents: 3_000,
     features: [
-      { label: 'Florida filing fee included', included: true, highlight: true },
-      { label: 'Articles of Organization / Incorporation prepared & submitted', included: true },
+      { label: 'State filing fee included', included: true, highlight: true },
+      {
+        label: 'Articles of Organization / Incorporation prepared & submitted',
+        included: true,
+      },
       { label: 'Same-business-day filing', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
@@ -53,14 +96,22 @@ export const TIERS: TierDef[] = [
     name: 'Bank-Ready Filing',
     bestFor: 'Best for opening a bank account',
     description: 'Everything banks ask for at account opening — handled.',
-    packagePriceCents: 29_900,
+    // FL LLC reference: $139 service + $125 + $5 + $30 = $299 (unchanged).
+    // FL CORP: $139 + $70 + $8.75 + $8.75 = $226.50.
+    // WY LLC/CORP: $139 + $100 + $25 + $30 = $294.
+    // DE LLC: $139 + $110 + $50 + $50 = $349. DE CORP: $139 + $109 + $50 + $50 = $348.
+    serviceMarginCents: 13_900,
     recommended: true,
     ribbon: 'Most Popular',
     features: [
       { label: 'Everything in Basic Filing', included: true },
       { label: 'EIN Acquisition (IRS Form SS-4)', included: true, highlight: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
-      { label: 'Certificate of Status (state-issued)', included: true, highlight: true },
+      {
+        label: 'Certificate of Status (state-issued)',
+        included: true,
+        highlight: true,
+      },
       { label: 'Certified Copy of Articles', included: true, highlight: true },
       { label: 'Email + Live Chat support', included: true },
       { label: 'Free .com domain', included: false },
@@ -72,7 +123,8 @@ export const TIERS: TierDef[] = [
     name: 'Launch Concierge',
     bestFor: 'Best for hands-off setup',
     description: 'Bank-Ready plus year-round compliance, banking, and branding.',
-    packagePriceCents: 49_900,
+    // FL LLC reference: $339 service + $125 + $5 + $30 = $499 (unchanged).
+    serviceMarginCents: 33_900,
     ribbon: 'Best Value',
     features: [
       { label: 'Everything in Bank-Ready Filing', included: true },
@@ -87,19 +139,74 @@ export const TIERS: TierDef[] = [
   },
 ];
 
+/**
+ * Customer-facing tier price for a given (tier, state, entity type) combo.
+ * The amount = serviceMarginCents + state filing fee + bundled cert fees.
+ */
+export function tierPackagePriceCents(
+  tier: TierSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): number {
+  const def = TIER_BY_SLUG[tier];
+  return def.serviceMarginCents + tierBundledStateFeeCents(tier, entityType, state);
+}
+
+/**
+ * Sum of government fees a tier bundles in for a (state, entity) pair —
+ * formation filing fee plus any bundled certificate fees. Drives both the
+ * customer-facing tier price and the package's government-remittance line.
+ */
+export function tierBundledStateFeeCents(
+  tier: TierSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): number {
+  let total = stateFilingFeeCents(state, entityType);
+  const bundled = TIER_BUNDLED_STATE_FEE_ADDONS[tier];
+  if (bundled.includes('cert_status')) {
+    total += certificateOfStatusFeeCents(state, entityType);
+  }
+  if (bundled.includes('cert_copy')) {
+    total += certifiedCopyFeeCents(state, entityType);
+  }
+  return total;
+}
+
+export const TIERS: TierDef[] = TIER_DEFS.map((t) => ({
+  ...t,
+  // Florida LLC reference price, snapshotted for DB seeds and any legacy
+  // caller that still reads the static field.
+  packagePriceCents: t.serviceMarginCents + tierBundledFeeForReference(t.slug),
+}));
+
+function tierBundledFeeForReference(tier: TierSlug): number {
+  // Inline computation that does not depend on TIERS (avoids the temporal
+  // dead zone during module init).
+  const fl = FORMATION_STATES.FL;
+  const bundled = TIER_BUNDLED_STATE_FEE_ADDONS[tier];
+  let total = fl.fees.llcTotal;
+  if (bundled.includes('cert_status')) total += fl.fees.certificateOfStatusLLC;
+  if (bundled.includes('cert_copy')) total += fl.fees.certifiedCopyLLC;
+  return total;
+}
+
 export const TIER_BY_SLUG: Record<TierSlug, TierDef> = TIERS.reduce(
   (acc, t) => ({ ...acc, [t.slug]: t }),
-  {} as Record<TierSlug, TierDef>
+  {} as Record<TierSlug, TierDef>,
 );
 
-/** Linking an existing Florida entity is free — revenue comes from annual report renewals. */
+/** Linking an existing entity is free — revenue comes from annual report renewals. */
 export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 
 /**
- * Our service fee for filing an annual report (excluding the Florida state fee).
- *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + FL state fee
- *   LLC  total: $80 + $138.75 = $218.75
- *   Corp total: $80 + $150.00 = $230.00
+ * Our service fee for filing an annual report (EXCLUDING the state fee).
+ *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state-specific fee
+ *   FL LLC  total: $80 + $138.75 = $218.75
+ *   FL Corp total: $80 + $150.00 = $230.00
+ *   WY LLC/Corp total: $80 + $60.00 minimum = $140.00 minimum
+ *   DE LLC total: $80 + $300.00 = $380.00 (annual tax, no report)
+ *   DE Corp total: $80 + $225.00 minimum (franchise tax min) = $305.00 minimum
  */
 export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
 
@@ -124,28 +231,36 @@ export interface AddOnDef {
   slug: AddOnSlug;
   name: string;
   description: string;
-  /** Customer-facing price. Same price across LLC and Corp. */
+  /**
+   * LaunchForma service component (cents). For non-state-fee add-ons (EIN,
+   * Operating Agreement, domain, etc.) this IS the customer price — federal
+   * services don't depend on state. For state-fee add-ons (cert_status,
+   * cert_copy) the customer pays this PLUS the per-state government fee.
+   */
+  serviceMarginCents: number;
+  /**
+   * @deprecated — Florida-LLC reference price. For non-state-fee add-ons
+   * this equals {@link serviceMarginCents}; for state-fee add-ons it's the
+   * historical FL LLC price. Use {@link addOnPriceCents} with state + entity
+   * for an accurate quote.
+   */
   priceCents: number;
   recurring?: 'annually' | 'monthly';
   category: 'formation' | 'compliance' | 'branding';
   iconKey: string; // lucide icon name
   badge?: string;
   highlight?: boolean;
-  /**
-   * If this add-on triggers a state-side fee, we forward this amount to
-   * Florida and keep the rest as service margin. Looked up per entity type
-   * via {@link addOnGovernmentRemittanceCents}.
-   */
-  remittance?: { LLC: number; CORP: number };
+  /** True if this add-on triggers a per-state government fee on top of the service margin. */
+  hasStateFee?: boolean;
 }
 
-export const ADD_ONS: AddOnDef[] = [
+const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
   {
     slug: 'registered_agent',
     name: 'Registered Agent Service',
     description:
-      'Year-1 free. Florida physical address provided, legal mail scanned, your home address kept off the public record.',
-    priceCents: 0,
+      'Year-1 free. In-state physical address provided, legal mail scanned, your home address kept off the public record.',
+    serviceMarginCents: 0,
     recurring: 'annually',
     category: 'compliance',
     iconKey: 'ShieldCheck',
@@ -157,7 +272,7 @@ export const ADD_ONS: AddOnDef[] = [
     name: 'EIN Acquisition',
     description:
       'IRS Form SS-4 filed for you — federal Tax ID delivered within 1 business day. Required to open a business bank account.',
-    priceCents: 7_900,
+    serviceMarginCents: 7_900,
     category: 'formation',
     iconKey: 'Hash',
   },
@@ -165,8 +280,8 @@ export const ADD_ONS: AddOnDef[] = [
     slug: 'operating_agreement_single',
     name: 'Operating Agreement (Single-Member)',
     description:
-      'Florida-tailored agreement defining ownership, governance, and succession — required by most banks at account opening.',
-    priceCents: 8_900,
+      'State-tailored agreement defining ownership, governance, and succession — required by most banks at account opening.',
+    serviceMarginCents: 8_900,
     category: 'formation',
     iconKey: 'FileText',
   },
@@ -175,7 +290,7 @@ export const ADD_ONS: AddOnDef[] = [
     name: 'Operating Agreement (Multi-Member)',
     description:
       'Custom agreement covering profit allocation, voting rights, capital calls, transfer restrictions, and dispute resolution.',
-    priceCents: 14_900,
+    serviceMarginCents: 14_900,
     category: 'formation',
     iconKey: 'Users',
   },
@@ -184,7 +299,7 @@ export const ADD_ONS: AddOnDef[] = [
     name: '.com Domain Registration',
     description:
       'Secure your online identity. Includes WHOIS privacy and free DNS management.',
-    priceCents: 1_900,
+    serviceMarginCents: 1_900,
     recurring: 'annually',
     category: 'branding',
     iconKey: 'Globe',
@@ -193,34 +308,30 @@ export const ADD_ONS: AddOnDef[] = [
     slug: 'cert_status',
     name: 'Certificate of Status Handling',
     description:
-      'We pay Florida the certificate fee, request the document, and email it to you the moment it lands.',
-    priceCents: 3_900,
+      'We pay the state\'s certificate fee, request the document, and email it to you the moment it lands.',
+    // $34 service margin. FL LLC: $5 + $34 = $39. WY: $25 + $34 = $59. DE: $50 + $34 = $84.
+    serviceMarginCents: 3_400,
     category: 'formation',
     iconKey: 'Award',
-    remittance: {
-      LLC: FL.fees.certificateOfStatusLLC,
-      CORP: FL.fees.certificateOfStatusCorp,
-    },
+    hasStateFee: true,
   },
   {
     slug: 'cert_copy',
     name: 'Certified Copy Handling',
     description:
       'State-certified copy of your filed Articles. We pay the state fee and deliver the certified PDF for banks and lenders.',
-    priceCents: 5_900,
+    // $29 service margin. FL LLC: $30 + $29 = $59. WY: $30 + $29 = $59. DE: $50 + $29 = $79.
+    serviceMarginCents: 2_900,
     category: 'formation',
     iconKey: 'FileCheck',
-    remittance: {
-      LLC: FL.fees.certifiedCopyLLC,
-      CORP: FL.fees.certifiedCopyCorp,
-    },
+    hasStateFee: true,
   },
   {
     slug: 'annual_report_managed',
     name: 'Managed Annual Report',
     description:
-      'We file your Florida annual report on time — every year. Avoid the $400 non-waivable late penalty automatically.',
-    priceCents: 14_900,
+      'We file your annual report on time — every year. Avoid non-waivable late penalties automatically.',
+    serviceMarginCents: 14_900,
     recurring: 'annually',
     category: 'compliance',
     iconKey: 'CalendarCheck',
@@ -230,7 +341,7 @@ export const ADD_ONS: AddOnDef[] = [
     name: 'S-Corp Election (Form 2553)',
     description:
       'Tax classification change. Pre-fills shareholder consents and provides mail-in instructions to the IRS.',
-    priceCents: 9_900,
+    serviceMarginCents: 9_900,
     category: 'compliance',
     iconKey: 'Receipt',
   },
@@ -239,51 +350,96 @@ export const ADD_ONS: AddOnDef[] = [
     name: 'Compliance Alerts Plus',
     description:
       'Year-round deadline tracking — annual reports, license renewals, BOI reports, sales-tax filings.',
-    priceCents: 9_900,
+    serviceMarginCents: 9_900,
     recurring: 'annually',
     category: 'compliance',
     iconKey: 'BellRing',
   },
 ];
 
+export const ADD_ONS: AddOnDef[] = ADD_ON_DEFS.map((a) => ({
+  ...a,
+  // Florida LLC reference price (snapshot used by DB seeds + any caller that
+  // doesn't yet pass state/entity). For federal services this just equals
+  // serviceMarginCents.
+  priceCents: a.serviceMarginCents + addOnReferenceRemittanceCents(a.slug, !!a.hasStateFee),
+}));
+
+function addOnReferenceRemittanceCents(
+  slug: AddOnSlug,
+  hasStateFee: boolean,
+): number {
+  if (!hasStateFee) return 0;
+  if (slug === 'cert_status') return FORMATION_STATES.FL.fees.certificateOfStatusLLC;
+  if (slug === 'cert_copy') return FORMATION_STATES.FL.fees.certifiedCopyLLC;
+  return 0;
+}
+
 export const ADD_ON_BY_SLUG: Record<AddOnSlug, AddOnDef> = ADD_ONS.reduce(
   (acc, a) => ({ ...acc, [a.slug]: a }),
-  {} as Record<AddOnSlug, AddOnDef>
+  {} as Record<AddOnSlug, AddOnDef>,
 );
 
 // ─── State filing fees & remittance helpers (internal accounting) ─────────
 
-export function stateFilingFee(entityType: EntityType): number {
-  return entityType === 'LLC' ? FL.fees.llcTotal : FL.fees.corpTotal;
+/**
+ * State filing fee for the formation document, in cents. Defaults to FL
+ * when no state is provided so callers that haven't been state-aware-ified
+ * yet keep working.
+ */
+export function stateFilingFee(
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): number {
+  return stateFilingFeeCents(state, entityType);
 }
 
 /**
- * Customer-facing add-on price. Flat across LLC and Corp — internal state
- * fee differences are absorbed in the LaunchForma margin.
+ * Customer-facing add-on price for a given (state, entity) combo. Federal
+ * services (EIN, OA, domain) return a flat number; state-fee add-ons add
+ * the state's per-entity government fee on top of LaunchForma's service
+ * margin so the customer sees one accurate all-in number.
  */
-export function addOnPriceCents(slug: AddOnSlug, _entityType: EntityType): number {
-  return ADD_ON_BY_SLUG[slug]?.priceCents ?? 0;
+export function addOnPriceCents(
+  slug: AddOnSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): number {
+  const def = ADD_ON_BY_SLUG[slug];
+  if (!def) return 0;
+  if (!def.hasStateFee) return def.serviceMarginCents;
+  return (
+    def.serviceMarginCents +
+    addOnGovernmentRemittanceCents(slug, entityType, state)
+  );
 }
 
 /**
  * Government remittance for an add-on (the slice of the price we forward
- * to Florida). Used for cover-letter math and revenue reporting — never
- * shown to customers.
+ * to the Secretary of State). Used for cover-letter math and revenue
+ * reporting — never shown to customers. Falls back to Florida fees when no
+ * state is provided.
  */
 export function addOnGovernmentRemittanceCents(
   slug: AddOnSlug,
   entityType: EntityType,
+  state: StateCode = 'FL',
 ): number {
-  const def = ADD_ON_BY_SLUG[slug];
-  if (!def?.remittance) return 0;
-  return entityType === 'LLC' ? def.remittance.LLC : def.remittance.CORP;
+  if (slug === 'cert_status') return certificateOfStatusFeeCents(state, entityType);
+  if (slug === 'cert_copy') return certifiedCopyFeeCents(state, entityType);
+  return 0;
 }
 
 /**
- * Customer-facing tier package price (single number, includes Florida fee).
+ * Customer-facing tier package price (single number, includes state fee).
+ * Defaults to Florida + LLC for legacy callers.
  */
-export function packagePriceCents(tier: TierSlug, _entityType: EntityType): number {
-  return TIER_BY_SLUG[tier].packagePriceCents;
+export function packagePriceCents(
+  tier: TierSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): number {
+  return tierPackagePriceCents(tier, entityType, state);
 }
 
 // ─── Operating Agreement entitlement ──────────────────────────────────────
@@ -319,13 +475,15 @@ export interface CostBreakdownLine {
   /** Customer-facing amount on this line. */
   cents: number;
   /** UI category — packages and add-ons render side-by-side. */
-  category: 'package' | 'addon';
+  category: 'package' | 'addon' | 'processing';
   /** Recurring marker for add-ons sold as annual subscriptions. */
   recurring?: 'annually' | 'monthly';
   /** Tier slug for package lines (helps consumers without a separate lookup). */
   tierSlug?: TierSlug;
   /** Add-on slug for add-on lines. */
   addOnSlug?: AddOnSlug;
+  /** Processing option id for processing-fee lines. */
+  processingOptionId?: string;
 }
 
 export interface CostBreakdown {
@@ -337,7 +495,7 @@ export interface CostBreakdown {
   addOnsCents: number;
   /** Customer total. */
   totalCents: number;
-  /** Internal — total amount remitted to Florida (filing fee + cert fees). */
+  /** Internal — total amount remitted to the state (filing + cert + processing). */
   governmentRemittanceCents: number;
   /** Internal — LaunchForma revenue retained from this filing. */
   incServicesRevenueCents: number;
@@ -357,20 +515,32 @@ export function computeCost(input: {
   entityType: EntityType;
   tier: TierSlug;
   addOnSlugs: AddOnSlug[];
+  /** Defaults to FL for backwards compatibility with pre-multi-state callers. */
+  state?: StateCode;
+  /**
+   * Customer-selected processing-speed option id (per state).
+   * Defaults to the state's default option (typically "standard").
+   */
+  processingOptionId?: string | null;
 }): CostBreakdown {
   const tier = TIER_BY_SLUG[input.tier];
+  const stateCode: StateCode = input.state ?? 'FL';
+  const stateRule = FORMATION_STATES[stateCode];
   const lines: CostBreakdownLine[] = [];
 
-  const packageCents = packagePriceCents(input.tier, input.entityType);
-  const stateFee = stateFilingFee(input.entityType);
-  const packageRemittance = stateFee;
+  const packageCents = tierPackagePriceCents(input.tier, input.entityType, stateCode);
+  const packageRemittance = tierBundledStateFeeCents(
+    input.tier,
+    input.entityType,
+    stateCode,
+  );
   const packageMargin = packageCents - packageRemittance;
 
-  const packageLabel = `${tier.name} — Florida ${input.entityType === 'LLC' ? 'LLC' : 'Corporation'}`;
+  const packageLabel = `${tier.name} — ${stateRule.name} ${input.entityType === 'LLC' ? 'LLC' : 'Corporation'}`;
   lines.push({
     key: `package:${tier.slug}`,
     label: packageLabel,
-    detail: 'Includes the required Florida filing fee.',
+    detail: `Includes the required ${stateRule.name} filing fee.`,
     cents: packageCents,
     category: 'package',
     tierSlug: tier.slug,
@@ -384,8 +554,8 @@ export function computeCost(input: {
     if (slug === 'registered_agent') continue; // free year 1
     if (isBundledIntoTier(slug, input.tier)) continue;
 
-    const cents = addOnPriceCents(slug, input.entityType);
-    const remit = addOnGovernmentRemittanceCents(slug, input.entityType);
+    const cents = addOnPriceCents(slug, input.entityType, stateCode);
+    const remit = addOnGovernmentRemittanceCents(slug, input.entityType, stateCode);
     addOnsCents += cents;
     addOnsRemittance += remit;
     lines.push({
@@ -399,10 +569,36 @@ export function computeCost(input: {
     });
   }
 
-  const governmentRemittanceCents = packageRemittance + addOnsRemittance;
-  const totalCents = packageCents + addOnsCents;
+  // Customer-selected processing speed. If the option is the state's default
+  // (typically "standard" / $0) we don't add a line — keeps the breakdown
+  // tidy. Non-default options are billed as a pass-through state expedite
+  // fee on top of the package.
+  const processing = resolveProcessingOption(stateCode, input.processingOptionId);
+  const defaultProcessing = defaultProcessingOption(stateCode);
+  let processingCents = 0;
+  let processingRemittance = 0;
+  if (processing.id !== defaultProcessing.id && processing.feeCents > 0) {
+    processingCents = processing.feeCents;
+    processingRemittance = processing.feeCents; // 100% pass-through.
+    const provisional = processing.feeIsProvisional
+      ? ' (provisional — confirmed at submission)'
+      : '';
+    lines.push({
+      key: `processing:${processing.id}`,
+      label: `${processing.label} (${stateRule.name})`,
+      detail: `${processing.estimate} · state expedite fee${provisional}`,
+      cents: processingCents,
+      category: 'processing',
+      processingOptionId: processing.id,
+    });
+  }
+
+  const governmentRemittanceCents =
+    packageRemittance + addOnsRemittance + processingRemittance;
+  const totalCents = packageCents + addOnsCents + processingCents;
   const addOnsRevenueCents = addOnsCents - addOnsRemittance;
   const packageMarginCents = packageMargin;
+  // Processing fees are 100% pass-through, so they contribute $0 to revenue.
   const incServicesRevenueCents = packageMarginCents + addOnsRevenueCents;
 
   return {
@@ -414,7 +610,6 @@ export function computeCost(input: {
     incServicesRevenueCents,
     packageMarginCents,
     addOnsRevenueCents,
-    // Legacy mirrors.
     stateSubtotalCents: governmentRemittanceCents,
     serviceSubtotalCents: incServicesRevenueCents,
   };

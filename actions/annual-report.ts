@@ -6,7 +6,12 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
-import { FL } from '@/lib/florida';
+import {
+  ACTIVE_FORMATION_STATES,
+  annualComplianceFor,
+  getFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   searchSunbiz,
@@ -85,11 +90,16 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
 
   const filing = await prisma.filing.findUnique({
     where: { id: data.filingId },
-    select: { id: true, userId: true, entityType: true, businessName: true },
+    select: { id: true, userId: true, entityType: true, businessName: true, state: true },
   });
   if (!filing || filing.userId !== userId) {
     return { ok: false as const, error: 'Filing not found.' };
   }
+  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
+    filing.state.toUpperCase() as StateCode,
+  )
+    ? (filing.state.toUpperCase() as StateCode)
+    : 'FL';
 
   const annualReport = await prisma.annualReport.findUnique({
     where: { id: data.annualReportId },
@@ -123,8 +133,13 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  const stateFee =
-    filing.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
+  // State-aware annual compliance fee. FL annual report = $138.75 LLC /
+  // $150 Corp; WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225
+  // minimum franchise tax. The wizard-side `AnnualReport.filingFeeCents`
+  // already mirrors this number; we recompute here for safety.
+  const stateRule = getFormationState(filingStateCode);
+  const compliance = annualComplianceFor(stateRule, filing.entityType as 'LLC' | 'CORP');
+  const stateFee = compliance.baseFeeCents;
   const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
 
@@ -293,8 +308,13 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  const stateFee =
-    data.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
+  // The guest annual report flow is FL-only (Sunbiz lookup) — non-FL guests
+  // can't reach this code path because there is no equivalent state lookup.
+  // Use the FL formation registry entry so the math always matches the
+  // authenticated path.
+  const stateRule = getFormationState('FL');
+  const compliance = annualComplianceFor(stateRule, data.entityType);
+  const stateFee = compliance.baseFeeCents;
   const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
   const email = data.guestEmail.toLowerCase().trim();

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import {
   ArrowRight,
@@ -30,6 +31,11 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/sign-in');
   const t = await getTranslations('dashboard');
+
+  const preferredState = cookies().get('preferred_state')?.value?.toUpperCase();
+  const filingState = preferredState && ['FL', 'WY', 'DE'].includes(preferredState)
+    ? preferredState
+    : 'FL';
 
   const now = Date.now();
   const raRenewalHorizon = new Date(now + 60 * 24 * 60 * 60 * 1000);
@@ -98,11 +104,11 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <AddExistingCompanyButton />
-          <StartFilingButton />
+          <StartFilingButton state={filingState} />
         </div>
       </div>
 
-      {filings.length === 0 && <EmptyState />}
+      {filings.length === 0 && <EmptyState filingState={filingState} />}
 
       {latestDraft && (
         <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-white to-white shadow-card">
@@ -274,7 +280,7 @@ function SectionHeader({
   );
 }
 
-async function EmptyState() {
+async function EmptyState({ filingState }: { filingState: string }) {
   const t = await getTranslations('dashboard');
   return (
     <div className="rounded-2xl border-2 border-dashed border-border bg-white p-10 md:p-16 text-center">
@@ -285,7 +291,7 @@ async function EmptyState() {
       <p className="mt-2 text-ink-muted max-w-md mx-auto">{t('emptyBody')}</p>
       <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
         <AddExistingCompanyButton />
-        <StartFilingButton />
+        <StartFilingButton state={filingState} />
       </div>
       <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-ink-subtle">
         <span className="inline-flex items-center gap-1.5">
@@ -316,7 +322,7 @@ async function DraftCard({ filing }: { filing: any }) {
         <div className="flex items-start justify-between mb-3">
           <div className="min-w-0">
             <p className="text-xs text-ink-subtle uppercase tracking-wider font-medium">
-              {filing.entityType === 'LLC' ? 'Florida LLC' : 'Florida Corporation'}
+              {filing.state ?? 'FL'} {filing.entityType === 'LLC' ? 'LLC' : 'Corporation'}
             </p>
             <p className="font-display text-lg font-medium truncate mt-0.5">
               {filing.businessName ?? t('untitledDraft')}
@@ -372,7 +378,9 @@ async function ActiveFilingCard({ filing }: { filing: any }) {
             <StatusBadge status={filing.status} />
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-            <span>{filing.entityType === 'LLC' ? 'Florida LLC' : 'Florida Corp.'}</span>
+            <span>
+              {filing.state ?? 'FL'} {filing.entityType === 'LLC' ? 'LLC' : 'Corp.'}
+            </span>
             <span>·</span>
             <span>
               {filing.documents.length} {t('documents')}

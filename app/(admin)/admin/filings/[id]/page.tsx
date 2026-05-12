@@ -23,6 +23,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
+import {
+  defaultProcessingOption,
+  getFormationState,
+  isActiveFormationState,
+  resolveProcessingOption,
+  type StateCode,
+} from '@/lib/formation-states';
 import { AdminApprovalForm } from './approval-form';
 import { AdminUploadForm } from './upload-form';
 
@@ -57,9 +64,15 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
       raServices: { orderBy: { createdAt: 'desc' }, take: 1 },
       filingAdditionalServices: { include: { service: true } },
       annualReports: { orderBy: { reportYear: 'desc' } },
+      einApplication: true,
     },
   });
   if (!filing) notFound();
+
+  const stateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
+  const stateRule = getFormationState(stateCode);
 
   const principal = safeParseJson<{
     street1: string;
@@ -120,9 +133,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
           </div>
           <div>
             <p className="text-xs text-ink-subtle uppercase tracking-wider font-medium">
-              {filing.entityType === 'LLC'
-                ? tDocs('floridaLLCFull')
-                : tDocs('floridaCorpFull')}
+              {stateRule.name} {filing.entityType === 'LLC' ? 'Limited Liability Company' : 'Profit Corporation'}
             </p>
             <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight mt-1">
               {filing.businessName ?? t('untitledFiling')}
@@ -133,6 +144,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <User className="h-3 w-3" />
                 {filing.user.firstName} {filing.user.lastName}
               </Badge>
+              <Badge variant="outline">{stateRule.shortName}</Badge>
               {filing.sunbizFilingNumber && (
                 <Badge variant="success">
                   <Hash className="h-3 w-3" />
@@ -198,6 +210,111 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filing operations panel — chosen processing speed, foreign-state
+          interest, etc. Surfaces operational signals to the admin team so
+          paper-routed or expedited filings can be queued correctly. */}
+      {(() => {
+        const opt = safeParseJson<{
+          processingOption?: string;
+          foreignRegistrationInterest?: boolean;
+          includeMembersOnArticles?: boolean;
+        } | null>(filing.optionalDetails, null);
+        if (!opt) return null;
+        const proc = resolveProcessingOption(stateCode, opt.processingOption);
+        const isDefault = proc.id === defaultProcessingOption(stateCode).id;
+        const showCard =
+          !isDefault || opt.foreignRegistrationInterest || filing.entityType === 'LLC';
+        if (!showCard) return null;
+        return (
+          <Card>
+            <CardContent className="p-6 space-y-2">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-ink-subtle">
+                Filing operations
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                <p>
+                  <span className="text-ink-subtle">Processing speed:</span>{' '}
+                  <strong>
+                    {proc.label} ({proc.estimate})
+                    {proc.feeCents > 0 ? ` · ${formatCurrency(proc.feeCents, { showZero: true })}` : ''}
+                  </strong>
+                  {proc.feeIsProvisional && proc.feeCents > 0 ? (
+                    <span className="text-xs text-ink-subtle italic"> · provisional fee</span>
+                  ) : null}
+                </p>
+                {filing.entityType === 'LLC' && stateCode === 'DE' && (
+                  <p>
+                    <span className="text-ink-subtle">Members on Certificate:</span>{' '}
+                    <strong>{opt.includeMembersOnArticles ? 'Included' : 'Withheld (default)'}</strong>
+                  </p>
+                )}
+                {opt.foreignRegistrationInterest && (
+                  <p className="sm:col-span-2">
+                    <span className="text-ink-subtle">Foreign-qualification interest:</span>{' '}
+                    <strong>Customer wants help registering in another state.</strong>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* EIN admin queue panel — surfaces sensitive data status without
+          ever displaying the encrypted SSN/passport. Admins use the
+          adminRevealEinSecret server action to decrypt on demand. */}
+      {filing.einApplication && (
+        <Card className="border-primary/15">
+          <CardContent className="p-6 space-y-2">
+            <h3 className="font-semibold text-sm uppercase tracking-wider text-ink-subtle">
+              EIN application — {filing.einApplication.status.replace('_', ' ')}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+              <p>
+                <span className="text-ink-subtle">Pathway:</span>{' '}
+                <strong>
+                  {filing.einApplication.responsiblePartyType === 'foreign'
+                    ? 'Foreign — manual SS-4 (phone/fax)'
+                    : 'US — IRS online EIN Assistant'}
+                </strong>
+              </p>
+              <p>
+                <span className="text-ink-subtle">Responsible party:</span>{' '}
+                <strong>{filing.einApplication.legalName ?? '—'}</strong>
+              </p>
+              {filing.einApplication.responsiblePartyType === 'us' ? (
+                <p>
+                  <span className="text-ink-subtle">{filing.einApplication.taxIdType ?? 'Tax ID'}:</span>{' '}
+                  <span className="font-mono">●●●-●●-{filing.einApplication.taxIdLast4 ?? '----'}</span>
+                </p>
+              ) : (
+                <p>
+                  <span className="text-ink-subtle">Passport:</span>{' '}
+                  <span className="font-mono">
+                    ●●●●{filing.einApplication.passportLast4 ?? '----'} ({filing.einApplication.passportCountry ?? '—'})
+                  </span>
+                </p>
+              )}
+              <p>
+                <span className="text-ink-subtle">Email:</span> {filing.einApplication.email ?? '—'}
+              </p>
+              <p>
+                <span className="text-ink-subtle">Phone:</span> {filing.einApplication.phone ?? '—'}
+              </p>
+              {filing.einApplication.einNumberLast4 && (
+                <p>
+                  <span className="text-ink-subtle">EIN:</span>{' '}
+                  <span className="font-mono">●●●●●{filing.einApplication.einNumberLast4}</span>
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-ink-subtle">
+              Decrypt SSN / passport via the secure admin reveal action — never copy plaintext into notes or email.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -385,8 +502,16 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               ) : (
                 <ul className="space-y-2 text-sm">
                   {filing.managersMembers.map((m) => (
-                    <li key={m.id} className="flex items-center justify-between gap-2">
-                      <span className="font-medium truncate">{m.name}</span>
+                    <li key={m.id} className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{m.name}</p>
+                        {m.ownerType === 'business' && (
+                          <p className="text-[11px] text-ink-subtle">
+                            Entity owner · {m.businessJurisdiction ?? '—'}
+                            {m.signerName ? ` · by ${m.signerName}` : ''}
+                          </p>
+                        )}
+                      </div>
                       <Badge variant="outline" size="sm">
                         {m.title}
                       </Badge>

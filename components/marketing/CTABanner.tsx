@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { trackCtaClicked } from '@/lib/analytics';
 
 interface CTABannerProps {
   /** Resolved marketing state. Defaults to Florida (active). */
@@ -14,6 +15,8 @@ interface CTABannerProps {
 
 export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
+  const signUpHref = state.code === 'FL' ? '/sign-up' : `/sign-up?state=${state.code}`;
+  const headlineState = state.code === 'FL' ? t('headline2') : `${state.name} business?`;
 
   return (
     <section data-marketing-state={state.code} className="py-16 md:py-24">
@@ -32,14 +35,17 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
           <div className="relative grid grid-cols-1 lg:grid-cols-2 items-center gap-8">
             <div>
               <h2 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-tight">
-                {t('headline1')} <span className="italic">{t('headline2')}</span>
+                {t('headline1')} <span className="italic">{headlineState}</span>
               </h2>
               <p className="mt-4 text-lg text-white/85 leading-relaxed max-w-md">{t('subhead')}</p>
             </div>
 
             <div className="flex flex-col items-start lg:items-end gap-3">
               <Button asChild size="xl" variant="accent" className="text-base shadow-xl">
-                <Link href="/sign-up">
+                <Link
+                  href={signUpHref}
+                  onClick={() => trackCtaClicked('cta_banner', { state: state.code })}
+                >
                   {t('cta')}
                   <ArrowRight className="h-5 w-5" />
                 </Link>

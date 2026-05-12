@@ -34,6 +34,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { safeParseJson, cn } from '@/lib/utils';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import type { AddressValue } from '../AddressForm';
 import type { WizardFiling } from '../types';
 
@@ -84,6 +85,9 @@ interface Member {
 export function Step7Members({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const isLLC = filing.entityType === 'LLC';
+  const filingStateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
 
   const LLC_MEMBER_TITLES = [
     { value: 'AMBR', label: t('titleAuthorizedMember') },
@@ -120,7 +124,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
           name: m.name,
           street1: m.street1 ?? '',
           city: m.city ?? '',
-          state: m.state ?? 'FL',
+          state: m.state ?? filingStateCode,
           zip: m.zip ?? '',
           ownershipPercentage: m.ownershipPercentage ?? undefined,
           ownerType: (m.ownerType as 'individual' | 'business' | null) ?? 'individual',
@@ -134,7 +138,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
             name: '',
             street1: '',
             city: '',
-            state: 'FL',
+            state: filingStateCode,
             zip: '',
             ownerType: 'individual',
           },
@@ -179,7 +183,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
         name: '',
         street1: '',
         city: '',
-        state: 'FL',
+        state: filingStateCode,
         zip: '',
         ownerType: 'individual',
       },
@@ -213,7 +217,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
           street1: raStored.street1 ?? '',
           street2: raStored.street2 ?? '',
           city: raStored.city ?? '',
-          state: raStored.state ?? 'FL',
+          state: raStored.state ?? filingStateCode,
           zip: raStored.zip ?? '',
         }
       : null;
@@ -245,7 +249,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
       const addr: AddressValue = {
         street1: m.street1 ?? '',
         city: m.city ?? '',
-        state: m.state ?? 'FL',
+        state: m.state ?? filingStateCode,
         zip: m.zip ?? '',
       };
       if (isEmptyAddress(addr)) return;
@@ -263,7 +267,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
     updateMember(idx, {
       street1: src.street1 ?? '',
       city: src.city ?? '',
-      state: (src.state ?? 'FL').toUpperCase(),
+      state: (src.state ?? filingStateCode).toUpperCase(),
       zip: src.zip ?? '',
     });
   };
@@ -583,10 +587,10 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
                 />
                 <Input
                   className="col-span-1"
-                  value={member.state ?? 'FL'}
+                  value={member.state ?? filingStateCode}
                   onChange={(e) => updateMember(idx, { state: e.target.value.toUpperCase() })}
                   maxLength={2}
-                  placeholder="FL"
+                  placeholder={filingStateCode}
                 />
                 <Input
                   className="col-span-2 md:col-span-1"

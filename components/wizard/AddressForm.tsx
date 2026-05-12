@@ -81,6 +81,8 @@ interface AddressFormProps {
   lockedStateCode?: string;
   /** Back-compat alias — `floridaOnly` is equivalent to `lockedStateCode="FL"`. */
   floridaOnly?: boolean;
+  /** Default USPS code when value.state is empty (defaults to filing state). */
+  defaultStateCode?: string;
   prefix?: string;
 }
 
@@ -90,6 +92,7 @@ export function AddressForm({
   showInCareOf,
   lockedStateCode,
   floridaOnly,
+  defaultStateCode = 'FL',
   prefix = '',
 }: AddressFormProps) {
   const lockState = lockedStateCode ?? (floridaOnly ? 'FL' : undefined);
@@ -161,7 +164,7 @@ export function AddressForm({
         {lockState ? (
           <Input id={id('state')} value={lockState} disabled />
         ) : (
-          <Select value={value.state || 'FL'} onValueChange={(v) => set('state', v)}>
+          <Select value={value.state || defaultStateCode} onValueChange={(v) => set('state', v)}>
             <SelectTrigger id={id('state')}>
               <SelectValue placeholder={t('addrState')} />
             </SelectTrigger>

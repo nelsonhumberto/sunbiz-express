@@ -18,6 +18,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import {
+  getFormationState,
   isActiveFormationState,
   resolveProcessingOption,
   type StateCode,
@@ -31,6 +32,10 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tDocs = useTranslations('documentTypes');
   const tCommon = useTranslations('common');
+  const filingStateCode: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
+  const stateRule = getFormationState(filingStateCode);
   const principal = safeParseJson<AddressValue>(filing.principalAddress, {
     street1: '',
     city: '',
@@ -119,7 +124,11 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       <ReviewSection title={t('businessBasics')} stepHref={stepHref(1)} editLabel={tCommon('edit')}>
         <Row
           label={t('entityType')}
-          value={isLLC ? tDocs('floridaLLCFull') : tDocs('floridaCorpFull')}
+          value={
+            isLLC
+              ? `${stateRule.name} Limited Liability Company`
+              : `${stateRule.name} Corporation`
+          }
         />
         <Row label={t('businessNameLabel')} value={filing.businessName ?? '—'} mono />
         <Row label={t('serviceTier')} value={filing.serviceTier} />
@@ -225,7 +234,9 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       <div className="rounded-lg border border-border bg-white p-5 space-y-4">
         <div>
           <h3 className="font-semibold text-ink mb-1">{t('signElectronically')}</h3>
-          <p className="text-sm text-ink-muted">{t('signNoteFlorida')}</p>
+          <p className="text-sm text-ink-muted">
+            Type your full name as the authorized representative. Your typed name has the same legal effect as a handwritten signature on this filing.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="incorporatorSignature">

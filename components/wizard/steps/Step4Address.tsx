@@ -7,13 +7,19 @@ import { saveStep4 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { AddressForm, type AddressValue } from '../AddressForm';
 import { safeParseJson } from '@/lib/utils';
+import { isActiveFormationState, getFormationState, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step4Address({ filing }: { filing: WizardFiling }) {
+  const filingState: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
+  const stateRule = getFormationState(filingState);
+
   const initial = safeParseJson<AddressValue>(filing.principalAddress, {
     street1: '',
     city: '',
-    state: 'FL',
+    state: filingState,
     zip: '',
   });
   const [address, setAddress] = useState<AddressValue>(initial);
@@ -36,13 +42,18 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-5">
-      <AddressForm value={address} onChange={setAddress} showInCareOf />
+      <AddressForm
+        value={address}
+        onChange={setAddress}
+        showInCareOf
+        defaultStateCode={filingState}
+      />
 
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted">
         <p className="font-medium text-ink mb-1">📍 Principal place of business</p>
         <p className="text-xs leading-relaxed">
-          This is the address where you primarily conduct business. It can be a Florida address or
-          out-of-state — Florida only requires the registered agent's address to be in Florida.
+          This is the address where you primarily conduct business. It can be in {stateRule.name} or
+          out-of-state — {stateRule.name} only requires the registered agent&apos;s address to be in {stateRule.name}.
         </p>
       </div>
 

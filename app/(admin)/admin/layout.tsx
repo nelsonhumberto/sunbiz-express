@@ -12,12 +12,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const NAV: { href: string; label: string; iconName: 'LayoutDashboard' | 'FileText' | 'Mail' | 'BarChart3' | 'AlertTriangle' }[] = [
-  { href: '/admin', label: 'Overview', iconName: 'LayoutDashboard' },
-  { href: '/admin/filings', label: 'Filings', iconName: 'FileText' },
-  { href: '/admin/drafts', label: 'Drafts & abandoned', iconName: 'AlertTriangle' },
-  { href: '/admin/outbox', label: 'Email outbox', iconName: 'Mail' },
-  { href: '/admin/analytics', label: 'Analytics', iconName: 'BarChart3' },
+const NAV: { href: string; label: string; iconName: string }[] = [
+  { href: '/admin',               label: 'Overview',         iconName: 'LayoutDashboard' },
+  { href: '/admin/filings',       label: 'Filings',          iconName: 'FileText' },
+  { href: '/admin/drafts',        label: 'Drafts',           iconName: 'AlertTriangle' },
+  { href: '/admin/users',         label: 'Users',            iconName: 'Users' },
+  { href: '/admin/annual-reports',label: 'Annual Reports',   iconName: 'Calendar' },
+  { href: '/admin/email-blast',   label: 'Email blast',      iconName: 'Send' },
+  { href: '/admin/outbox',        label: 'Email outbox',     iconName: 'Mail' },
+  { href: '/admin/analytics',     label: 'Analytics',        iconName: 'BarChart3' },
+  { href: '/admin/settings',      label: 'Settings',         iconName: 'Settings' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

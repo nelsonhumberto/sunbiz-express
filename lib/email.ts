@@ -244,25 +244,54 @@ function wrap(inner: string) {
 }
 
 // ─── Sender ───────────────────────────────────────────────────────────────────
+//
+// Priority order (first matching provider wins):
+//   1. RESEND_API_KEY  → Resend (recommended; 3 000 free/mo)
+//   2. SMTP_HOST + SMTP_USER + SMTP_PASS → Nodemailer (Google Workspace, etc.)
+//   3. Neither → console-only (local dev / CI)
+//
+// Google Workspace SMTP quick-start:
+//   SMTP_HOST=smtp.gmail.com
+//   SMTP_PORT=587
+//   SMTP_USER=admin@launchforma.com
+//   SMTP_PASS=<16-char App Password from myaccount.google.com/apppasswords>
+//   EMAIL_FROM=LaunchForma <admin@launchforma.com>
 
 const FROM = process.env.EMAIL_FROM ?? 'LaunchForma <no-reply@launchforma.com>';
 
 async function deliverEmail(to: string, subject: string, html: string) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const resendKey = process.env.RESEND_API_KEY;
+  const smtpHost  = process.env.SMTP_HOST;
+  const smtpUser  = process.env.SMTP_USER;
+  const smtpPass  = process.env.SMTP_PASS;
 
-  if (!apiKey) {
-    // No API key — log to console for local dev
-    console.log(`[email] → ${to} | "${subject}" (set RESEND_API_KEY to send real emails)`);
+  if (resendKey) {
+    // ── Option 1: Resend ──────────────────────────────────────────────────
+    const { Resend } = await import('resend');
+    const resend = new Resend(resendKey);
+    const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+    if (error) {
+      console.error('[email] Resend error:', error);
+      throw new Error(`Email delivery failed: ${error.message}`);
+    }
     return;
   }
 
-  const { Resend } = await import('resend');
-  const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
-  if (error) {
-    console.error('[email] Resend error:', error);
-    throw new Error(`Email delivery failed: ${error.message}`);
+  if (smtpHost && smtpUser && smtpPass) {
+    // ── Option 2: SMTP (Google Workspace, etc.) ───────────────────────────
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({ from: FROM, to, subject, html });
+    return;
   }
+
+  // ── Option 3: console only (dev / no credentials) ─────────────────────
+  console.log(`[email] → ${to} | "${subject}" (no RESEND_API_KEY or SMTP_* set)`);
 }
 
 export async function sendEmail(args: SendEmailArgs) {

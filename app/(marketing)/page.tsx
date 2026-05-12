@@ -36,7 +36,21 @@ export async function generateMetadata({
   const locale = await getLocale();
 
   if (state.availability === 'active') {
-    return {};
+    const stateName = localizedStateName(state, locale);
+    const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
+    const description = `Start your ${stateName} LLC or Corporation online in minutes. Same-day filing, free Year-1 Registered Agent, EIN acquisition, and transparent all-in pricing. No hidden fees.`;
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+      },
+      alternates: {
+        canonical: state.code === 'FL' ? '/' : `/?state=${state.code}`,
+      },
+    };
   }
 
   const t = await getTranslations({ locale, namespace: 'comingSoon' });

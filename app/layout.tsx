@@ -22,11 +22,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com',
   ),
   title: {
-    default: 'LaunchForma — Incorporate. Empower. Elevate.',
+    default: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     template: '%s · LaunchForma',
   },
   description:
-    'LaunchForma simplifies business formation in Florida, Wyoming, and Delaware. File your LLC or Corporation online — same-business-day submission, free Year-1 Registered Agent, transparent pricing, zero hidden fees.',
+    'LaunchForma makes Florida LLC formation fast and affordable. File your LLC or Corporation online — Florida LLC filing, EIN acquisition, Sunbiz registration, free Year-1 Registered Agent. No hidden fees.',
   keywords: [
     'LLC formation',
     'Corporation formation',
@@ -42,18 +42,18 @@ export const metadata: Metadata = {
     'LaunchForma',
   ],
   openGraph: {
-    title: 'LaunchForma — Incorporate. Empower. Elevate.',
+    title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'File your LLC or Corporation in Florida, Wyoming, or Delaware. Same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. No hidden fees, ever.',
+      'File your Florida LLC or Corporation online. Florida LLC formation, EIN, Sunbiz registration, free registered agent, and transparent all-in pricing. No hidden fees, ever.',
     type: 'website',
     locale: 'en_US',
     siteName: 'LaunchForma',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LaunchForma — Incorporate. Empower. Elevate.',
+    title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'File your LLC or Corporation online. All-in pricing, free registered agent, same-day filing.',
+      'Florida LLC formation, EIN, Sunbiz filing. All-in pricing, free registered agent, same-day submission.',
   },
   robots: {
     index: true,

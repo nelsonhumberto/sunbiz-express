@@ -32,6 +32,7 @@ model User {
   lastName        String
   phone           String?
   role            String    @default("USER") // USER | ADMIN
+  isTester        Boolean   @default(false)
   emailVerified   Boolean   @default(false)
   accountStatus   String    @default("ACTIVE")
   createdAt       DateTime  @default(now())

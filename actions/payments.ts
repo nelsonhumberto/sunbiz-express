@@ -74,24 +74,18 @@ export async function processCheckout(input: {
     }
   }
 
-  // Verify the PaymentIntent with Stripe
-  let pi;
-  try {
-    pi = await getStripe().paymentIntents.retrieve(input.paymentIntentId, {
-      expand: ['payment_method'],
-    });
-  } catch {
-    return { error: 'Could not verify payment. Please try again.' };
-  }
+  // ── Tester bypass ────────────────────────────────────────────────────────
+  // When an admin has flagged the user as a tester, any card is accepted and
+  // no real Stripe charge is made. The sentinel paymentIntentId
+  // "TESTER_BYPASS" signals this path.
+  const callerUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isTester: true },
+  });
+  const isTesterBypass =
+    callerUser?.isTester === true && input.paymentIntentId === 'TESTER_BYPASS';
 
-  if (pi.status !== 'succeeded') {
-    return { error: `Payment not completed (status: ${pi.status}). Please try again.` };
-  }
-
-  // Recompute cost to ensure server-side integrity. Pricing is state-aware
-  // for internal remittance accounting; the customer-facing total is the
-  // same across FL/WY/DE for a given tier+add-on selection, but the
-  // government-remittance slice differs per state.
+  // Recompute cost (needed in both paths for fee breakdown storage)
   const addOnSlugs = addOnSlugsForGate;
   const optionalDetails = safeParseJson<Record<string, unknown> | null>(
     filing.optionalDetails,
@@ -108,31 +102,58 @@ export async function processCheckout(input: {
     state: asStateCode(filing.state),
     processingOptionId,
   });
-
   const discountCents = input.discountCents ?? 0;
   const expectedTotal = Math.max(0, breakdown.totalCents - discountCents);
 
-  // Verify amount matches (allow ±1 cent for rounding)
-  if (Math.abs(pi.amount - expectedTotal) > 1) {
-    return { error: 'Payment amount mismatch. Please contact support.' };
-  }
+  let cardLast4: string | null = null;
+  let cardBrand: string | null = null;
+  let cardholderName: string | null = null;
+  let pmId: string | null = null;
+  let stripeIntentId: string;
 
-  // Extract card details from Stripe's PaymentMethod
-  const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
-  const cardLast4 = pm?.card?.last4 ?? null;
-  const cardBrand = pm?.card?.brand
-    ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
-    : null;
-  const cardholderName = pm?.billing_details?.name ?? null;
-  const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
+  if (isTesterBypass) {
+    // Synthetic payment — no Stripe call
+    stripeIntentId = `TESTER_${Date.now()}`;
+    cardLast4 = '4242';
+    cardBrand = 'Visa';
+    cardholderName = 'Test User';
+  } else {
+    // Verify the PaymentIntent with Stripe
+    let pi;
+    try {
+      pi = await getStripe().paymentIntents.retrieve(input.paymentIntentId, {
+        expand: ['payment_method'],
+      });
+    } catch {
+      return { error: 'Could not verify payment. Please try again.' };
+    }
+
+    if (pi.status !== 'succeeded') {
+      return { error: `Payment not completed (status: ${pi.status}). Please try again.` };
+    }
+
+    // Verify amount matches (allow ±1 cent for rounding)
+    if (Math.abs(pi.amount - expectedTotal) > 1) {
+      return { error: 'Payment amount mismatch. Please contact support.' };
+    }
+
+    const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
+    cardLast4 = pm?.card?.last4 ?? null;
+    cardBrand = pm?.card?.brand
+      ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
+      : null;
+    cardholderName = pm?.billing_details?.name ?? null;
+    pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
+    stripeIntentId = pi.id;
+  }
 
   await prisma.payment.create({
     data: {
       filingId: filing.id,
       userId: session.user.id,
-      stripePaymentIntentId: pi.id,
+      stripePaymentIntentId: stripeIntentId,
       stripePaymentMethodId: pmId,
-      amountCents: pi.amount,
+      amountCents: expectedTotal,
       status: 'SUCCEEDED',
       stateFilingFeeCents: breakdown.governmentRemittanceCents,
       formationServiceFeeCents: breakdown.packageMarginCents,

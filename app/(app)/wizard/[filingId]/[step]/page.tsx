@@ -66,9 +66,17 @@ export default async function WizardStepPage({ params }: PageProps) {
     collected: false,
   };
   let defaultEmail: string | undefined;
+  let isTester = false;
   if (stepNum === 11) {
     const session = await auth();
     defaultEmail = session?.user?.email ?? undefined;
+    if (session?.user?.id) {
+      const u = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isTester: true },
+      });
+      isTester = u?.isTester ?? false;
+    }
     const ein = await prisma.einApplication.findUnique({
       where: { filingId: filing.id },
     });
@@ -109,6 +117,7 @@ export default async function WizardStepPage({ params }: PageProps) {
           filing={filing}
           einInitial={einInitial}
           defaultEmail={defaultEmail}
+          isTester={isTester}
         />
       )}
     </WizardShell>

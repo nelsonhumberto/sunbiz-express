@@ -56,6 +56,12 @@ export async function adminSendPasswordReset(userId: string) {
   revalidatePath('/admin/users');
 }
 
+export async function toggleTester(userId: string, isTester: boolean) {
+  await requireAdmin();
+  await prisma.user.update({ where: { id: userId }, data: { isTester } });
+  revalidatePath('/admin/users');
+}
+
 export async function deleteUser(userId: string) {
   await requireAdmin();
   // Cascade is set on all related models in the schema — a single delete

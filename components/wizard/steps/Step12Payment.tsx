@@ -15,6 +15,7 @@ import {
   Tag,
   Loader2,
   X,
+  FlaskConical,
 } from 'lucide-react';
 import { processCheckout } from '@/actions/payments';
 import { validateCoupon, type CouponValidationResult } from '@/actions/coupons';
@@ -38,10 +39,12 @@ export function Step12Payment({
   filing,
   einInitial,
   defaultEmail,
+  isTester = false,
 }: {
   filing: WizardFiling;
   einInitial: EinPanelInitialState;
   defaultEmail?: string;
+  isTester?: boolean;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -115,23 +118,32 @@ export function Step12Payment({
       toast.error(t('einRequiredBeforePayment'));
       return;
     }
-    if (!cardholderName.trim()) {
-      toast.error(t('errorCardholder'));
-      return;
-    }
     start(async () => {
-      const result = await cardRef.current!.confirm({
-        amountCents: finalTotal,
-        cardholderName,
-        filingId: filing.id,
-      });
-      if ('error' in result) {
-        toast.error(result.error);
-        return;
+      let paymentIntentId: string;
+
+      if (isTester) {
+        // Tester mode: skip Stripe entirely, use bypass sentinel
+        paymentIntentId = 'TESTER_BYPASS';
+      } else {
+        if (!cardholderName.trim()) {
+          toast.error(t('errorCardholder'));
+          return;
+        }
+        const result = await cardRef.current!.confirm({
+          amountCents: finalTotal,
+          cardholderName,
+          filingId: filing.id,
+        });
+        if ('error' in result) {
+          toast.error(result.error);
+          return;
+        }
+        paymentIntentId = result.paymentIntentId;
       }
+
       const res = await processCheckout({
         filingId: filing.id,
-        paymentIntentId: result.paymentIntentId,
+        paymentIntentId,
         couponId: appliedCoupon?.couponId,
         couponCode: appliedCoupon?.code,
         discountCents,
@@ -261,33 +273,51 @@ export function Step12Payment({
         </ol>
       </div>
 
-      {/* Card form */}
-      <div className="rounded-lg border border-border bg-white p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-ink flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            {t('paymentDetails')}
-          </h3>
-          <span className="inline-flex items-center gap-1 text-xs text-ink-subtle">
-            <Lock className="h-3 w-3" /> {t('stripeBadge')}
-          </span>
+      {/* Card form / Tester bypass */}
+      {isTester ? (
+        <div className="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-amber-700 font-semibold">
+            <FlaskConical className="h-5 w-5" />
+            Test Mode — no real charge will be made
+          </div>
+          <p className="text-sm text-amber-700 leading-snug">
+            Your account is flagged as a tester. Click <strong>Pay</strong> to simulate a successful
+            payment and run the full workflow — document generation, emails, and filing submission —
+            without charging any card.
+          </p>
+          <div className="rounded-md border border-amber-300 bg-white px-4 py-3 text-sm font-mono text-ink-muted flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-amber-400 shrink-0" />
+            Test card •••• •••• •••• 4242 · No charge
+          </div>
         </div>
+      ) : (
+        <div className="rounded-lg border border-border bg-white p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-ink flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              {t('paymentDetails')}
+            </h3>
+            <span className="inline-flex items-center gap-1 text-xs text-ink-subtle">
+              <Lock className="h-3 w-3" /> {t('stripeBadge')}
+            </span>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>{t('cardholderName')}</Label>
-          <Input
-            value={cardholderName}
-            onChange={(e) => setCardholderName(e.target.value)}
-            placeholder={tier?.name ?? ''}
-            autoComplete="cc-name"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <Label>{t('cardholderName')}</Label>
+            <Input
+              value={cardholderName}
+              onChange={(e) => setCardholderName(e.target.value)}
+              placeholder={tier?.name ?? ''}
+              autoComplete="cc-name"
+            />
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Card details</Label>
-          <StripeCardInput ref={cardRef} />
+          <div className="space-y-1.5">
+            <Label>Card details</Label>
+            <StripeCardInput ref={cardRef} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Trust footer */}
       <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-ink-subtle">
@@ -305,7 +335,7 @@ export function Step12Payment({
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
         pending={pending}
-        nextDisabled={einRequired && !einComplete}
+        nextDisabled={!isTester && einRequired && !einComplete}
         nextLabel={t('pay', {
           amount: formatCurrency(finalTotal, { showZero: true }),
         })}

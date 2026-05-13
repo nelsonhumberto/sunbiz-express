@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { Users, ShieldCheck, Ban, CheckCircle2, KeyRound } from 'lucide-react';
+import { Users, ShieldCheck, Ban, CheckCircle2, KeyRound, FlaskConical } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRelative } from '@/lib/utils';
-import { setUserStatus, setUserRole, adminSendPasswordReset } from '@/actions/admin-users';
+import { setUserStatus, setUserRole, adminSendPasswordReset, toggleTester } from '@/actions/admin-users';
 import { DeleteUserButton } from '@/components/admin/DeleteUserButton';
 
 export const dynamic = 'force-dynamic';
@@ -87,7 +87,7 @@ export default async function AdminUsersPage({
           <table className="w-full text-sm">
             <thead className="bg-muted/30 border-b border-border">
               <tr>
-                {['Name', 'Email', 'Role', 'Status', 'Filings', 'Joined', 'Last login', 'Actions'].map((h) => (
+                {['Name', 'Email', 'Role', 'Status', 'Tester', 'Filings', 'Joined', 'Last login', 'Actions'].map((h) => (
                   <th key={h} className="text-left px-5 py-3 font-medium text-ink-muted text-xs uppercase tracking-wider">
                     {h}
                   </th>
@@ -97,7 +97,7 @@ export default async function AdminUsersPage({
             <tbody className="divide-y divide-border">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-12 text-center text-ink-muted">
+                  <td colSpan={9} className="px-5 py-12 text-center text-ink-muted">
                     <Users className="h-8 w-8 mx-auto mb-2 text-ink-subtle" />
                     No users found.
                   </td>
@@ -123,6 +123,25 @@ export default async function AdminUsersPage({
                         <Badge variant="success" size="sm">Active</Badge>
                       ) : (
                         <Badge variant="warn" size="sm">Suspended</Badge>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {user.isTester ? (
+                        <form action={toggleTester.bind(null, user.id, false)}>
+                          <button type="submit" title="Remove tester flag">
+                            <Badge variant="warn" size="sm" className="gap-1 cursor-pointer hover:opacity-80">
+                              <FlaskConical className="h-3 w-3" /> Tester
+                            </Badge>
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={toggleTester.bind(null, user.id, true)}>
+                          <button type="submit" title="Mark as tester">
+                            <Badge variant="secondary" size="sm" className="gap-1 cursor-pointer hover:opacity-80 text-ink-subtle">
+                              <FlaskConical className="h-3 w-3" /> Off
+                            </Badge>
+                          </button>
+                        </form>
                       )}
                     </td>
                     <td className="px-5 py-3 tabular-nums">{user._count.filings}</td>

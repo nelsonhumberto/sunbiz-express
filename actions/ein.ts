@@ -83,6 +83,22 @@ async function getFilingForUser(filingId: string) {
 export async function saveEinResponsibleParty(
   input: z.infer<typeof SaveEinSchema>,
 ): Promise<{ ok: boolean; error?: string; status?: 'ready_online' | 'manual_foreign' }> {
+  try {
+    return await saveEinResponsiblePartyImpl(input);
+  } catch (err) {
+    // Never let an unexpected exception propagate to the React render
+    // (which surfaces as the opaque "Server Components render" error in
+    // production). Log on the server and return a friendly message.
+    console.error('[EIN] saveEinResponsibleParty failed:', err);
+    const message =
+      err instanceof Error ? err.message : 'An unexpected error occurred while saving EIN data.';
+    return { ok: false, error: message };
+  }
+}
+
+async function saveEinResponsiblePartyImpl(
+  input: z.infer<typeof SaveEinSchema>,
+): Promise<{ ok: boolean; error?: string; status?: 'ready_online' | 'manual_foreign' }> {
   const data = SaveEinSchema.parse(input);
   const filing = await getFilingForUser(data.filingId);
 

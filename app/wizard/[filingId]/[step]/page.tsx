@@ -61,26 +61,39 @@ export default async function WizardStepPage({ params }: PageProps) {
   };
 
   // Identify the current actor (auth user OR guest). Used to gate the EIN
-  // tester bypass and to prefill the payment-step email field.
+  // tester bypass and to prefill the payment-step email/name fields.
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
   const isGuest = actor?.kind === 'guest';
+
+  // Compute the actor's display name once for use across multiple steps
+  // (Step 7 first-member prefill, Step 11 EIN responsible-party prefill).
+  let actorDisplayName: string | undefined;
+  let isTester = false;
+  if (actor?.kind === 'user') {
+    const u = await prisma.user.findUnique({
+      where: { id: actor.id },
+      select: { isTester: true, firstName: true, lastName: true },
+    });
+    isTester = u?.isTester ?? false;
+    if (u?.firstName || u?.lastName) {
+      actorDisplayName = [u?.firstName, u?.lastName].filter(Boolean).join(' ');
+    }
+  } else if (actor?.kind === 'guest') {
+    actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
+  }
+  const actorEmail = actor?.email ?? undefined;
 
   let einInitial: import('@/components/wizard/EinResponsiblePartyPanel').EinPanelInitialState = {
     collected: false,
   };
   let defaultEmail: string | undefined;
-  let isTester = false;
+  let defaultName: string | undefined;
 
   if (stepNum === 11) {
-    defaultEmail = actor?.email ?? undefined;
-    if (actor?.kind === 'user') {
-      const u = await prisma.user.findUnique({
-        where: { id: actor.id },
-        select: { isTester: true },
-      });
-      isTester = u?.isTester ?? false;
-    }
+    defaultEmail = actorEmail;
+    defaultName = actorDisplayName ?? filing.managersMembers[0]?.name ?? undefined;
+
     const ein = await prisma.einApplication.findUnique({
       where: { filingId: filing.id },
     });
@@ -113,7 +126,9 @@ export default async function WizardStepPage({ params }: PageProps) {
         {stepNum === 4 && <Step4Address filing={filing} />}
         {stepNum === 5 && <Step5Mailing filing={filing} />}
         {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
-        {stepNum === 7 && <Step7Members filing={filing} />}
+        {stepNum === 7 && (
+          <Step7Members filing={filing} defaultMemberName={actorDisplayName} />
+        )}
         {stepNum === 8 && <Step9Optional filing={filing} />}
         {stepNum === 9 && <Step10Review filing={filing} />}
         {stepNum === 10 && <Step11AddOns filing={filing} />}
@@ -122,6 +137,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             filing={filing}
             einInitial={einInitial}
             defaultEmail={defaultEmail}
+            defaultName={defaultName}
             isTester={isTester}
           />
         )}

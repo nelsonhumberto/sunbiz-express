@@ -39,11 +39,13 @@ export function Step12Payment({
   filing,
   einInitial,
   defaultEmail,
+  defaultName,
   isTester = false,
 }: {
   filing: WizardFiling;
   einInitial: EinPanelInitialState;
   defaultEmail?: string;
+  defaultName?: string;
   isTester?: boolean;
 }) {
   const t = useTranslations('wizard');
@@ -252,6 +254,7 @@ export function Step12Payment({
           filingId={filing.id}
           initial={einInitial}
           defaultEmail={defaultEmail}
+          defaultName={defaultName}
           onSaved={() => setEinComplete(true)}
         />
       )}

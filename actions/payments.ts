@@ -2,6 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
@@ -13,7 +16,7 @@ import {
 import { filingIncludesEin } from '@/lib/ein';
 import { sendEmail } from '@/lib/email';
 import { safeParseJson } from '@/lib/utils';
-import { getWizardActor } from '@/lib/guest';
+import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import { submitFilingToState } from './filings';
 
 function asStateCode(input: string | null | undefined): StateCode {
@@ -207,6 +210,74 @@ export async function processCheckout(input: {
 
   await submitFilingToState(filing.id);
 
+  // ── Auto-convert guests to real accounts after successful checkout ──
+  //
+  // Guests who pay should immediately have a real account so they can sign
+  // in, download documents, and manage compliance reminders. We email them
+  // a temporary password and route them through /sign-in so they can land
+  // on the dashboard with a real session. The checkout-success page lives
+  // behind auth so this also bridges them into the account-only area.
+  let postCheckoutRedirect = `/checkout/success?filing=${filing.id}`;
+  if (actor.kind === 'guest' && actor.email) {
+    try {
+      const guestRow = await prisma.user.findUnique({
+        where: { id: actor.id },
+        select: { accountStatus: true, firstName: true, email: true },
+      });
+      if (guestRow?.accountStatus === 'GUEST') {
+        const tempPassword = generatePostCheckoutPassword();
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+        await prisma.user.update({
+          where: { id: actor.id },
+          data: {
+            passwordHash,
+            accountStatus: 'ACTIVE',
+            guestToken: null,
+          },
+        });
+        cookies().delete(GUEST_COOKIE);
+        try {
+          await sendEmail({
+            type: 'WELCOME',
+            to: guestRow.email,
+            userId: actor.id,
+            context: {
+              firstName: guestRow.firstName ?? undefined,
+              tempPassword,
+              loginEmail: guestRow.email,
+            },
+          });
+        } catch (err) {
+          console.error('[checkout] welcome email failed for guest', actor.id, err);
+        }
+        const next = encodeURIComponent(`/checkout/success?filing=${filing.id}`);
+        const email = encodeURIComponent(guestRow.email);
+        postCheckoutRedirect = `/sign-in?claimed=1&email=${email}&next=${next}`;
+      }
+    } catch (err) {
+      console.error('[checkout] guest auto-claim failed for', actor.id, err);
+    }
+  }
+
   revalidatePath('/dashboard');
-  return { ok: true, redirectTo: `/checkout/success?filing=${filing.id}` };
+  return { ok: true, redirectTo: postCheckoutRedirect };
+}
+
+/**
+ * 14-character readable password used when we auto-claim a guest's account
+ * at checkout. Comfortably above OWASP minimums and avoids ambiguous
+ * characters (0/O/1/l/I).
+ */
+function generatePostCheckoutPassword(): string {
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const digits = '23456789';
+  const symbols = '!@#$%^&*';
+  const all = lower + upper + digits + symbols;
+  const pick = (set: string) => set[crypto.randomInt(0, set.length)];
+  const required = [pick(lower), pick(upper), pick(digits), pick(symbols)];
+  const rest = Array.from({ length: 10 }, () => pick(all));
+  return [...required, ...rest]
+    .sort(() => crypto.randomInt(0, 2) - 0.5)
+    .join('');
 }

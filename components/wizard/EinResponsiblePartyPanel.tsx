@@ -27,6 +27,51 @@ import { cn } from '@/lib/utils';
 import { lastFourDigits, looksLikeUsTaxId } from '@/lib/ein';
 
 type Pathway = 'us' | 'foreign';
+type TaxIdType = 'SSN' | 'ITIN' | 'EIN';
+
+// Friendly per-type labels, placeholders, and format hints. Each US
+// federal tax id is still 9 digits, but the *display format* differs:
+//   SSN  → 123-45-6789
+//   ITIN → 9XX-7X-XXXX (always starts with 9, 4th/5th digits are 70-88, etc.)
+//   EIN  → 12-3456789
+// We surface that to the customer so they can confirm they're filling
+// the right kind of number.
+const TAXID_LABEL: Record<TaxIdType, string> = {
+  SSN: 'Social Security Number (SSN)',
+  ITIN: 'Individual Taxpayer ID (ITIN)',
+  EIN: 'Employer Identification Number (EIN)',
+};
+
+const TAXID_PLACEHOLDER: Record<TaxIdType, string> = {
+  SSN: '123-45-6789',
+  ITIN: '9XX-7X-XXXX',
+  EIN: '12-3456789',
+};
+
+const TAXID_FORMAT_HINT: Record<TaxIdType, string> = {
+  SSN: '9-digit Social Security number, format ###-##-####.',
+  ITIN: '9-digit ITIN starting with 9, format ###-##-####.',
+  EIN: '9-digit federal Employer ID, format ##-#######.',
+};
+
+/**
+ * Format a 9-digit string into the display layout for the chosen tax id
+ * kind. The underlying state is always plain digits — formatting is
+ * applied only for display so we can re-render correctly when the user
+ * switches type.
+ */
+function formatTaxId(digits: string, type: TaxIdType): string {
+  const d = digits.replace(/\D/g, '').slice(0, 9);
+  if (!d) return '';
+  if (type === 'EIN') {
+    if (d.length <= 2) return d;
+    return `${d.slice(0, 2)}-${d.slice(2)}`;
+  }
+  // SSN and ITIN both follow ###-##-####.
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+}
 
 export interface EinPanelInitialState {
   collected: boolean;
@@ -45,6 +90,8 @@ interface EinPanelProps {
   filingId: string;
   initial: EinPanelInitialState;
   defaultEmail?: string;
+  /** Pre-fill for the responsible-party legal name (account / member name). */
+  defaultName?: string;
   /** Called when the panel transitions to the "saved" state. */
   onSaved?: (status: 'ready_online' | 'manual_foreign') => void;
 }
@@ -66,18 +113,19 @@ export function EinResponsiblePartyPanel({
   filingId,
   initial,
   defaultEmail,
+  defaultName,
   onSaved,
 }: EinPanelProps) {
   const t = useTranslations('wizard');
   const [pathway, setPathway] = useState<Pathway>(initial.pathway ?? 'us');
-  const [legalName, setLegalName] = useState(initial.legalName ?? '');
+  const [legalName, setLegalName] = useState(initial.legalName ?? defaultName ?? '');
   const [title, setTitle] = useState(initial.title ?? '');
   const [phone, setPhone] = useState(initial.phone ?? '');
   const [email, setEmail] = useState(initial.email ?? defaultEmail ?? '');
 
   // US-only fields.
-  const [taxIdType, setTaxIdType] = useState<'SSN' | 'ITIN' | 'EIN'>(
-    (initial.taxIdType as 'SSN' | 'ITIN' | 'EIN') ?? 'SSN',
+  const [taxIdType, setTaxIdType] = useState<TaxIdType>(
+    (initial.taxIdType as TaxIdType) ?? 'SSN',
   );
   const [taxId, setTaxId] = useState('');
   const [taxIdConsent, setTaxIdConsent] = useState(false);
@@ -284,7 +332,10 @@ export function EinResponsiblePartyPanel({
               <Label htmlFor="ein-taxid-type">{t('einTaxIdType')} *</Label>
               <Select
                 value={taxIdType}
-                onValueChange={(v) => setTaxIdType(v as 'SSN' | 'ITIN' | 'EIN')}
+                onValueChange={(v) => {
+                  setTaxIdType(v as 'SSN' | 'ITIN' | 'EIN');
+                  setTaxId('');
+                }}
               >
                 <SelectTrigger id="ein-taxid-type">
                   <SelectValue />
@@ -297,20 +348,20 @@ export function EinResponsiblePartyPanel({
               </Select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ein-taxid">{t('einTaxIdNumber')} *</Label>
+              <Label htmlFor="ein-taxid">{TAXID_LABEL[taxIdType]} *</Label>
               <Input
                 id="ein-taxid"
-                value={taxId}
+                value={formatTaxId(taxId, taxIdType)}
                 onChange={(e) =>
                   setTaxId(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))
                 }
                 inputMode="numeric"
-                placeholder="123456789"
+                placeholder={TAXID_PLACEHOLDER[taxIdType]}
                 autoComplete="off"
                 spellCheck={false}
               />
               <p className="text-xs text-ink-subtle">
-                {t('einTaxIdHint')}
+                {TAXID_FORMAT_HINT[taxIdType]} {t('einTaxIdHint')}
               </p>
             </div>
           </div>

@@ -12,13 +12,20 @@ import { Label } from '@/components/ui/label';
 
 const initial: ActionResult = {};
 
-export function SignInForm() {
+export function SignInForm({
+  defaultEmail = '',
+  nextHref = '',
+}: {
+  defaultEmail?: string;
+  nextHref?: string;
+}) {
   const t = useTranslations('auth');
   const [state, formAction] = useFormState(signInAction, initial);
   const [showPwd, setShowPwd] = useState(false);
 
   return (
     <form action={formAction} className="space-y-4">
+      {nextHref && <input type="hidden" name="next" value={nextHref} />}
       <div className="space-y-1.5">
         <Label htmlFor="email">{t('email')}</Label>
         <Input
@@ -27,6 +34,7 @@ export function SignInForm() {
           type="email"
           placeholder="you@business.com"
           autoComplete="email"
+          defaultValue={defaultEmail}
           required
         />
         {state.fieldErrors?.email && (

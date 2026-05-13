@@ -121,12 +121,20 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
     return { error: 'Something went wrong. Try again.' };
   }
 
-  // Redirect admins straight to the admin panel
+  // Redirect admins straight to the admin panel. Honor an optional `next`
+  // param (e.g. when we sent the user to /sign-in mid-checkout) so they
+  // land back where they were trying to go. Restrict to same-origin paths.
+  const rawNext = String(formData.get('next') ?? '').trim();
+  const safeNext =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email.toLowerCase() },
     select: { role: true },
   });
-  redirect(user?.role === 'ADMIN' ? '/admin' : '/dashboard');
+  if (user?.role === 'ADMIN') {
+    redirect('/admin');
+  }
+  redirect(safeNext ?? '/dashboard');
 }
 
 export async function signOutAction() {

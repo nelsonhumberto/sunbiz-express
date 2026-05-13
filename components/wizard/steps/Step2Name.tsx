@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, FileText } from 'lucide-react';
+import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
 import { saveStep2 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import {
@@ -13,7 +13,11 @@ import {
   type BusinessNameAssessment,
 } from '../NameCheckWidget';
 import type { WizardFiling } from '../types';
-import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import {
+  isActiveFormationState,
+  getFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
 
 export function Step2Name({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
@@ -25,6 +29,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
+  const stateName = getFormationState(formationState).name;
 
   // The name widget owns the suffix dropdown so the suffix is always valid;
   // only gate Continue on (a) having an actual base name (>= 2 chars) and
@@ -103,11 +108,24 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted leading-relaxed">
         <p className="font-medium text-ink mb-1">{t('nameTipsTitle')}</p>
         <ul className="space-y-1 text-xs">
-          <li>· {t('nameTip1')}</li>
+          <li>· {t('nameTip1', { state: stateName })}</li>
           <li>· {t('nameTip2')}</li>
           <li>· {t('nameTip3')}</li>
           <li>· {t('nameTip4')}</li>
         </ul>
+      </div>
+
+      {/* Approval guarantee — calms anxiety about state rejection. */}
+      <div className="rounded-lg border border-success/30 bg-success-subtle/40 p-4 text-sm text-ink leading-relaxed flex items-start gap-3">
+        <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold mb-0.5">Our name approval guarantee</p>
+          <p className="text-xs text-ink-muted">
+            If the {stateName} Department of State pushes back on this name for any reason, we work
+            with you on revisions and resubmissions until your filing is approved — at no additional
+            cost.
+          </p>
+        </div>
       </div>
 
       <WizardActions

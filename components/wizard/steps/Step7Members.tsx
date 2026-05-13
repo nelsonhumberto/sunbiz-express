@@ -82,7 +82,15 @@ interface Member {
   signerName?: string;
 }
 
-export function Step7Members({ filing }: { filing: WizardFiling }) {
+export function Step7Members({
+  filing,
+  defaultMemberName,
+}: {
+  filing: WizardFiling;
+  /** Pre-fill for the first member's name when none have been entered yet
+   *  (account first/last name or guest entry name). */
+  defaultMemberName?: string;
+}) {
   const t = useTranslations('wizard');
   const isLLC = filing.entityType === 'LLC';
   const filingStateCode: StateCode = isActiveFormationState(filing.state)
@@ -135,7 +143,7 @@ export function Step7Members({ filing }: { filing: WizardFiling }) {
       : [
           {
             title: isLLC ? 'AMBR' : 'OFFICER',
-            name: '',
+            name: defaultMemberName ?? '',
             street1: '',
             city: '',
             state: filingStateCode,

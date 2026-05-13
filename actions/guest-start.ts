@@ -67,10 +67,11 @@ export async function startGuestFiling(
         entityType: entityType ?? 'LLC',
         state: stateCode,
         serviceTier: 'STANDARD',
-        currentStep: 1,
+        currentStep: 2,
+        completedSteps: JSON.stringify([1]),
       },
     });
-    redirect(`/wizard/${filing.id}/1`);
+    redirect(`/wizard/${filing.id}/2`);
   }
 
   // Block reuse of an existing ACTIVE account from this entry path.
@@ -123,18 +124,21 @@ export async function startGuestFiling(
     sameSite: 'lax',
   });
 
-  // Spin up a draft filing for them.
+  // Spin up a draft filing for them. Step 1 (entity + state) is implicitly
+  // complete because /start already collected both, so we drop them at the
+  // name step instead of re-asking.
   const filing = await prisma.filing.create({
     data: {
       userId: guestUser.id,
       entityType: entityType ?? 'LLC',
       state: stateCode,
       serviceTier: 'STANDARD',
-      currentStep: 1,
+      currentStep: 2,
+      completedSteps: JSON.stringify([1]),
     },
   });
 
-  redirect(`/wizard/${filing.id}/1`);
+  redirect(`/wizard/${filing.id}/2`);
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────

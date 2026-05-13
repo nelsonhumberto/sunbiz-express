@@ -34,10 +34,13 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         entityType: entity,
         state: stateCode,
         serviceTier: 'STANDARD',
-        currentStep: 1,
+        // Step 1 (entity + state) is implicitly complete because /start
+        // already collected both — jump straight into the name step.
+        currentStep: 2,
+        completedSteps: JSON.stringify([1]),
       },
     });
-    redirect(`/wizard/${filing.id}/1`);
+    redirect(`/wizard/${filing.id}/2`);
   }
 
   const requested = (searchParams?.state ?? 'FL').toUpperCase();

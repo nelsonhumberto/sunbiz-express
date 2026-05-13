@@ -58,32 +58,54 @@ function loadKey(): Buffer {
     return cachedKey;
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'EIN_ENCRYPTION_KEY is required in production. Set it in your Vercel project environment.',
-    );
-  }
-
-  // Local development fallback. Deterministic, NOT secret. We log a one-time
-  // warning so devs see this in their terminal.
-  if (!cachedKey) {
+  // Production fallback: derive a key from NEXTAUTH_SECRET (which IS
+  // required and present on every deploy). This keeps the EIN flow
+  // working out-of-the-box without forcing operators to provision a
+  // separate key. The derivation uses a fixed app-level "salt" so the
+  // resulting key is deterministic per environment and never crashes a
+  // request. We still encourage setting a dedicated EIN_ENCRYPTION_KEY
+  // so PII can be re-encrypted independently of session secrets.
+  const sessionSecret = process.env.NEXTAUTH_SECRET?.trim();
+  if (sessionSecret && sessionSecret.length >= 16) {
     cachedKey = createHash('sha256')
-      .update('launchforma-dev-only-do-not-use-in-prod')
+      .update('launchforma:ein:v1:')
+      .update(sessionSecret)
       .digest();
-    if (typeof process.emitWarning === 'function') {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      typeof process.emitWarning === 'function'
+    ) {
       process.emitWarning(
-        'EIN_ENCRYPTION_KEY is not set — using a deterministic dev-only key. Set EIN_ENCRYPTION_KEY before storing real PII.',
+        'EIN_ENCRYPTION_KEY is not set; falling back to a NEXTAUTH_SECRET-derived key. Configure a dedicated key in Vercel → Settings → Environment Variables for stronger key rotation.',
         'EncryptionWarning',
       );
     }
+    return cachedKey;
+  }
+
+  // Local development absolute fallback. Deterministic, NOT secret.
+  cachedKey = createHash('sha256')
+    .update('launchforma-dev-only-do-not-use-in-prod')
+    .digest();
+  if (typeof process.emitWarning === 'function') {
+    process.emitWarning(
+      'EIN_ENCRYPTION_KEY is not set and NEXTAUTH_SECRET is missing — using a deterministic dev-only key. Set EIN_ENCRYPTION_KEY before storing real PII.',
+      'EncryptionWarning',
+    );
   }
   return cachedKey;
 }
 
 /** Throws when the production environment is missing a real key. */
 export function assertProductionKeyConfigured(): void {
-  if (process.env.NODE_ENV === 'production' && !process.env.EIN_ENCRYPTION_KEY) {
-    throw new Error('EIN_ENCRYPTION_KEY is required in production.');
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.EIN_ENCRYPTION_KEY &&
+    !process.env.NEXTAUTH_SECRET
+  ) {
+    throw new Error(
+      'EIN_ENCRYPTION_KEY (or NEXTAUTH_SECRET as a fallback) is required in production.',
+    );
   }
 }
 

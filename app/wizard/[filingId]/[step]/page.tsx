@@ -127,7 +127,11 @@ export default async function WizardStepPage({ params }: PageProps) {
         {stepNum === 5 && <Step5Mailing filing={filing} />}
         {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
         {stepNum === 7 && (
-          <Step7Members filing={filing} defaultMemberName={actorDisplayName} />
+          <Step7Members
+            filing={filing}
+            defaultMemberName={actorDisplayName}
+            defaultEmail={actorEmail}
+          />
         )}
         {stepNum === 8 && <Step9Optional filing={filing} />}
         {stepNum === 9 && <Step10Review filing={filing} />}

@@ -72,7 +72,7 @@ export interface TierDef {
 const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
   {
     slug: 'BASIC',
-    name: 'Basic Filing',
+    name: 'Filing Only',
     bestFor: 'I only need the legal filing',
     description:
       'The legal filing, prepared and submitted by LaunchForma specialists.',
@@ -104,7 +104,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     recommended: true,
     ribbon: 'Most Popular',
     features: [
-      { label: 'Everything in Basic Filing', included: true },
+      { label: 'Everything in Filing Only', included: true },
       { label: 'EIN Acquisition (IRS Form SS-4)', included: true, highlight: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
       {

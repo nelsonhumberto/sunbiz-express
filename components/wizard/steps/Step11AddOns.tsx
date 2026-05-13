@@ -212,8 +212,13 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   // Filter & sort add-ons:
   //  - hide CORP-irrelevant items (OA add-ons are LLC-only)
   //  - hide the "wrong" OA variant for the recorded member count
-  //  - registered_agent first, then by category
+  //  - hide the registered-agent card entirely (year-one is always
+  //    included and the included status is already advertised in the
+  //    sidebar / pricing banner; surfacing it as a "selectable" tile just
+  //    confuses customers).
+  //  - sort remaining items by category
   const visible = ADD_ONS.filter((a) => {
+    if (a.slug === 'registered_agent') return false;
     if (
       entityType === 'CORP' &&
       (a.slug === 'operating_agreement_single' || a.slug === 'operating_agreement_multi')
@@ -224,8 +229,6 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
     return true;
   });
   const sorted = [...visible].sort((a, b) => {
-    if (a.slug === 'registered_agent') return -1;
-    if (b.slug === 'registered_agent') return 1;
     const catOrder = { formation: 0, compliance: 1, branding: 2 } as const;
     return catOrder[a.category] - catOrder[b.category];
   });

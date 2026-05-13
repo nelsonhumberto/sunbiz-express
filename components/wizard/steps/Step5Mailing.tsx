@@ -3,19 +3,23 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Check, MapPin } from 'lucide-react';
 import { saveStep5 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { AddressForm, type AddressValue } from '../AddressForm';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { safeParseJson } from '@/lib/utils';
+import { cn, safeParseJson } from '@/lib/utils';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step5Mailing({ filing }: { filing: WizardFiling }) {
+  const filingState: StateCode = isActiveFormationState(filing.state)
+    ? (filing.state as StateCode)
+    : 'FL';
   const principal = safeParseJson<AddressValue>(filing.principalAddress, {
     street1: '',
     city: '',
-    state: 'FL',
+    state: filingState,
     zip: '',
   });
 
@@ -24,7 +28,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
   const initialAddress: AddressValue =
     !initialSame && typeof stored === 'object' && stored !== null
       ? (stored as AddressValue)
-      : { street1: '', city: '', state: 'FL', zip: '' };
+      : { street1: '', city: '', state: filingState, zip: '' };
 
   const [sameAsPrincipal, setSame] = useState(initialSame);
   const [address, setAddress] = useState<AddressValue>(initialAddress);
@@ -52,14 +56,34 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-5">
-      <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-border bg-white cursor-pointer hover:border-primary/30 transition-colors">
-        <Checkbox
-          checked={sameAsPrincipal}
-          onCheckedChange={(v) => setSame(!!v)}
-          className="mt-0.5"
-        />
-        <div className="flex-1">
-          <p className="font-medium text-ink leading-snug">
+      {/* Prominent same-as-principal card: a large clickable tile with a
+          checkmark indicator so the autofill option is the obvious default,
+          not a hidden button. */}
+      <button
+        type="button"
+        onClick={() => setSame((s) => !s)}
+        aria-pressed={sameAsPrincipal}
+        className={cn(
+          'w-full text-left rounded-2xl border-2 p-5 transition-all flex gap-4 items-start',
+          sameAsPrincipal
+            ? 'border-primary bg-primary/5 shadow-glow'
+            : 'border-border bg-white hover:border-primary/40 hover:shadow-card',
+        )}
+      >
+        <div
+          className={cn(
+            'h-11 w-11 rounded-xl flex items-center justify-center shrink-0',
+            sameAsPrincipal ? 'bg-primary text-white' : 'bg-primary/10 text-primary',
+          )}
+        >
+          {sameAsPrincipal ? (
+            <Check className="h-5 w-5" strokeWidth={3} />
+          ) : (
+            <MapPin className="h-5 w-5" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-ink leading-snug">
             Use the same address as my principal office
           </p>
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
@@ -70,16 +94,16 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
                 {principal.state} {principal.zip}
               </>
             ) : (
-              'Same as the address you entered in the previous step.'
+              'We will reuse the address you entered in the previous step.'
             )}
           </p>
         </div>
-      </label>
+      </button>
 
       {!sameAsPrincipal && (
         <div className="space-y-3">
           <Label className="text-base">Mailing address</Label>
-          <AddressForm value={address} onChange={setAddress} />
+          <AddressForm value={address} onChange={setAddress} defaultStateCode={filingState} />
           <p className="text-xs text-ink-muted">
             Mailing addresses can be a P.O. Box. Government correspondence will be sent here.
           </p>

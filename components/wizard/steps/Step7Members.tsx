@@ -17,6 +17,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { saveStep7 } from '@/actions/wizard';
+import { Step7CorpRoles } from './Step7CorpRoles';
 import { WizardActions } from '../WizardShell';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,14 +86,32 @@ interface Member {
 export function Step7Members({
   filing,
   defaultMemberName,
+  defaultEmail,
 }: {
   filing: WizardFiling;
   /** Pre-fill for the first member's name when none have been entered yet
    *  (account first/last name or guest entry name). */
   defaultMemberName?: string;
+  /** Pre-fill for the email field on officer/director rows. */
+  defaultEmail?: string;
 }) {
   const t = useTranslations('wizard');
   const isLLC = filing.entityType === 'LLC';
+
+  // Corporations get an entirely different UI: required role slots (one
+  // Director + President / Treasurer / Secretary), no business-entity
+  // toggle, no ownership %, and quick-fill chips so the same person can
+  // hold multiple titles with one click. We dispatch to a dedicated
+  // component to keep the LLC code path untouched.
+  if (!isLLC) {
+    return (
+      <Step7CorpRoles
+        filing={filing}
+        defaultMemberName={defaultMemberName}
+        defaultEmail={defaultEmail}
+      />
+    );
+  }
   const filingStateCode: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';

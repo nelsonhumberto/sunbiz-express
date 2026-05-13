@@ -151,6 +151,11 @@ function LiveCostSidebar({
   const tier = (
     step === 3 && tierPreview !== null ? tierPreview : (costData.tier as TierSlug)
   ) as TierSlug;
+  // The customer-facing total stays hidden until they actively interact
+  // with the package selection step. Before step 3 we only show the
+  // package placeholder; on step 3+ (or whenever a preview is active) we
+  // surface the running total.
+  const packageSelected = step >= 3 || tierPreview !== null;
   return (
     <CostSidebar
       entityType={costData.entityType}
@@ -158,6 +163,7 @@ function LiveCostSidebar({
       addOnSlugs={costData.addOnSlugs as any}
       state={costData.state}
       processingOptionId={costData.processingOptionId ?? null}
+      packageSelected={packageSelected}
     />
   );
 }

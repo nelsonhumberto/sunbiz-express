@@ -32,6 +32,7 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Banking resolution template': 'feat_banking',
   'Business email setup': 'feat_email',
   'Quarterly compliance check-ins': 'feat_quarterly',
+  'Everything in Filing Only': 'feat_everythingBasic',
   'Everything in Basic Filing': 'feat_everythingBasic',
   'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
 };

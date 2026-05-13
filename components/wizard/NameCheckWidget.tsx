@@ -324,7 +324,7 @@ export function NameCheckWidget({
 
           {result.available && (
             <p className="mt-2 text-xs text-success/90 leading-relaxed">
-              {t('nameLockUrgency')}
+              {t('nameLockUrgency', { state: stateRule.name })}
             </p>
           )}
 

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getWizardActor } from '@/lib/guest';
+import { encryptString } from '@/lib/encryption';
 import {
   computeCost,
   filingHasOperatingAgreement,
@@ -361,7 +362,21 @@ export async function saveStep6(input: z.infer<typeof RegisteredAgentSchema>) {
 const ManagementTypeSchema = z.enum(['member-managed', 'manager-managed']).optional();
 
 const MemberSchema = z.object({
-  title: z.enum(['MGR', 'MGRM', 'AMBR', 'AP', 'OFFICER', 'DIRECTOR']),
+  // Title enum: legacy LLC titles (MGR/MGRM/AMBR/AP) + corporation roles.
+  // For CORP, DIRECTOR is used for board members and PRESIDENT/TREASURER/
+  // SECRETARY are the three Florida-required officer roles; OFFICER stays
+  // as a catch-all for any extra officers the customer wants to record.
+  title: z.enum([
+    'MGR',
+    'MGRM',
+    'AMBR',
+    'AP',
+    'OFFICER',
+    'DIRECTOR',
+    'PRESIDENT',
+    'TREASURER',
+    'SECRETARY',
+  ]),
   name: z.string().min(1).max(255),
   street1: z.string().optional(),
   city: z.string().optional(),
@@ -411,6 +426,47 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
         error: 'Manager-managed LLCs require at least one Manager (MGR or MGRM).',
       };
     }
+  }
+
+  // Corporation rules:
+  //   • A business entity cannot itself be a director/officer of a corp —
+  //     directors and officers must be natural persons. (Florida 607.0843
+  //     and IRS Form SS-4 guidance.)
+  //   • Florida 607.08401 requires the corp to have officers described in
+  //     its bylaws. We require the three universally-recognized officer
+  //     roles (President, Treasurer, Secretary) and at least one Director
+  //     so banks, the IRS, and downstream documents always have someone
+  //     identified for each function.
+  if (entityType === 'CORP') {
+    for (const m of members) {
+      if (m.ownerType === 'business') {
+        return {
+          ok: false,
+          error: 'Corporations cannot list a business entity as a director or officer — only individuals.',
+        };
+      }
+    }
+    const requireRole = (titleSet: string[], errorMsg: string) => {
+      const ok = members.some(
+        (m) => titleSet.includes(m.title) && m.name.trim().length > 0,
+      );
+      if (!ok) return errorMsg;
+      return null;
+    };
+    const directorErr = requireRole(['DIRECTOR'], 'Add at least one director with a name.');
+    if (directorErr) return { ok: false, error: directorErr };
+    const presidentErr = requireRole(
+      ['PRESIDENT'],
+      "Enter the President / CEO's name.",
+    );
+    if (presidentErr) return { ok: false, error: presidentErr };
+    const treasurerErr = requireRole(
+      ['TREASURER'],
+      "Enter the Treasurer / CFO's name.",
+    );
+    if (treasurerErr) return { ok: false, error: treasurerErr };
+    const secretaryErr = requireRole(['SECRETARY'], "Enter the Secretary's name.");
+    if (secretaryErr) return { ok: false, error: secretaryErr };
   }
 
   const oaEntitled =
@@ -523,12 +579,43 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
 
 // ─── Step 8 (was 9): Optional details ──────────────────────────────────
 
+/**
+ * One shareholder of the corporation, captured for the share-allocation
+ * UI on Step 8 (and required for the S-corp election when included).
+ * The Tax-ID field is plain text on the wire; the server encrypts it and
+ * only persists the ciphertext + last-4 to disk.
+ */
+const ShareholderSchema = z.object({
+  name: z.string().min(1).max(255),
+  street1: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  email: z.string().optional(),
+  shares: z.number().int().min(0).optional(),
+  /** Tax ID type — only collected when S-corp election is in the package. */
+  taxIdType: z.enum(['SSN', 'EIN']).optional(),
+  /** Plain-text 9-digit Tax ID (encrypted before persistence). */
+  taxId: z.string().optional(),
+  /** Tax year end in MM/DD (Form 2553 Column N). */
+  taxYearEnd: z.string().optional(),
+  /** S-corp election consent (Form 2553 Column K). */
+  sCorpConsent: z.boolean().optional(),
+});
+
+const ShareStructureSchema = z.object({
+  issuedShares: z.number().int().min(0).optional(),
+  shareholders: z.array(ShareholderSchema).optional(),
+});
+
 const Step9Schema = z.object({
   filingId: z.string(),
   effectiveDate: z.string().optional(),
   authorizedShares: z.number().int().min(1).optional(),
   /** Delaware corp only: par value per share (cents). 0 = no par value. */
   parValueCents: z.number().int().min(0).optional(),
+  /** Corporation share / shareholder allocation. */
+  shareStructure: ShareStructureSchema.optional(),
   professionalPurpose: z.string().optional(),
   businessPurpose: z.string().optional(),
   /** Wyoming consent flag: required for organizer's electronic service. */
@@ -545,6 +632,11 @@ const Step9Schema = z.object({
   foreignRegistrationInterest: z.boolean().optional(),
 });
 
+function looksLikeNineDigitTaxId(value: string | undefined): boolean {
+  if (!value) return false;
+  return /^\d{9}$/.test(value.replace(/\D/g, ''));
+}
+
 export async function saveStep9(
   input: z.infer<typeof Step9Schema>,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -560,6 +652,88 @@ export async function saveStep9(
     if (!v.valid) return { ok: false, error: v.error };
   }
 
+  // Build the share-structure payload. We encrypt any Tax IDs and only
+  // store the encrypted ciphertext + last-4 so plaintext SSNs never sit
+  // in the JSON blob. When S-corp election is included in the package,
+  // each shareholder must consent and provide a Tax ID (Form 2553).
+  let shareStructurePersisted: Record<string, unknown> | undefined;
+  if (data.shareStructure && filing.entityType === 'CORP') {
+    const issued = data.shareStructure.issuedShares ?? 0;
+    const authorized = data.authorizedShares ?? 0;
+    if (issued > authorized && authorized > 0) {
+      return {
+        ok: false,
+        error: `Issued shares (${issued}) cannot exceed authorized shares (${authorized}).`,
+      };
+    }
+
+    const addOnSlugs = await getFilingAddOnSlugs(filing.id);
+    const sCorpElected =
+      addOnSlugs.includes('s_corp_election') ||
+      (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp guidance
+
+    const shareholders = data.shareStructure.shareholders ?? [];
+    if (shareholders.length > 0) {
+      const sum = shareholders.reduce((acc, s) => acc + (s.shares ?? 0), 0);
+      if (issued > 0 && sum !== issued) {
+        return {
+          ok: false,
+          error: `Shareholder allocations (${sum}) must add up to issued shares (${issued}).`,
+        };
+      }
+    }
+
+    // S-corp election turns on stricter validation: each shareholder must
+    // have consented AND provided a valid 9-digit Tax ID. We surface a
+    // friendly error rather than throwing.
+    if (sCorpElected) {
+      for (const s of shareholders) {
+        if (!s.sCorpConsent) {
+          return {
+            ok: false,
+            error: 'Each shareholder must consent to the S-Corp election.',
+          };
+        }
+        if (!s.taxId || !looksLikeNineDigitTaxId(s.taxId)) {
+          return {
+            ok: false,
+            error: 'Each shareholder must provide a valid 9-digit Tax ID for the S-Corp election.',
+          };
+        }
+      }
+    }
+
+    const persistedShareholders = shareholders.map((s) => {
+      let taxIdLast4: string | null = null;
+      let taxIdEncrypted: string | null = null;
+      if (sCorpElected && s.taxId) {
+        const digits = s.taxId.replace(/\D/g, '');
+        taxIdLast4 = digits.slice(-4);
+        taxIdEncrypted = encryptString(digits);
+      }
+      return {
+        name: s.name.trim(),
+        street1: s.street1?.trim() ?? null,
+        city: s.city?.trim() ?? null,
+        state: s.state?.trim() ?? null,
+        zip: s.zip?.trim() ?? null,
+        email: s.email?.trim() ?? null,
+        shares: s.shares ?? 0,
+        taxIdType: sCorpElected ? s.taxIdType ?? 'SSN' : null,
+        taxIdLast4,
+        taxIdEncrypted,
+        taxYearEnd: sCorpElected ? s.taxYearEnd ?? '12/31' : null,
+        sCorpConsent: sCorpElected ? !!s.sCorpConsent : null,
+      };
+    });
+
+    shareStructurePersisted = {
+      issuedShares: issued,
+      shareholders: persistedShareholders,
+      sCorpElected,
+    };
+  }
+
   // Preserve any management info already saved in optionalDetails.
   const prev = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null) ?? {};
   await prisma.filing.update({
@@ -570,6 +744,7 @@ export async function saveStep9(
         effectiveDate: data.effectiveDate || undefined,
         authorizedShares: data.authorizedShares,
         parValueCents: data.parValueCents,
+        shareStructure: shareStructurePersisted,
         professionalPurpose: data.professionalPurpose || undefined,
         businessPurpose: data.businessPurpose || undefined,
         electronicServiceConsent: data.electronicServiceConsent,

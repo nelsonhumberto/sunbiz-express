@@ -65,6 +65,16 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
     managementType?: ManagementType;
     processingOption?: string;
     foreignRegistrationInterest?: boolean;
+    shareStructure?: {
+      issuedShares?: number;
+      sCorpElected?: boolean;
+      shareholders?: Array<{
+        name: string;
+        shares?: number;
+        taxIdLast4?: string | null;
+        sCorpConsent?: boolean | null;
+      }>;
+    };
   } | null>(filing.optionalDetails, null);
 
   const [signature, setSignature] = useState(filing.incorporatorSignature ?? '');
@@ -116,7 +126,9 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         <ShieldAlert className="h-5 w-5 text-warn shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold text-ink">{t('finalReview')}</p>
-          <p className="text-ink-muted text-xs leading-relaxed">{t('finalReviewBody')}</p>
+          <p className="text-ink-muted text-xs leading-relaxed">
+            {t('finalReviewBody', { state: stateRule.name })}
+          </p>
         </div>
       </div>
 
@@ -152,7 +164,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       </ReviewSection>
 
       <ReviewSection
-        title={isLLC ? t('memberOrManager') : t('officerSingular')}
+        title={isLLC ? t('memberOrManager') : t('directorsAndOfficers')}
         stepHref={stepHref(7)}
         editLabel={tCommon('edit')}
       >
@@ -197,13 +209,42 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
           opt.authorizedShares ||
           opt.businessPurpose ||
           opt.processingOption ||
-          opt.foreignRegistrationInterest) && (
+          opt.foreignRegistrationInterest ||
+          opt.shareStructure) && (
           <ReviewSection title={t('optionalDetails')} stepHref={stepHref(8)} editLabel={tCommon('edit')}>
             {opt.effectiveDate && (
               <Row label={t('effectiveDate')} value={formatDate(opt.effectiveDate)} />
             )}
             {opt.authorizedShares != null && (
               <Row label={t('authorizedShares')} value={opt.authorizedShares.toLocaleString()} />
+            )}
+            {opt.shareStructure?.issuedShares != null && (
+              <Row
+                label={t('issuedSharesLabel')}
+                value={opt.shareStructure.issuedShares.toLocaleString()}
+              />
+            )}
+            {opt.shareStructure?.shareholders && opt.shareStructure.shareholders.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 text-sm py-1">
+                <span className="text-ink-muted">{t('shareholdersHeader')}</span>
+                <ul className="col-span-2 space-y-1">
+                  {opt.shareStructure.shareholders.map((sh, i) => (
+                    <li key={i} className="flex items-baseline justify-between gap-2 border-b border-border last:border-b-0 py-1">
+                      <span>
+                        <span className="font-medium">{sh.name}</span>
+                        {opt.shareStructure?.sCorpElected && sh.taxIdLast4 ? (
+                          <span className="ml-2 text-[11px] text-ink-subtle">
+                            SSN •••••{sh.taxIdLast4}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-xs text-ink-muted">
+                        {(sh.shares ?? 0).toLocaleString()} shares
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             {opt.businessPurpose && (
               <Row label={t('businessPurpose')} value={opt.businessPurpose} />

@@ -24,6 +24,12 @@ interface CostSidebarProps {
   state?: StateCode;
   /** Customer-selected processing-speed option id (per state). */
   processingOptionId?: string | null;
+  /**
+   * Whether the customer has actually picked a tier yet. We hide the
+   * running total before tier selection so the sidebar doesn't show a
+   * misleading default price.
+   */
+  packageSelected?: boolean;
 }
 
 export function CostSidebar({
@@ -32,6 +38,7 @@ export function CostSidebar({
   addOnSlugs,
   state,
   processingOptionId,
+  packageSelected = true,
 }: CostSidebarProps) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -116,20 +123,26 @@ export function CostSidebar({
           <div className="text-xs text-ink leading-snug">{t('freeRABanner')}</div>
         </div>
 
-        <motion.div
-          key={breakdown.totalCents}
-          initial={{ scale: 0.98, opacity: 0.6 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="pt-4 border-t border-border space-y-1"
-        >
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm font-medium">{t('totalToday')}</span>
-            <span className="font-display text-3xl font-medium">
-              {formatCurrency(breakdown.totalCents, { showZero: true })}
-            </span>
+        {packageSelected ? (
+          <motion.div
+            key={breakdown.totalCents}
+            initial={{ scale: 0.98, opacity: 0.6 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="pt-4 border-t border-border space-y-1"
+          >
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium">{t('total')}</span>
+              <span className="font-display text-3xl font-medium">
+                {formatCurrency(breakdown.totalCents, { showZero: true })}
+              </span>
+            </div>
+            <p className="text-xs text-ink-subtle">{t('oneTime')}</p>
+          </motion.div>
+        ) : (
+          <div className="pt-4 border-t border-border">
+            <p className="text-xs text-ink-subtle">{t('totalAfterPackage')}</p>
           </div>
-          <p className="text-xs text-ink-subtle">{t('oneTime')}</p>
-        </motion.div>
+        )}
 
         <Badge variant="secondary" className="w-full justify-center font-medium">
           <Sparkles className="h-3 w-3" />

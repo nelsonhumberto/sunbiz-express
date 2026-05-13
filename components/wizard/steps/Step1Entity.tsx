@@ -39,7 +39,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
     {
       value: 'CORP' as const,
       title: t('entityCorpTitle'),
-      subtitle: 'C-Corp',
+      subtitle: 'CORP',
       icon: Briefcase,
       perks: [t('entityCorpDesc1'), t('entityCorpDesc2'), t('entityCorpDesc3'), t('entityCorpDesc4')],
     },

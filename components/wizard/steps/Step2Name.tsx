@@ -51,7 +51,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         return;
       }
       if (result && !result.available) {
-        const proceed = window.confirm(t('confirmNotAvailable'));
+        const proceed = window.confirm(t('confirmNotAvailable', { state: stateName }));
         if (!proceed) return;
       }
       router.push(`/wizard/${filing.id}/3`);

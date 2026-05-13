@@ -24,7 +24,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: "Yes. Year-1 Registered Agent service is included in every package, including Basic Filing. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
+    a: "Yes. Year-1 Registered Agent service is included in every package, including Filing Only. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -40,7 +40,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What about the EIN — do I need one?',
-    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Bank-Ready Filing and Launch Concierge packages include EIN acquisition; you can add it as a $79 upgrade on Basic Filing.",
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Bank-Ready Filing and Launch Concierge packages include EIN acquisition; you can add it as a $79 upgrade on Filing Only.",
   },
   {
     q: 'What if my name is taken?',

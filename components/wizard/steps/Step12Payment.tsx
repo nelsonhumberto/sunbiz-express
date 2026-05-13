@@ -29,7 +29,11 @@ import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import type { WizardFiling } from '../types';
 import { filingIncludesEin } from '@/lib/ein';
-import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import {
+  getFormationState,
+  isActiveFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
 import {
   EinResponsiblePartyPanel,
   type EinPanelInitialState,
@@ -55,6 +59,7 @@ export function Step12Payment({
   const stateCode: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
+  const stateName = getFormationState(stateCode).name;
   const addOnSlugs = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
@@ -196,7 +201,7 @@ export function Step12Payment({
         )}
 
         <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
-          <span className="font-semibold">{t('totalToday')}</span>
+          <span className="font-semibold">{t('total')}</span>
           <div className="text-right">
             {discountCents > 0 && (
               <p className="text-sm text-ink-subtle line-through">{formatCurrency(breakdown.totalCents, { showZero: true })}</p>
@@ -266,8 +271,14 @@ export function Step12Payment({
           {t('afterPaymentHeadline')}
         </h3>
         <ol className="space-y-2.5 text-sm">
-          <Timeline icon={<Building2 className="h-3.5 w-3.5" />} text={t('afterPaymentStep1')} />
-          <Timeline icon={<CheckCircle2 className="h-3.5 w-3.5" />} text={t('afterPaymentStep2')} />
+          <Timeline
+            icon={<Building2 className="h-3.5 w-3.5" />}
+            text={t('afterPaymentStep1', { state: stateName })}
+          />
+          <Timeline
+            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            text={t('afterPaymentStep2', { state: stateName })}
+          />
           <Timeline icon={<FileText className="h-3.5 w-3.5" />} text={t('afterPaymentStep3')} />
           <Timeline
             icon={<CalendarClock className="h-3.5 w-3.5" />}

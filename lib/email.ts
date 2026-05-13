@@ -48,6 +48,10 @@ interface EmailContext {
   dueDate?: Date;
   daysUntilDue?: number;
   resetUrl?: string;
+  /** Temporary password emailed to a guest who just claimed their account. */
+  tempPassword?: string;
+  /** Account email shown next to the temporary password in the welcome mail. */
+  loginEmail?: string;
 }
 
 export interface SendEmailArgs {
@@ -66,14 +70,28 @@ const TEMPLATES: Record<
   NotificationType,
   (ctx: EmailContext) => { subject: string; body: string }
 > = {
-  WELCOME: ({ firstName }) => ({
-    subject: 'Welcome to LaunchForma ☀️',
-    body: html`
-      <h1>Welcome, ${firstName ?? 'there'}!</h1>
-      <p>You're moments away from forming your business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Go to Dashboard</a>
-      <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
-    `,
+  WELCOME: ({ firstName, tempPassword, loginEmail }) => ({
+    subject: tempPassword
+      ? 'Your LaunchForma account is ready ☀️'
+      : 'Welcome to LaunchForma ☀️',
+    body: tempPassword
+      ? html`
+          <h1>Welcome, ${firstName ?? 'there'}!</h1>
+          <p>Your account is ready. Use the credentials below to sign in any time and pick up your filing.</p>
+          <div style="margin:16px 0; padding:14px 16px; border:1px solid #d6e2df; border-radius:8px; background:#f7faf9; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:14px;">
+            <div><strong>Email:</strong> ${loginEmail ?? ''}</div>
+            <div><strong>Temporary password:</strong> ${tempPassword}</div>
+          </div>
+          <p>For your security, please change this password the first time you sign in.</p>
+          <a class="cta" href="${siteUrl}/sign-in">Sign in to my dashboard</a>
+          <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+        `
+      : html`
+          <h1>Welcome, ${firstName ?? 'there'}!</h1>
+          <p>You're moments away from forming your business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
+          <a class="cta" href="${siteUrl}/dashboard">Go to Dashboard</a>
+          <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+        `,
   }),
   FILING_STARTED: ({ firstName, businessName }) => ({
     subject: `Your filing for ${businessName ?? 'your business'} is started`,

@@ -79,7 +79,7 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
   2: {
     slug: 'name',
     title: "What's your business name?",
-    subtitle: "We'll check the Florida Sunbiz database in real time.",
+    subtitle: "We'll verify availability against the state's official records.",
   },
   3: {
     slug: 'tier',
@@ -99,7 +99,7 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
   6: {
     slug: 'registered-agent',
     title: 'Registered agent',
-    subtitle: 'Required by Florida law. We can be yours, free for a year.',
+    subtitle: 'Required by state law. We can be yours, free for a year.',
   },
   7: {
     slug: 'managers',

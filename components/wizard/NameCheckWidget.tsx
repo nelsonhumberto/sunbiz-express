@@ -10,8 +10,6 @@ import {
   Sparkles,
   Search,
   Info,
-  ExternalLink,
-  FileText,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -420,35 +418,20 @@ export function NameCheckWidget({
         customer can do their own diligence before we submit.
       */}
       {stateRule.code === 'WY' && (
-        <div className="rounded-lg border border-border bg-white p-3 text-xs text-ink-muted leading-relaxed flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="rounded-lg border border-border bg-white p-3 text-xs text-ink-muted leading-relaxed">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <span>
-              Wyoming uses a strict "distinguishable" rule. Run the official search with the
-              <strong> "Contains"</strong> option and the naming PDF below before submitting.
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <a
-              href={stateRule.urls.search}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] font-medium text-ink hover:border-primary/40 hover:text-primary"
-            >
-              <Search className="h-3 w-3" />
-              WyoBiz search
-              <ExternalLink className="h-3 w-3" />
-            </a>
-            <a
-              href="https://sos.wyo.gov/Business/Docs/HowToChooseACompanyName.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-[11px] font-medium text-ink hover:border-primary/40 hover:text-primary"
-            >
-              <FileText className="h-3 w-3" />
-              Naming PDF
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="space-y-1">
+              <p>
+                Wyoming uses a strict <strong>"distinguishable"</strong> rule and reviews many
+                names manually. We&apos;ll cross-check your name against the state registry
+                before we submit so there are no surprises.
+              </p>
+              <p className="text-[11px] text-ink-subtle">
+                Names that begin with &quot;A&quot; or use special characters are paper-filed
+                for manual review by the Wyoming Secretary of State.
+              </p>
+            </div>
           </div>
         </div>
       )}

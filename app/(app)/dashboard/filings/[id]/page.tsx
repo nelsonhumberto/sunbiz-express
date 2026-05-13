@@ -235,8 +235,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
-      {/* For non-FL filings, point at the state's official annual compliance
-          portal — we don't auto-file annual reports outside Florida yet. */}
+      {/* For non-FL filings, surface the upcoming annual compliance window
+          inside the dashboard. We keep customers on-site — when our managed
+          annual filing add-on is ready for that state we'll handle it here. */}
       {!showInAppAnnualReport && filing.status === 'APPROVED' && (() => {
         const compliance = stateRule.annualCompliance.find(
           (c) => c.entityType === filing.entityType,
@@ -249,11 +250,10 @@ export default async function FilingDetailPage({ params }: PageProps) {
                 {stateRule.name} {compliance.label}
               </h3>
               <p className="text-sm text-ink-muted">{compliance.description}</p>
-              <Button asChild variant="outline">
-                <Link href={stateRule.urls.annualReport} target="_blank" rel="noopener">
-                  Open {stateRule.shortName} portal
-                </Link>
-              </Button>
+              <p className="text-xs text-ink-subtle">
+                We&apos;ll remind you 60, 30, and 3 days before the deadline. Reply to any
+                reminder if you&apos;d like our team to file it for you.
+              </p>
             </CardContent>
           </Card>
         );

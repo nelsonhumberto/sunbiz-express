@@ -18,6 +18,8 @@ import { Step12Payment } from '@/components/wizard/steps/Step12Payment';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
+import { getWizardActor } from '@/lib/guest';
+import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +31,14 @@ export default async function WizardStepPage({ params }: PageProps) {
   const stepNum = parseInt(params.step, 10);
   if (isNaN(stepNum) || stepNum < 1) redirect(`/wizard/${params.filingId}/1`);
 
-  // Backwards-compat for old 12-step URLs created before the correspondence
-  // step was removed. Anything past the new total maps onto the new last step.
   if (stepNum > TOTAL_STEPS) {
     redirect(`/wizard/${params.filingId}/${TOTAL_STEPS}`);
   }
 
   const filing = await getWizardFiling(params.filingId);
   if (filing.status !== 'DRAFT') {
+    // Submitted filings always go to the dashboard. Guests get sent through
+    // sign-in first since the dashboard is account-only.
     redirect(`/dashboard/filings/${filing.id}`);
   }
 
@@ -58,21 +60,23 @@ export default async function WizardStepPage({ params }: PageProps) {
     processingOptionId,
   };
 
-  // Pre-fetch the EIN application snapshot for the payment step so the panel
-  // renders in its "saved" state on a refresh without an extra round-trip.
-  // We deliberately only forward non-sensitive fields (no encrypted payload,
-  // no plaintext SSN/passport — only the last-4 tail).
+  // Identify the current actor (auth user OR guest). Used to gate the EIN
+  // tester bypass and to prefill the payment-step email field.
+  const session = await auth();
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  const isGuest = actor?.kind === 'guest';
+
   let einInitial: import('@/components/wizard/EinResponsiblePartyPanel').EinPanelInitialState = {
     collected: false,
   };
   let defaultEmail: string | undefined;
   let isTester = false;
+
   if (stepNum === 11) {
-    const session = await auth();
-    defaultEmail = session?.user?.email ?? undefined;
-    if (session?.user?.id) {
+    defaultEmail = actor?.email ?? undefined;
+    if (actor?.kind === 'user') {
       const u = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: actor.id },
         select: { isTester: true },
       });
       isTester = u?.isTester ?? false;
@@ -101,25 +105,37 @@ export default async function WizardStepPage({ params }: PageProps) {
   }
 
   return (
-    <WizardShell filingId={filing.id} step={stepNum} costData={cost}>
-      {stepNum === 1 && <Step1Entity filing={filing} />}
-      {stepNum === 2 && <Step2Name filing={filing} />}
-      {stepNum === 3 && <Step3Tier filing={filing} />}
-      {stepNum === 4 && <Step4Address filing={filing} />}
-      {stepNum === 5 && <Step5Mailing filing={filing} />}
-      {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
-      {stepNum === 7 && <Step7Members filing={filing} />}
-      {stepNum === 8 && <Step9Optional filing={filing} />}
-      {stepNum === 9 && <Step10Review filing={filing} />}
-      {stepNum === 10 && <Step11AddOns filing={filing} />}
-      {stepNum === 11 && (
-        <Step12Payment
-          filing={filing}
-          einInitial={einInitial}
-          defaultEmail={defaultEmail}
-          isTester={isTester}
+    <>
+      <WizardShell filingId={filing.id} step={stepNum} costData={cost}>
+        {stepNum === 1 && <Step1Entity filing={filing} />}
+        {stepNum === 2 && <Step2Name filing={filing} />}
+        {stepNum === 3 && <Step3Tier filing={filing} />}
+        {stepNum === 4 && <Step4Address filing={filing} />}
+        {stepNum === 5 && <Step5Mailing filing={filing} />}
+        {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
+        {stepNum === 7 && <Step7Members filing={filing} />}
+        {stepNum === 8 && <Step9Optional filing={filing} />}
+        {stepNum === 9 && <Step10Review filing={filing} />}
+        {stepNum === 10 && <Step11AddOns filing={filing} />}
+        {stepNum === 11 && (
+          <Step12Payment
+            filing={filing}
+            einInitial={einInitial}
+            defaultEmail={defaultEmail}
+            isTester={isTester}
+          />
+        )}
+      </WizardShell>
+
+      {/* Guest-only popup: appears after Step 1 (entity choice) so we have
+          collected enough info to position the offer. The popup is dismissable
+          and persists its dismissal in localStorage. */}
+      {isGuest && actor && stepNum >= 1 && (
+        <GuestAccountPrompt
+          firstName={actor.firstName}
+          email={actor.email}
         />
       )}
-    </WizardShell>
+    </>
   );
 }

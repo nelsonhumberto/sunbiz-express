@@ -34,6 +34,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { computeNextAnnualCompliance } from '@/lib/formation-validation';
+import { getWizardActor } from '@/lib/guest';
 
 export async function createFiling(input?: {
   entityType?: 'LLC' | 'CORP';
@@ -85,7 +86,8 @@ export async function deleteDraftFiling(filingId: string) {
 
 export async function submitFilingToState(filingId: string) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  if (!actor) redirect('/sign-in');
 
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
@@ -95,7 +97,7 @@ export async function submitFilingToState(filingId: string) {
       filingAdditionalServices: { include: { service: true } },
     },
   });
-  if (!filing || filing.userId !== session.user.id) throw new Error('Not found');
+  if (!filing || filing.userId !== actor.id) throw new Error('Not found');
 
   const trackingNumber = generateTrackingNumber();
   const pin = generatePin();
@@ -224,8 +226,8 @@ export async function submitFilingToState(filingId: string) {
       : null;
   const coverLetter = generateCoverLetter({
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
-    contactName: filing.incorporatorSignature ?? session.user.email ?? 'Authorized Person',
-    contactEmail: correspondence?.email ?? session.user.email ?? '',
+    contactName: filing.incorporatorSignature ?? actor.email ?? 'Authorized Person',
+    contactEmail: correspondence?.email ?? actor.email ?? '',
     contactPhone: correspondence?.phone ?? null,
     totalFeeCents: filing.stateFeeCents, // government remittance only
     certificateOfStatus: wantsCertStatus,
@@ -395,8 +397,8 @@ export async function submitFilingToState(filingId: string) {
 
   await sendEmail({
     type: 'FILING_SUBMITTED',
-    to: session.user.email!,
-    userId: session.user.id,
+    to: actor.email ?? '',
+    userId: actor.id,
     filingId: filing.id,
     context: {
       businessName: filing.businessName ?? '',

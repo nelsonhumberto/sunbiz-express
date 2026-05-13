@@ -13,6 +13,7 @@ import {
 import { filingIncludesEin } from '@/lib/ein';
 import { sendEmail } from '@/lib/email';
 import { safeParseJson } from '@/lib/utils';
+import { getWizardActor } from '@/lib/guest';
 import { submitFilingToState } from './filings';
 
 function asStateCode(input: string | null | undefined): StateCode {
@@ -36,7 +37,8 @@ export async function processCheckout(input: {
   discountCents?: number;
 }): Promise<CheckoutResult> {
   const session = await auth();
-  if (!session?.user?.id) return { error: 'Please sign in.' };
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  if (!actor) return { error: 'Please sign in.' };
 
   const filing = await prisma.filing.findUnique({
     where: { id: input.filingId },
@@ -45,7 +47,7 @@ export async function processCheckout(input: {
       einApplication: true,
     },
   });
-  if (!filing || filing.userId !== session.user.id) return { error: 'Filing not found.' };
+  if (!filing || filing.userId !== actor.id) return { error: 'Filing not found.' };
   if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
 
   // EIN gate: if the customer's package includes EIN, the responsible-party
@@ -76,14 +78,17 @@ export async function processCheckout(input: {
 
   // ── Tester bypass ────────────────────────────────────────────────────────
   // When an admin has flagged the user as a tester, any card is accepted and
-  // no real Stripe charge is made. The sentinel paymentIntentId
-  // "TESTER_BYPASS" signals this path.
-  const callerUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isTester: true },
-  });
-  const isTesterBypass =
-    callerUser?.isTester === true && input.paymentIntentId === 'TESTER_BYPASS';
+  // no real Stripe charge is made. Guests can never be testers (they have no
+  // admin-assigned isTester flag), so this path is gated to authed users.
+  let isTesterBypass = false;
+  if (actor.kind === 'user') {
+    const callerUser = await prisma.user.findUnique({
+      where: { id: actor.id },
+      select: { isTester: true },
+    });
+    isTesterBypass =
+      callerUser?.isTester === true && input.paymentIntentId === 'TESTER_BYPASS';
+  }
 
   // Recompute cost (needed in both paths for fee breakdown storage)
   const addOnSlugs = addOnSlugsForGate;
@@ -150,7 +155,7 @@ export async function processCheckout(input: {
   await prisma.payment.create({
     data: {
       filingId: filing.id,
-      userId: session.user.id,
+      userId: actor.id,
       stripePaymentIntentId: stripeIntentId,
       stripePaymentMethodId: pmId,
       amountCents: expectedTotal,
@@ -191,8 +196,8 @@ export async function processCheckout(input: {
 
   await sendEmail({
     type: 'PAYMENT_CONFIRMATION',
-    to: session.user.email!,
-    userId: session.user.id,
+    to: actor.email ?? '',
+    userId: actor.id,
     filingId: filing.id,
     context: {
       businessName: filing.businessName ?? '',

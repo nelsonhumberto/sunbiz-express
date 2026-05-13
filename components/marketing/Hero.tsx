@@ -24,9 +24,11 @@ interface HeroProps {
 export function Hero({ state = FLORIDA }: HeroProps = {}) {
   const t = useTranslations('hero');
   const formationState = getFormationState(state.code);
-  const startFilingHref = state.code === 'FL'
-    ? '/sign-up'
-    : `/sign-up?state=${state.code}`;
+  // Funnel everyone through /start so the chosen formation state and the
+  // guest-friendly entry experience travel with the visitor. /start writes
+  // the selected state into a cookie and creates a draft for guests, then
+  // jumps into the wizard.
+  const startFilingHref = `/start?state=${state.code}`;
 
   return (
     <section

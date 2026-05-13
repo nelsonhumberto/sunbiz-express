@@ -31,7 +31,7 @@ export function Footer() {
       { label: tFooter('floridaLLCGuide'), href: '/faq#florida-llc' },
       { label: tFooter('annualReportHelp'), href: '/faq#annual-report' },
       { label: tFooter('einLookup'), href: '/faq#ein' },
-      { label: tFooter('sunbizSearch'), href: 'https://search.sunbiz.org' },
+      { label: tFooter('sunbizSearch'), href: '/services' },
     ],
   };
 

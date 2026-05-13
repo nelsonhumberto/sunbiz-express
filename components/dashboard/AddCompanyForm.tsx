@@ -25,10 +25,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { FL } from '@/lib/florida';
-
-const SUNBIZ_DOC_URL = FL.urls.searchByDocumentNumber;
-
 type Preview = {
   documentNumber: string;
   name: string;
@@ -229,14 +225,6 @@ export function AddCompanyForm() {
         <CardContent className="p-5 text-sm text-ink-muted space-y-2">
           <p className="font-medium text-ink">{t('dataSourceTitle')}</p>
           <p>{t('dataSourceBody')}</p>
-          <a
-            href={SUNBIZ_DOC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary font-medium hover:underline inline-block"
-          >
-            {t('officialVerify')} ↗
-          </a>
         </CardContent>
       </Card>
 

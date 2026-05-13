@@ -157,6 +157,30 @@ export interface AnnualComplianceRule {
     | { kind: 'anniversary_month_first_day' };
 }
 
+/**
+ * Per-state rules governing the collection and validation of business
+ * addresses on the formation document. Used by Step4 (principal place),
+ * Step5 (mailing) and Step6 (registered agent) to drive copy, locking
+ * behaviour, and validation.
+ */
+export interface AddressRules {
+  /** Is a principal-place-of-business street address required at filing? */
+  principalAddressRequired: boolean;
+  /** True if the principal address must be a street address inside this state. */
+  principalAddressMustBeInState: boolean;
+  /** Is a mailing address required (separate from the principal address)? */
+  mailingAddressRequired: boolean;
+  /** True if the registered agent's business office must be in this state. */
+  registeredAgentAddressMustBeInState: boolean;
+  /** True if the registered agent must have a physical street address (no P.O. Box). */
+  registeredAgentRequiresPhysicalStreet: boolean;
+  /**
+   * Friendly "why" copy used when an in-state requirement is enforced. Falls
+   * back to a generic message when omitted.
+   */
+  inStateRequirementNote?: string;
+}
+
 export interface RegisteredAgentProfile {
   /** Display name shown in the wizard / on the executed document. */
   name: string;
@@ -197,6 +221,7 @@ export interface FormationStateRule {
     corp: string;
   };
   fees: FilingFees;
+  addressRules: AddressRules;
   nameRules: NameRules;
   /**
    * Annual compliance rules per entity type. Most states have one per type.
@@ -280,13 +305,22 @@ const FLORIDA_RULE: FormationStateRule = {
     corp: 'Chapter 607, Florida Statutes',
   },
   fees: {
-    // Articles + RA designation, per sunbiz.org.
+    // Articles + RA designation, per the Florida Department of State.
     llcTotal: 12_500, // $125
     corpTotal: 7_000, // $70
     certificateOfStatusLLC: 500, // $5
     certificateOfStatusCorp: 875, // $8.75
     certifiedCopyLLC: 3_000, // $30
     certifiedCopyCorp: 875, // $8.75
+  },
+  addressRules: {
+    principalAddressRequired: true,
+    principalAddressMustBeInState: false,
+    mailingAddressRequired: false,
+    registeredAgentAddressMustBeInState: true,
+    registeredAgentRequiresPhysicalStreet: true,
+    inStateRequirementNote:
+      'Florida requires a registered agent with a physical Florida street address — no P.O. Box.',
   },
   nameRules: {
     llcSuffixes: [
@@ -445,6 +479,15 @@ const WYOMING_RULE: FormationStateRule = {
     certificateOfStatusCorp: 2_500,
     certifiedCopyLLC: 3_000,
     certifiedCopyCorp: 3_000,
+  },
+  addressRules: {
+    principalAddressRequired: true,
+    principalAddressMustBeInState: false,
+    mailingAddressRequired: true,
+    registeredAgentAddressMustBeInState: true,
+    registeredAgentRequiresPhysicalStreet: true,
+    inStateRequirementNote:
+      'Wyoming requires a registered office and registered agent with a physical Wyoming street address where someone is present during business hours.',
   },
   nameRules: {
     llcSuffixes: [
@@ -724,6 +767,19 @@ const DELAWARE_RULE: FormationStateRule = {
     certificateOfStatusCorp: 5_000,
     certifiedCopyLLC: 5_000, // $50 certified copy
     certifiedCopyCorp: 5_000,
+  },
+  addressRules: {
+    // Delaware's Certificate of Formation only requires the registered office
+    // address. We still collect a principal/business address for internal
+    // bookkeeping, EIN paperwork, and the customer dashboard, but it is not
+    // required to live in Delaware (and is not even mandatory at filing).
+    principalAddressRequired: false,
+    principalAddressMustBeInState: false,
+    mailingAddressRequired: false,
+    registeredAgentAddressMustBeInState: true,
+    registeredAgentRequiresPhysicalStreet: true,
+    inStateRequirementNote:
+      'Delaware requires a registered office and registered agent with a physical Delaware street address; the agent must be available during normal business hours.',
   },
   nameRules: {
     llcSuffixes: [

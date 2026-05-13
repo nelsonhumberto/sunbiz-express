@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getWizardActor } from '@/lib/guest';
 import { encryptString, decryptString } from '@/lib/encryption';
 import {
   classifyEinPathway,
@@ -59,7 +60,8 @@ const SaveEinSchema = z
 
 async function getFilingForUser(filingId: string) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  if (!actor) redirect('/sign-in');
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: {
@@ -67,7 +69,7 @@ async function getFilingForUser(filingId: string) {
       einApplication: true,
     },
   });
-  if (!filing || filing.userId !== session.user.id) {
+  if (!filing || filing.userId !== actor.id) {
     throw new Error('Filing not found');
   }
   return filing;

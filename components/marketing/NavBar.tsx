@@ -95,11 +95,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               </Button>
               <Button asChild>
                 <Link
-                  href={
-                    currentState.code === 'FL'
-                      ? '/sign-up'
-                      : `/sign-up?state=${currentState.code}`
-                  }
+                  href={`/start?state=${currentState.code}`}
                   onClick={() =>
                     trackCtaClicked('nav_start', { state: currentState.code })
                   }
@@ -152,13 +148,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                     <Link href="/sign-in">{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link
-                      href={
-                        currentState.code === 'FL'
-                          ? '/sign-up'
-                          : `/sign-up?state=${currentState.code}`
-                      }
-                    >
+                    <Link href={`/start?state=${currentState.code}`}>
                       {t('startFiling')}
                     </Link>
                   </Button>

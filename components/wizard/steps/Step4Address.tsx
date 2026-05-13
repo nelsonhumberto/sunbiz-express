@@ -2,19 +2,27 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { Info, MapPin } from 'lucide-react';
 import { saveStep4 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { AddressForm, type AddressValue } from '../AddressForm';
 import { safeParseJson } from '@/lib/utils';
-import { isActiveFormationState, getFormationState, type StateCode } from '@/lib/formation-states';
+import {
+  isActiveFormationState,
+  getFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step4Address({ filing }: { filing: WizardFiling }) {
+  const t = useTranslations('wizard');
   const filingState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
   const stateRule = getFormationState(filingState);
+  const addressRules = stateRule.addressRules;
 
   const initial = safeParseJson<AddressValue>(filing.principalAddress, {
     street1: '',
@@ -26,8 +34,20 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   const [pending, start] = useTransition();
   const router = useRouter();
 
-  const valid =
-    address.street1.trim() && address.city.trim() && address.state && address.zip.trim();
+  const principalRequired = addressRules.principalAddressRequired;
+  const filledOut =
+    address.street1.trim() &&
+    address.city.trim() &&
+    address.state &&
+    address.zip.trim();
+  const valid = principalRequired ? filledOut : true;
+
+  // Foreign-registration callout: shown when the principal address is in
+  // a state different from the formation state. We do NOT block submission —
+  // many owners legitimately operate out-of-state and use a registered
+  // agent inside the formation state. We just inform them.
+  const principalState = (address.state || filingState).toUpperCase();
+  const isOutOfState = !!address.street1.trim() && principalState !== filingState;
 
   const onContinue = () => {
     start(async () => {
@@ -50,12 +70,28 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
       />
 
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted">
-        <p className="font-medium text-ink mb-1">📍 Principal place of business</p>
+        <p className="font-medium text-ink mb-1 flex items-center gap-1.5">
+          <MapPin className="h-4 w-4" />
+          {t('principalTipTitle')}
+        </p>
         <p className="text-xs leading-relaxed">
-          This is the address where you primarily conduct business. It can be in {stateRule.name} or
-          out-of-state — {stateRule.name} only requires the registered agent&apos;s address to be in {stateRule.name}.
+          {principalRequired
+            ? t('principalTipBody', { state: stateRule.name })
+            : t('principalTipBodyOptional', { state: stateRule.name })}
         </p>
       </div>
+
+      {isOutOfState && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
+            <Info className="h-4 w-4" />
+            {t('foreignRegistrationCalloutTitle')}
+          </p>
+          <p className="text-xs leading-relaxed text-amber-900/80">
+            {t('foreignRegistrationCalloutBody', { filingState: stateRule.name })}
+          </p>
+        </div>
+      )}
 
       <WizardActions
         prevHref={`/wizard/${filing.id}/3`}

@@ -16,6 +16,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
+import { getFormationState } from '@/lib/formation-states';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,12 @@ export default async function CheckoutSuccessPage({
   if (!filing || filing.userId !== session.user.id) redirect('/dashboard');
 
   const t = await getTranslations('checkoutSuccess');
-  const tDocs = await getTranslations('documentTypes');
+  const stateRule = getFormationState(filing.state);
+  const stateName = stateRule.name;
+  const entityLabel =
+    filing.entityType === 'LLC'
+      ? `${stateName} ${stateRule.documentLabels.llcArticles}`
+      : `${stateName} ${stateRule.documentLabels.corpArticles}`;
 
   return (
     <div className="min-h-screen bg-surface">
@@ -49,12 +55,13 @@ export default async function CheckoutSuccessPage({
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-medium tracking-tight text-balance">
             {t('headline1')}{' '}
-            <span className="italic text-primary">{t('headline2')}</span>
+            <span className="italic text-primary">{t('headline2', { state: stateName })}</span>
             {t('headline3')}.
           </h1>
           <p className="mt-3 text-lg text-ink-muted max-w-xl mx-auto">
             {t.rich('subhead', {
               name: filing.businessName ?? '',
+              state: stateName,
               strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
             })}
           </p>
@@ -66,10 +73,7 @@ export default async function CheckoutSuccessPage({
             </p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <DetailRow label={t('businessName')} value={filing.businessName ?? '—'} />
-              <DetailRow
-                label={t('entityType')}
-                value={filing.entityType === 'LLC' ? tDocs('floridaLLCFull') : tDocs('floridaCorpFull')}
-              />
+              <DetailRow label={t('entityType')} value={entityLabel} />
               <DetailRow label={t('trackingNumber')} value={filing.sunbizTrackingNumber ?? '—'} mono />
               <DetailRow label={t('pin')} value={filing.sunbizPin ?? '—'} mono />
               <DetailRow label={t('filingNumber')} value={filing.sunbizFilingNumber ?? '—'} mono />
@@ -109,8 +113,8 @@ export default async function CheckoutSuccessPage({
           />
           <NextStep
             icon={<ShieldCheck className="h-5 w-5 text-primary" />}
-            title={t('stateProcesses')}
-            body={t('stateProcessesBody')}
+            title={t('stateProcesses', { state: stateName })}
+            body={t('stateProcessesBody', { state: stateName })}
             timing={t('stateProcessesTime')}
           />
           <NextStep
@@ -120,15 +124,15 @@ export default async function CheckoutSuccessPage({
             timing={t('availableNow')}
           />
           {/* Federal compliance — almost every new entity owes BOI to FinCEN.
-              Highlight the deadline so customers don't get hit with the
-              $591/day fine for missing it. */}
+              We keep the user on-site by linking to our internal BOI guide
+              instead of bouncing them to fincen.gov. */}
           <NextStep
             icon={<AlertTriangle className="h-5 w-5 text-warn" />}
             title={t('boiTitle')}
             body={t('boiBody')}
             timing={t('boiTime')}
             ctaLabel={t('boiCta')}
-            ctaHref="https://www.fincen.gov/boi"
+            ctaHref={`/dashboard/filings/${filing.id}#boi`}
           />
           <NextStep
             icon={<Landmark className="h-5 w-5 text-primary" />}
@@ -198,14 +202,12 @@ function NextStep({
         </div>
         <p className="text-sm text-ink-muted mt-1 leading-relaxed">{body}</p>
         {ctaLabel && ctaHref && (
-          <a
+          <Link
             href={ctaHref}
-            target="_blank"
-            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline mt-2"
           >
             {ctaLabel}
-          </a>
+          </Link>
         )}
         {footer}
       </div>

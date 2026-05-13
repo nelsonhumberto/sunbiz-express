@@ -83,6 +83,8 @@ interface AddressFormProps {
   floridaOnly?: boolean;
   /** Default USPS code when value.state is empty (defaults to filing state). */
   defaultStateCode?: string;
+  /** Optional explanatory hint shown next to a locked state field. */
+  lockedReason?: string;
   prefix?: string;
 }
 
@@ -93,6 +95,7 @@ export function AddressForm({
   lockedStateCode,
   floridaOnly,
   defaultStateCode = 'FL',
+  lockedReason,
   prefix = '',
 }: AddressFormProps) {
   const lockState = lockedStateCode ?? (floridaOnly ? 'FL' : undefined);
@@ -162,7 +165,12 @@ export function AddressForm({
           {t('addrState')} <span className="text-destructive">*</span>
         </Label>
         {lockState ? (
-          <Input id={id('state')} value={lockState} disabled />
+          <>
+            <Input id={id('state')} value={lockState} disabled className="cursor-not-allowed bg-muted/40" />
+            {lockedReason && (
+              <p className="text-[11px] text-ink-subtle leading-snug">{lockedReason}</p>
+            )}
+          </>
         ) : (
           <Select value={value.state || defaultStateCode} onValueChange={(v) => set('state', v)}>
             <SelectTrigger id={id('state')}>

@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
-import { COPYRIGHT_YEAR } from '@/lib/constants';
+import { COPYRIGHT_YEAR, PREFERRED_STATE_COOKIE } from '@/lib/constants';
+import { getFormationState } from '@/lib/formation-states';
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('auth');
+  const stateCookie = cookies().get(PREFERRED_STATE_COOKIE)?.value;
+  const stateRule = getFormationState(stateCookie ?? 'FL');
+  const stateName = stateRule.name;
 
   return (
     <div
@@ -46,7 +51,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
               {t('sidePanelBadge')}
             </div>
             <h2 className="font-display text-4xl xl:text-5xl font-medium leading-tight max-w-md">
-              {t('sidePanelHeadline')}
+              {t('sidePanelHeadline', { state: stateName })}
             </h2>
             <p className="text-lg text-white/85 max-w-md leading-relaxed">{t('sidePanelBody')}</p>
           </div>

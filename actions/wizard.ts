@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getWizardActor } from '@/lib/guest';
 import {
   computeCost,
   filingHasOperatingAgreement,
@@ -82,15 +83,18 @@ async function persistManagementType(
 
 async function getFilingForUser(filingId: string) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  // Resolve the actor — authenticated NextAuth user OR a GUEST identified by
+  // the signed cookie. Guests are first-class participants in the wizard.
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  if (!actor) redirect('/sign-in');
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: { managersMembers: { orderBy: { position: 'asc' } } },
   });
-  if (!filing || filing.userId !== session.user.id) {
+  if (!filing || filing.userId !== actor.id) {
     throw new Error('Filing not found');
   }
-  return { filing, session };
+  return { filing, session, actor };
 }
 
 function markStepComplete(completedJson: string, step: number) {
@@ -388,7 +392,7 @@ const Step7Schema = z.object({
 
 export async function saveStep7(input: z.infer<typeof Step7Schema>) {
   const data = Step7Schema.parse(input);
-  const { filing, session } = await getFilingForUser(data.filingId);
+  const { filing, actor } = await getFilingForUser(data.filingId);
 
   const members = data.members.map((m) => ({ ...m })); // mutable copy
   const entityType = filing.entityType as 'LLC' | 'CORP';
@@ -499,12 +503,12 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
     });
   }
 
-  // Auto-populate correspondence contact from the authenticated user's email,
-  // since the standalone correspondence step was removed.
+  // Auto-populate correspondence contact from the authenticated user (or
+  // guest) email, since the standalone correspondence step was removed.
   await ensureCorrespondenceFromSession(
     filing.id,
     filing.correspondenceContact,
-    session.user?.email,
+    actor.email,
   );
 
   await prisma.filing.update({
@@ -594,14 +598,14 @@ const Step10Schema = z.object({
 export async function saveStep10(input: z.infer<typeof Step10Schema>) {
   const data = Step10Schema.parse(input);
   if (!data.confirmAccurate) return { ok: false, error: 'You must confirm the information is accurate.' };
-  const { filing, session } = await getFilingForUser(data.filingId);
+  const { filing, actor } = await getFilingForUser(data.filingId);
 
   // Final safety net: ensure the correspondence email is populated before
   // the filing can be signed (covers any drafts that skipped step 7 logic).
   await ensureCorrespondenceFromSession(
     filing.id,
     filing.correspondenceContact,
-    session.user?.email,
+    actor.email,
   );
 
   await prisma.filing.update({
@@ -705,7 +709,8 @@ async function reconcileOwnershipPercentages(filingId: string) {
 
 export async function getWizardFiling(filingId: string) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+  if (!actor) redirect('/sign-in');
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: {
@@ -713,6 +718,9 @@ export async function getWizardFiling(filingId: string) {
       filingAdditionalServices: { include: { service: true } },
     },
   });
-  if (!filing || filing.userId !== session.user.id) redirect('/dashboard');
+  // Guests cannot navigate to /dashboard; we send them home instead.
+  if (!filing || filing.userId !== actor.id) {
+    redirect(actor.kind === 'guest' ? '/' : '/dashboard');
+  }
   return filing;
 }

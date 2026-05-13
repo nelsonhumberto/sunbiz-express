@@ -34,7 +34,15 @@ model User {
   role            String    @default("USER") // USER | ADMIN
   isTester        Boolean   @default(false)
   emailVerified   Boolean   @default(false)
+  // ACTIVE | SUSPENDED | DELETED | GUEST. GUEST users were created from the
+  // marketing /start flow without a password. They can use the wizard via a
+  // signed guestToken cookie and may "claim" the account at any point (popup
+  // on the wizard) to convert to a full ACTIVE account.
   accountStatus   String    @default("ACTIVE")
+  // Random signed token shared with the guest's browser cookie so a guest
+  // can authenticate against their User without a password. Only set for
+  // GUEST accounts; cleared once the user claims the account.
+  guestToken      String?   @unique
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   lastLogin       DateTime?

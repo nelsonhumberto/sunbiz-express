@@ -1,4 +1,11 @@
-export const metadata = { title: 'Disclaimer' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Legal Disclaimer',
+  description:
+    'LaunchForma is a self-help business formation service, not a law firm. Read our legal disclaimers covering document accuracy, state filing acceptance, compliance reminders, and tax advice.',
+  alternates: { canonical: '/disclaimer' },
+};
 
 export default function DisclaimerPage() {
   return (

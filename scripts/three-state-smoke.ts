@@ -158,26 +158,27 @@ for (const state of ACTIVE_FORMATION_STATES) {
 }
 
 console.log('\n--- Per-state package prices (LLC) ---');
-// Service-margin model: BASIC = $30, STANDARD = $139, PREMIUM = $339.
+// May 2026 audit-driven repricing. Service-margin model:
+//   BASIC = $24, STANDARD = $119, PREMIUM = $289.
 // Customer total = service margin + state fee + bundled cert fees.
-// FL LLC matches our historical headline numbers exactly.
-check('FL BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'FL'), 15_500);
-check('FL STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'FL'), 29_900);
-check('FL PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'FL'), 49_900);
-check('WY BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'WY'), 13_000); // 3000 + 10000
-check('WY STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'WY'), 29_400); // 13900 + 10000 + 2500 + 3000
-check('WY PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'WY'), 49_400); // 33900 + 10000 + 2500 + 3000
-check('DE BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'DE'), 14_000); // 3000 + 11000
-check('DE STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'DE'), 34_900); // 13900 + 11000 + 5000 + 5000
-check('DE PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'DE'), 54_900); // 33900 + 11000 + 5000 + 5000
+// FL LLC headline: $149 / $279 / $449 (round numbers, audit-approved).
+check('FL BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'FL'), 14_900);
+check('FL STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'FL'), 27_900);
+check('FL PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'FL'), 44_900);
+check('WY BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'WY'), 12_400); // 2400 + 10000
+check('WY STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'WY'), 27_400); // 11900 + 10000 + 2500 + 3000
+check('WY PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'WY'), 44_400); // 28900 + 10000 + 2500 + 3000
+check('DE BASIC LLC', tierPackagePriceCents('BASIC', 'LLC', 'DE'), 13_400); // 2400 + 11000
+check('DE STANDARD LLC', tierPackagePriceCents('STANDARD', 'LLC', 'DE'), 32_900); // 11900 + 11000 + 5000 + 5000
+check('DE PREMIUM LLC', tierPackagePriceCents('PREMIUM', 'LLC', 'DE'), 49_900); // 28900 + 11000 + 5000 + 5000
 
 console.log('\n--- Per-state package prices (CORP) ---');
-check('FL BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'FL'), 10_000); // 3000 + 7000
-check('FL STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'FL'), 22_650); // 13900 + 7000 + 875 + 875
-check('WY BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'WY'), 13_000); // 3000 + 10000 (WY has flat fee)
-check('WY STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'WY'), 29_400);
-check('DE BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'DE'), 13_900); // 3000 + 10900
-check('DE STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'DE'), 34_800); // 13900 + 10900 + 5000 + 5000
+check('FL BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'FL'), 9_400); // 2400 + 7000
+check('FL STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'FL'), 20_650); // 11900 + 7000 + 875 + 875
+check('WY BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'WY'), 12_400); // 2400 + 10000 (WY has flat fee)
+check('WY STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'WY'), 27_400);
+check('DE BASIC CORP', tierPackagePriceCents('BASIC', 'CORP', 'DE'), 13_300); // 2400 + 10900
+check('DE STANDARD CORP', tierPackagePriceCents('STANDARD', 'CORP', 'DE'), 32_800); // 11900 + 10900 + 5000 + 5000
 
 console.log('\n--- WY/DE prices reflect state cost differences ---');
 // Wyoming's $100 LLC fee is cheaper than Florida's $125, so the headline
@@ -223,12 +224,12 @@ console.log('\n--- computeCost reconciles per-state package + add-ons ---');
     addOnSlugs: ['ein'],
     state: 'WY',
   });
-  // BASIC WY LLC ($130) + EIN ($79) = $209
-  check('WY BASIC + EIN total', wy.totalCents, 20_900);
+  // BASIC WY LLC ($124) + EIN ($79) = $203
+  check('WY BASIC + EIN total', wy.totalCents, 20_300);
   // Government remittance is just the WY filing fee ($100). EIN is federal.
   check('WY BASIC + EIN govt remittance', wy.governmentRemittanceCents, 10_000);
-  // LaunchForma revenue: $30 (BASIC margin) + $79 (EIN service) = $109
-  check('WY BASIC + EIN LF revenue', wy.incServicesRevenueCents, 10_900);
+  // LaunchForma revenue: $24 (BASIC margin) + $79 (EIN service) = $103
+  check('WY BASIC + EIN LF revenue', wy.incServicesRevenueCents, 10_300);
 
   const de = computeCost({
     entityType: 'LLC',
@@ -236,10 +237,10 @@ console.log('\n--- computeCost reconciles per-state package + add-ons ---');
     addOnSlugs: [],
     state: 'DE',
   });
-  // STANDARD DE LLC = $349. Govt remittance = $110 + $50 + $50 = $210.
-  check('DE STANDARD LLC total', de.totalCents, 34_900);
+  // STANDARD DE LLC = $329. Govt remittance = $110 + $50 + $50 = $210.
+  check('DE STANDARD LLC total', de.totalCents, 32_900);
   check('DE STANDARD LLC govt remittance', de.governmentRemittanceCents, 21_000);
-  check('DE STANDARD LLC LF revenue', de.incServicesRevenueCents, 13_900);
+  check('DE STANDARD LLC LF revenue', de.incServicesRevenueCents, 11_900);
 }
 
 console.log('\n--- Suffix options ---');

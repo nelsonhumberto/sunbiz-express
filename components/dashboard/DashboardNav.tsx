@@ -3,7 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { LayoutDashboard, FileText, CalendarCheck, ShieldCheck, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FileText,
+  CalendarCheck,
+  ShieldCheck,
+  LogOut,
+  Settings,
+  CreditCard,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
@@ -24,6 +32,8 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
     { href: '/dashboard', label: t('navOverview'), icon: LayoutDashboard },
     { href: '/dashboard/documents', label: t('navDocuments'), icon: FileText },
     { href: '/dashboard/compliance', label: t('navCompliance'), icon: CalendarCheck },
+    { href: '/dashboard/billing', label: t('navBilling'), icon: CreditCard },
+    { href: '/dashboard/settings', label: t('navSettings'), icon: Settings },
   ];
 
   return (

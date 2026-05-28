@@ -23,12 +23,30 @@ export async function generateMetadata({
   const state = resolveMarketingState(pickFirst(searchParams?.state));
   const locale = await getLocale();
   if (state.availability === 'active') {
-    return { title: 'FAQ' };
+    const stateName = localizedStateName(state, locale);
+    const canonical =
+      state.code === 'FL' ? '/faq' : `/faq?state=${state.code}`;
+    const title =
+      state.code === 'FL'
+        ? 'LLC & Corporation Formation FAQ — Pricing, Timing, Registered Agent, BOI'
+        : `${stateName} LLC & Corporation FAQ — Pricing, Timing, Compliance`;
+    const description =
+      state.code === 'FL'
+        ? 'Answers about LaunchForma packages, Florida filing timing, Registered Agent, EIN, annual reports, BOI/FinCEN, and refund policy.'
+        : `Answers about LaunchForma packages for ${stateName} — filing timing, Registered Agent, EIN, annual compliance, BOI/FinCEN, and refunds.`;
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: { title, description, type: 'website' },
+    };
   }
   const stateName = localizedStateName(state, locale);
   return {
-    title: `${stateName} FAQ`,
+    title: `${stateName} formation FAQ — coming soon`,
+    description: `LaunchForma is rolling out ${stateName} business formations. Join the early-access list to get notified when it opens.`,
     robots: { index: false, follow: true },
+    alternates: { canonical: `/faq?state=${state.code}` },
   };
 }
 
@@ -57,7 +75,7 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
           </h1>
         </div>
       </section>
-      <FAQSection state={state} />
+      <FAQSection state={state} hideHeading />
       {isActive ? (
         <CTABanner state={state} />
       ) : (

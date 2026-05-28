@@ -17,6 +17,7 @@ import { prisma } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
+import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,21 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="min-h-screen bg-surface">
+      <CheckoutConversionTracker
+        userId={session.user.id}
+        filingId={filing.id}
+        totalCents={filing.totalCents}
+        state={filing.state}
+        entityType={filing.entityType}
+        tier={filing.serviceTier}
+        utm={{
+          utmSource: filing.utmSource,
+          utmMedium: filing.utmMedium,
+          utmCampaign: filing.utmCampaign,
+          utmContent: filing.utmContent,
+          utmTerm: filing.utmTerm,
+        }}
+      />
       {/* Confetti-ish hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 mesh-bg" />

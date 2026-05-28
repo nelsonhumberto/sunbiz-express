@@ -9,12 +9,19 @@
 import { localizedStateName, type MarketingState } from './marketing-states';
 
 export interface MarketingFaqItem {
+  /**
+   * Optional stable identifier rendered as `id` on the accordion item so
+   * the FAQ can be deep-linked via `#anchor`. Only set for items that
+   * receive inbound links from the footer / dashboards.
+   */
+  id?: string;
   q: string;
   a: string;
 }
 
 const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
+    id: 'florida-llc',
     q: 'How long does it take to form a Florida LLC?',
     a: 'About 15 minutes to complete our wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
   },
@@ -24,13 +31,14 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: "Yes. Year-1 Registered Agent service is included in every package, including Filing Only. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
+    a: "Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
   },
   {
     q: "What's a Registered Agent and do I need one?",
     a: "Florida law requires every LLC and Corporation to designate a Registered Agent — a person or company with a physical Florida address who can receive legal documents on the entity's behalf. P.O. Boxes don't qualify. Using our service keeps your home address off the public record.",
   },
   {
+    id: 'annual-report',
     q: 'When is the Florida annual report due?',
     a: "Between January 1 and May 1 each year. The fee is $138.75 for an LLC and $150 for a Corporation. Florida charges a non-waivable $400 late fee if you miss May 1, and your entity can be administratively dissolved by September. We'll remind you well in advance.",
   },
@@ -39,8 +47,14 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
     a: 'Yes — Florida does not require members or managers to reside in Florida. You only need a Florida Registered Agent (we provide one for free Year 1) and a Florida physical address for that agent.',
   },
   {
+    id: 'ein',
     q: 'What about the EIN — do I need one?',
-    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Bank-Ready Filing and Launch Concierge packages include EIN acquisition; you can add it as a $79 upgrade on Filing Only.",
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Popular and Premium packages include EIN acquisition; you can add it as a $79 upgrade on Essential.",
+  },
+  {
+    id: 'boi',
+    q: 'Do I need to file a BOI (Beneficial Ownership Information) report?',
+    a: "Most LLCs and Corporations formed in the U.S. must file a Beneficial Ownership Information (BOI) report with FinCEN under the Corporate Transparency Act. Entities formed in 2025 or later have 30 days from formation to file; entities formed earlier had a one-time deadline that has now passed for most. There are exemptions (large operating companies, regulated entities, certain nonprofits). LaunchForma offers a managed BOI filing for $49 — see our /boi-reporting page for details and current FinCEN enforcement status.",
   },
   {
     q: 'What if my name is taken?',
@@ -58,6 +72,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
 
 const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
+    id: 'florida-llc',
     q: '¿Cuánto tarda formar una LLC en Florida?',
     a: 'Unos 15 minutos completar nuestro asistente. Enviamos al Departamento de Estado de Florida el mismo día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
   },
@@ -67,13 +82,14 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el Plan Básico. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
     a: 'La ley de Florida requiere que cada LLC y Corporación designe un Agente Registrado — una persona o empresa con dirección física en Florida que pueda recibir documentos legales en nombre de la entidad. Los Apartados Postales no califican. Usar nuestro servicio mantiene tu dirección personal fuera del registro público.',
   },
   {
+    id: 'annual-report',
     q: '¿Cuándo se debe presentar el reporte anual de Florida?',
     a: 'Entre el 1 de enero y el 1 de mayo de cada año. La tarifa es $138.75 para LLC y $150 para Corporación. Florida cobra una multa no negociable de $400 si pierdes el 1 de mayo, y tu entidad puede ser disuelta administrativamente para septiembre. Te recordaremos con tiempo.',
   },
@@ -82,8 +98,14 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
     a: 'Sí — Florida no requiere que los miembros o gerentes residan en Florida. Solo necesitas un Agente Registrado en Florida (te damos uno gratis el primer año) y una dirección física en Florida para ese agente.',
   },
   {
+    id: 'ein',
     q: '¿Qué pasa con el EIN — lo necesito?',
-    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Listo-para-el-Banco y Concierge de Lanzamiento incluyen la obtención del EIN; puedes agregarlo por $79 en el Plan Básico.',
+    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Popular y Premium incluyen la obtención del EIN; puedes agregarlo por $79 en el plan Esencial.',
+  },
+  {
+    id: 'boi',
+    q: '¿Necesito presentar un reporte BOI (Beneficial Ownership Information)?',
+    a: 'La mayoría de LLCs y Corporaciones formadas en EE.UU. deben presentar un reporte BOI ante FinCEN bajo la Corporate Transparency Act. Las entidades formadas desde 2025 tienen 30 días desde la formación para presentarlo. Existen exenciones (grandes empresas operativas, entidades reguladas, ciertas organizaciones sin fines de lucro). LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting para detalles y el estado actual de cumplimiento de FinCEN.',
   },
   {
     q: '¿Y si mi nombre está tomado?',
@@ -139,6 +161,11 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
     a: 'Wyoming does not require an Operating Agreement to be filed with the state, but banks and lenders typically demand one to open accounts or extend credit. Bank-Ready and Concierge packages include a custom Wyoming-tailored Operating Agreement.',
   },
   {
+    id: 'boi',
+    q: 'Do I need to file a BOI report with FinCEN for my Wyoming entity?',
+    a: 'Yes — Wyoming entities are still subject to the federal Corporate Transparency Act. Most newly formed LLCs and Corporations must report Beneficial Ownership Information to FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 — see /boi-reporting for details.',
+  },
+  {
     q: 'Can a business or trust own my Wyoming LLC?',
     a: 'Yes. Wyoming permits another business entity (LLC, Corporation, trust) to be a member, manager, organizer, or owner. Inside our wizard you can mark each owner as either an Individual or a Business / Entity and provide the legal entity name plus state of formation. The owner entity will be printed on the Articles when applicable.',
   },
@@ -192,6 +219,11 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   {
     q: '¿Wyoming requiere un Operating Agreement?',
     a: 'Wyoming no requiere presentar un Operating Agreement ante el estado, pero los bancos y prestamistas normalmente lo exigen. Los planes Bank-Ready y Concierge incluyen un Operating Agreement personalizado adaptado a Wyoming.',
+  },
+  {
+    id: 'boi',
+    q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Wyoming?',
+    a: 'Sí — las entidades de Wyoming siguen sujetas a la Corporate Transparency Act federal. La mayoría de LLCs y Corporaciones recién formadas deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting.',
   },
   {
     q: '¿Una empresa o fideicomiso puede ser dueño de mi LLC de Wyoming?',
@@ -251,6 +283,11 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
     a: 'Delaware law expects an Operating Agreement for LLCs and Bylaws for Corporations, but they are NOT filed with the state. Banks, investors, and tax advisors will all want copies. Bank-Ready and Concierge packages include a Delaware-tailored Operating Agreement; corporate bylaws are available as an add-on.',
   },
   {
+    id: 'boi',
+    q: 'Do I need to file a BOI report with FinCEN for my Delaware entity?',
+    a: 'Yes — Delaware LLCs and Corporations are subject to the federal Corporate Transparency Act. Most entities formed in 2025 or later must file Beneficial Ownership Information with FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 — see /boi-reporting for details and current FinCEN enforcement status.',
+  },
+  {
     q: 'Can a business or holding company own my Delaware LLC?',
     a: "Yes. Delaware permits another business entity (LLC, Corporation, trust) to be a member, manager, organizer, or owner. Inside our wizard you can mark each owner as either an Individual or a Business / Entity and provide the legal entity name plus state of formation. The owner entity will be reflected on the appropriate filing record.",
   },
@@ -308,6 +345,11 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   {
     q: '¿Delaware requiere Operating Agreement o Bylaws?',
     a: 'La ley de Delaware espera un Operating Agreement para LLCs y Bylaws para Corporaciones, pero NO se presentan ante el estado. Los bancos e inversores los exigirán. Los planes Bank-Ready y Concierge incluyen un Operating Agreement adaptado a Delaware.',
+  },
+  {
+    id: 'boi',
+    q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Delaware?',
+    a: 'Sí — las LLCs y Corporaciones de Delaware están sujetas a la Corporate Transparency Act federal. La mayoría de entidades formadas desde 2025 deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting.',
   },
   {
     q: '¿Una empresa o holding puede ser dueño de mi LLC de Delaware?',

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getGuestUser } from '@/lib/guest';
+import { SkipLink } from '@/components/a11y/SkipLink';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -22,5 +23,10 @@ export default async function WizardLayout({ children }: { children: React.React
     if (!guest) redirect('/sign-in');
   }
 
-  return <div className="min-h-screen bg-surface">{children}</div>;
+  return (
+    <div id="main-content" tabIndex={-1} className="min-h-screen bg-surface focus:outline-none">
+      <SkipLink />
+      {children}
+    </div>
+  );
 }

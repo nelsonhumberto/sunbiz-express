@@ -61,7 +61,10 @@ export function StateSwitcher({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Change formation state"
+          aria-label={`Change formation state. Currently filing in ${localizedStateName(
+            currentState,
+            locale,
+          )}.`}
           disabled={pending}
           className={cn(
             'inline-flex items-center gap-1.5 px-2.5 h-9 rounded-md text-sm font-medium text-ink-muted hover:bg-muted hover:text-ink transition-colors disabled:opacity-60',
@@ -73,9 +76,19 @@ export function StateSwitcher({
           {variant === 'full' ? (
             <span>{localizedStateName(currentState, locale)}</span>
           ) : (
-            <span className="text-xs uppercase tracking-wider">
-              {currentState.code}
-            </span>
+            // Audit fix: previously this only showed the 2-letter USPS
+            // code (e.g. "FL") which first-time visitors didn't recognise.
+            // We now show the full state name on roomy viewports and fall
+            // back to the code on narrow screens so the switcher stays
+            // self-explanatory without crowding the navbar.
+            <>
+              <span className="hidden lg:inline text-sm">
+                {localizedStateName(currentState, locale)}
+              </span>
+              <span className="lg:hidden text-xs uppercase tracking-wider">
+                {currentState.code}
+              </span>
+            </>
           )}
         </button>
       </DropdownMenuTrigger>

@@ -1,4 +1,11 @@
-export const metadata = { title: 'Privacy Policy' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description:
+    'LaunchForma Privacy Policy — what we collect, why, who we share it with (no marketing partners, ever), and how to exercise your GDPR / CCPA rights.',
+  alternates: { canonical: '/privacy' },
+};
 
 export default function PrivacyPage() {
   return (

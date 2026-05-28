@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   title: 'File Your Florida Annual Report | LaunchForma',
   description:
     'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee — cheaper than LegalZoom or FilingServices.com.',
+  alternates: { canonical: '/file-annual-report' },
+  openGraph: {
+    title: 'File Your Florida Annual Report | LaunchForma',
+    description:
+      'Avoid the $400 non-waivable late penalty. We file directly with the Florida Division of Corporations — no account required.',
+    type: 'website',
+  },
 };
 
 const OUR_SERVICE_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS;

@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/select';
 import { startGuestFiling, type StartGuestResult } from '@/actions/guest-start';
 import { ACTIVE_FORMATION_STATES, getFormationState } from '@/lib/formation-states';
+import { trackSignupStarted } from '@/lib/analytics';
+import { getClientUtmAttribution } from '@/lib/utm-client';
+import { utmToAnalyticsProps } from '@/lib/utm';
 
 const initial: StartGuestResult = {};
 
@@ -30,7 +33,14 @@ export function GuestStartForm({
   return (
     <Card>
       <CardContent className="p-6 md:p-8">
-        <form action={formAction} className="space-y-5">
+        <form
+          action={formAction}
+          onSubmit={() => {
+            const utm = getClientUtmAttribution();
+            trackSignupStarted({ entry: 'guest_start', ...utmToAnalyticsProps(utm) });
+          }}
+          className="space-y-5"
+        >
           {state.error && (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {state.error}

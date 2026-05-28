@@ -14,6 +14,7 @@ import {
   looksLikeUsTaxId,
 } from '@/lib/ein';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { logger } from '@/lib/logger';
 
 // We never accept SSN/ITIN values shorter than 9 digits. UI must surface the
 // validation error; this is the server-side defence in depth.
@@ -89,7 +90,11 @@ export async function saveEinResponsibleParty(
     // Never let an unexpected exception propagate to the React render
     // (which surfaces as the opaque "Server Components render" error in
     // production). Log on the server and return a friendly message.
-    console.error('[EIN] saveEinResponsibleParty failed:', err);
+    logger.error('saveEinResponsibleParty failed', {
+      area: 'ein',
+      entityId: input.filingId,
+      tag: 'save-ein',
+    }, err);
     const message =
       err instanceof Error ? err.message : 'An unexpected error occurred while saving EIN data.';
     return { ok: false, error: message };

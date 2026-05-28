@@ -13,6 +13,7 @@ import {
   User,
   Hash,
   CreditCard,
+  Landmark,
 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -305,6 +306,46 @@ export default async function FilingDetailPage({ params }: PageProps) {
           </Card>
         );
       })()}
+
+      {/* BOI / FinCEN reminder card. Anchor target for the checkout-success
+          `#boi` link the audit found pointing at a missing section. */}
+      <Card id="boi" className="border-accent/30 scroll-mt-24">
+        <CardContent className="p-6 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent-700 flex items-center justify-center shrink-0">
+              <Landmark className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-ink">
+                Beneficial Ownership Information (BOI) — FinCEN
+              </h3>
+              <p className="mt-1 text-sm text-ink-muted leading-relaxed">
+                Most U.S. LLCs and Corporations formed on or after January 1,
+                2025 must file a BOI report with FinCEN within 30 days of
+                formation. Penalties for non-compliance are up to $500/day.
+                LaunchForma can prepare and submit the filing on your behalf
+                for $49 — encrypted intake, internal review, and 30-day
+                update tracking for the first 12 months.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  href="/boi-reporting"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  Add managed BOI filing ($49)
+                </Link>
+                <span className="text-ink-subtle text-sm">·</span>
+                <Link
+                  href="/guides/boi-filing-2026"
+                  className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
+                >
+                  Read the 2026 BOI guide
+                </Link>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Status timeline */}
       <Card>

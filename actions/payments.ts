@@ -15,9 +15,14 @@ import {
 } from '@/lib/formation-states';
 import { filingIncludesEin } from '@/lib/ein';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import { submitFilingToState } from './filings';
+import {
+  ensureFilingTouchUtm,
+  ensureUserFirstTouchUtm,
+} from '@/lib/utm-attribution';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -52,6 +57,11 @@ export async function processCheckout(input: {
   });
   if (!filing || filing.userId !== actor.id) return { error: 'Filing not found.' };
   if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
+
+  // Retarget campaigns may arrive after the draft was created — backfill
+  // attribution from the current lf_utm cookie before we finalize payment.
+  await ensureFilingTouchUtm(filing.id);
+  await ensureUserFirstTouchUtm(actor.id);
 
   // EIN gate: if the customer's package includes EIN, the responsible-party
   // form MUST have been completed before we accept payment. Otherwise we'd
@@ -248,14 +258,22 @@ export async function processCheckout(input: {
             },
           });
         } catch (err) {
-          console.error('[checkout] welcome email failed for guest', actor.id, err);
+          logger.error('welcome email failed for guest', {
+            area: 'checkout',
+            entityId: actor.id,
+            tag: 'guest-welcome-email',
+          }, err);
         }
         const next = encodeURIComponent(`/checkout/success?filing=${filing.id}`);
         const email = encodeURIComponent(guestRow.email);
         postCheckoutRedirect = `/sign-in?claimed=1&email=${email}&next=${next}`;
       }
     } catch (err) {
-      console.error('[checkout] guest auto-claim failed for', actor.id, err);
+      logger.error('guest auto-claim failed', {
+        area: 'checkout',
+        entityId: actor.id,
+        tag: 'guest-auto-claim',
+      }, err);
     }
   }
 

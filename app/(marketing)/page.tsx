@@ -93,12 +93,12 @@ export default function HomePage({
     <>
       <Hero state={state} />
       <StatsBar />
-      <FeatureGrid />
-      <HowItWorks />
+      <FeatureGrid state={state} />
+      <HowItWorks state={state} />
       <PricingTable state={state} />
       <ComparisonTable />
       <AnnualReportSection state={state} />
-      <Testimonials />
+      <Testimonials state={state} />
       <FAQSection state={state} />
       <CTABanner state={state} />
     </>

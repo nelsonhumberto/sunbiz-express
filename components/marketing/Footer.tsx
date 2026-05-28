@@ -14,6 +14,7 @@ export function Footer() {
       { label: tNav('pricing'), href: '/pricing' },
       { label: tFooter('registeredAgent'), href: '/services#registered-agent' },
       { label: tFooter('complianceService'), href: '/services#compliance' },
+      { label: tFooter('statesWeServe'), href: '/states' },
     ],
     company: [
       { label: tNav('about'), href: '/about' },
@@ -25,13 +26,14 @@ export function Footer() {
       { label: tFooter('terms'), href: '/terms' },
       { label: tFooter('privacy'), href: '/privacy' },
       { label: tFooter('disclaimer'), href: '/disclaimer' },
-      { label: tFooter('refundPolicy'), href: '/terms#refunds' },
+      { label: tFooter('refundPolicy'), href: '/refund-policy' },
     ],
     resources: [
-      { label: tFooter('floridaLLCGuide'), href: '/faq#florida-llc' },
-      { label: tFooter('annualReportHelp'), href: '/faq#annual-report' },
+      { label: tFooter('floridaLLCGuide'), href: '/guides/florida-llc-operating-agreement' },
+      { label: tFooter('wyVsDeGuide'), href: '/guides/wyoming-llc-vs-delaware-corp' },
+      { label: tFooter('boiGuide'), href: '/guides/boi-filing-2026' },
+      { label: tFooter('annualReportHelp'), href: '/file-annual-report' },
       { label: tFooter('einLookup'), href: '/faq#ein' },
-      { label: tFooter('sunbizSearch'), href: '/services' },
     ],
   };
 

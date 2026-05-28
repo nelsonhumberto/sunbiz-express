@@ -98,16 +98,17 @@ check('DE CORP ein (federal — flat)', addOnPriceCents('ein', 'CORP', 'DE'), 7_
 
 console.log('\n--- Cost scenarios (all-in package pricing) ---');
 {
-  // BASIC package is $155 all-in. Florida's $125 LLC fee is bundled —
-  // customer never sees it as a separate line.
+  // Essential ("BASIC") package is $149 all-in (May 2026 audit reprice).
+  // Florida's $125 LLC fee is bundled — customer never sees it as a
+  // separate line.
   const llcBasicNoOA = computeCost({
     entityType: 'LLC',
     tier: 'BASIC',
     addOnSlugs: [],
   });
-  check('LLC Basic Filing total', llcBasicNoOA.totalCents, 15_500);
-  check('LLC Basic Filing govt remittance', llcBasicNoOA.governmentRemittanceCents, 12_500);
-  check('LLC Basic Filing package margin', llcBasicNoOA.packageMarginCents, 3_000);
+  check('LLC Essential total', llcBasicNoOA.totalCents, 14_900);
+  check('LLC Essential govt remittance', llcBasicNoOA.governmentRemittanceCents, 12_500);
+  check('LLC Essential package margin', llcBasicNoOA.packageMarginCents, 2_400);
 }
 {
   const llcBasicOA = computeCost({
@@ -115,8 +116,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['operating_agreement_single'],
   });
-  // 15500 package + 8900 single-member OA = 24400
-  check('LLC Basic + single OA total', llcBasicOA.totalCents, 24_400);
+  // 14900 package + 8900 single-member OA = 23800
+  check('LLC Essential + single OA total', llcBasicOA.totalCents, 23_800);
 }
 {
   const llcStandard = computeCost({
@@ -124,8 +125,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'STANDARD',
     addOnSlugs: [],
   });
-  // Bank-Ready is $299 all-in; OA, EIN, certificates already bundled.
-  check('LLC Bank-Ready total (bundled)', llcStandard.totalCents, 29_900);
+  // Popular is $279 all-in; OA, EIN, certificates, BOI already bundled.
+  check('LLC Popular total (bundled)', llcStandard.totalCents, 27_900);
 }
 {
   const corpBasicCerts = computeCost({
@@ -133,11 +134,11 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['cert_status', 'cert_copy'],
   });
-  // FL CORP BASIC: 3000 service + 7000 FL corp fee = 10000 package
+  // FL CORP Essential: 2400 service + 7000 FL corp fee = 9400 package
   // cert_status FL CORP: 3400 + 875 = 4275
   // cert_copy FL CORP: 2900 + 875 = 3775
-  // Total: 10000 + 4275 + 3775 = 18050
-  check('FL CORP Basic + cert_status + cert_copy total', corpBasicCerts.totalCents, 18_050);
+  // Total: 9400 + 4275 + 3775 = 17450
+  check('FL CORP Essential + cert_status + cert_copy total', corpBasicCerts.totalCents, 17_450);
 }
 {
   const llcBasicCerts = computeCost({
@@ -145,20 +146,20 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['cert_status', 'cert_copy'],
   });
-  // 15500 package + 3900 + 5900 = 25300 (flat pricing across entity types)
-  check('LLC Basic + cert_status + cert_copy total', llcBasicCerts.totalCents, 25_300);
+  // 14900 package + 3900 + 5900 = 24700
+  check('LLC Essential + cert_status + cert_copy total', llcBasicCerts.totalCents, 24_700);
 }
 {
-  // Bundled add-ons must not double-charge inside Bank-Ready/Concierge.
+  // Bundled add-ons must not double-charge inside Popular/Premium.
   const standardWithBundled = computeCost({
     entityType: 'LLC',
     tier: 'STANDARD',
-    addOnSlugs: ['ein', 'operating_agreement_single', 'cert_status', 'cert_copy'],
+    addOnSlugs: ['ein', 'operating_agreement_single', 'cert_status', 'cert_copy', 'boi_filing'],
   });
   check(
-    'STANDARD ignores bundled add-on duplicates',
+    'Popular ignores bundled add-on duplicates',
     standardWithBundled.totalCents,
-    29_900,
+    27_900,
   );
 }
 {
@@ -170,8 +171,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     addOnSlugs: ['cert_copy'],
   });
   // 12500 LLC filing + 3000 LLC certified-copy state fee = 15500 remittance.
-  check('LLC Basic + cert_copy govt remittance', llcCertCopy.governmentRemittanceCents, 15_500);
-  check('LLC Basic + cert_copy customer total', llcCertCopy.totalCents, 21_400);
+  check('LLC Essential + cert_copy govt remittance', llcCertCopy.governmentRemittanceCents, 15_500);
+  check('LLC Essential + cert_copy customer total', llcCertCopy.totalCents, 20_800);
 }
 
 console.log('\n--- Distinguishability ---');

@@ -5,6 +5,7 @@ import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { COPYRIGHT_YEAR, PREFERRED_STATE_COOKIE } from '@/lib/constants';
 import { getFormationState } from '@/lib/formation-states';
+import { SkipLink } from '@/components/a11y/SkipLink';
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('auth');
@@ -17,20 +18,23 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       className="min-h-screen relative grid lg:grid-cols-5 bg-surface"
       suppressHydrationWarning
     >
+      <SkipLink />
       {/* Left: form */}
       <div className="lg:col-span-2 flex flex-col" suppressHydrationWarning>
         <header className="container py-6 flex items-center justify-between">
           <Logo />
           <LanguageSwitcher />
         </header>
-        <div
-          className="flex-1 flex items-center justify-center px-6 py-8"
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 flex items-center justify-center px-6 py-8 focus:outline-none"
           suppressHydrationWarning
         >
           <div className="w-full max-w-md" suppressHydrationWarning>
             {children}
           </div>
-        </div>
+        </main>
         <footer className="container py-6 text-xs text-ink-subtle flex justify-between">
           <span>© {COPYRIGHT_YEAR} LaunchForma</span>
           <Link href="/" className="hover:text-ink-muted">

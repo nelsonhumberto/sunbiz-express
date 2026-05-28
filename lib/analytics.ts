@@ -45,6 +45,10 @@ export function trackSignupStarted(extra?: Record<string, unknown>) {
   trackEvent('signup_started', extra);
 }
 
+export function trackPurchaseCompleted(extra?: Record<string, unknown>) {
+  trackEvent('purchase_completed', extra);
+}
+
 export function trackAddOnToggled(slug: string, action: 'added' | 'removed', tier: string, state: string) {
   trackEvent('add_on_toggled', { slug, action, tier, state });
 }

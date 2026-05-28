@@ -18,6 +18,7 @@ import {
   SunbizError,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
+import { logger } from '@/lib/logger';
 
 const AddressSchema = z.object({
   street1: z.string().min(1),
@@ -417,7 +418,10 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
 
     return { ok: true as const, filingId: filingId.filingId };
   } catch (e) {
-    console.error('Guest annual report error:', e);
+    logger.error('Guest annual report processing failed', {
+      area: 'annual-report',
+      tag: 'guest-annual-report',
+    }, e);
     return { ok: false as const, error: 'Something went wrong. Please try again.' };
   }
 }

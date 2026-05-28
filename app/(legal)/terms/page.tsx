@@ -1,4 +1,11 @@
-export const metadata = { title: 'Terms of Service' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description:
+    'LaunchForma Terms of Service — service description, refund policy, limitation of liability, and third-party integrations. We are not a law firm.',
+  alternates: { canonical: '/terms' },
+};
 
 export default function TermsPage() {
   return (

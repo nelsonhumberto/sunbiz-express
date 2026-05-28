@@ -22,9 +22,19 @@
     color: #0F1F1C;
   }
 
-  /* Smooth focus rings */
+  /* Visible focus rings — WCAG 2.4.7 (Focus Visible). Increased opacity
+     and offset (May 2026 a11y audit) so keyboard users always see where
+     focus is, including against the warm-cream surface background. */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary/40 ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-primary/70 ring-offset-2 ring-offset-background;
+  }
+  /* Some links sit on dark backgrounds (footer, CTA banner). Bump the ring
+     to a higher-contrast accent color in that context. */
+  .bg-primary *:focus-visible,
+  .bg-primary-hover *:focus-visible,
+  .bg-primary-700 *:focus-visible,
+  [class*="from-primary"] *:focus-visible {
+    @apply ring-white/90 ring-offset-primary;
   }
 
   /* Headings use display font */

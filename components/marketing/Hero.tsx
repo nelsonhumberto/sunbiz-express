@@ -105,6 +105,23 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
               {t('rating')}
             </span>
           </div>
+
+          {/* Multi-state callout — replaces the old geo-redirect.
+              Lets non-FL visitors immediately discover WY/DE without
+              hunting through the state switcher. */}
+          <p className="mt-5 text-xs text-ink-subtle">
+            Filing in{' '}
+            <span className="font-medium text-ink">
+              {state.name}
+            </span>{' '}
+            ·{' '}
+            <Link
+              href="/states"
+              className="text-primary hover:underline font-medium"
+            >
+              We also serve {state.code === 'FL' ? 'Wyoming and Delaware' : state.code === 'WY' ? 'Florida and Delaware' : 'Florida and Wyoming'} →
+            </Link>
+          </p>
         </motion.div>
 
         <motion.div

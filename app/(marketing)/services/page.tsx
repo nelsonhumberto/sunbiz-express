@@ -1,8 +1,10 @@
+import type { Metadata } from 'next';
 import { ADD_ONS } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { JsonLd, servicesItemListJsonLd } from '@/components/seo/JsonLd';
 import {
   ShieldCheck,
   Hash,
@@ -14,13 +16,25 @@ import {
   CalendarCheck,
   Receipt,
   BellRing,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 
-export const metadata = { title: 'Services' };
+export const metadata: Metadata = {
+  title: 'Add-On Services — EIN, Registered Agent, BOI, Compliance',
+  description:
+    'A la carte business formation services: EIN acquisition, Registered Agent, Operating Agreement, Certificate of Status, Certified Copy, BOI filing, S-Corp election, and ongoing compliance — transparent pricing with no upsell tricks.',
+  alternates: { canonical: '/services' },
+  openGraph: {
+    title: 'LaunchForma Services — Formation, Compliance, Branding',
+    description:
+      'Everything you need to form, fund, and run your LLC or Corporation — a la carte add-ons with transparent pricing.',
+    type: 'website',
+  },
+};
 
 const ICONS: Record<string, LucideIcon> = {
-  ShieldCheck, Hash, FileText, Users, Globe, Award, FileCheck, CalendarCheck, Receipt, BellRing,
+  ShieldCheck, Hash, FileText, Users, Globe, Award, FileCheck, CalendarCheck, Receipt, BellRing, Landmark,
 };
 
 export default function ServicesPage() {
@@ -32,6 +46,15 @@ export default function ServicesPage() {
 
   return (
     <>
+      <JsonLd
+        data={servicesItemListJsonLd(
+          ADD_ONS.map((a) => ({
+            name: a.name,
+            description: a.description,
+            priceCents: a.priceCents,
+          })),
+        )}
+      />
       <section className="pt-16 pb-12">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -49,7 +72,7 @@ export default function ServicesPage() {
       </section>
 
       <ServiceCategory id="formation" title="Formation" subtitle="Everything to get your business legally formed and bank-ready." services={byCategory.formation} />
-      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of the state — no more $400 late fees." services={byCategory.compliance} />
+      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of every state — annual reports, BOI, and franchise tax handled before deadlines bite." services={byCategory.compliance} />
       <ServiceCategory id="branding" title="Branding" subtitle="Establish your online identity from day one." services={byCategory.branding} />
 
       <CTABanner />

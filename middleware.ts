@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { STATE_CODE_TO_SLUG } from '@/lib/marketing-states';
 import { LOCALE_COOKIE, locales, type Locale } from '@/i18n/config';
+import { UTM_COOKIE, UTM_MAX_AGE, UTM_PARAMS } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
 
 /**
- * Geo + preference-aware routing middleware.
+ * Preference + attribution-aware routing middleware.
  *
  * Behavior:
  *   - On every request:
@@ -20,17 +20,13 @@ const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
  *         without polluting URLs.
  *       • Capture UTM params into a JSON `lf_utm` cookie so ad attribution
  *         survives the funnel.
- *   - At "/" only:
- *       1. If `?state=` is in the URL, render whatever the page does with it.
- *       2. If `preferred_state` cookie is set, stick to "/" (the homepage
- *          honors the preference for hero/pricing/CTA).
- *       3. If `geo_redirected` cookie is set, skip auto-redirect.
- *       4. Otherwise look at Vercel geo headers and redirect to the matching
- *          `/states/<slug>` landing page.
+ *
+ * Note (post-audit, May 2026): geo-based auto-redirect from `/` to
+ * `/states/<region-slug>` was REMOVED. The previous behavior diverted
+ * non-FL visitors to coming-soon state pages (e.g. `/states/massachusetts`)
+ * with no Start CTA, costing conversions. Visitors now always see the FL
+ * marketing homepage, which is multi-state-aware via the StateSwitcher.
  */
-const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
-const UTM_COOKIE = 'lf_utm';
-const UTM_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const LOCALE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 function setLocaleCookie(res: NextResponse, locale: Locale) {
@@ -41,8 +37,46 @@ function setLocaleCookie(res: NextResponse, locale: Locale) {
   });
 }
 
+/**
+ * Canonical hosts that the app should serve from. Any other production
+ * host (e.g. the legacy `sunbiz-express.vercel.app` preview URL the May
+ * 2026 audit flagged) is 301'd to the canonical apex. Set via
+ * `LF_CANONICAL_HOSTS` — a comma-separated list of host names without
+ * protocol. Leaving it empty disables host redirection (useful for
+ * local dev / Vercel preview deploys).
+ */
+const CANONICAL_HOSTS = (process.env.LF_CANONICAL_HOSTS ?? '')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+
+const PRIMARY_CANONICAL_HOST = CANONICAL_HOSTS[0];
+
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+
+  // ── Canonical host enforcement ─────────────────────────────────────────
+  // Forward any request landing on a non-canonical host (the old
+  // sunbiz-express.vercel.app checkout host, raw preview URLs, etc.) to
+  // the canonical apex so analytics, security cookies, and SEO all stay
+  // consistent.
+  if (PRIMARY_CANONICAL_HOST) {
+    const requestHost = request.headers.get('host')?.toLowerCase() ?? '';
+    const requestHostname = requestHost.split(':')[0];
+    if (
+      requestHostname &&
+      // Allow localhost / *.local / 127.0.0.1 so dev never gets redirected.
+      !requestHostname.startsWith('localhost') &&
+      !requestHostname.endsWith('.local') &&
+      requestHostname !== '127.0.0.1' &&
+      !CANONICAL_HOSTS.includes(requestHostname)
+    ) {
+      const target = request.nextUrl.clone();
+      target.host = PRIMARY_CANONICAL_HOST;
+      target.protocol = 'https:';
+      return NextResponse.redirect(target, { status: 308 });
+    }
+  }
 
   let response: NextResponse | null = null;
 
@@ -104,34 +138,10 @@ export function middleware(request: NextRequest) {
     setLocaleCookie(response, lockedLocale);
   }
 
-  if (pathname !== '/') return response ?? NextResponse.next();
-  if (searchParams.has('state')) return response ?? NextResponse.next();
-  if (request.cookies.has('preferred_state')) return response ?? NextResponse.next();
-  if (request.cookies.has('geo_redirected')) return response ?? NextResponse.next();
-
-  const country = request.headers.get('x-vercel-ip-country') ?? '';
-  const region = request.headers.get('x-vercel-ip-country-region') ?? '';
-
-  if (country !== 'US' || !region) return response ?? NextResponse.next();
-  if (region === 'FL') return response ?? NextResponse.next();
-
-  const slug = STATE_CODE_TO_SLUG[region];
-  if (!slug) return response ?? NextResponse.next();
-
-  const target = request.nextUrl.clone();
-  target.pathname = `/states/${slug}`;
-  target.search = '';
-
-  const redirectResponse = NextResponse.redirect(target, { status: 302 });
-  redirectResponse.cookies.set('geo_redirected', '1', {
-    path: '/',
-    sameSite: 'lax',
-  });
-  // Forward the locale choice (and any UTM/state cookies we already set)
-  // through the geo redirect so the Spanish landing experience survives
-  // the bounce from `/` to `/states/<slug>`.
-  if (lockedLocale) setLocaleCookie(redirectResponse, lockedLocale);
-  return redirectResponse;
+  // No geo-redirect: every visitor lands on the homepage (or whatever path
+  // they requested). State preference is honored via the StateSwitcher
+  // dropdown + `preferred_state` cookie.
+  return response ?? NextResponse.next();
 }
 
 export const config = {

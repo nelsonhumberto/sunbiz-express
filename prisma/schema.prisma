@@ -53,6 +53,13 @@ model User {
   analyticsEvents    AnalyticsEvent[]
   passwordResetTokens PasswordResetToken[]
   stripeCustomerId   String? @unique
+
+  // First-touch ad attribution (set once at guest/sign-up from lf_utm cookie).
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
 }
 
 model Filing {
@@ -117,6 +124,14 @@ model Filing {
   coupon                   Coupon?  @relation(fields: [couponId], references: [id])
 
   notes                    String?
+
+  // Last-touch ad attribution at filing creation (or checkout backfill).
+  utmSource                String?
+  utmMedium                String?
+  utmCampaign              String?
+  utmContent               String?
+  utmTerm                  String?
+
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   submittedAt              DateTime?

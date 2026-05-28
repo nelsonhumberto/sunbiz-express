@@ -83,3 +83,100 @@ export function breadcrumbJsonLd(
     })),
   };
 }
+
+/**
+ * Product / offer catalog for `/pricing`. Each tier surfaces as an Offer
+ * inside an aggregated Product so Google can surface "price range" rich
+ * results.
+ */
+export function pricingProductJsonLd(args: {
+  stateName: string;
+  tiers: { name: string; priceCents: number; description: string }[];
+}) {
+  const prices = args.tiers.map((t) => t.priceCents / 100);
+  const lowPrice = Math.min(...prices).toFixed(2);
+  const highPrice = Math.max(...prices).toFixed(2);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: `LaunchForma ${args.stateName} Business Formation Packages`,
+    description: `All-in pricing for forming a ${args.stateName} LLC or Corporation — state filing fee included, free Year-1 Registered Agent.`,
+    brand: { '@type': 'Brand', name: 'LaunchForma' },
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'USD',
+      lowPrice,
+      highPrice,
+      offerCount: args.tiers.length,
+      offers: args.tiers.map((t) => ({
+        '@type': 'Offer',
+        name: t.name,
+        price: (t.priceCents / 100).toFixed(2),
+        priceCurrency: 'USD',
+        description: t.description,
+        availability: 'https://schema.org/InStock',
+      })),
+    },
+  };
+}
+
+/**
+ * Service offer catalog for `/services`. Each add-on becomes an Offer.
+ */
+export function servicesItemListJsonLd(
+  items: { name: string; description: string; priceCents: number }[],
+) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'LaunchForma Business Formation Services',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Offer',
+        name: item.name,
+        description: item.description,
+        price: (item.priceCents / 100).toFixed(2),
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    })),
+  };
+}
+
+/**
+ * Standalone Article schema for long-form guide pages — feeds Google's
+ * "Article" rich result.
+ */
+export function articleJsonLd(args: {
+  headline: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: args.headline,
+    description: args.description,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': args.url },
+    url: args.url,
+    datePublished: args.datePublished,
+    dateModified: args.dateModified ?? args.datePublished,
+    publisher: {
+      '@type': 'Organization',
+      name: 'LaunchForma',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${BASE_URL}/images/logo-icon.png`,
+      },
+    },
+    author: {
+      '@type': 'Organization',
+      name: args.authorName ?? 'LaunchForma',
+    },
+  };
+}

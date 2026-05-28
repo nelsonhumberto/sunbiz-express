@@ -3,19 +3,55 @@
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
+import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { getFormationState, type StateCode } from '@/lib/formation-states';
+import { tierPackagePriceCents } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 
-export function HowItWorks() {
+interface HowItWorksProps {
+  state?: MarketingState;
+}
+
+export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const t = useTranslations('howItWorks');
+  const tPricing = useTranslations('pricing');
+  const rule = getFormationState(state.code);
+  const stateCode = state.code as StateCode;
+
+  // Resolve the headline tier prices + names for the current state so the
+  // "Pick your package" step never lies. The audit flagged that WY/DE
+  // pages were quoting Florida's $155/$299/$499 numbers, which are wrong
+  // for those states because the bundled state fees differ.
+  const basic = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', stateCode));
+  const standard = formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', stateCode));
+  const premium = formatCurrency(tierPackagePriceCents('PREMIUM', 'LLC', stateCode));
+  const tierBasic = tPricing('tier_BASIC');
+  const tierStandard = tPricing('tier_STANDARD');
+  const tierPremium = tPricing('tier_PREMIUM');
+
+  const step1Body =
+    state.code === 'FL'
+      ? t('step1Body')
+      : `Choose LLC or Corporation, enter your name, and we check ${state.name} state-registry conventions live.`;
+  const step2Body = `${tierBasic} (${basic}), ${tierStandard} (${standard}), or ${tierPremium} (${premium}). ${state.name} filing fee already included.`;
+  const step4Title =
+    state.code === 'FL'
+      ? t('step4Title')
+      : `We file with ${state.name}`;
+  const step4Body =
+    state.code === 'FL'
+      ? t('step4Body')
+      : `Submitted same business day to the ${rule.name === 'Delaware' ? 'Division of Corporations' : 'Secretary of State'}. ${rule.marketingTiming.badgeFallback}. Documents are emailed and stored in your dashboard.`;
 
   const STEPS = [
-    { n: '01', title: t('step1Title'), body: t('step1Body') },
-    { n: '02', title: t('step2Title'), body: t('step2Body') },
+    { n: '01', title: t('step1Title'), body: step1Body },
+    { n: '02', title: t('step2Title'), body: step2Body },
     { n: '03', title: t('step3Title'), body: t('step3Body') },
-    { n: '04', title: t('step4Title'), body: t('step4Body') },
+    { n: '04', title: step4Title, body: step4Body },
   ];
 
   return (
-    <section className="py-20 md:py-28">
+    <section data-marketing-state={state.code} className="py-20 md:py-28">
       <div className="container">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">

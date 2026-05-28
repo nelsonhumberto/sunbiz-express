@@ -10,6 +10,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { filingUtmCreateFields } from '@/lib/utm-attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         // already collected both — jump straight into the name step.
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
+        ...filingUtmCreateFields(),
       },
     });
     redirect(`/wizard/${filing.id}/2`);

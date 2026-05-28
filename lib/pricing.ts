@@ -72,13 +72,15 @@ export interface TierDef {
 const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
   {
     slug: 'BASIC',
-    name: 'Filing Only',
+    name: 'Essential',
     bestFor: 'I only need the legal filing',
     description:
       'The legal filing, prepared and submitted by LaunchForma specialists.',
-    // FL LLC reference: $30 service + $125 FL filing = $155 (unchanged).
-    // FL CORP: $30 + $70 = $100. WY: $30 + $100 = $130. DE: $30 + $110 = $140.
-    serviceMarginCents: 3_000,
+    // May 2026 repricing (audit-driven). Round headline prices and
+    // sharper anchoring against $0 competitors who bundle nothing.
+    // FL LLC reference: $24 service + $125 FL filing = $149.
+    // FL CORP: $24 + $70 = $94. WY: $24 + $100 = $124. DE: $24 + $110 = $134.
+    serviceMarginCents: 2_400,
     features: [
       { label: 'State filing fee included', included: true, highlight: true },
       {
@@ -93,14 +95,15 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
   },
   {
     slug: 'STANDARD',
-    name: 'Bank-Ready Filing',
+    name: 'Popular',
     bestFor: 'Best for opening a bank account',
     description: 'Everything banks ask for at account opening — handled.',
-    // FL LLC reference: $139 service + $125 + $5 + $30 = $299 (unchanged).
-    // FL CORP: $139 + $70 + $8.75 + $8.75 = $226.50.
-    // WY LLC/CORP: $139 + $100 + $25 + $30 = $294.
-    // DE LLC: $139 + $110 + $50 + $50 = $349. DE CORP: $139 + $109 + $50 + $50 = $348.
-    serviceMarginCents: 13_900,
+    // May 2026 repricing (audit-driven).
+    // FL LLC reference: $119 service + $125 + $5 + $30 = $279.
+    // FL CORP: $119 + $70 + $8.75 + $8.75 = $206.50.
+    // WY LLC/CORP: $119 + $100 + $25 + $30 = $274.
+    // DE LLC: $119 + $110 + $50 + $50 = $329. DE CORP: $119 + $109 + $50 + $50 = $328.
+    serviceMarginCents: 11_900,
     recommended: true,
     ribbon: 'Most Popular',
     features: [
@@ -113,6 +116,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
         highlight: true,
       },
       { label: 'Certified Copy of Articles', included: true, highlight: true },
+      { label: 'BOI filing (FinCEN)', included: true, highlight: true },
       { label: 'Email + Live Chat support', included: true },
       { label: 'Free .com domain', included: false },
       { label: 'Annual Compliance Service', included: false },
@@ -120,18 +124,22 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
   },
   {
     slug: 'PREMIUM',
-    name: 'Launch Concierge',
+    name: 'Premium',
     bestFor: 'Best for hands-off setup',
     description: 'Bank-Ready plus year-round compliance, banking, and branding.',
-    // FL LLC reference: $339 service + $125 + $5 + $30 = $499 (unchanged).
-    serviceMarginCents: 33_900,
-    ribbon: 'Best Value',
+    // May 2026 repricing (audit-driven). $289 + $125 + $5 + $30 = $449 FL LLC.
+    serviceMarginCents: 28_900,
+    // Top tier carries a "Premium" badge — the audit moved the "Best Value"
+    // anchor to the middle (STANDARD) tier so the recommended-tier
+    // psychology lines up with the margin-maximising package.
+    ribbon: 'Premium',
     features: [
       { label: 'Everything in Bank-Ready Filing', included: true },
       { label: 'Compliance Alerts Plus (year 1)', included: true, highlight: true },
+      { label: 'BOI filing (FinCEN, included)', included: true, highlight: true },
+      { label: 'S-Corp Election filing (Form 2553)', included: true, highlight: true },
       { label: 'Free .com domain (year 1)', included: true, highlight: true },
       { label: 'Priority phone + chat support', included: true },
-      { label: 'S-Corp Election guidance', included: true },
       { label: 'Banking resolution template', included: true },
       { label: 'Business email setup', included: true },
       { label: 'Quarterly compliance check-ins', included: true },
@@ -225,7 +233,8 @@ export type AddOnSlug =
   | 'cert_copy'
   | 'annual_report_managed'
   | 's_corp_election'
-  | 'compliance_alerts';
+  | 'compliance_alerts'
+  | 'boi_filing';
 
 export interface AddOnDef {
   slug: AddOnSlug;
@@ -354,6 +363,20 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     recurring: 'annually',
     category: 'compliance',
     iconKey: 'BellRing',
+  },
+  {
+    // Added May 2026 alongside the BOI service launch. Flat $49 per
+    // filing covers preparation, internal compliance review, FinCEN
+    // submission, and a 12-month update-tracking window.
+    slug: 'boi_filing',
+    name: 'BOI Filing (FinCEN)',
+    description:
+      'Beneficial Ownership Information report prepared and submitted to FinCEN per the Corporate Transparency Act. Encrypted intake, internal review, FinCEN tracking ID delivered to your dashboard.',
+    serviceMarginCents: 4_900,
+    category: 'compliance',
+    iconKey: 'Landmark',
+    badge: 'Required for most LLCs',
+    highlight: true,
   },
 ];
 
@@ -632,6 +655,12 @@ function isBundledIntoTier(slug: AddOnSlug, tier: TierSlug): boolean {
   if (slug === 'cert_status' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
   if (slug === 'domain_com' && tier === 'PREMIUM') return true;
   if (slug === 'compliance_alerts' && tier === 'PREMIUM') return true;
+  // BOI is bundled into Popular (STANDARD) and Premium per the May 2026
+  // repricing. Essential customers can still purchase it a la carte.
+  if (slug === 'boi_filing' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
+  // S-Corp election is now included in the Premium tier (audit fix —
+  // surfaces it as an explicit perk to justify the price gap).
+  if (slug === 's_corp_election' && tier === 'PREMIUM') return true;
   return false;
 }
 
@@ -642,7 +671,14 @@ export function effectiveAddOns(tier: TierSlug, all: AddOnSlug[]): AddOnSlug[] {
 export function tierBundledAddOns(tier: TierSlug): AddOnSlug[] {
   if (tier === 'BASIC') return ['registered_agent'];
   if (tier === 'STANDARD')
-    return ['registered_agent', 'ein', 'operating_agreement_single', 'cert_copy', 'cert_status'];
+    return [
+      'registered_agent',
+      'ein',
+      'operating_agreement_single',
+      'cert_copy',
+      'cert_status',
+      'boi_filing',
+    ];
   return [
     'registered_agent',
     'ein',
@@ -651,5 +687,7 @@ export function tierBundledAddOns(tier: TierSlug): AddOnSlug[] {
     'cert_status',
     'domain_com',
     'compliance_alerts',
+    'boi_filing',
+    's_corp_election',
   ];
 }

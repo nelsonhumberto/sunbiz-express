@@ -18,10 +18,11 @@ import {
   resolveMarketingState,
 } from '@/lib/marketing-states';
 import { JsonLd, serviceJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
+import { searchParamsToQueryString } from '@/lib/utm';
 
 interface StateLandingPageProps {
   params: { slug: string };
-  searchParams?: { utm_campaign?: string | string[] };
+  searchParams?: Record<string, string | string[] | undefined>;
 }
 
 function pickFirst(value: string | string[] | undefined): string | undefined {
@@ -75,9 +76,11 @@ export default function StateLandingPage({
   }
 
   // Florida already lives at "/", so redirect anyone hitting /states/florida
-  // to the canonical homepage.
+  // to the canonical homepage — but preserve ?lang=, utm_*, and any other
+  // query params so ad campaigns land with attribution intact.
   if (state.code === 'FL') {
-    redirect('/');
+    const qs = searchParamsToQueryString(searchParams);
+    redirect(qs ? `/?${qs}` : '/');
   }
 
   // Active formation state (WY/DE) — render the full marketing layout with
@@ -96,12 +99,12 @@ export default function StateLandingPage({
         />
         <Hero state={state} />
         <StatsBar />
-        <FeatureGrid />
-        <HowItWorks />
+        <FeatureGrid state={state} />
+        <HowItWorks state={state} />
         <PricingTable state={state} />
         <ComparisonTable />
         <AnnualReportSection state={state} />
-        <Testimonials />
+        <Testimonials state={state} />
         <FAQSection state={state} />
         <CTABanner state={state} />
       </>

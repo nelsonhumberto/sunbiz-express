@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
 import { NavBar } from '@/components/marketing/NavBar';
 import { Footer } from '@/components/marketing/Footer';
+import { SkipLink } from '@/components/a11y/SkipLink';
 
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -9,8 +10,11 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
   return (
     <>
+      <SkipLink />
       <NavBar isAuthed={isAuthed} isAdmin={isAdmin} />
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
+        {children}
+      </main>
       <Footer />
     </>
   );

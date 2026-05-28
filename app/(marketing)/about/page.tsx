@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
 
-export const metadata = { title: 'About' };
+export const metadata: Metadata = {
+  title: 'About LaunchForma — Transparent Business Formation',
+  description:
+    'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About LaunchForma — Modern, Transparent Business Formation',
+    description:
+      'Why we built LaunchForma: a clean, honest alternative to legal-tech upsell traps. All-in pricing, no data sales.',
+    type: 'website',
+  },
+};
 
 export default function AboutPage() {
   return (

@@ -12,6 +12,7 @@
 
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import {
   ALL_MARKETING_STATES,
   resolveMarketingState,
@@ -96,9 +97,10 @@ export async function captureMarketingLead(
     ) {
       return { ok: false, error: 'duplicate' };
     }
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[captureMarketingLead] failed', err);
-    }
+    logger.error('captureMarketingLead failed', {
+      area: 'marketing',
+      tag: 'capture-marketing-lead',
+    }, err);
     return { ok: false, error: 'generic' };
   }
 }

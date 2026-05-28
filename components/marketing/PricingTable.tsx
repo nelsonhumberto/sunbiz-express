@@ -45,6 +45,9 @@ const FEATURE_KEYS: Record<string, string> = {
   'Everything in Filing Only': 'feat_everythingBasic',
   'Everything in Basic Filing': 'feat_everythingBasic',
   'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
+  'BOI filing (FinCEN)': 'feat_boi',
+  'BOI filing (FinCEN, included)': 'feat_boi',
+  'S-Corp Election filing (Form 2553)': 'feat_scorpFiling',
 };
 
 export function PricingTable({

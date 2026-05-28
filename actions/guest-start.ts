@@ -14,6 +14,11 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
+import {
+  ensureUserFirstTouchUtm,
+  filingUtmCreateFields,
+  userUtmCreateFields,
+} from '@/lib/utm-attribution';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
@@ -69,6 +74,7 @@ export async function startGuestFiling(
         serviceTier: 'STANDARD',
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
+        ...filingUtmCreateFields(),
       },
     });
     redirect(`/wizard/${filing.id}/2`);
@@ -99,6 +105,7 @@ export async function startGuestFiling(
         passwordHash: placeholderPassword,
         accountStatus: 'GUEST',
         guestToken: token,
+        ...userUtmCreateFields(),
       },
     });
   } else if (!token) {
@@ -113,6 +120,7 @@ export async function startGuestFiling(
       where: { id: guestUser.id },
       data: { firstName, lastName },
     });
+    await ensureUserFirstTouchUtm(guestUser.id);
   }
 
   setGuestCookie(token!);
@@ -135,6 +143,7 @@ export async function startGuestFiling(
       serviceTier: 'STANDARD',
       currentStep: 2,
       completedSteps: JSON.stringify([1]),
+      ...filingUtmCreateFields(),
     },
   });
 

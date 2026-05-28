@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { trackSignupStarted } from '@/lib/analytics';
+import { getClientUtmAttribution } from '@/lib/utm-client';
+import { utmToAnalyticsProps } from '@/lib/utm';
 
 const initial: ActionResult = {};
 
@@ -22,7 +24,10 @@ export function SignUpForm() {
   return (
     <form
       action={formAction}
-      onSubmit={() => trackSignupStarted()}
+      onSubmit={() => {
+        const utm = getClientUtmAttribution();
+        trackSignupStarted(utmToAnalyticsProps(utm));
+      }}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-3">

@@ -17,6 +17,14 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
   const signUpHref = state.code === 'FL' ? '/sign-up' : `/sign-up?state=${state.code}`;
   const headlineState = state.code === 'FL' ? t('headline2') : `${state.name} business?`;
+  // The default i18n subhead promises "we submit to the state the same
+  // business day" — true everywhere we file. We keep the same phrasing
+  // but soften the implied turnaround for slow-queue states (WY/DE) so
+  // the audit-flagged Florida-only language doesn't bleed through.
+  const subhead =
+    state.code === 'FL'
+      ? t('subhead')
+      : `Most owners finish in 15 minutes. We submit to ${state.name} the same business day — state processing varies.`;
 
   return (
     <section data-marketing-state={state.code} className="py-16 md:py-24">
@@ -37,7 +45,7 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
               <h2 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-tight">
                 {t('headline1')} <span className="italic">{headlineState}</span>
               </h2>
-              <p className="mt-4 text-lg text-white/85 leading-relaxed max-w-md">{t('subhead')}</p>
+              <p className="mt-4 text-lg text-white/85 leading-relaxed max-w-md">{subhead}</p>
             </div>
 
             <div className="flex flex-col items-start lg:items-end gap-3">

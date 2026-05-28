@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { AuthError } from 'next-auth';
+import { userUtmCreateFields } from '@/lib/utm-attribution';
 
 const SignUpSchema = z
   .object({
@@ -71,6 +72,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
       lastName: data.lastName,
       role: 'USER',
       emailVerified: true, // auto-verified for demo
+      ...userUtmCreateFields(),
     },
   });
 

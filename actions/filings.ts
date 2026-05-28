@@ -35,6 +35,7 @@ import {
 } from '@/lib/formation-states';
 import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 import { getWizardActor } from '@/lib/guest';
+import { filingUtmCreateFields } from '@/lib/utm-attribution';
 
 export async function createFiling(input?: {
   entityType?: 'LLC' | 'CORP';
@@ -59,6 +60,7 @@ export async function createFiling(input?: {
       state: stateCode,
       serviceTier: input?.tier ?? 'STANDARD',
       currentStep: 1,
+      ...filingUtmCreateFields(),
     },
   });
 

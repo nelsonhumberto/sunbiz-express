@@ -342,12 +342,23 @@ async function deliverEmail(to: string, subject: string, html: string) {
   console.log(`[email] → ${to} | "${subject}" (no RESEND_API_KEY or SMTP_* set)`);
 }
 
+/** True when at least one real delivery provider is configured. */
+export function isEmailDeliveryConfigured(): boolean {
+  return Boolean(
+    process.env.RESEND_API_KEY ||
+      (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+  );
+}
+
 export async function sendEmail(args: SendEmailArgs) {
   const tpl = TEMPLATES[args.type];
   if (!tpl) throw new Error(`Unknown email type: ${args.type}`);
   const { subject, body } = tpl(args.context ?? {});
 
-  // Persist to DB first so admin Outbox always has a record
+  // Persist to DB first so the admin Outbox always has a record. We start in
+  // QUEUED and only flip to SENT once delivery actually succeeds — this keeps
+  // the Outbox honest (the previous version marked everything SENT up front,
+  // which hid every delivery failure, including silent "no provider" drops).
   const record = await prisma.emailNotification.create({
     data: {
       notificationType: args.type,
@@ -355,17 +366,44 @@ export async function sendEmail(args: SendEmailArgs) {
       subject,
       templateName: args.type.toLowerCase(),
       htmlBody: body,
-      status: 'SENT',
-      sentAt: new Date(),
+      status: 'QUEUED',
       filingId: args.filingId,
       userId: args.userId,
     },
   });
 
-  // Best-effort delivery — don't fail the calling action if email is broken
-  deliverEmail(args.to, subject, body).catch((err) =>
-    console.error('[email] delivery error (non-fatal):', err)
-  );
+  // No provider configured → leave the record as QUEUED with a clear reason
+  // instead of pretending it was sent. This is what surfaces a misconfigured
+  // production environment instead of silently swallowing mail.
+  if (!isEmailDeliveryConfigured()) {
+    const msg =
+      'No email provider configured (set RESEND_API_KEY or SMTP_HOST/USER/PASS).';
+    console.error(`[email] NOT DELIVERED → ${args.to} | "${subject}" | ${msg}`);
+    await prisma.emailNotification.update({
+      where: { id: record.id },
+      data: { status: 'FAILED', errorMessage: msg },
+    });
+    return { ...record, status: 'FAILED', errorMessage: msg };
+  }
 
-  return record;
+  // Attempt real delivery and record the true outcome. We deliberately await
+  // so the status reflects reality; delivery errors are caught (not rethrown)
+  // so a transient mail outage never breaks the calling user action.
+  try {
+    await deliverEmail(args.to, subject, body);
+    const sentAt = new Date();
+    await prisma.emailNotification.update({
+      where: { id: record.id },
+      data: { status: 'SENT', sentAt },
+    });
+    return { ...record, status: 'SENT', sentAt };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('[email] delivery failed:', errorMessage);
+    await prisma.emailNotification.update({
+      where: { id: record.id },
+      data: { status: 'FAILED', errorMessage },
+    });
+    return { ...record, status: 'FAILED', errorMessage };
+  }
 }

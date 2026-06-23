@@ -63,7 +63,7 @@ export function Footer() {
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0L9.79 6.21H16L11.1 9.79L13 16L8 12L3 16L4.9 9.79L0 6.21H6.21L8 0Z" />
               </svg>
-              SOC 2 Type II
+              AES-256 Encrypted
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/20 text-primary-200">
               SSL Secured

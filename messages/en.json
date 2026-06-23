@@ -43,7 +43,7 @@
     "language": "Language"
   },
   "footer": {
-    "tagline": "Incorporate. Empower. Elevate. — The modern way to form your Florida business.",
+    "tagline": "Incorporate. Empower. Elevate. — The modern way to form your business.",
     "systemsOperational": "All systems operational",
     "product": "Product",
     "company": "Company",
@@ -138,7 +138,7 @@
     "businessesFormed": "Businesses formed",
     "averageTime": "Average filing time",
     "rating": "Customer rating",
-    "stateApproval": "State approval"
+    "stateApproval": "We file with the state"
   },
   "features": {
     "kicker": "Why choose LaunchForma",
@@ -204,12 +204,12 @@
     "feat_certCopy": "Certified Copy of Articles",
     "feat_certStatus": "Certificate of Status (state-issued)",
     "feat_sameDayPrep": "Same-business-day preparation and submission",
-    "feat_chatSupport": "Email + Live Chat support",
+    "feat_chatSupport": "Priority email support",
     "feat_domain": "Free .com domain (year 1)",
     "feat_domainConcierge": "Free .com domain (year 1)",
     "feat_compliance": "Annual Compliance Service (year 1)",
     "feat_complianceAlerts": "Compliance Alerts Plus (year 1)",
-    "feat_phoneSupport": "Priority phone + chat support",
+    "feat_phoneSupport": "Priority phone & email support",
     "feat_scorp": "S-Corp Election guidance",
     "feat_banking": "Banking resolution template",
     "feat_email": "Business email setup",

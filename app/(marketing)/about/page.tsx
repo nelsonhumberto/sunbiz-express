@@ -23,7 +23,7 @@ export default function AboutPage() {
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">About</span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
             Built for the{' '}
-            <span className="italic text-primary">Florida</span> entrepreneur.
+            <span className="italic text-primary">modern</span> entrepreneur.
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             We believe forming a business should be as simple as ordering coffee. LaunchForma

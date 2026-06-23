@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, X, Save, Check } from 'lucide-react';
+import { ArrowLeft, X, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
@@ -179,15 +179,13 @@ function SaveIndicator({ saved }: { saved?: boolean }) {
     }
   }, [saved]);
 
+  // Only surface a confirmation after a real save (on Continue). We don't
+  // claim "auto-saving" because the wizard saves per-step, not per-keystroke.
+  if (!show) return null;
   return (
-    <span
-      className={cn(
-        'hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-opacity',
-        show ? 'opacity-100 bg-success-subtle text-success' : 'opacity-50 bg-muted text-ink-muted'
-      )}
-    >
-      {show ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
-      {show ? tCommon('saved') : tCommon('autoSaving')}
+    <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success-subtle text-success">
+      <Check className="h-3 w-3" />
+      {tCommon('saved')}
     </span>
   );
 }

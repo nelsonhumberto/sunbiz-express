@@ -43,7 +43,7 @@
     "language": "Idioma"
   },
   "footer": {
-    "tagline": "Incorpora. Empodera. Eleva. — La forma moderna de constituir tu empresa en Florida.",
+    "tagline": "Incorpora. Empodera. Eleva. — La forma moderna de constituir tu empresa.",
     "systemsOperational": "Todos los sistemas operativos",
     "product": "Producto",
     "company": "Empresa",
@@ -138,7 +138,7 @@
     "businessesFormed": "Empresas formadas",
     "averageTime": "Tiempo promedio",
     "rating": "Calificación",
-    "stateApproval": "Aprobación estatal"
+    "stateApproval": "Presentamos al estado"
   },
   "features": {
     "kicker": "Por qué LaunchForma",
@@ -204,12 +204,12 @@
     "feat_certCopy": "Copia Certificada de los Articles",
     "feat_certStatus": "Certificado de Estado (emitido por el estado)",
     "feat_sameDayPrep": "Preparación y envío el mismo día hábil",
-    "feat_chatSupport": "Soporte por correo + Chat en vivo",
+    "feat_chatSupport": "Soporte prioritario por correo",
     "feat_domain": "Dominio .com gratis (año 1)",
     "feat_domainConcierge": "Dominio .com gratis (año 1)",
     "feat_compliance": "Servicio Anual de Cumplimiento (año 1)",
     "feat_complianceAlerts": "Alertas de Cumplimiento Plus (año 1)",
-    "feat_phoneSupport": "Soporte prioritario por teléfono + chat",
+    "feat_phoneSupport": "Soporte prioritario por teléfono y correo",
     "feat_scorp": "Asesoría de Elección S-Corp",
     "feat_banking": "Plantilla de resolución bancaria",
     "feat_email": "Configuración de correo empresarial",

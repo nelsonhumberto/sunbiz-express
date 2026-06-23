@@ -10,7 +10,7 @@ export function StatsBar() {
     { number: '2,400+', label: t('businessesFormed') },
     { number: '15 min', label: t('averageTime') },
     { number: '4.9 / 5', label: t('rating') },
-    { number: '< 1 day', label: t('stateApproval') },
+    { number: 'Same day', label: t('stateApproval') },
   ];
 
   return (

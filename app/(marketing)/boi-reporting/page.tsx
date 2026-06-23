@@ -84,7 +84,7 @@ export default function BoiReportingPage() {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/sign-up?addon=boi"
+              href="/start"
               className="inline-flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-md font-semibold hover:bg-primary-hover transition-colors"
             >
               Add BOI filing — $49

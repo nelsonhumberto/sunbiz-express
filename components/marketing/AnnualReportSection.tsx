@@ -30,6 +30,10 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
   const stateCode = (state.code as StateCode) || 'FL';
   const rule = FORMATION_STATES[stateCode];
   if (!rule) return null;
+  // The online annual-report flow is Florida-only today. Don't advertise a
+  // "file your annual report with us" CTA on WY/DE pages where the form
+  // (and the FL-specific destination) don't apply.
+  if (state.code !== 'FL') return null;
   const llcCompliance = annualComplianceFor(rule, 'LLC');
   const corpCompliance = annualComplianceFor(rule, 'CORP');
   const llcFee = llcCompliance.baseFeeCents;

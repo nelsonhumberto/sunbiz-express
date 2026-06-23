@@ -1,0 +1,17 @@
+# Render Blueprint for the Sunbiz scraper sidecar.
+# Deploy: push to GitHub → render.com → New → Blueprint → pick this repo.
+# Render sets $PORT automatically. After deploy, copy the service URL into
+# Vercel as SUNBIZ_LOCAL_PROXY_URL and set the same SUNBIZ_PROXY_TOKEN on both.
+services:
+  - type: web
+    name: sunbiz-scraper
+    runtime: docker
+    rootDir: scripts/sunbiz-scraper
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: SUNBIZ_PROXY_TOKEN
+        sync: false # set a strong random value in the Render dashboard
+      - key: SUNBIZ_UPSTREAM_PROXY
+        sync: false # optional: residential/CF-bypass proxy URL if CF blocks

@@ -16,6 +16,7 @@ and receive JSON matching FloridaEntityDetail from lib/sunbiz.ts.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sys
 from typing import Any
@@ -24,11 +25,24 @@ import cloudscraper
 from bs4 import BeautifulSoup, Tag
 from flask import Flask, jsonify, request
 
-# ── Constants ──────────────────────────────────────────────────────────────
+# ── Constants / configuration ───────────────────────────────────────────────
 
 SUNBIZ_BASE = "https://search.sunbiz.org"
 SUNBIZ_BY_DOC = f"{SUNBIZ_BASE}/Inquiry/CorporationSearch/ByDocumentNumber"
-PORT = 3334
+
+# Hosting platforms (Render/Railway/Fly/Heroku/Cloud Run) inject the port to
+# bind to via $PORT. Default to 3334 for local dev.
+PORT = int(os.environ.get("PORT", "3334"))
+
+# Optional shared-secret. When set, every /entity request must send a matching
+# `X-Proxy-Token` header. This keeps the public deployment from being an open
+# scraping relay. Leave unset for local dev.
+PROXY_TOKEN = os.environ.get("SUNBIZ_PROXY_TOKEN", "").strip()
+
+# Optional upstream proxy (residential / CF-bypass). Datacenter IPs are often
+# hard-blocked by Cloudflare; routing cloudscraper through a residential proxy
+# (e.g. http://user:pass@gateway:port) restores reliability in production.
+UPSTREAM_PROXY = os.environ.get("SUNBIZ_UPSTREAM_PROXY", "").strip()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +57,9 @@ _scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False},
     delay=3,
 )
+if UPSTREAM_PROXY:
+    _scraper.proxies = {"http": UPSTREAM_PROXY, "https": UPSTREAM_PROXY}
+    log.info("Routing Sunbiz requests through upstream proxy.")
 
 # ── Flask app ──────────────────────────────────────────────────────────────
 
@@ -80,6 +97,105 @@ def _parse_address_text(text: str) -> dict[str, str]:
         addr["address_1"] = text
 
     return addr
+
+
+# City/State/Zip pattern, e.g. "Miami Lakes, FL 33016" or "HIALEAH, FL 33016-1234"
+_CSZ_RE = re.compile(r"^(.*?),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$")
+
+# Common US street-type suffixes used to split a flattened "street city" string
+# when Sunbiz collapses the street and city onto a single line (no <br>).
+_STREET_SUFFIXES = {
+    "st", "street", "ave", "avenue", "blvd", "boulevard", "dr", "drive", "ln",
+    "lane", "ct", "court", "cir", "circle", "way", "ter", "terrace", "pl",
+    "place", "rd", "road", "hwy", "highway", "pkwy", "parkway", "trl", "trail",
+    "sq", "square", "loop", "pass", "run", "row", "walk", "path", "pike", "plz",
+    "plaza", "ext", "expy", "expressway", "byp", "cres", "crossing", "xing",
+}
+
+
+def _split_street_city(text: str) -> tuple[str, str]:
+    """Split a flattened "street ... city ..." string (no state/zip) into
+    (street, city) using the LAST street-type suffix token as the boundary.
+    Falls back to treating the whole string as the street when no suffix is
+    found (caller decides what to do with an empty city)."""
+    tokens = text.split()
+    last_suffix_idx = -1
+    for i, tok in enumerate(tokens):
+        if tok.strip(".,").lower() in _STREET_SUFFIXES:
+            last_suffix_idx = i
+    if 0 <= last_suffix_idx < len(tokens) - 1:
+        street = " ".join(tokens[: last_suffix_idx + 1])
+        city = " ".join(tokens[last_suffix_idx + 1 :])
+        return street, city
+    return text, ""
+
+
+def _parse_address_smart(text: str) -> dict[str, str] | None:
+    """Robustly parse an address block into {address_1, address_2?, city,
+    state, zip, country}. Prefers the line structure (street on its own
+    line(s), then "CITY, ST ZIP"); falls back to a street-suffix split when
+    the whole address is collapsed onto one line."""
+    addr: dict[str, str] = {"country": "US"}
+
+    lines: list[str] = []
+    for ln in text.split("\n"):
+        ln = re.sub(r"\s+", " ", ln).strip()
+        if not ln:
+            continue
+        if re.match(r"(Name|Address)?\s*Changed:\s*\d", ln, re.I):
+            continue
+        lines.append(ln)
+    if not lines:
+        return None
+
+    # Preferred path: a standalone "CITY, ST ZIP" line — everything above it
+    # is the street, which removes all street/city ambiguity.
+    for i, ln in enumerate(lines):
+        m = _CSZ_RE.match(ln)
+        if m:
+            street_lines = lines[:i]
+            addr["city"] = m.group(1).strip().title()
+            addr["state"] = m.group(2)
+            addr["zip"] = m.group(3)
+            if street_lines:
+                addr["address_1"] = street_lines[0]
+                if len(street_lines) > 1:
+                    addr["address_2"] = " ".join(street_lines[1:])
+            return addr if (addr.get("address_1") or addr.get("city")) else None
+
+    # Fallback: single flattened line like "16826 NW 83rd Ct Miami Lakes, FL 33016".
+    full = " ".join(lines)
+    m = re.search(r"^(.*?),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\b", full)
+    if m:
+        addr["state"] = m.group(2)
+        addr["zip"] = m.group(3)
+        street_city = m.group(1).strip()
+        street, city = _split_street_city(street_city)
+        addr["address_1"] = street or street_city
+        if city:
+            addr["city"] = city.title()
+        return addr
+
+    addr["address_1"] = full
+    return addr
+
+
+def _section_address(section: Tag, *heading_res: str) -> dict[str, str] | None:
+    """Extract + parse an address from a detailSection, dropping the heading
+    line(s) and any 'Changed:' annotations, preserving line breaks so the
+    street/city boundary is unambiguous."""
+    txt = section.get_text("\n", strip=True)
+    kept: list[str] = []
+    for ln in txt.split("\n"):
+        ln = re.sub(r"\s+", " ", ln).strip()
+        if not ln:
+            continue
+        if any(re.match(h, ln, re.I) for h in heading_res):
+            continue
+        if re.match(r"(Name|Address)?\s*Changed:\s*\d", ln, re.I):
+            continue
+        kept.append(ln)
+    return _parse_address_smart("\n".join(kept))
 
 
 def _extract_address_from_section(section: Tag) -> dict[str, str] | None:
@@ -209,51 +325,41 @@ def _parse_detail_page(html: str, doc_number: str) -> dict[str, Any]:
 
     # ── Principal address ──────────────────────────────────────────────────
     if section_labels["principal"]:
-        sec = section_labels["principal"]
-        full_text = sec.get_text(" ", strip=True)
-        # Remove heading
-        full_text = re.sub(r"Principal Address\s*", "", full_text).strip()
-        full_text = re.sub(r"Changed:\s*\d{2}/\d{2}/\d{4}", "", full_text).strip()
-        if full_text:
-            result["principal_address"] = _parse_address_text(full_text)
+        parsed = _section_address(section_labels["principal"], r"Principal Address$")
+        if parsed:
+            result["principal_address"] = parsed
 
     # ── Mailing address ────────────────────────────────────────────────────
     if section_labels["mailing"]:
-        sec = section_labels["mailing"]
-        full_text = sec.get_text(" ", strip=True)
-        full_text = re.sub(r"Mailing Address\s*", "", full_text).strip()
-        full_text = re.sub(r"Changed:\s*\d{2}/\d{2}/\d{4}", "", full_text).strip()
-        if full_text:
-            result["mailing_address"] = _parse_address_text(full_text)
+        parsed = _section_address(section_labels["mailing"], r"Mailing Address$")
+        if parsed:
+            result["mailing_address"] = parsed
 
     # ── Registered agent ───────────────────────────────────────────────────
     if section_labels["agent"]:
         sec = section_labels["agent"]
-        full_text = sec.get_text(" ", strip=True)
-        # Remove "Registered Agent Name & Address"
-        full_text = re.sub(r"Registered Agent Name\s*&?\s*Address\s*", "", full_text).strip()
-        full_text = re.sub(r"(Name|Address) Changed:\s*\d{2}/\d{2}/\d{4}", "", full_text).strip()
-        full_text = re.sub(r"\s+", " ", full_text).strip()
+        lines: list[str] = []
+        for ln in sec.get_text("\n", strip=True).split("\n"):
+            ln = re.sub(r"\s+", " ", ln).strip()
+            if not ln:
+                continue
+            if re.match(r"Registered Agent Name\s*&?\s*Address$", ln, re.I):
+                continue
+            if re.match(r"(Name|Address)?\s*Changed:\s*\d", ln, re.I):
+                continue
+            lines.append(ln)
 
-        # First token(s) up to the address are the name
-        # Detect city+state+zip to split name from address
-        addr_match = re.search(r"(.+?)\s+(.+,\s*[A-Z]{2}\s+\d{5}.*)", full_text)
         ra_name = ""
-        ra_addr_text = ""
-        if addr_match:
-            ra_name = addr_match.group(1).strip()
-            ra_addr_text = addr_match.group(2).strip()
-        else:
-            ra_name = full_text
+        addr_lines = lines
+        # The agent name is the first line, unless it already looks like the
+        # start of an address (begins with a street number or is a CITY,ST ZIP).
+        if lines and not re.match(r"^\d", lines[0]) and not _CSZ_RE.match(lines[0]):
+            ra_name = lines[0].rstrip(",").strip()
+            addr_lines = lines[1:]
 
-        # Agent name is everything before the first digit (street number)
-        digit_match = re.search(r"\d", full_text)
-        if digit_match:
-            ra_name = full_text[: digit_match.start()].strip().rstrip(",").strip()
-            ra_addr_text = full_text[digit_match.start() :].strip()
         result["registered_agent"] = {
-            "name": ra_name,
-            "address": _parse_address_text(ra_addr_text) if ra_addr_text else None,
+            "name": ra_name or None,
+            "address": _parse_address_smart("\n".join(addr_lines)) if addr_lines else None,
         }
 
     # ── Officers / members ─────────────────────────────────────────────────
@@ -369,6 +475,12 @@ def health():
 
 @app.get("/entity")
 def entity():
+    # Shared-secret gate (only enforced when SUNBIZ_PROXY_TOKEN is set).
+    if PROXY_TOKEN:
+        supplied = request.headers.get("X-Proxy-Token", "")
+        if supplied != PROXY_TOKEN:
+            return jsonify({"error": "Unauthorized", "code": "unauthorized"}), 401
+
     doc = request.args.get("doc", "").strip().upper()
     if not doc or len(doc) < 5:
         return jsonify({"error": "doc parameter required (e.g. ?doc=L15000063512)"}), 400
@@ -388,5 +500,8 @@ def entity():
 # ── Entry point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    log.info("Starting Sunbiz scraper on http://localhost:%d", PORT)
-    app.run(host="127.0.0.1", port=PORT, debug=False)
+    # Local dev entry point. In production run under gunicorn (see Dockerfile):
+    #   gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 60 app:app
+    host = "0.0.0.0" if os.environ.get("SUNBIZ_BIND_ALL") == "true" else "127.0.0.1"
+    log.info("Starting Sunbiz scraper on http://%s:%d", host, PORT)
+    app.run(host=host, port=PORT, debug=False)

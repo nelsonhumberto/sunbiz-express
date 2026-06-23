@@ -908,12 +908,18 @@ async function fetchFloridaEntityFromLocalProxy(
   const base = process.env.SUNBIZ_LOCAL_PROXY_URL!.replace(/\/$/, '');
   const url = `${base}/entity?doc=${encodeURIComponent(documentNumber)}`;
 
+  // Shared-secret for the hosted sidecar (matches SUNBIZ_PROXY_TOKEN on the
+  // scraper service). Optional for local dev where the sidecar is unguarded.
+  const proxyToken = process.env.SUNBIZ_PROXY_TOKEN?.trim();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (proxyToken) headers['X-Proxy-Token'] = proxyToken;
+
   return withTimeout(async (s) => {
     let res: Response;
     try {
       res = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers,
         signal: s,
         cache: 'no-store',
       });
@@ -941,6 +947,12 @@ async function fetchFloridaEntityFromLocalProxy(
       const msg = (body?.error as string) ?? `HTTP ${res.status}`;
       if (res.status === 404 || code === 'not_found') {
         throw new SunbizError('not_found', msg);
+      }
+      if (res.status === 401 || code === 'unauthorized') {
+        throw new SunbizError(
+          'auth',
+          'Sunbiz scraper rejected the request token. Check SUNBIZ_PROXY_TOKEN matches the service.',
+        );
       }
       throw new SunbizError('unknown', msg);
     }

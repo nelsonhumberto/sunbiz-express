@@ -1,0 +1,7 @@
+# Never upload local env files to Vercel builds — they would override the
+# dashboard-managed Production environment variables (NEXT_PUBLIC_* are
+# inlined at build time, so a leaked localhost value breaks email links).
+.env
+.env.local
+.env*.local
+.env.vercel*

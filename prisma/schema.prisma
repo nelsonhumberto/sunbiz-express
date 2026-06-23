@@ -536,3 +536,28 @@ model Coupon {
   filings     Filing[]
 }
 
+// Admin fax tool (Telnyx). Outbound = an admin uploaded a PDF and sent it;
+// inbound = a fax received via the Telnyx webhook. Media bytes are stored
+// base64 so the document survives Telnyx's time-limited media URLs.
+model FaxMessage {
+  id           String   @id @default(cuid())
+  direction    String   // OUTBOUND | INBOUND
+  toNumber     String?
+  fromNumber   String?
+  // queued | sending | delivered | failed | received
+  status       String   @default("queued")
+  telnyxFaxId  String?  @unique
+  mediaName    String?  // original filename / label
+  mediaMime    String?  @default("application/pdf")
+  mediaBase64  String?  // stored document bytes
+  mediaUrl     String?  // external Telnyx media URL (inbound, pre-fetch)
+  accessToken  String?  // guards the media-serving route Telnyx fetches from
+  pageCount    Int?
+  errorMessage String?
+  createdBy    String?  // admin user id (outbound)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([direction, createdAt])
+}
+

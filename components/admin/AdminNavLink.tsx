@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, Mail, BarChart3, AlertTriangle, Users, Calendar, Send, Settings, Tag, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, FileText, Mail, BarChart3, AlertTriangle, Users, Calendar, Send, Settings, Tag, Printer, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -16,6 +16,7 @@ const ICONS: Record<string, LucideIcon> = {
   Send,
   Settings,
   Tag,
+  Printer,
 };
 
 interface Props {

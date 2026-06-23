@@ -88,10 +88,31 @@ export async function deleteDraftFiling(filingId: string) {
 
 // ─── Submit & "file" with state (mock) ────────────────────────────────────
 
-export async function submitFilingToState(filingId: string) {
-  const session = await auth();
-  const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-  if (!actor) redirect('/sign-in');
+export async function submitFilingToState(
+  filingId: string,
+  opts?: { skipAuth?: boolean },
+) {
+  // Normally invoked from the wizard with an authenticated session. The
+  // `skipAuth` path lets trusted server-to-server callers (the Stripe webhook
+  // backstop) finalize a paid filing whose browser died before processCheckout
+  // ran — there's no session in that context, so we trust the filing's owner.
+  let actorId: string;
+  let actorEmail: string | null;
+  if (opts?.skipAuth) {
+    const owner = await prisma.filing.findUnique({
+      where: { id: filingId },
+      select: { userId: true, user: { select: { email: true } } },
+    });
+    if (!owner) throw new Error('Not found');
+    actorId = owner.userId;
+    actorEmail = owner.user?.email ?? null;
+  } else {
+    const session = await auth();
+    const actor = await getWizardActor(session?.user?.id, session?.user?.email);
+    if (!actor) redirect('/sign-in');
+    actorId = actor.id;
+    actorEmail = actor.email ?? null;
+  }
 
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
@@ -101,7 +122,7 @@ export async function submitFilingToState(filingId: string) {
       filingAdditionalServices: { include: { service: true } },
     },
   });
-  if (!filing || filing.userId !== actor.id) throw new Error('Not found');
+  if (!filing || filing.userId !== actorId) throw new Error('Not found');
 
   const trackingNumber = generateTrackingNumber();
   const pin = generatePin();
@@ -230,8 +251,8 @@ export async function submitFilingToState(filingId: string) {
       : null;
   const coverLetter = generateCoverLetter({
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
-    contactName: filing.incorporatorSignature ?? actor.email ?? 'Authorized Person',
-    contactEmail: correspondence?.email ?? actor.email ?? '',
+    contactName: filing.incorporatorSignature ?? actorEmail ?? 'Authorized Person',
+    contactEmail: correspondence?.email ?? actorEmail ?? '',
     contactPhone: correspondence?.phone ?? null,
     totalFeeCents: filing.stateFeeCents, // government remittance only
     certificateOfStatus: wantsCertStatus,
@@ -459,8 +480,8 @@ export async function submitFilingToState(filingId: string) {
 
   await sendEmail({
     type: 'FILING_SUBMITTED',
-    to: actor.email ?? '',
-    userId: actor.id,
+    to: actorEmail ?? '',
+    userId: actorId,
     filingId: filing.id,
     context: {
       businessName: filing.businessName ?? '',

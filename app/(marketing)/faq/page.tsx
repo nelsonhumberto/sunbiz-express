@@ -7,6 +7,8 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
 interface FAQPageProps {
   searchParams?: { state?: string | string[] };
@@ -60,9 +62,14 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
   });
   const stateName = localizedStateName(state, locale);
   const isActive = state.availability === 'active';
+  // Emit the FAQPage structured data from the server component so it is in the
+  // initial HTML for every indexable state, independent of the client
+  // accordion. FAQSection suppresses its own copy to avoid duplicate schema.
+  const faqItems = getMarketingFaq(state, locale);
 
   return (
     <>
+      {isActive && <JsonLd data={faqPageJsonLd(faqItems)} />}
       <section className="pt-16 pb-4">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -75,7 +82,7 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
           </h1>
         </div>
       </section>
-      <FAQSection state={state} hideHeading />
+      <FAQSection state={state} hideHeading expandAll suppressJsonLd />
       {isActive ? (
         <CTABanner state={state} />
       ) : (

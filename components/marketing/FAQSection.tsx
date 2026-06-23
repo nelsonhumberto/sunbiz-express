@@ -21,19 +21,36 @@ interface FAQSectionProps {
    * by the May 2026 accessibility audit.
    */
   hideHeading?: boolean;
+  /**
+   * Open every answer by default and keep them all expandable. Used on the
+   * dedicated `/faq` page so every objection is immediately visible (and
+   * reliably crawlable), rather than only the first answer.
+   */
+  expandAll?: boolean;
+  /**
+   * Suppress the inline FAQPage JSON-LD. Set when the parent page already
+   * emits the structured data server-side to avoid duplicate schema.
+   */
+  suppressJsonLd?: boolean;
 }
 
-export function FAQSection({ state = FLORIDA, hideHeading }: FAQSectionProps) {
+export function FAQSection({
+  state = FLORIDA,
+  hideHeading,
+  expandAll,
+  suppressJsonLd,
+}: FAQSectionProps) {
   const t = useTranslations('faq');
   const tComingSoon = useTranslations('comingSoon');
   const locale = useLocale();
   const faqItems = getMarketingFaq(state, locale);
   const isActive = state.availability === 'active';
   const stateName = locale === 'es' ? state.nameEs : state.name;
+  const allValues = faqItems.map((_, i) => `item-${i}`);
 
   return (
     <section className="py-20 md:py-28">
-      {isActive && <JsonLd data={faqPageJsonLd(faqItems)} />}
+      {isActive && !suppressJsonLd && <JsonLd data={faqPageJsonLd(faqItems)} />}
       <div className="container max-w-3xl">
         {!hideHeading && (
           <div className="text-center mb-12">
@@ -48,6 +65,25 @@ export function FAQSection({ state = FLORIDA, hideHeading }: FAQSectionProps) {
           </div>
         )}
 
+        {expandAll ? (
+          <Accordion
+            type="multiple"
+            defaultValue={allValues}
+            className="rounded-2xl border border-border bg-white px-6 shadow-soft"
+          >
+            {faqItems.map((item, i) => (
+              <AccordionItem
+                key={i}
+                value={`item-${i}`}
+                {...(item.id ? { id: item.id } : {})}
+                className={item.id ? 'scroll-mt-24' : undefined}
+              >
+                <AccordionTrigger>{item.q}</AccordionTrigger>
+                <AccordionContent>{item.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        ) : (
         <Accordion type="single" collapsible defaultValue="item-0" className="rounded-2xl border border-border bg-white px-6 shadow-soft">
           {faqItems.map((item, i) => (
             <AccordionItem
@@ -64,6 +100,7 @@ export function FAQSection({ state = FLORIDA, hideHeading }: FAQSectionProps) {
             </AccordionItem>
           ))}
         </Accordion>
+        )}
 
         <p className="mt-8 text-center text-sm text-ink-muted">
           {t('stillHaveQuestions')}{' '}

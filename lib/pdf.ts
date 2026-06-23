@@ -673,6 +673,111 @@ function addressBlock(addr: AddressInput | string | null | undefined): string {
 
 // ─── Encode to base64 for storage ─────────────────────────────────────────
 
+// ─── IRS Form 2553 — S-Corporation election (prepared mail-in form) ───────
+
+export interface Form2553Owner {
+  name: string;
+  address?: string;
+  /** "500 shares" (corp) or "50%" (LLC). */
+  ownership?: string;
+  taxIdType?: string | null; // SSN | ITIN | EIN
+  /** Last 4 only — full Tax IDs are never embedded in the stored document. */
+  taxIdLast4?: string | null;
+  taxYearEnd?: string | null;
+  consent?: boolean | null;
+}
+
+export interface Form2553Args {
+  businessName: string;
+  entityType: 'LLC' | 'CORP';
+  state?: string | null;
+  /** Election effective date (defaults to formation date guidance). */
+  effectiveDate?: string | null;
+  feiNumber?: string | null;
+  owners: Form2553Owner[];
+}
+
+/**
+ * Renders a prepared IRS Form 2553 (Election by a Small Business Corporation).
+ *
+ * This is a customer-facing PREPARED form + filing instructions, not a fake
+ * IRS submission. We deliberately mask Tax IDs (last 4 only) so full SSNs are
+ * never persisted in the document blob (OWASP A02/A04). The taxpayer signs and
+ * mails/faxes the completed form to the IRS; we pre-fill everything we can and
+ * surface the consents collected in the wizard.
+ */
+export function generateForm2553(args: Form2553Args): string {
+  const rule = getFormationState(args.state ?? 'FL');
+  const entityLabel =
+    args.entityType === 'LLC'
+      ? 'Limited Liability Company (electing S-Corporation taxation)'
+      : 'Corporation (electing S-Corporation taxation)';
+  const ownerLabel = args.entityType === 'LLC' ? 'Member' : 'Shareholder';
+  const maskTaxId = (o: Form2553Owner) =>
+    o.taxIdLast4
+      ? `${o.taxIdType === 'EIN' ? '••-•••' : '•••-••'}-${escapeHtml(o.taxIdLast4)}`
+      : '—';
+
+  const rows = args.owners
+    .map(
+      (o) => `<tr>
+        <td>${escapeHtml(o.name)}${o.address ? `<br/><span class="legend">${escapeHtml(o.address)}</span>` : ''}</td>
+        <td>${escapeHtml(o.ownership ?? '—')}</td>
+        <td>${escapeHtml(o.taxIdType ?? 'SSN')} ${maskTaxId(o)}</td>
+        <td>${escapeHtml(o.taxYearEnd ?? '12/31')}</td>
+        <td style="text-align:center">${o.consent ? '✓' : '—'}</td>
+      </tr>`,
+    )
+    .join('');
+
+  const body = `
+    <div class="pending-badge">
+      <strong>PREPARED — NOT YET FILED</strong>
+      <div>Sign and submit to the IRS per the instructions below. LaunchForma prepares this form; the election is made when the IRS receives it.</div>
+    </div>
+    <h1>Form 2553</h1>
+    <h2>Election by a Small Business Corporation (S-Corporation)</h2>
+
+    <h3>Part I — Election Information</h3>
+    <table>
+      <tr><td class="label">Name</td><td>${escapeHtml(args.businessName)}</td></tr>
+      <tr><td class="label">Entity</td><td>${escapeHtml(entityLabel)}</td></tr>
+      <tr><td class="label">State / date of formation</td><td>${escapeHtml(rule.name)}${
+        args.effectiveDate ? ` · ${escapeHtml(args.effectiveDate)}` : ''
+      }</td></tr>
+      <tr><td class="label">Employer ID (EIN)</td><td>${escapeHtml(args.feiNumber ?? 'Apply for / enter your EIN before filing')}</td></tr>
+      <tr><td class="label">Election effective date</td><td>${escapeHtml(args.effectiveDate ?? 'Beginning of the current tax year')}</td></tr>
+      <tr><td class="label">Selected tax year</td><td>Calendar year ending December 31 (unless noted per owner below)</td></tr>
+    </table>
+
+    <h3>Part I — ${ownerLabel} Consent Statement</h3>
+    <p class="legend">Each ${ownerLabel.toLowerCase()} consents to the S-Corporation election. Tax IDs are masked here for security; enter the full number on the signed copy before mailing.</p>
+    <table>
+      <tr>
+        <td class="label">${ownerLabel}</td>
+        <td class="label">Ownership</td>
+        <td class="label">Tax ID</td>
+        <td class="label">Tax year end</td>
+        <td class="label">Consent</td>
+      </tr>
+      ${rows || `<tr><td colspan="5">No ${ownerLabel.toLowerCase()} information on file.</td></tr>`}
+    </table>
+
+    <h3>How to file (important)</h3>
+    <p>
+      1. Verify the entity name, EIN, and each owner's full Tax ID on the signed copy.<br/>
+      2. An officer/owner must sign and date the form.<br/>
+      3. <strong>Deadline:</strong> file no later than 2 months and 15 days after the beginning of the tax year the election takes effect (or any time in the preceding tax year).<br/>
+      4. Mail or fax to the IRS service center for ${escapeHtml(rule.name)} (see the current Form 2553 instructions at irs.gov for the address/fax number, which the IRS updates periodically).
+    </p>
+
+    <div class="footer-note">
+      LaunchForma is not a law firm or accounting firm and does not provide tax advice. This prepared form reflects the information you entered. Confirm eligibility (≤100 eligible shareholders, one class of stock, eligible owners) with a CPA before filing.
+    </div>
+  `;
+  return docShell('IRS Form 2553 — S-Corporation Election', body);
+}
+
 export function encodeDocument(html: string): string {
   return Buffer.from(html, 'utf-8').toString('base64');
 }

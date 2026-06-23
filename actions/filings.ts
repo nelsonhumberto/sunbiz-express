@@ -18,7 +18,9 @@ import {
   generateOperatingAgreement,
   generateReceipt,
   generateCoverLetter,
+  generateForm2553,
   encodeDocument,
+  type Form2553Owner,
 } from '@/lib/pdf';
 import {
   generateTrackingNumber,
@@ -286,6 +288,64 @@ export async function submitFilingToState(filingId: string) {
       base64: encodeDocument(operatingAgreement),
       mimeType: 'text/html',
       fileSizeBytes: operatingAgreement.length,
+    });
+  }
+
+  // S-Corp election (IRS Form 2553). Generated only when the customer actually
+  // elected S-Corp at Step 1 or explicitly bought the election add-on — never
+  // merely because Premium bundles it. Owners flow from the corp share
+  // structure or the LLC member list; each owner consents by electing S-Corp.
+  const electedSCorp =
+    filing.taxElection === 'S_CORP' || filingAddOnSlugs.includes('s_corp_election');
+  if (electedSCorp) {
+    const shareStructure = (optionalForCost?.shareStructure ?? null) as
+      | { shareholders?: Array<Record<string, unknown>> }
+      | null;
+    let owners: Form2553Owner[];
+    if (filing.entityType === 'CORP' && shareStructure?.shareholders?.length) {
+      owners = shareStructure.shareholders.map((s) => ({
+        name: String(s.name ?? ''),
+        address: [s.street1, s.city, s.state, s.zip].filter(Boolean).join(', ') || undefined,
+        ownership: s.shares != null ? `${s.shares} shares` : undefined,
+        taxIdType: (s.taxIdType as string | null) ?? 'SSN',
+        taxIdLast4: (s.taxIdLast4 as string | null) ?? null,
+        taxYearEnd: (s.taxYearEnd as string | null) ?? '12/31',
+        consent: s.sCorpConsent != null ? !!s.sCorpConsent : true,
+      }));
+    } else {
+      // LLC (or corp without a captured share table): list the members/owners.
+      // Tax IDs are completed by the taxpayer on the signed copy.
+      owners = filing.managersMembers.map((m) => ({
+        name: m.name,
+        address: [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', ') || undefined,
+        ownership:
+          m.ownershipPercentage != null ? `${m.ownershipPercentage}%` : undefined,
+        taxIdType: 'SSN',
+        taxIdLast4: null,
+        taxYearEnd: '12/31',
+        consent: true,
+      }));
+    }
+
+    const optionalEffective =
+      optionalForCost && typeof optionalForCost.effectiveDate === 'string'
+        ? (optionalForCost.effectiveDate as string)
+        : null;
+    const form2553 = generateForm2553({
+      businessName: filing.businessName ?? '',
+      entityType: filing.entityType as 'LLC' | 'CORP',
+      state: filing.state,
+      effectiveDate: optionalEffective,
+      feiNumber: null,
+      owners,
+    });
+    documents.push({
+      filingId: filing.id,
+      documentType: 'FORM_2553',
+      title: 'IRS Form 2553 — S-Corporation Election',
+      base64: encodeDocument(form2553),
+      mimeType: 'text/html',
+      fileSizeBytes: form2553.length,
     });
   }
 

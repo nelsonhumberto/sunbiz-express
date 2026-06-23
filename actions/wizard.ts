@@ -150,23 +150,71 @@ const Step1Schema = z.object({
   entityType: z.enum(['LLC', 'CORP']),
   /** USPS code of the state to file in. Defaults to existing filing state. */
   state: z.enum(['FL', 'WY', 'DE']).optional(),
+  /** Federal tax election. 'S_CORP' elects S-Corporation taxation. */
+  taxElection: z.enum(['S_CORP']).nullable().optional(),
 });
 
 export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const data = Step1Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
   const nextState = data.state ?? asStateCode(filing.state);
+  const taxElection = data.taxElection ?? null;
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
       entityType: data.entityType,
       state: nextState,
+      taxElection,
       currentStep: Math.max(filing.currentStep, 2),
       completedSteps: markStepComplete(filing.completedSteps, 1),
     },
   });
+
+  // Keep the S-Corp election service in sync with the Step-1 choice so cost
+  // and the Form 2553 collection are correct regardless of when the user
+  // reaches the add-ons step. Premium already bundles it (don't double-add).
+  await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', filing.serviceTier as TierSlug);
+
   await recomputeCost(filing.id);
   revalidatePath(`/wizard/${filing.id}`);
+}
+
+/**
+ * Attach or detach the `s_corp_election` add-on to match the formation's tax
+ * election. No-op for Premium (bundled). Idempotent.
+ */
+async function syncSCorpElectionAddOn(
+  filingId: string,
+  elected: boolean,
+  tier: TierSlug,
+) {
+  const svc = await prisma.additionalService.findFirst({
+    where: { serviceSlug: 's_corp_election' },
+  });
+  if (!svc) return;
+
+  const existing = await prisma.filingAdditionalService.findFirst({
+    where: { filingId, serviceId: svc.id },
+  });
+
+  // Premium bundles the election — never bill it as a line item.
+  const shouldHave = elected && tier !== 'PREMIUM';
+
+  if (shouldHave && !existing) {
+    await prisma.filingAdditionalService.create({
+      data: {
+        filingId,
+        serviceId: svc.id,
+        quantity: 1,
+        priceCents: svc.priceCents,
+        status: 'PENDING',
+      },
+    });
+  } else if (!shouldHave && existing && !elected) {
+    // Only auto-remove when the user actively chose a non-S-Corp election at
+    // Step 1 (so we don't clobber a Premium bundle or a manual selection).
+    await prisma.filingAdditionalService.delete({ where: { id: existing.id } });
+  }
 }
 
 // ─── Step 2: Business name ────────────────────────────────────────────
@@ -221,6 +269,9 @@ export async function saveStep3(input: z.infer<typeof Step3Schema>) {
       completedSteps: markStepComplete(filing.completedSteps, 3),
     },
   });
+  // Keep the S-Corp election service consistent with the new tier (Premium
+  // bundles it; other tiers bill it à la carte when S-Corp was elected).
+  await syncSCorpElectionAddOn(filing.id, filing.taxElection === 'S_CORP', data.tier);
   await recomputeCost(filing.id);
 }
 
@@ -669,8 +720,9 @@ export async function saveStep9(
 
     const addOnSlugs = await getFilingAddOnSlugs(filing.id);
     const sCorpElected =
+      filing.taxElection === 'S_CORP' || // authoritative Step-1 choice
       addOnSlugs.includes('s_corp_election') ||
-      (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp guidance
+      (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp
 
     const shareholders = data.shareStructure.shareholders ?? [];
     if (shareholders.length > 0) {

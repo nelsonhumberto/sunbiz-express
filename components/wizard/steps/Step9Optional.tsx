@@ -101,6 +101,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
   const sCorpElected =
+    filing.taxElection === 'S_CORP' || // authoritative Step-1 election
     addOnSlugs.includes('s_corp_election') ||
     (filing.serviceTier as TierSlug) === 'PREMIUM';
 

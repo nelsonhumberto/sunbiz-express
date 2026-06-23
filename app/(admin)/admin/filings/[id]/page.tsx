@@ -158,6 +158,11 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               ) : (
                 <Badge variant="outline">{filing.serviceTier}</Badge>
               )}
+              {filing.taxElection === 'S_CORP' && (
+                <Badge variant="default" className="gap-1">
+                  S-Corp election (Form 2553)
+                </Badge>
+              )}
             </div>
           </div>
         </div>

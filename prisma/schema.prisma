@@ -17,7 +17,7 @@ datasource db {
 // PaymentStatus: PENDING | SUCCEEDED | FAILED | REFUNDED
 // ServiceTier: BASIC | STANDARD | PREMIUM
 // MemberRole: MGR | MGRM | AMBR | AP | OFFICER | DIRECTOR | INCORPORATOR
-// DocumentType: ARTICLES_ORG | ARTICLES_INC | OPERATING_AGREEMENT | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT
+// DocumentType: ARTICLES_ORG | ARTICLES_INC | OPERATING_AGREEMENT | EIN_LETTER | CERT_STATUS | CERT_COPY | RECEIPT | FORM_2553
 // AccountStatus: ACTIVE | SUSPENDED | DELETED
 // UserRole: USER | ADMIN
 // NotificationType: WELCOME | FILING_STARTED | ABANDONED_24H | ABANDONED_72H | PAYMENT_CONFIRMATION | FILING_SUBMITTED | FILING_APPROVED | FILING_REJECTED | ANNUAL_REPORT_60 | ANNUAL_REPORT_30 | ANNUAL_REPORT_FINAL | COMPLIANCE_ALERT
@@ -70,6 +70,11 @@ model Filing {
   // Step 1
   entityType               String   @default("LLC") // LLC | CORP
   state                    String   @default("FL")
+  // Optional federal tax election chosen at formation. null = default
+  // treatment (LLC = disregarded/partnership, CORP = C-Corp). "S_CORP" =
+  // elect S-Corporation taxation (IRS Form 2553). Applies to either an LLC
+  // or a Corporation — it is a tax classification, not a state entity type.
+  taxElection              String?  // null | S_CORP
 
   // Step 2
   businessName             String?

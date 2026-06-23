@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Building2, Briefcase, Check, MapPin, HelpCircle } from 'lucide-react';
+import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { cn } from '@/lib/utils';
@@ -14,10 +14,20 @@ import {
 } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
+type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
+
 export function Step1Entity({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
-  const [selected, setSelected] = useState<'LLC' | 'CORP'>(filing.entityType as 'LLC' | 'CORP');
+  const isSCorp = filing.taxElection === 'S_CORP';
+  const [selected, setSelected] = useState<EntityChoice>(
+    isSCorp ? 'SCORP' : (filing.entityType as 'LLC' | 'CORP'),
+  );
+  // For the S-Corp choice, which legal entity to actually form. Defaults to
+  // LLC (the common small-business S-Corp), with Corporation available.
+  const [sCorpEntity, setSCorpEntity] = useState<'LLC' | 'CORP'>(
+    isSCorp ? (filing.entityType as 'LLC' | 'CORP') : 'LLC',
+  );
   const [stateCode, setStateCode] = useState<StateCode>(
     (filing.state && ACTIVE_FORMATION_STATES.includes(filing.state as StateCode)
       ? filing.state
@@ -43,11 +53,20 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
       icon: Briefcase,
       perks: [t('entityCorpDesc1'), t('entityCorpDesc2'), t('entityCorpDesc3'), t('entityCorpDesc4')],
     },
+    {
+      value: 'SCORP' as const,
+      title: t('entitySCorpTitle'),
+      subtitle: 'S-CORP',
+      icon: Receipt,
+      perks: [t('entitySCorpDesc1'), t('entitySCorpDesc2'), t('entitySCorpDesc3'), t('entitySCorpDesc4')],
+    },
   ];
 
   const onContinue = () => {
+    const entityType = selected === 'SCORP' ? sCorpEntity : selected;
+    const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
     start(async () => {
-      await saveStep1({ filingId: filing.id, entityType: selected, state: stateCode });
+      await saveStep1({ filingId: filing.id, entityType, state: stateCode, taxElection });
       router.push(`/wizard/${filing.id}/2`);
     });
   };
@@ -106,7 +125,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
       </div>
 
       <div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
         role="radiogroup"
         aria-label="Entity type"
       >
@@ -164,6 +183,48 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
           );
         })}
       </div>
+
+      {selected === 'SCORP' && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div
+            id="scorp-entity-label"
+            className="text-xs font-semibold uppercase tracking-wider text-primary mb-2"
+          >
+            {t('sCorpUnderlyingLabel')}
+          </div>
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-labelledby="scorp-entity-label"
+          >
+            {(['LLC', 'CORP'] as const).map((code) => {
+              const active = sCorpEntity === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setSCorpEntity(code)}
+                  className={cn(
+                    'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors',
+                    active
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-ink border-border hover:border-primary/40',
+                  )}
+                >
+                  {code === 'LLC'
+                    ? `${t('sCorpUnderlyingLLC')} · ${tPricing('ribbon_recommended')}`
+                    : t('sCorpUnderlyingCorp')}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-ink-muted leading-relaxed">
+            {t('sCorpUnderlyingHelp')}
+          </p>
+        </div>
+      )}
 
       <p className="text-xs text-ink-subtle leading-relaxed">{t('entityHint')}</p>
 

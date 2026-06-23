@@ -9,8 +9,8 @@ export function Footer() {
 
   const FOOTER_LINKS = {
     product: [
-      { label: tFooter('formAnLLC'), href: '/sign-up?entity=LLC' },
-      { label: tFooter('formACorp'), href: '/sign-up?entity=CORP' },
+      { label: tFooter('formAnLLC'), href: '/start?entity=LLC' },
+      { label: tFooter('formACorp'), href: '/start?entity=CORP' },
       { label: tNav('pricing'), href: '/pricing' },
       { label: tFooter('registeredAgent'), href: '/services#registered-agent' },
       { label: tFooter('complianceService'), href: '/services#compliance' },

@@ -159,7 +159,7 @@ export function PricingTable({
                     className="mt-6 w-full"
                   >
                     <Link
-                      href={`/sign-up?tier=${tier.slug}${state.code !== 'FL' ? `&state=${state.code}` : ''}`}
+                      href={`/start?tier=${tier.slug}${state.code !== 'FL' ? `&state=${state.code}` : ''}`}
                       onClick={() =>
                         trackCtaClicked('pricing_choose', {
                           tier: tier.slug,

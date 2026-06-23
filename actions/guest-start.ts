@@ -26,6 +26,9 @@ const StartSchema = z.object({
   email: z.string().email(),
   state: z.enum(['FL', 'WY', 'DE']).optional(),
   entityType: z.enum(['LLC', 'CORP']).optional(),
+  // Preselected package from a pricing CTA. Defaults to STANDARD when absent
+  // or invalid so the wizard's tier step still works.
+  tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
 });
 
 export interface StartGuestResult {
@@ -51,12 +54,14 @@ export async function startGuestFiling(
     email: formData.get('email'),
     state: formData.get('state') ?? undefined,
     entityType: formData.get('entityType') ?? undefined,
+    tier: (formData.get('tier') as string)?.toUpperCase() || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Invalid input.' };
   }
 
   const { firstName, lastName, entityType } = parsed.data;
+  const serviceTier = parsed.data.tier ?? 'STANDARD';
   const email = parsed.data.email.toLowerCase().trim();
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
@@ -71,7 +76,7 @@ export async function startGuestFiling(
         userId: session.user.id,
         entityType: entityType ?? 'LLC',
         state: stateCode,
-        serviceTier: 'STANDARD',
+        serviceTier,
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
         ...filingUtmCreateFields(),
@@ -140,7 +145,7 @@ export async function startGuestFiling(
       userId: guestUser.id,
       entityType: entityType ?? 'LLC',
       state: stateCode,
-      serviceTier: 'STANDARD',
+      serviceTier,
       currentStep: 2,
       completedSteps: JSON.stringify([1]),
       ...filingUtmCreateFields(),

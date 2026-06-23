@@ -15,7 +15,10 @@ interface CTABannerProps {
 
 export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
-  const signUpHref = state.code === 'FL' ? '/sign-up' : `/sign-up?state=${state.code}`;
+  // Route to the low-friction guest flow (/start) rather than full account
+  // creation (/sign-up). Cold ad traffic gets straight into the wizard; an
+  // account is auto-created after payment.
+  const signUpHref = state.code === 'FL' ? '/start' : `/start?state=${state.code}`;
   const headlineState = state.code === 'FL' ? t('headline2') : `${state.name} business?`;
   // The default i18n subhead promises "we submit to the state the same
   // business day" — true everywhere we file. We keep the same phrasing

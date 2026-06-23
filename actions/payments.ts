@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
-import { auth } from '@/lib/auth';
+import { auth, signIn } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
@@ -264,9 +264,27 @@ export async function processCheckout(input: {
             tag: 'guest-welcome-email',
           }, err);
         }
-        const next = encodeURIComponent(`/checkout/success?filing=${filing.id}`);
-        const email = encodeURIComponent(guestRow.email);
-        postCheckoutRedirect = `/sign-in?claimed=1&email=${email}&next=${next}`;
+        // Seamlessly establish a session so the buyer lands directly on the
+        // success page instead of being bounced to /sign-in. We hold the
+        // plaintext temp password only in-memory here. If sign-in fails for
+        // any reason, fall back to the prefilled /sign-in bounce.
+        try {
+          await signIn('credentials', {
+            email: guestRow.email,
+            password: tempPassword,
+            redirect: false,
+          });
+          postCheckoutRedirect = `/checkout/success?filing=${filing.id}`;
+        } catch (signInErr) {
+          logger.error('post-checkout auto sign-in failed', {
+            area: 'checkout',
+            entityId: actor.id,
+            tag: 'guest-auto-signin',
+          }, signInErr);
+          const next = encodeURIComponent(`/checkout/success?filing=${filing.id}`);
+          const email = encodeURIComponent(guestRow.email);
+          postCheckoutRedirect = `/sign-in?claimed=1&email=${email}&next=${next}`;
+        }
       }
     } catch (err) {
       logger.error('guest auto-claim failed', {

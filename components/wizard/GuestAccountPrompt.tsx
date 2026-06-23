@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { claimGuestAccount, type ClaimResult } from '@/actions/guest-start';
+import { getClientUtmAttribution } from '@/lib/utm-client';
 
 const DISMISS_KEY = 'lf_guest_prompt_seen';
 const initial: ClaimResult = {};
@@ -38,8 +39,12 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
     if (typeof window === 'undefined') return;
     const seen = window.localStorage.getItem(DISMISS_KEY);
     if (seen) return;
-    // Slight delay so the popup doesn't slam in on first paint.
-    const timer = setTimeout(() => setOpen(true), 1200);
+    // Cold paid-ad traffic (has a `lf_utm` cookie) is here to buy, not to set
+    // up an account. Hold the prompt much longer so it never interrupts the
+    // early intake; non-ad visitors still see it quickly.
+    const isAdTraffic = !!getClientUtmAttribution();
+    const delay = isAdTraffic ? 45_000 : 1_200;
+    const timer = setTimeout(() => setOpen(true), delay);
     return () => clearTimeout(timer);
   }, []);
 

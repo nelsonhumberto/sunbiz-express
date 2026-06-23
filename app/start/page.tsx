@@ -14,8 +14,18 @@ import { filingUtmCreateFields } from '@/lib/utm-attribution';
 
 export const dynamic = 'force-dynamic';
 
+const VALID_TIERS = new Set(['BASIC', 'STANDARD', 'PREMIUM']);
+
+function resolveTier(raw: string | undefined): 'BASIC' | 'STANDARD' | 'PREMIUM' {
+  const upper = (raw ?? '').toUpperCase();
+  return (VALID_TIERS.has(upper) ? upper : 'STANDARD') as
+    | 'BASIC'
+    | 'STANDARD'
+    | 'PREMIUM';
+}
+
 interface StartPageProps {
-  searchParams?: { state?: string; entity?: string };
+  searchParams?: { state?: string; entity?: string; tier?: string };
 }
 
 export default async function StartPage({ searchParams }: StartPageProps) {
@@ -34,7 +44,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         userId: session.user.id,
         entityType: entity,
         state: stateCode,
-        serviceTier: 'STANDARD',
+        serviceTier: resolveTier(searchParams?.tier),
         // Step 1 (entity + state) is implicitly complete because /start
         // already collected both — jump straight into the name step.
         currentStep: 2,
@@ -80,6 +90,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         <GuestStartForm
           defaultState={stateCode}
           defaultEntity={entityType as 'LLC' | 'CORP'}
+          defaultTier={resolveTier(searchParams?.tier)}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

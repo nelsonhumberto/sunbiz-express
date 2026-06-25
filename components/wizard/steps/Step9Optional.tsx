@@ -109,7 +109,9 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const [authorizedShares, setAuthorizedShares] = useState<number | ''>(
     stored?.authorizedShares ?? (isCorp ? 1500 : '')
   );
-  const [parValueCents, setParValueCents] = useState<number | ''>(stored?.parValueCents ?? 0);
+  // Default par value to $0.01 per share — the conventional low par value most
+  // small corporations use (and what Delaware franchise-tax math expects).
+  const [parValueCents, setParValueCents] = useState<number | ''>(stored?.parValueCents ?? 1);
   const [issuedShares, setIssuedShares] = useState<number | ''>(
     stored?.shareStructure?.issuedShares ?? (isCorp ? 1500 : ''),
   );
@@ -155,6 +157,10 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const [shareholders, setShareholders] = useState<ShareholderUi[]>(initialShareholders);
   const [shareholderCount, setShareholderCount] = useState<number>(
     initialShareholders.length || 1,
+  );
+  // Whether the shareholder-count picker is in free-entry ("Custom") mode.
+  const [customShareholderCount, setCustomShareholderCount] = useState<boolean>(
+    (initialShareholders.length || 1) > 8,
   );
   const [businessPurpose, setBusinessPurpose] = useState(stored?.businessPurpose ?? '');
   const [organizerEmail, setOrganizerEmail] = useState(stored?.organizerEmail ?? '');
@@ -480,16 +486,46 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                 <div className="space-y-1.5">
                   <Label htmlFor="shCount">{t('shareholderCountLabel')}</Label>
-                  <Input
-                    id="shCount"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={shareholderCount}
-                    onChange={(e) =>
-                      resizeShareholders(e.target.value ? parseInt(e.target.value, 10) : 1)
+                  <Select
+                    value={
+                      shareholderCount <= 8 && !customShareholderCount
+                        ? String(shareholderCount)
+                        : 'custom'
                     }
-                  />
+                    onValueChange={(v) => {
+                      if (v === 'custom') {
+                        setCustomShareholderCount(true);
+                        return;
+                      }
+                      setCustomShareholderCount(false);
+                      resizeShareholders(parseInt(v, 10));
+                    }}
+                  >
+                    <SelectTrigger id="shCount">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom">{t('shareholderCountCustom')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customShareholderCount && (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={shareholderCount}
+                      onChange={(e) =>
+                        resizeShareholders(e.target.value ? parseInt(e.target.value, 10) : 1)
+                      }
+                      placeholder={t('shareholderCountLabel')}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
                 <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
                   <button

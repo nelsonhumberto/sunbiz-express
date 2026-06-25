@@ -875,6 +875,17 @@ export async function saveStep11(input: { filingId: string; addOnSlugs: string[]
       completedSteps: markStepComplete(filing.completedSteps, 10),
     },
   });
+
+  // Keep the S-Corp election service consistent with the Step-1 tax election no
+  // matter what the add-ons screen submitted (e.g. "Skip to payment" or
+  // deselecting it). This prevents under-billing where Form 2553 still
+  // generates from taxElection but the $99 line item was dropped.
+  await syncSCorpElectionAddOn(
+    filing.id,
+    filing.taxElection === 'S_CORP',
+    filing.serviceTier as TierSlug,
+  );
+
   await recomputeCost(filing.id);
 
   // After add-ons change, ownership percentages may have just become

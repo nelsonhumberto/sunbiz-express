@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
@@ -7,6 +9,12 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
+
+// The webhook is a BACKSTOP, not the primary path. The wizard's processCheckout
+// finalizes within seconds (records payment, submits, and for guests converts
+// the account + signs in). We give that flow a grace window before the webhook
+// acts, so the backstop only fires when the normal flow genuinely failed.
+const BACKSTOP_GRACE_MS = 3 * 60 * 1000;
 
 /**
  * Stripe webhook — reliability backstop for "paid but not submitted".
@@ -45,7 +53,13 @@ export async function POST(request: NextRequest) {
 
   try {
     if (event.type === 'payment_intent.succeeded') {
-      await reconcilePaidFiling(event.data.object as Stripe.PaymentIntent);
+      const outcome = await reconcilePaidFiling(event.data.object as Stripe.PaymentIntent);
+      if (outcome === 'defer') {
+        // Too soon — let the client checkout finish. Non-2xx makes Stripe
+        // redeliver later; by then processCheckout has either completed
+        // (webhook no-ops) or genuinely failed (webhook finalizes).
+        return NextResponse.json({ deferred: true }, { status: 425 });
+      }
     }
   } catch (err) {
     logger.error(
@@ -60,20 +74,26 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
-async function reconcilePaidFiling(pi: Stripe.PaymentIntent) {
+async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | 'defer' | 'noop'> {
   const filingId = pi.metadata?.filingId;
-  if (!filingId) return; // not a formation checkout
+  if (!filingId) return 'noop'; // not a formation checkout
 
   // Already recorded by processCheckout (or a prior webhook delivery)? Done.
   const existing = await prisma.payment.findUnique({
     where: { stripePaymentIntentId: pi.id },
   });
-  if (existing) return;
+  if (existing) return 'noop';
 
   const filing = await prisma.filing.findUnique({ where: { id: filingId } });
-  if (!filing) return;
+  if (!filing) return 'noop';
   // Only reconcile drafts — submitted/approved filings are already finalized.
-  if (filing.status !== 'DRAFT') return;
+  if (filing.status !== 'DRAFT') return 'noop';
+
+  // Backstop grace: if the charge just happened, defer to the client checkout
+  // (processCheckout) which also converts guests + signs them in. Only act once
+  // enough time has passed that the normal flow clearly didn't finish.
+  const piAgeMs = Date.now() - (pi.created ?? 0) * 1000;
+  if (piAgeMs < BACKSTOP_GRACE_MS) return 'defer';
 
   const amountCents = pi.amount_received || pi.amount || filing.totalCents;
 
@@ -116,7 +136,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent) {
   } catch (err: unknown) {
     // Unique-constraint race with processCheckout → already handled elsewhere.
     if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
-      return;
+      return 'noop';
     }
     throw err;
   }
@@ -150,4 +170,45 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent) {
 
   // Generate documents + move the filing to SUBMITTED.
   await submitFilingToState(filing.id, { skipAuth: true });
+
+  // Guest conversion: the client checkout normally turns a guest into a real
+  // account (and signs them in). Since the backstop ran instead, convert the
+  // guest here and email credentials so the buyer can sign in and access their
+  // filing — otherwise they're locked out of the account-only dashboard.
+  try {
+    const owner = await prisma.user.findUnique({
+      where: { id: filing.userId },
+      select: { accountStatus: true, email: true, firstName: true },
+    });
+    if (owner?.accountStatus === 'GUEST' && owner.email) {
+      const tempPassword = generateTempPassword();
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      await prisma.user.update({
+        where: { id: filing.userId },
+        data: { passwordHash, accountStatus: 'ACTIVE', guestToken: null },
+      });
+      await sendEmail({
+        type: 'WELCOME',
+        to: owner.email,
+        userId: filing.userId,
+        context: { firstName: owner.firstName ?? undefined, tempPassword, loginEmail: owner.email },
+      });
+    }
+  } catch (err) {
+    logger.error('webhook guest conversion failed', { area: 'stripe', entityId: filing.id, tag: 'webhook-guest-convert' }, err);
+  }
+
+  return 'done';
+}
+
+function generateTempPassword(): string {
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const digits = '23456789';
+  const symbols = '!@#$%^&*';
+  const all = lower + upper + digits + symbols;
+  const pick = (s: string) => s[crypto.randomInt(0, s.length)];
+  const required = [pick(lower), pick(upper), pick(digits), pick(symbols)];
+  const rest = Array.from({ length: 10 }, () => pick(all));
+  return [...required, ...rest].sort(() => crypto.randomInt(0, 2) - 0.5).join('');
 }

@@ -50,6 +50,11 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  // Ensure the IRS Form 2553 template ships with the admin route's serverless
+  // bundle (it's read from disk at runtime via fs).
+  outputFileTracingIncludes: {
+    '/api/admin/filings/[id]/form-2553': ['./data/forms/**'],
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

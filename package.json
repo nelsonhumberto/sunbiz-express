@@ -50,6 +50,7 @@
     "next-auth": "5.0.0-beta.25",
     "next-intl": "^4.9.1",
     "nodemailer": "^6.10.1",
+    "pdf-lib": "^1.17.1",
     "posthog-js": "^1.373.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

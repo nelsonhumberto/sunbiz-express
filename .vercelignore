@@ -5,3 +5,6 @@
 .env.local
 .env*.local
 .env.vercel*
+
+# Local-only working folder — never deployed
+localNelson/

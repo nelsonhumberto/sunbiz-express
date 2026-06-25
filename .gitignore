@@ -20,3 +20,6 @@ prisma/*.db-journal
 
 # TypeScript incremental build
 tsconfig.tsbuildinfo
+
+# Local-only working folder (audits, notes) — never committed or deployed
+localNelson/

@@ -164,6 +164,14 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 </Badge>
               )}
             </div>
+            {filing.taxElection === 'S_CORP' && (
+              <a
+                href={`/api/admin/filings/${filing.id}/form-2553`}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+              >
+                Download prefilled Form 2553 (PDF)
+              </a>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 text-right">

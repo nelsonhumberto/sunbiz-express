@@ -163,10 +163,14 @@ function LiveCostSidebar({
   costData: WizardShellProps['costData'];
   step: number;
 }) {
-  const { tierPreview } = useWizardCostPreview();
+  const { tierPreview, addOnsPreview } = useWizardCostPreview();
   const tier = (
     step === 3 && tierPreview !== null ? tierPreview : (costData.tier as TierSlug)
   ) as TierSlug;
+  // Live add-on selection (set by the add-ons step) takes precedence so the
+  // order summary updates the instant a customer toggles an add-on, before the
+  // step is saved. Falls back to the server-persisted selection elsewhere.
+  const addOnSlugs = addOnsPreview ?? costData.addOnSlugs;
   // The customer-facing total stays hidden until they actively interact
   // with the package selection step. Before step 3 we only show the
   // package placeholder; on step 3+ (or whenever a preview is active) we
@@ -176,7 +180,7 @@ function LiveCostSidebar({
     <CostSidebar
       entityType={costData.entityType}
       tier={tier}
-      addOnSlugs={costData.addOnSlugs as any}
+      addOnSlugs={addOnSlugs as any}
       state={costData.state}
       processingOptionId={costData.processingOptionId ?? null}
       packageSelected={packageSelected}

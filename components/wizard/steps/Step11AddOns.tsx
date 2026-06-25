@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
+import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { Badge } from '@/components/ui/badge';
 import {
   ADD_ONS,
@@ -88,6 +89,13 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const [upgrading, startUpgrade] = useTransition();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setAddOnsPreview } = useWizardCostPreview();
+
+  // Push the live selection into the order-summary sidebar so the total
+  // updates the instant an add-on is toggled (before the step is saved).
+  useEffect(() => {
+    setAddOnsPreview(Array.from(selected));
+  }, [selected, setAddOnsPreview]);
 
   // Honour `?addon=...` deep links from upsell cards so the recommendation
   // shows up already toggled on.

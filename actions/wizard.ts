@@ -659,6 +659,21 @@ const ShareStructureSchema = z.object({
   shareholders: z.array(ShareholderSchema).optional(),
 });
 
+/**
+ * One LLC member's S-corp election data. LLCs have members (not shareholders),
+ * so when an LLC elects S-corp we collect the same Form 2553 fields keyed to the
+ * member instead of a share allocation. Tax IDs are encrypted server-side.
+ */
+const MemberTaxInfoSchema = z.object({
+  memberId: z.string().optional(),
+  name: z.string().min(1).max(255),
+  taxIdType: z.enum(['SSN', 'EIN']).optional(),
+  taxId: z.string().optional(),
+  taxYearEnd: z.string().optional(),
+  sCorpConsent: z.boolean().optional(),
+  ownershipPercentage: z.number().optional(),
+});
+
 const Step9Schema = z.object({
   filingId: z.string(),
   effectiveDate: z.string().optional(),
@@ -667,6 +682,8 @@ const Step9Schema = z.object({
   parValueCents: z.number().int().min(0).optional(),
   /** Corporation share / shareholder allocation. */
   shareStructure: ShareStructureSchema.optional(),
+  /** LLC S-corp member election data (Form 2553) — LLC filings only. */
+  memberTaxInfo: z.array(MemberTaxInfoSchema).optional(),
   professionalPurpose: z.string().optional(),
   businessPurpose: z.string().optional(),
   /** Wyoming consent flag: required for organizer's electronic service. */
@@ -703,6 +720,14 @@ export async function saveStep9(
     if (!v.valid) return { ok: false, error: v.error };
   }
 
+  // Resolve whether S-corp election applies once — both the corp share table
+  // and the LLC member branch below need it.
+  const addOnSlugs = await getFilingAddOnSlugs(filing.id);
+  const sCorpElected =
+    filing.taxElection === 'S_CORP' || // authoritative Step-1 choice
+    addOnSlugs.includes('s_corp_election') ||
+    (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp
+
   // Build the share-structure payload. We encrypt any Tax IDs and only
   // store the encrypted ciphertext + last-4 so plaintext SSNs never sit
   // in the JSON blob. When S-corp election is included in the package,
@@ -717,12 +742,6 @@ export async function saveStep9(
         error: `Issued shares (${issued}) cannot exceed authorized shares (${authorized}).`,
       };
     }
-
-    const addOnSlugs = await getFilingAddOnSlugs(filing.id);
-    const sCorpElected =
-      filing.taxElection === 'S_CORP' || // authoritative Step-1 choice
-      addOnSlugs.includes('s_corp_election') ||
-      (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp
 
     const shareholders = data.shareStructure.shareholders ?? [];
     if (shareholders.length > 0) {
@@ -786,6 +805,57 @@ export async function saveStep9(
     };
   }
 
+  // LLC electing S-corp: collect/encrypt each member's Tax ID + consent so the
+  // Form 2553 can be prepared. Mirrors the corp shareholder validation.
+  let memberTaxInfoPersisted: Array<Record<string, unknown>> | undefined;
+  if (filing.entityType !== 'CORP' && sCorpElected && data.memberTaxInfo) {
+    // Prior member Tax IDs let a member re-save the step without re-typing their
+    // SSN (we only ever hold the ciphertext + last-4, never plaintext, on disk).
+    const priorOptional = safeParseJson<{
+      memberTaxInfo?: Array<{
+        memberId?: string | null;
+        name?: string;
+        taxIdEncrypted?: string | null;
+        taxIdLast4?: string | null;
+      }>;
+    } | null>(filing.optionalDetails, null);
+    const priorMembers = priorOptional?.memberTaxInfo ?? [];
+
+    for (const m of data.memberTaxInfo) {
+      const prior = priorMembers.find(
+        (p) => (m.memberId && p.memberId === m.memberId) || p.name === m.name,
+      );
+      if (!m.sCorpConsent) {
+        return { ok: false, error: 'Each member must consent to the S-Corp election.' };
+      }
+      const hasNewId = looksLikeNineDigitTaxId(m.taxId);
+      if (!hasNewId && !prior?.taxIdEncrypted) {
+        return {
+          ok: false,
+          error: 'Each member must provide a valid 9-digit Tax ID for the S-Corp election.',
+        };
+      }
+    }
+
+    memberTaxInfoPersisted = data.memberTaxInfo.map((m) => {
+      const prior = priorMembers.find(
+        (p) => (m.memberId && p.memberId === m.memberId) || p.name === m.name,
+      );
+      const digits = (m.taxId ?? '').replace(/\D/g, '');
+      const hasNewId = /^\d{9}$/.test(digits);
+      return {
+        memberId: m.memberId ?? null,
+        name: m.name.trim(),
+        taxIdType: m.taxIdType ?? 'SSN',
+        taxIdLast4: hasNewId ? digits.slice(-4) : prior?.taxIdLast4 ?? null,
+        taxIdEncrypted: hasNewId ? encryptString(digits) : prior?.taxIdEncrypted ?? null,
+        taxYearEnd: m.taxYearEnd ?? '12/31',
+        sCorpConsent: true,
+        ownershipPercentage: m.ownershipPercentage ?? null,
+      };
+    });
+  }
+
   // Preserve any management info already saved in optionalDetails.
   const prev = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null) ?? {};
   await prisma.filing.update({
@@ -797,6 +867,7 @@ export async function saveStep9(
         authorizedShares: data.authorizedShares,
         parValueCents: data.parValueCents,
         shareStructure: shareStructurePersisted,
+        memberTaxInfo: memberTaxInfoPersisted,
         professionalPurpose: data.professionalPurpose || undefined,
         businessPurpose: data.businessPurpose || undefined,
         electronicServiceConsent: data.electronicServiceConsent,

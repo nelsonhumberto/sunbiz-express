@@ -35,6 +35,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
+import { filingIncludesEin } from '@/lib/ein';
 import { trackAddOnToggled } from '@/lib/analytics';
 import {
   addOnBadgeKey,
@@ -43,6 +44,10 @@ import {
 } from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { WizardFiling } from '../types';
+import {
+  EinResponsiblePartyPanel,
+  type EinPanelInitialState,
+} from '../EinResponsiblePartyPanel';
 
 const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
@@ -57,7 +62,17 @@ const ICONS: Record<string, LucideIcon> = {
   BellRing,
 };
 
-export function Step11AddOns({ filing }: { filing: WizardFiling }) {
+export function Step11AddOns({
+  filing,
+  einInitial,
+  defaultEmail,
+  defaultName,
+}: {
+  filing: WizardFiling;
+  einInitial?: EinPanelInitialState;
+  defaultEmail?: string;
+  defaultName?: string;
+}) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
   const tPricing = useTranslations('pricing');
@@ -85,6 +100,14 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   initialSelected.add('registered_agent');
 
   const [selected, setSelected] = useState<Set<string>>(initialSelected);
+  // EIN responsible-party is now collected here (the step before payment) so
+  // checkout stays a clean final screen. Required whenever EIN is bundled in
+  // the tier or selected as an add-on.
+  const einRequired = filingIncludesEin({
+    tier,
+    addOnSlugs: Array.from(selected) as AddOnSlug[],
+  });
+  const [einComplete, setEinComplete] = useState(einInitial?.collected ?? false);
   const [pending, start] = useTransition();
   const [upgrading, startUpgrade] = useTransition();
   const router = useRouter();
@@ -171,6 +194,10 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   };
 
   const onContinue = () => {
+    if (einRequired && !einComplete) {
+      toast.error(t('einRequiredBeforePayment'));
+      return;
+    }
     start(async () => {
       const res = await saveStep11({
         filingId: filing.id,
@@ -182,11 +209,20 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   };
 
   // "Skip" persists the bundled-only selection (registered agent stays
-  // because it is mandatory) and jumps straight to payment.
+  // because it is mandatory) and jumps straight to payment. If EIN is bundled
+  // in the tier it stays required, so we still gate on the responsible party.
   const onSkip = () => {
+    const baseline = new Set<string>(['registered_agent']);
+    tierBundledAddOns(tier).forEach((slug) => baseline.add(slug));
+    const skipNeedsEin = filingIncludesEin({
+      tier,
+      addOnSlugs: Array.from(baseline) as AddOnSlug[],
+    });
+    if (skipNeedsEin && !einComplete) {
+      toast.error(t('einRequiredBeforePayment'));
+      return;
+    }
     start(async () => {
-      const baseline = new Set<string>(['registered_agent']);
-      tierBundledAddOns(tier).forEach((slug) => baseline.add(slug));
       const res = await saveStep11({
         filingId: filing.id,
         addOnSlugs: Array.from(baseline),
@@ -394,6 +430,16 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
         })}
       </div>
 
+      {einRequired && (
+        <EinResponsiblePartyPanel
+          filingId={filing.id}
+          initial={einInitial ?? { collected: false }}
+          defaultEmail={defaultEmail}
+          defaultName={defaultName}
+          onSaved={() => setEinComplete(true)}
+        />
+      )}
+
       <div className="mt-10 pt-6 border-t border-border flex items-center justify-between gap-4">
         <Link
           href={`/wizard/${filing.id}/9`}
@@ -414,7 +460,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
           <button
             type="button"
             onClick={onContinue}
-            disabled={pending}
+            disabled={pending || (einRequired && !einComplete)}
             className={cn(
               'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
               'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',

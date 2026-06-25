@@ -163,6 +163,54 @@ function filingStatusHeader(filing: FilingForDoc): string {
  * jurisdiction + optional signer). Keeping this in one helper means the
  * LLC and Corp generators stay consistent.
  */
+/**
+ * Collapse people who hold more than one role into a single row. In a small
+ * corporation the same human is usually Director, President, Treasurer and
+ * Secretary all at once — the wizard stores those as four ManagerMember rows.
+ * For the executed documents we list each distinct person once and merge their
+ * titles, so we never "generate another person" for a role the same individual
+ * already fills. People are matched by name + address (case-insensitive).
+ */
+function dedupePeopleByIdentity(
+  members: FilingForDoc['managersMembers'],
+): FilingForDoc['managersMembers'] {
+  const TITLE_ORDER = [
+    'DIRECTOR',
+    'PRESIDENT',
+    'VICE_PRESIDENT',
+    'VP',
+    'TREASURER',
+    'SECRETARY',
+    'OFFICER',
+  ];
+  const norm = (v: string | null | undefined) => (v ?? '').trim().toLowerCase();
+  const grouped = new Map<
+    string,
+    { member: FilingForDoc['managersMembers'][number]; titles: string[] }
+  >();
+  for (const m of members) {
+    const key = `${norm(m.businessLegalName) || norm(m.name)}|${[m.street1, m.city, m.state, m.zip]
+      .map(norm)
+      .join(',')}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      if (m.title && !existing.titles.includes(m.title)) existing.titles.push(m.title);
+    } else {
+      grouped.set(key, { member: m, titles: m.title ? [m.title] : [] });
+    }
+  }
+  return [...grouped.values()].map(({ member, titles }) => ({
+    ...member,
+    title: titles
+      .sort((a, b) => {
+        const ai = TITLE_ORDER.indexOf(a);
+        const bi = TITLE_ORDER.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      })
+      .join(', '),
+  }));
+}
+
 function renderMemberRow(m: FilingForDoc['managersMembers'][number]): string {
   const isBusiness = m.ownerType === 'business' && !!m.businessLegalName;
   const nameCell = isBusiness
@@ -333,11 +381,13 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
 
   // Article V — Initial officers/directors. Optional under most state
   // statutes; we render whatever the customer entered as initial
-  // directors/officers.
-  const officers = filing.managersMembers.map((m) => renderMemberRow(m)).join('');
+  // directors/officers, collapsing one person holding several titles into a
+  // single row (Director/President/Treasurer/Secretary is usually one human).
+  const dedupedOfficers = dedupePeopleByIdentity(filing.managersMembers);
+  const officers = dedupedOfficers.map((m) => renderMemberRow(m)).join('');
 
   const officersBlock =
-    filing.managersMembers.length > 0
+    dedupedOfficers.length > 0
       ? `<table>
           <tr><td class="label">Title</td><td class="label">Name</td><td class="label">Address</td></tr>
           ${officers}

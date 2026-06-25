@@ -89,6 +89,44 @@ export async function processCheckout(input: {
     }
   }
 
+  // ── Completeness gate (H3) ─────────────────────────────────────────────────
+  // Nothing in the route prevents a customer from reaching payment with an
+  // incomplete draft (e.g. jumping straight to /wizard/<id>/11 or skipping the
+  // review step). Charging then submitting would produce blank state documents.
+  // Verify the must-have fields exist before we accept any money.
+  {
+    const ra = safeParseJson<{
+      useOurService?: boolean;
+      name?: string;
+      street1?: string;
+    } | null>(filing.registeredAgent, null);
+    const principal = safeParseJson<{ street1?: string; city?: string; zip?: string } | null>(
+      filing.principalAddress,
+      null,
+    );
+    const peopleCount = await prisma.managerMember.count({
+      where: { filingId: filing.id },
+    });
+
+    const missing: string[] = [];
+    if (!filing.businessName?.trim()) missing.push('business name');
+    if (!principal?.street1?.trim() || !principal?.city?.trim()) {
+      missing.push('principal address');
+    }
+    const raOk = ra?.useOurService === true || (!!ra?.name?.trim() && !!ra?.street1?.trim());
+    if (!raOk) missing.push('registered agent');
+    if (!filing.incorporatorSignature?.trim()) missing.push('signature');
+    if (peopleCount < 1) {
+      missing.push(filing.entityType === 'CORP' ? 'directors/officers' : 'members');
+    }
+
+    if (missing.length > 0) {
+      return {
+        error: `Please complete these required steps before payment: ${missing.join(', ')}.`,
+      };
+    }
+  }
+
   // ── Tester bypass ────────────────────────────────────────────────────────
   // When an admin has flagged the user as a tester, any card is accepted and
   // no real Stripe charge is made. Guests can never be testers (they have no

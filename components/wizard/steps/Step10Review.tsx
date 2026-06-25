@@ -144,6 +144,9 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         />
         <Row label={t('businessNameLabel')} value={filing.businessName ?? '—'} mono />
         <Row label={t('serviceTier')} value={filing.serviceTier} />
+        {filing.taxElection === 'S_CORP' && (
+          <Row label={t('taxElectionLabel')} value={t('taxElectionSCorp')} />
+        )}
       </ReviewSection>
 
       <ReviewSection title={t('addresses')} stepHref={stepHref(4)} editLabel={tCommon('edit')}>

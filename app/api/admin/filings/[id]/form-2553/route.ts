@@ -82,15 +82,31 @@ export async function GET(
       };
     });
   } else {
-    // LLC electing S-Corp (or corp without a captured share table): list members.
-    shareholders = filing.managersMembers.map((m) => ({
-      name: m.name,
-      address: [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', ') || undefined,
-      shares: m.ownershipPercentage != null ? `${m.ownershipPercentage}%` : undefined,
-      datesAcquired: effectiveDate,
-      taxId: '', // member tax IDs entered on the signed copy
-      taxYearEnd: '12/31',
-    }));
+    // LLC electing S-Corp: members are the "shareholders" on Form 2553. Pull the
+    // encrypted member Tax IDs captured at Step 9 and decrypt for the form.
+    const memberTaxInfo = (opt?.memberTaxInfo ?? []) as Array<Record<string, unknown>>;
+    shareholders = filing.managersMembers.map((m) => {
+      const info = memberTaxInfo.find(
+        (i) => i.memberId === m.id || i.name === m.name,
+      );
+      let taxId = '';
+      const enc = info?.taxIdEncrypted as string | undefined;
+      if (enc) {
+        try {
+          taxId = decryptString(enc);
+        } catch {
+          /* leave blank */
+        }
+      }
+      return {
+        name: m.name,
+        address: [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', ') || undefined,
+        shares: m.ownershipPercentage != null ? `${m.ownershipPercentage}%` : undefined,
+        datesAcquired: effectiveDate,
+        taxId,
+        taxYearEnd: (info?.taxYearEnd as string | undefined) ?? '12/31',
+      };
+    });
   }
 
   const pdf = await generateForm2553Pdf({

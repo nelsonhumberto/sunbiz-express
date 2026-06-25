@@ -254,7 +254,11 @@ export function Step12Payment({
         </div>
       </div>
 
-      {einRequired && (
+      {/* The responsible party is normally collected on the add-ons step
+          (the screen before this one). This renders only as a fallback when
+          the customer reached payment without completing it (e.g. via "Skip
+          to payment" before that gate, or an older in-flight draft). */}
+      {einRequired && !einInitial.collected && (
         <EinResponsiblePartyPanel
           filingId={filing.id}
           initial={einInitial}

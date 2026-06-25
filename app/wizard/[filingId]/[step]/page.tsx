@@ -90,7 +90,10 @@ export default async function WizardStepPage({ params }: PageProps) {
   let defaultEmail: string | undefined;
   let defaultName: string | undefined;
 
-  if (stepNum === 11) {
+  // The EIN responsible-party panel now lives on the add-ons step (10) — the
+  // last screen before payment — so the SSN/ITIN is collected before checkout.
+  // The payment step (11) keeps it only as a fallback when it wasn't completed.
+  if (stepNum === 10 || stepNum === 11) {
     defaultEmail = actorEmail;
     defaultName = actorDisplayName ?? filing.managersMembers[0]?.name ?? undefined;
 
@@ -141,7 +144,14 @@ export default async function WizardStepPage({ params }: PageProps) {
         )}
         {stepNum === 8 && <Step9Optional filing={filing} />}
         {stepNum === 9 && <Step10Review filing={filing} />}
-        {stepNum === 10 && <Step11AddOns filing={filing} />}
+        {stepNum === 10 && (
+          <Step11AddOns
+            filing={filing}
+            einInitial={einInitial}
+            defaultEmail={defaultEmail}
+            defaultName={defaultName}
+          />
+        )}
         {stepNum === 11 && (
           <Step12Payment
             filing={filing}

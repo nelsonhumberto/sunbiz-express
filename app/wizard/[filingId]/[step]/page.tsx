@@ -119,7 +119,13 @@ export default async function WizardStepPage({ params }: PageProps) {
 
   return (
     <>
-      <WizardShell filingId={filing.id} step={stepNum} costData={cost}>
+      <WizardShell
+        filingId={filing.id}
+        step={stepNum}
+        costData={cost}
+        isGuest={isGuest}
+        guestEmail={actor?.kind === 'guest' ? actor.email : undefined}
+      >
         {stepNum === 1 && <Step1Entity filing={filing} />}
         {stepNum === 2 && <Step2Name filing={filing} />}
         {stepNum === 3 && <Step3Tier filing={filing} />}

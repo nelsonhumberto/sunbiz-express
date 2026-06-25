@@ -17,6 +17,7 @@ import {
 } from '@/lib/wizard-constants';
 import { CostSidebar } from './CostSidebar';
 import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
+import { GuestSaveExitDialog } from './GuestSaveExitDialog';
 import { cn } from '@/lib/utils';
 import type { TierSlug } from '@/lib/pricing';
 import type { StateCode } from '@/lib/formation-states';
@@ -34,9 +35,20 @@ interface WizardShellProps {
     processingOptionId?: string | null;
   };
   saved?: boolean;
+  /** Guest context — drives the low-friction "Save & exit" account offer. */
+  isGuest?: boolean;
+  guestEmail?: string;
 }
 
-export function WizardShell({ filingId: _filingId, step, children, costData, saved }: WizardShellProps) {
+export function WizardShell({
+  filingId: _filingId,
+  step,
+  children,
+  costData,
+  saved,
+  isGuest,
+  guestEmail,
+}: WizardShellProps) {
   const t = useTranslations('wizard');
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
@@ -62,13 +74,17 @@ export function WizardShell({ filingId: _filingId, step, children, costData, sav
           <div className="flex items-center gap-2">
             <SaveIndicator saved={saved} />
             <LanguageSwitcher />
-            <Link
-              href="/dashboard"
-              className="text-sm text-ink-muted hover:text-ink inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
-            >
-              <X className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('saveAndExit')}</span>
-            </Link>
+            {isGuest && guestEmail ? (
+              <GuestSaveExitDialog email={guestEmail} label={t('saveAndExit')} />
+            ) : (
+              <Link
+                href="/dashboard"
+                className="text-sm text-ink-muted hover:text-ink inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('saveAndExit')}</span>
+              </Link>
+            )}
           </div>
         </div>
         <div className="container pb-4">

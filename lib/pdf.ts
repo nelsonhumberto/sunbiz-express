@@ -183,13 +183,13 @@ function raAcceptanceBlock(
   if (!ra) return '';
   const date = ra.signedAt ? formatDateLong(new Date(ra.signedAt)) : 'Date of filing';
   if (ra.useOurService) {
-    const officerName = rule.registeredAgent.signingOfficerName;
-    const officerTitle = rule.registeredAgent.signingOfficerTitle;
+    // When LaunchForma is the registered agent, the executed Articles show the
+    // RA entity name as the signature — nothing else.
     return `
       <div class="signature-line">
         <span>
-          <span class="signature-name">${escapeHtml(`${ra.name}, by ${officerName}`)}</span>
-          <br/>Registered Agent's Signature (REQUIRED) — ${escapeHtml(ra.name)}, by ${escapeHtml(officerName)}, ${escapeHtml(officerTitle)}
+          <span class="signature-name">${escapeHtml(rule.registeredAgent.name)}</span>
+          <br/>Registered Agent's Signature (REQUIRED)
         </span>
         <span>Date: ${date}</span>
       </div>

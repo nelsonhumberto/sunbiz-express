@@ -8,6 +8,7 @@ import { signIn, signOut } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { AuthError } from 'next-auth';
 import { userUtmCreateFields } from '@/lib/utm-attribution';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 const SignUpSchema = z
   .object({
@@ -43,6 +44,9 @@ export interface ActionResult {
 }
 
 export async function signUpAction(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  const limited = checkActionRateLimit('sign-up', 10, 15 * 60 * 1000);
+  if (limited) return { error: limited };
+
   const raw = Object.fromEntries(formData.entries());
   const parsed = SignUpSchema.safeParse({
     ...raw,
@@ -97,6 +101,10 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
 }
 
 export async function signInAction(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  // Throttle credential attempts to blunt credential-stuffing.
+  const limited = checkActionRateLimit('sign-in', 10, 5 * 60 * 1000);
+  if (limited) return { error: limited };
+
   const raw = Object.fromEntries(formData.entries());
   const parsed = SignInSchema.safeParse(raw);
   if (!parsed.success) {

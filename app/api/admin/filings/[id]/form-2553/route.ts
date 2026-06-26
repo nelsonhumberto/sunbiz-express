@@ -36,6 +36,21 @@ export async function GET(
   });
   if (!filing) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
+  // Audit the decryption: this route decrypts shareholder/member SSNs into the
+  // PDF, so every generation is logged (admin + filing + timestamp, no PII).
+  try {
+    await prisma.adminAction.create({
+      data: {
+        adminUserId: session.user.id,
+        filingId: filing.id,
+        actionType: 'GENERATE_FORM_2553',
+        description: 'Generated prefilled IRS Form 2553 (decrypted shareholder/member tax IDs)',
+      },
+    });
+  } catch {
+    /* never block the download on the audit write */
+  }
+
   const rule = getFormationState(filing.state);
   const principal = safeParseJson<AddressLike | null>(filing.principalAddress, null);
   const opt = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);

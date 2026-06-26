@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendEmail, type NotificationType } from '@/lib/email';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+
 // Recovery + retention scheduler.
 //
 // Run on a daily cron (Vercel Cron, GitHub Actions, etc). The route is
@@ -28,15 +30,19 @@ const CRON_SECRET = process.env.CRON_SECRET ?? '';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Mild auth: require a shared secret in either the Vercel-provided
-  // `Authorization: Bearer ...` header or a `?secret=` query string. If no
-  // secret is configured, allow local development calls.
-  if (CRON_SECRET) {
-    const url = new URL(request.url);
+  // Fail closed in production: a missing CRON_SECRET must NOT mean "open".
+  // (This route sends customer emails, so an open endpoint = email bombing.)
+  if (!CRON_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'cron secret not configured' }, { status: 401 });
+    }
+    // Local development without a secret: allow.
+  } else {
+    // Require the secret in the Authorization header (avoid query-string secrets
+    // that leak into access logs and browser history).
     const headerSecret =
       request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() ?? '';
-    const querySecret = url.searchParams.get('secret') ?? '';
-    if (headerSecret !== CRON_SECRET && querySecret !== CRON_SECRET) {
+    if (headerSecret !== CRON_SECRET) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
   }
@@ -86,6 +92,16 @@ async function runDraftRecovery(now: number) {
     });
     if (alreadySent) continue;
 
+    // Build a CTA that actually works for the recipient. Guests have no
+    // password/dashboard, so we hand them a tokenized /resume link that
+    // re-authorizes them straight back into the wizard. Account holders go to
+    // their dashboard (they can sign in).
+    const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+    const resumeUrl =
+      draft.user.accountStatus === 'GUEST' && draft.user.guestToken
+        ? `${SITE_URL}/resume?f=${draft.id}&t=${draft.user.guestToken}`
+        : `${SITE_URL}/dashboard`;
+
     await sendEmail({
       type: bucket.type,
       to: draft.user.email,
@@ -94,6 +110,7 @@ async function runDraftRecovery(now: number) {
       context: {
         firstName: draft.user.firstName,
         businessName: draft.businessName ?? undefined,
+        resumeUrl,
       },
     });
     sent++;

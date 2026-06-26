@@ -34,10 +34,19 @@ SUNBIZ_BY_DOC = f"{SUNBIZ_BASE}/Inquiry/CorporationSearch/ByDocumentNumber"
 # bind to via $PORT. Default to 3334 for local dev.
 PORT = int(os.environ.get("PORT", "3334"))
 
-# Optional shared-secret. When set, every /entity request must send a matching
+# Shared-secret. When set, every /entity request must send a matching
 # `X-Proxy-Token` header. This keeps the public deployment from being an open
-# scraping relay. Leave unset for local dev.
+# scraping relay. Leave unset for local dev only.
 PROXY_TOKEN = os.environ.get("SUNBIZ_PROXY_TOKEN", "").strip()
+
+# Detect a deployed (public) environment. On any managed platform we MUST have a
+# token, otherwise the endpoint is an open relay. Set SUNBIZ_REQUIRE_TOKEN=true
+# to force this on other hosts.
+_PLATFORM_ENV_KEYS = ("RENDER", "RAILWAY_ENVIRONMENT", "FLY_APP_NAME", "DYNO", "K_SERVICE")
+IS_DEPLOYED = (
+    os.environ.get("SUNBIZ_REQUIRE_TOKEN", "").strip().lower() == "true"
+    or any(os.environ.get(k) for k in _PLATFORM_ENV_KEYS)
+)
 
 # Optional upstream proxy (residential / CF-bypass). Datacenter IPs are often
 # hard-blocked by Cloudflare; routing cloudscraper through a residential proxy
@@ -475,7 +484,10 @@ def health():
 
 @app.get("/entity")
 def entity():
-    # Shared-secret gate (only enforced when SUNBIZ_PROXY_TOKEN is set).
+    # Fail closed: a deployed instance with no token must never serve requests.
+    if IS_DEPLOYED and not PROXY_TOKEN:
+        return jsonify({"error": "Service misconfigured", "code": "no_token"}), 503
+    # Shared-secret gate (enforced whenever a token is configured).
     if PROXY_TOKEN:
         supplied = request.headers.get("X-Proxy-Token", "")
         if supplied != PROXY_TOKEN:
@@ -498,6 +510,13 @@ def entity():
 
 
 # ── Entry point ────────────────────────────────────────────────────────────
+
+# Fail fast at import/startup on a deployed host without a token, so the
+# misconfiguration is caught immediately (works under gunicorn too).
+if IS_DEPLOYED and not PROXY_TOKEN:
+    log.error("SUNBIZ_PROXY_TOKEN is required on a deployed instance — refusing to start.")
+    raise SystemExit(1)
+
 
 if __name__ == "__main__":
     # Local dev entry point. In production run under gunicorn (see Dockerfile):

@@ -13,10 +13,10 @@ import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
 } from '@/lib/formation-states';
-import { filingIncludesEin } from '@/lib/ein';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
+import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import { submitFilingToState } from './filings';
 import {
@@ -63,68 +63,15 @@ export async function processCheckout(input: {
   await ensureFilingTouchUtm(filing.id);
   await ensureUserFirstTouchUtm(actor.id);
 
-  // EIN gate: if the customer's package includes EIN, the responsible-party
-  // form MUST have been completed before we accept payment. Otherwise we'd
-  // submit the filing without the data needed to actually file Form SS-4.
   const addOnSlugsForGate = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
-  if (
-    filingIncludesEin({
-      tier: filing.serviceTier as TierSlug,
-      addOnSlugs: addOnSlugsForGate,
-    })
-  ) {
-    const ein = filing.einApplication;
-    const completed =
-      !!ein &&
-      (ein.status === 'ready_online' ||
-        ein.status === 'manual_foreign' ||
-        ein.status === 'submitted' ||
-        ein.status === 'delivered');
-    if (!completed) {
-      return {
-        error: 'EIN responsible-party details are required before checkout.',
-      };
-    }
-  }
 
-  // ── Completeness gate (H3) ─────────────────────────────────────────────────
-  // Nothing in the route prevents a customer from reaching payment with an
-  // incomplete draft (e.g. jumping straight to /wizard/<id>/11 or skipping the
-  // review step). Charging then submitting would produce blank state documents.
-  // Verify the must-have fields exist before we accept any money.
-  {
-    const ra = safeParseJson<{
-      useOurService?: boolean;
-      name?: string;
-      street1?: string;
-    } | null>(filing.registeredAgent, null);
-    const principal = safeParseJson<{ street1?: string; city?: string; zip?: string } | null>(
-      filing.principalAddress,
-      null,
-    );
-    const peopleCount = await prisma.managerMember.count({
-      where: { filingId: filing.id },
-    });
-
-    const missing: string[] = [];
-    if (!filing.businessName?.trim()) missing.push('business name');
-    if (!principal?.street1?.trim() || !principal?.city?.trim()) {
-      missing.push('principal address');
-    }
-    const raOk = ra?.useOurService === true || (!!ra?.name?.trim() && !!ra?.street1?.trim());
-    if (!raOk) missing.push('registered agent');
-    if (!filing.incorporatorSignature?.trim()) missing.push('signature');
-    if (peopleCount < 1) {
-      missing.push(filing.entityType === 'CORP' ? 'directors/officers' : 'members');
-    }
-
-    if (missing.length > 0) {
-      return {
-        error: `Please complete these required steps before payment: ${missing.join(', ')}.`,
-      };
-    }
+  // Completeness + EIN gate (shared with the Stripe webhook backstop so neither
+  // path can charge + submit an incomplete draft that would yield blank docs).
+  const readiness = await assertFilingReadyForSubmission(filing.id);
+  if (!readiness.ok) {
+    return { error: readiness.error };
   }
 
   // ── Tester bypass ────────────────────────────────────────────────────────
@@ -186,6 +133,17 @@ export async function processCheckout(input: {
 
     if (pi.status !== 'succeeded') {
       return { error: `Payment not completed (status: ${pi.status}). Please try again.` };
+    }
+
+    // The PaymentIntent must belong to THIS filing. Stops a PI created for one
+    // filing from being replayed to finalize a different (cheaper) one.
+    if (pi.metadata?.filingId && pi.metadata.filingId !== filing.id) {
+      logger.error(
+        'checkout PI/filing mismatch',
+        { area: 'stripe', entityId: filing.id, tag: 'pi-filing-mismatch' },
+        pi.metadata.filingId,
+      );
+      return { error: 'Payment does not match this filing. Please contact support.' };
     }
 
     // Verify amount matches (allow ±1 cent for rounding)

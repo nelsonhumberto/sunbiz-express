@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 const EXPIRY_HOURS = 1;
 
@@ -20,6 +21,10 @@ export async function requestPasswordReset(
   _: ForgotResult,
   formData: FormData,
 ): Promise<ForgotResult> {
+  // Throttle reset requests to curb email bombing + enumeration probing.
+  const limited = checkActionRateLimit('password-reset', 5, 15 * 60 * 1000);
+  if (limited) return { error: limited };
+
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: 'Enter a valid email address.' };

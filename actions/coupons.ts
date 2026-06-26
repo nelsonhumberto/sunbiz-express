@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 // ─── Public: validate a coupon code at checkout ───────────────────────────────
 
@@ -24,11 +25,16 @@ export async function validateCoupon(
 ): Promise<CouponValidationResult> {
   if (!code?.trim()) return { ok: false, error: 'Enter a coupon code.' };
 
+  // Throttle to stop brute-forcing valid coupon codes.
+  const limited = checkActionRateLimit('coupon-validate', 15, 10 * 60 * 1000);
+  if (limited) return { ok: false, error: limited };
+
   const coupon = await prisma.coupon.findUnique({
     where: { code: code.trim().toUpperCase() },
   });
 
-  if (!coupon) return { ok: false, error: 'Coupon code not found.' };
+  // Generic message so attackers can't distinguish "not found" from inactive.
+  if (!coupon) return { ok: false, error: 'This coupon code is invalid.' };
   if (!coupon.active) return { ok: false, error: 'This coupon is no longer active.' };
   if (coupon.expiresAt && coupon.expiresAt < new Date()) {
     return { ok: false, error: 'This coupon has expired.' };

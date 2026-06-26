@@ -260,6 +260,22 @@ export async function adminRevealEinSecret(
   if (session.user.role !== 'ADMIN') return { ok: false, error: 'Forbidden' };
   const ein = await prisma.einApplication.findUnique({ where: { filingId } });
   if (!ein) return { ok: false, error: 'No EIN application' };
+
+  // Audit every decryption (admin + filing + timestamp — never the plaintext).
+  // The marketing copy promises this; it must actually happen.
+  try {
+    await prisma.adminAction.create({
+      data: {
+        adminUserId: session.user.id,
+        filingId,
+        actionType: 'REVEAL_EIN_SECRET',
+        description: 'Decrypted responsible-party tax id / passport for SS-4 prep',
+      },
+    });
+  } catch {
+    /* never block the reveal on the audit write, but it should normally succeed */
+  }
+
   return {
     ok: true,
     taxId: ein.taxIdEncrypted ? decryptString(ein.taxIdEncrypted) : undefined,

@@ -1,6 +1,61 @@
 import 'server-only';
 
+import { createPublicKey, verify as cryptoVerify } from 'node:crypto';
+
 const TELNYX_BASE = 'https://api.telnyx.com/v2';
+
+// DER SPKI prefix for an Ed25519 public key (RFC 8410). Prepending this to the
+// raw 32-byte key lets Node build a usable public key object.
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+
+/** True when a Telnyx webhook public key is configured for verification. */
+export function telnyxPublicKeyConfigured(): boolean {
+  return !!process.env.TELNYX_PUBLIC_KEY?.trim();
+}
+
+/**
+ * Verify a Telnyx webhook's Ed25519 signature.
+ *
+ * Telnyx signs `${timestamp}|${rawBody}` and sends the base64 signature in the
+ * `telnyx-signature-ed25519` header plus the unix `telnyx-timestamp`. The
+ * account's base64 public key lives in `TELNYX_PUBLIC_KEY`. We also enforce a
+ * timestamp tolerance to block replay.
+ */
+export function verifyTelnyxSignature(args: {
+  rawBody: string;
+  signatureB64: string | null;
+  timestamp: string | null;
+  toleranceSeconds?: number;
+}): boolean {
+  const pub = process.env.TELNYX_PUBLIC_KEY?.trim();
+  if (!pub || !args.signatureB64 || !args.timestamp) return false;
+
+  // Replay window.
+  const ts = Number(args.timestamp);
+  const tolerance = args.toleranceSeconds ?? 5 * 60;
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > tolerance) return false;
+
+  let rawKey: Buffer;
+  try {
+    rawKey = Buffer.from(pub, 'base64');
+  } catch {
+    return false;
+  }
+  if (rawKey.length !== 32) return false;
+
+  try {
+    const key = createPublicKey({
+      key: Buffer.concat([ED25519_SPKI_PREFIX, rawKey]),
+      format: 'der',
+      type: 'spki',
+    });
+    const signed = Buffer.from(`${args.timestamp}|${args.rawBody}`, 'utf8');
+    const sig = Buffer.from(args.signatureB64, 'base64');
+    return cryptoVerify(null, signed, key, sig);
+  } catch {
+    return false;
+  }
+}
 
 export interface SendFaxInput {
   to: string;

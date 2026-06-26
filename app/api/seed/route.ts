@@ -1,7 +1,8 @@
-// One-time seeding endpoint. Hit it ONCE after first deploy:
-//   curl -X POST "https://YOUR-DEPLOY.vercel.app/api/seed?secret=YOUR_SEED_SECRET"
+// One-time seeding endpoint (local/dev only). Hit it ONCE after first deploy:
+//   curl -X POST "http://localhost:3000/api/seed" -H "Authorization: Bearer YOUR_SEED_SECRET"
 //
-// Requires SEED_SECRET env var set in Vercel. Idempotent — checks if already seeded.
+// Requires SEED_SECRET. Disabled in production unless ALLOW_SEED=true.
+// Idempotent — checks if already seeded. Demo credentials live in this source.
 
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
@@ -12,11 +13,16 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const provided = searchParams.get('secret');
+  // Never allow demo seeding in production — these are known-credential accounts.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED !== 'true') {
+    return NextResponse.json({ error: 'Disabled in production.' }, { status: 403 });
+  }
+
+  const headerSecret =
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() ?? '';
   const expected = process.env.SEED_SECRET;
 
-  if (!expected || provided !== expected) {
+  if (!expected || headerSecret !== expected) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -255,9 +261,7 @@ export async function POST(req: NextRequest) {
       additionalServices: ADD_ONS.length,
       sampleFiling: sampleFiling.id,
     },
-    demoCredentials: {
-      user: 'demo@inc.demo / Demo1234!',
-      admin: 'admin@inc.demo / Demo1234!',
-    },
+    // Credentials intentionally NOT echoed — they're documented in the seed
+    // script source for local/dev use only.
   });
 }

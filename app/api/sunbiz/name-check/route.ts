@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkNameAvailability, SunbizError } from '@/lib/sunbiz';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 // Real (non-mock) Sunbiz lookup. Primary source is the sunbizdaily.com JSON
 // API (set SUNBIZDAILY_API_KEY in env). Falls back to a CF-bypass scrape
@@ -8,6 +9,21 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  // This route burns the upstream Sunbiz API quota, so cap per-IP usage.
+  const limit = rateLimit(`name-check:${clientIp()}`, 30, 60 * 1000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      {
+        available: false,
+        status: 'available',
+        message: 'Too many lookups. Please wait a moment and try again.',
+        conflicts: [],
+        suggestions: [],
+      },
+      { status: 429 },
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const name = (searchParams.get('name') ?? '').trim();
   const typeRaw = (searchParams.get('type') ?? 'LLC').toUpperCase();

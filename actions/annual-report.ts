@@ -1,10 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import {
   ACTIVE_FORMATION_STATES,
@@ -267,6 +270,10 @@ export async function searchEntitiesByName(
   if (!query.trim() || query.trim().length < 2) {
     return { ok: false, error: 'Enter at least 2 characters.' };
   }
+  // Rate-limit: this hits the upstream Sunbiz API/scraper, so cap per IP to
+  // stop it being used as a free scraping proxy.
+  const limited = checkActionRateLimit('entity-search', 20, 60 * 1000);
+  if (limited) return { ok: false, error: limited };
   try {
     const { entities } = await searchSunbiz(query.trim(), { limit: 50 });
     const active = entities
@@ -326,14 +333,27 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   }
 
   try {
-    // Find or create a guest user account by email
+    // Find or create a guest user account by email. SECURITY: if the email
+    // already belongs to a real (non-guest) account, we must NOT attach a paid,
+    // APPROVED filing to it from an unauthenticated request — that would let an
+    // attacker plant records in a victim's dashboard. Require sign-in instead.
+    const session = await auth();
     let user = await prisma.user.findUnique({ where: { email } });
+    if (user && user.accountStatus !== 'GUEST' && session?.user?.id !== user.id) {
+      return {
+        ok: false as const,
+        error:
+          'An account already exists for this email. Please sign in first to file under your account.',
+      };
+    }
     if (!user) {
-      const crypto = await import('crypto');
+      // bcrypt hash of a random secret (consistent with the rest of the app;
+      // credentials login simply never matches until the user resets it).
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
       user = await prisma.user.create({
         data: {
           email,
-          passwordHash: crypto.randomBytes(32).toString('hex'),
+          passwordHash,
           firstName: 'Guest',
           lastName: '',
           emailVerified: false,

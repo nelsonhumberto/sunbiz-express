@@ -54,8 +54,26 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
     session: async ({ session, token }) => {
       if (session.user) {
-        session.user.id = (token.id as string) ?? '';
-        session.user.role = (token.role as string) ?? 'USER';
+        const userId = (token.id as string) ?? '';
+        session.user.id = userId;
+        // Re-validate the role against the DB rather than trusting the JWT, so
+        // a demoted/suspended admin loses access immediately instead of at
+        // token expiry. Falls back to the token value if the lookup fails.
+        let role = (token.role as string) ?? 'USER';
+        if (userId) {
+          try {
+            const fresh = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { role: true, accountStatus: true },
+            });
+            if (fresh) {
+              role = fresh.accountStatus === 'SUSPENDED' ? 'USER' : fresh.role;
+            }
+          } catch {
+            /* keep token role on transient DB error */
+          }
+        }
+        session.user.role = role;
       }
       return session;
     },

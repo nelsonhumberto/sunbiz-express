@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 import {
   ALL_MARKETING_STATES,
   resolveMarketingState,
@@ -53,6 +54,10 @@ export async function captureMarketingLead(
   if (input.website && input.website.trim().length > 0) {
     return { ok: true };
   }
+
+  // Cap per-IP to prevent the waitlist from being used as an email-spam relay.
+  const limited = checkActionRateLimit('marketing-lead', 10, 10 * 60 * 1000);
+  if (limited) return { ok: false, error: 'generic' };
 
   const parsed = LeadInput.safeParse(input);
   if (!parsed.success) {

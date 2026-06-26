@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { telnyxPublicKeyConfigured, verifyTelnyxSignature } from '@/lib/telnyx';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,16 +13,40 @@ export const dynamic = 'force-dynamic';
  * so it survives Telnyx's time-limited URL). Outbound status events update the
  * matching record by Telnyx fax id.
  *
- * NOTE: signature verification (Ed25519 via the account public key) should be
- * added before this is used for anything sensitive. For now it only writes
- * fax records, so we accept and validate structure.
+ * Requests are authenticated with Telnyx's Ed25519 signature
+ * (`telnyx-signature-ed25519` + `telnyx-timestamp`) verified against
+ * TELNYX_PUBLIC_KEY. In production an unverified request is rejected; without
+ * a configured key we fail closed so forged faxes can't be injected.
  */
 export async function POST(request: NextRequest) {
+  // Read the raw body once — signature verification needs the exact bytes.
+  const rawBody = await request.text();
+
+  const verified = verifyTelnyxSignature({
+    rawBody,
+    signatureB64: request.headers.get('telnyx-signature-ed25519'),
+    timestamp: request.headers.get('telnyx-timestamp'),
+  });
+  if (!verified) {
+    if (process.env.NODE_ENV === 'production' || telnyxPublicKeyConfigured()) {
+      logger.warn('telnyx fax webhook rejected: bad/missing signature', {
+        area: 'fax',
+        tag: 'webhook-verify',
+      });
+      return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
+    }
+    // Non-production with no key configured: allow for local testing only.
+    logger.warn('telnyx fax webhook unverified (no TELNYX_PUBLIC_KEY in dev)', {
+      area: 'fax',
+      tag: 'webhook-verify',
+    });
+  }
+
   let event: {
     data?: { event_type?: string; payload?: Record<string, unknown> };
   };
   try {
-    event = await request.json();
+    event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }

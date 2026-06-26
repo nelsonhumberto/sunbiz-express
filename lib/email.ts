@@ -52,6 +52,12 @@ interface EmailContext {
   tempPassword?: string;
   /** Account email shown next to the temporary password in the welcome mail. */
   loginEmail?: string;
+  /**
+   * Deep link back into the filing. For guests this is a tokenized /resume URL
+   * that re-authorizes them; for account holders it's their dashboard. Used by
+   * the abandoned-draft recovery emails so the CTA isn't a dead-end.
+   */
+  resumeUrl?: string;
 }
 
 export interface SendEmailArgs {
@@ -93,38 +99,38 @@ const TEMPLATES: Record<
           <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
         `,
   }),
-  FILING_STARTED: ({ firstName, businessName }) => ({
+  FILING_STARTED: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Your filing for ${businessName ?? 'your business'} is started`,
     body: html`
       <h1>Filing started</h1>
       <p>Hi ${firstName ?? 'there'} — we've saved your progress. Pick up exactly where you left off.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Resume Filing</a>
+      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
-  ABANDONED_24H: ({ firstName, businessName }) => ({
+  ABANDONED_24H: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Continue forming ${businessName ?? 'your business'} — pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
       <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the state the same business day.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Resume Filing</a>
+      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
       <p class="muted">Most owners finish in 5 minutes from where you left off.</p>
     `,
   }),
-  ABANDONED_72H: ({ firstName, businessName }) => ({
+  ABANDONED_72H: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Your business name isn't reserved until you file`,
     body: html`
       <h1>Your name isn't locked in yet</h1>
       <p>${firstName ?? 'Hi'} — states only reserve a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Finish my filing</a>
+      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Finish my filing</a>
       <p class="muted">We'll prepare and submit your Articles to the state the same business day you complete checkout.</p>
     `,
   }),
-  ABANDONED_7D: ({ firstName, businessName }) => ({
+  ABANDONED_7D: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Need a hand finishing ${businessName ?? 'your business'}?`,
     body: html`
       <h1>Stuck on a step?</h1>
       <p>${firstName ?? 'Hi'} — your draft is still saved. If something is unclear, reply to this email and a specialist will walk you through the rest. No charge.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Resume Filing</a>
+      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
   RA_RENEWAL_60: ({ businessName }) => ({

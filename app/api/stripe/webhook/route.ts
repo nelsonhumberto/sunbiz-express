@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import { submitFilingToState } from '@/actions/filings';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,8 +169,20 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     /* non-fatal */
   }
 
-  // Generate documents + move the filing to SUBMITTED.
-  await submitFilingToState(filing.id, { skipAuth: true });
+  // Apply the SAME completeness + EIN gate the wizard's processCheckout uses,
+  // so the backstop can never submit a half-finished draft (blank documents).
+  const readiness = await assertFilingReadyForSubmission(filing.id);
+  if (!readiness.ok) {
+    logger.error(
+      'webhook: paid filing is incomplete — recorded payment, skipped submission',
+      { area: 'stripe', entityId: filing.id, tag: 'webhook-incomplete' },
+      readiness.error,
+    );
+    // Still convert the guest below so the buyer can sign in and finish.
+  } else {
+    // Generate documents + move the filing to SUBMITTED.
+    await submitFilingToState(filing.id, { skipAuth: true });
+  }
 
   // Guest conversion: the client checkout normally turns a guest into a real
   // account (and signs them in). Since the backstop ran instead, convert the

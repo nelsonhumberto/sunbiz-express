@@ -80,3 +80,26 @@ export const logger = {
   error: (message: string, ctx: LogContext = {}, err?: unknown) =>
     dispatch('error', message, ctx, err),
 };
+
+// Auto-wire an external sink on the server when LOG_WEBHOOK_URL is configured,
+// so warn/error events leave the console and reach an actual alerting channel
+// (Slack-compatible incoming webhook payload). Fire-and-forget; never blocks.
+if (typeof window === 'undefined' && process.env.LOG_WEBHOOK_URL && !externalSink) {
+  const url = process.env.LOG_WEBHOOK_URL;
+  setExternalSink((event) => {
+    if (event.level !== 'error' && event.level !== 'warn') return;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        text: `[${event.level}] ${event.context.area ?? 'app'}: ${event.message}`,
+        level: event.level,
+        context: event.context,
+        stack: event.stack,
+        timestamp: event.timestamp,
+      }),
+    }).catch(() => {
+      /* never let alerting break the request */
+    });
+  });
+}

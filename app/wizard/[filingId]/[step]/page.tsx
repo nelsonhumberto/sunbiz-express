@@ -1,3 +1,4 @@
+import nextDynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -6,15 +7,36 @@ import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { WizardShell } from '@/components/wizard/WizardShell';
 import { Step1Entity } from '@/components/wizard/steps/Step1Entity';
 import { Step2Name } from '@/components/wizard/steps/Step2Name';
-import { Step3Tier } from '@/components/wizard/steps/Step3Tier';
-import { Step4Address } from '@/components/wizard/steps/Step4Address';
-import { Step5Mailing } from '@/components/wizard/steps/Step5Mailing';
-import { Step6RegisteredAgent } from '@/components/wizard/steps/Step6RegisteredAgent';
-import { Step7Members } from '@/components/wizard/steps/Step7Members';
-import { Step9Optional } from '@/components/wizard/steps/Step9Optional';
-import { Step10Review } from '@/components/wizard/steps/Step10Review';
-import { Step11AddOns } from '@/components/wizard/steps/Step11AddOns';
-import { Step12Payment } from '@/components/wizard/steps/Step12Payment';
+// Heavier downstream steps are code-split so each step only ships its own JS
+// (the wizard route previously bundled all 12 steps + Stripe into one chunk).
+// ssr is kept on so there's no loading flash for the active step.
+const Step3Tier = nextDynamic(() =>
+  import('@/components/wizard/steps/Step3Tier').then((m) => m.Step3Tier),
+);
+const Step4Address = nextDynamic(() =>
+  import('@/components/wizard/steps/Step4Address').then((m) => m.Step4Address),
+);
+const Step5Mailing = nextDynamic(() =>
+  import('@/components/wizard/steps/Step5Mailing').then((m) => m.Step5Mailing),
+);
+const Step6RegisteredAgent = nextDynamic(() =>
+  import('@/components/wizard/steps/Step6RegisteredAgent').then((m) => m.Step6RegisteredAgent),
+);
+const Step7Members = nextDynamic(() =>
+  import('@/components/wizard/steps/Step7Members').then((m) => m.Step7Members),
+);
+const Step9Optional = nextDynamic(() =>
+  import('@/components/wizard/steps/Step9Optional').then((m) => m.Step9Optional),
+);
+const Step10Review = nextDynamic(() =>
+  import('@/components/wizard/steps/Step10Review').then((m) => m.Step10Review),
+);
+const Step11AddOns = nextDynamic(() =>
+  import('@/components/wizard/steps/Step11AddOns').then((m) => m.Step11AddOns),
+);
+const Step12Payment = nextDynamic(() =>
+  import('@/components/wizard/steps/Step12Payment').then((m) => m.Step12Payment),
+);
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
@@ -40,6 +62,29 @@ export default async function WizardStepPage({ params }: PageProps) {
     // Submitted filings always go to the dashboard. Guests get sent through
     // sign-in first since the dashboard is account-only.
     redirect(`/dashboard/filings/${filing.id}`);
+  }
+
+  // Step-order guard: don't let anyone land on Payment (11) with a draft that's
+  // missing core data — they'd otherwise only discover it when the charge is
+  // rejected. Send them to the earliest incomplete step instead. (EIN is
+  // collected on step 10 / as a payment fallback, so it's not gated here.)
+  if (stepNum === 11) {
+    const ra = safeParseJson<{ useOurService?: boolean; name?: string; street1?: string } | null>(
+      filing.registeredAgent,
+      null,
+    );
+    const principal = safeParseJson<{ street1?: string; city?: string } | null>(
+      filing.principalAddress,
+      null,
+    );
+    const peopleCount = filing.managersMembers?.length ?? 0;
+    let gotoStep: number | null = null;
+    if (!filing.businessName?.trim()) gotoStep = 2;
+    else if (!principal?.street1?.trim() || !principal?.city?.trim()) gotoStep = 4;
+    else if (!(ra?.useOurService === true || (ra?.name?.trim() && ra?.street1?.trim()))) gotoStep = 6;
+    else if (peopleCount < 1) gotoStep = 7;
+    else if (!filing.incorporatorSignature?.trim()) gotoStep = 9;
+    if (gotoStep) redirect(`/wizard/${filing.id}/${gotoStep}?incomplete=1`);
   }
 
   const addOnSlugs = filing.filingAdditionalServices.map(

@@ -20,7 +20,9 @@ const config: Config = {
         ink: {
           DEFAULT: '#1A1F2B',
           muted: '#4A5568',
-          subtle: '#A0AEC0',
+          // Darkened from #A0AEC0 (~2.5:1) to meet WCAG AA (~4.6:1 on white)
+          // for the widely-used text-ink-subtle small/body text.
+          subtle: '#6B7280',
         },
         surface: {
           DEFAULT: '#F2F4F7',

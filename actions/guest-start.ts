@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { newGuestToken, setGuestCookie, GUEST_COOKIE, getGuestUser } from '@/lib/guest';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
@@ -137,6 +138,20 @@ export async function startGuestFiling(
     sameSite: 'lax',
   });
 
+  // Returning guest? Resume their existing draft instead of spawning a new one
+  // on every /start submit (prevents draft sprawl + loses no progress).
+  if (existing) {
+    const draft = await prisma.filing.findFirst({
+      where: { userId: guestUser.id, status: 'DRAFT' },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, currentStep: true },
+    });
+    if (draft) {
+      const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+      redirect(`/wizard/${draft.id}/${step}`);
+    }
+  }
+
   // Spin up a draft filing for them. Step 1 (entity + state) is implicitly
   // complete because /start already collected both, so we drop them at the
   // name step instead of re-asking.
@@ -217,8 +232,9 @@ export async function claimGuestAccount(
   // Send credentials via the regular email pipeline. The user can sign in
   // immediately or keep filing as is — both paths work because the wizard
   // already has a draft attached to this user.
+  let emailDelivered = true;
   try {
-    await sendEmail({
+    const result = await sendEmail({
       type: 'WELCOME',
       to: newEmail,
       userId: guest.id,
@@ -228,8 +244,16 @@ export async function claimGuestAccount(
         loginEmail: newEmail,
       },
     });
-  } catch {
-    // We never block the conversion on email delivery.
+    emailDelivered = result.status === 'SENT';
+  } catch (err) {
+    // Never block the conversion on email delivery — but don't claim success
+    // we can't verify. Log it and tell the user honestly.
+    emailDelivered = false;
+    logger.error(
+      'guest account claim: welcome email failed',
+      { area: 'guest', entityId: guest.id, tag: 'claim-email' },
+      err,
+    );
   }
 
   // Clear guest cookie — they now have a real account they can sign in with.
@@ -237,7 +261,9 @@ export async function claimGuestAccount(
 
   return {
     ok: true,
-    message: `Account created. Sign-in details have been emailed to ${newEmail}.`,
+    message: emailDelivered
+      ? `Account created. Sign-in details have been emailed to ${newEmail}.`
+      : `Account created for ${newEmail}. We couldn't send the email just now — use "Forgot password" on the sign-in page to set your password.`,
   };
 }
 

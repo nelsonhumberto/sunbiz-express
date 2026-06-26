@@ -685,7 +685,7 @@ export function Step7Members({
             <p className="text-sm text-ink-muted mt-1">{t('oaMultiUpsellBody')}</p>
           </div>
           <Link
-            href={`/wizard/${filing.id}/11?addon=operating_agreement_multi`}
+            href={`/wizard/${filing.id}/10?addon=operating_agreement_multi`}
             className="bg-accent text-white px-4 py-2 rounded-md font-semibold hover:bg-accent/90 transition-colors text-sm shrink-0"
           >
             {t('oaMultiUpsellCta')}

@@ -36,8 +36,57 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
     { href: '/dashboard/settings', label: t('navSettings'), icon: Settings },
   ];
 
+  const NAV_WITH_ADMIN = isAdmin
+    ? [...NAV, { href: '/admin', label: tNav('admin'), icon: ShieldCheck }]
+    : NAV;
+
   return (
-    <aside className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-white">
+    <>
+      {/* Mobile top bar — the sidebar is hidden < md, so without this the
+          dashboard sub-pages are unreachable on phones. Horizontally scrollable
+          so every destination is one tap away. */}
+      <div className="md:hidden sticky top-0 z-40 border-b border-border bg-white">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Logo size="sm" />
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              aria-label={tNav('signOut')}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+        <nav
+          aria-label="Dashboard"
+          className="flex gap-1 overflow-x-auto px-3 pb-2 -mt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {NAV_WITH_ADMIN.map((item) => {
+            const active =
+              pathname === item.href ||
+              (item.href !== '/dashboard' && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-ink-muted hover:bg-muted hover:text-ink',
+                )}
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <aside className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-white">
       <div className="px-6 py-5 border-b border-border">
         <Logo size="sm" />
       </div>
@@ -102,6 +151,7 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
           </button>
         </form>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

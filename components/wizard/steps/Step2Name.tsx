@@ -14,6 +14,15 @@ import {
 } from '../NameCheckWidget';
 import type { WizardFiling } from '../types';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
   isActiveFormationState,
   getFormationState,
   type StateCode,
@@ -24,6 +33,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const [name, setName] = useState(filing.businessName ?? '');
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
+  const [showUnavailable, setShowUnavailable] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
   const formationState: StateCode = isActiveFormationState(filing.state)
@@ -38,8 +48,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const isHardBlocked = assessment ? !assessment.valid : false;
   const canContinue = name.trim().length >= 2 && !isHardBlocked;
 
-  const onContinue = () => {
-    if (!canContinue) return;
+  const saveAndAdvance = () => {
     start(async () => {
       const res = await saveStep2({
         filingId: filing.id,
@@ -50,12 +59,19 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         toast.error(res.error ?? t('errorSaveGeneric'));
         return;
       }
-      if (result && !result.available) {
-        const proceed = window.confirm(t('confirmNotAvailable', { state: stateName }));
-        if (!proceed) return;
-      }
       router.push(`/wizard/${filing.id}/3`);
     });
+  };
+
+  const onContinue = () => {
+    if (!canContinue) return;
+    // If the state lookup says the name is taken, confirm via an accessible
+    // dialog (keyboard + screen-reader friendly) instead of window.confirm().
+    if (result && !result.available) {
+      setShowUnavailable(true);
+      return;
+    }
+    saveAndAdvance();
   };
 
   return (
@@ -134,6 +150,30 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         nextDisabled={!canContinue}
         pending={pending}
       />
+
+      <Dialog open={showUnavailable} onOpenChange={setShowUnavailable}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('nameUnavailableTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('confirmNotAvailable', { state: stateName })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUnavailable(false)}>
+              {t('nameUnavailableChange')}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowUnavailable(false);
+                saveAndAdvance();
+              }}
+            >
+              {t('nameUnavailableProceed')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

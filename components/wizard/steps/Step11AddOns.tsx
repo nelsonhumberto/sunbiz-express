@@ -203,7 +203,10 @@ export function Step11AddOns({
         filingId: filing.id,
         addOnSlugs: Array.from(selected),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        toast.error(t('errorSaveGeneric'));
+        return;
+      }
       router.push(`/wizard/${filing.id}/11`);
     });
   };
@@ -227,7 +230,10 @@ export function Step11AddOns({
         filingId: filing.id,
         addOnSlugs: Array.from(baseline),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        toast.error(t('errorSaveGeneric'));
+        return;
+      }
       router.push(`/wizard/${filing.id}/11`);
     });
   };

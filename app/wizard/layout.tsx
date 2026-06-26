@@ -24,8 +24,10 @@ export default async function WizardLayout({ children }: { children: React.React
   }
 
   return (
-    <div id="main-content" tabIndex={-1} className="min-h-screen bg-surface focus:outline-none">
-      <SkipLink />
+    <div className="min-h-screen bg-surface">
+      {/* Target the step content inside WizardShell so the skip link bypasses
+          the sticky wizard header + progress bar, not just the page top. */}
+      <SkipLink href="#wizard-step-content" />
       {children}
     </div>
   );

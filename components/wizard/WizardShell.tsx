@@ -116,7 +116,7 @@ export function WizardShell({
 
       <div className="flex-1 container py-8 lg:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
-          <div className="lg:col-span-2 min-w-0">
+          <div id="wizard-step-content" tabIndex={-1} className="lg:col-span-2 min-w-0 focus:outline-none">
             <div className="mb-8">
               <motion.div
                 key={step}

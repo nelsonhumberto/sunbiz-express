@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user) redirect('/sign-in');
 
   return (
-    <div className="min-h-screen flex bg-surface">
+    <div className="min-h-screen flex flex-col md:flex-row bg-surface">
       <SkipLink />
       <DashboardNav
         isAdmin={session.user.role === 'ADMIN'}

@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +55,9 @@ export function GuestSaveExitDialog({
               <Mail className="h-5 w-5 text-primary" />
               {state.ok ? t('saveExitSuccessTitle') : t('saveExitTitle')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {state.ok ? t('saveExitSuccessTitle') : t('saveExitBody')}
+            </DialogDescription>
           </DialogHeader>
 
           {state.ok ? (

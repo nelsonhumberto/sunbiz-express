@@ -39,7 +39,11 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        role="radiogroup"
+        aria-label="Choose your package"
+      >
         {TIERS.map((tierDef) => {
           const isSelected = tier === tierDef.slug;
           const tierName = t(`tier_${tierDef.slug}` as never);
@@ -49,6 +53,9 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
             <button
               key={tierDef.slug}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={tierName}
               onClick={() => {
                 setTier(tierDef.slug);
                 setTierPreview(tierDef.slug);

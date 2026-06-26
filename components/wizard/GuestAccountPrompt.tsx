@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,10 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
             <Sparkles className="h-5 w-5 text-primary" />
             Save your draft with a free LaunchForma account?
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a free account so we can save your filing progress and email you a link to
+            resume it later.
+          </DialogDescription>
         </DialogHeader>
 
         {state.ok ? (

@@ -118,7 +118,7 @@
     "seePricing": "Ver precios",
     "noCreditCard": "Sin tarjeta de crédito al iniciar",
     "filedIn1Day": "Presentado en 1 día hábil",
-    "rating": "4.9 / 5 de más de 2,400 propietarios",
+    "rating": "Agente Registrado gratis el Año 1",
     "previewStep": "Paso 2 de 11 · Nombre de la empresa",
     "previewQuestion": "¿Cuál es el nombre de tu empresa?",
     "previewSubtitle": "Verificaremos la disponibilidad en la base de datos de Sunbiz en tiempo real.",
@@ -138,7 +138,11 @@
     "businessesFormed": "Empresas formadas",
     "averageTime": "Tiempo promedio",
     "rating": "Calificación",
-    "stateApproval": "Presentamos al estado"
+    "stateApproval": "Presentamos al estado",
+    "raYearOne": "Agente Registrado (Año 1)",
+    "raYearOneValue": "Incluido",
+    "moneyBack": "Garantía de satisfacción",
+    "moneyBackValue": "14 días"
   },
   "features": {
     "kicker": "Por qué LaunchForma",
@@ -235,7 +239,7 @@
     "feat_privacy": "Privacidad ante todo (sin venta de datos)"
   },
   "testimonials": {
-    "rating": "4.9 / 5 promedio",
+    "rating": "Lo que dicen los fundadores",
     "headline1": "Amado por emprendedores",
     "headline2": "en Florida.",
     "subhead": "Desde solopreneurs hasta sindicatos inmobiliarios — más de 2,400 floridanos confiaron en nosotros este año."

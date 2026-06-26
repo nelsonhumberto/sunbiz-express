@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { ArrowRight, Sparkles, Clock, Shield, Star } from 'lucide-react';
+import { ArrowRight, Sparkles, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
@@ -101,7 +101,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
                 : formationState.marketingTiming.badgeFallback}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Star className="h-3.5 w-3.5 text-accent fill-accent" />
+              <Shield className="h-3.5 w-3.5 text-accent" />
               {t('rating')}
             </span>
           </div>

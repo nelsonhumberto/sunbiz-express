@@ -45,10 +45,21 @@ export async function generateMetadata({
   }
   const locale = await getLocale();
   if (state.availability === 'active') {
+    const title = `LaunchForma · Form your ${state.name} business in minutes`;
+    const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`;
+    const canonical = `/states/${state.slug}`;
     return {
-      title: `LaunchForma · Form your ${state.name} business in minutes`,
-      description: `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`,
-      alternates: { canonical: `/states/${state.slug}` },
+      title,
+      description,
+      openGraph: { title, description, type: 'website' },
+      alternates: {
+        canonical,
+        languages: {
+          'en-US': canonical,
+          es: `${canonical}?lang=es`,
+          'x-default': canonical,
+        },
+      },
     };
   }
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
@@ -59,6 +70,10 @@ export async function generateMetadata({
     description: t('heroSubhead', { state: stateName }),
     openGraph: { title, type: 'website' },
     alternates: { canonical: `/states/${state.slug}` },
+    // Coming-soon pages are near-duplicate templated content — keep them out
+    // of the index (still crawlable for the waitlist links) to avoid a
+    // thin-content footprint across ~47 state slugs.
+    robots: { index: false, follow: true },
   };
 }
 

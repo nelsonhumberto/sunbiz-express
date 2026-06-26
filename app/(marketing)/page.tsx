@@ -39,6 +39,10 @@ export async function generateMetadata({
     const stateName = localizedStateName(state, locale);
     const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
     const description = `Start your ${stateName} LLC or Corporation online in minutes. Same-day filing, free Year-1 Registered Agent, EIN acquisition, and transparent all-in pricing. No hidden fees.`;
+    // Consolidate WY/DE: the ?state= homepage variant points its canonical at
+    // the dedicated /states/{slug} page so search engines don't index two URLs
+    // for the same content.
+    const canonical = state.code === 'FL' ? '/' : `/states/${state.slug}`;
     return {
       title,
       description,
@@ -48,7 +52,12 @@ export async function generateMetadata({
         type: 'website',
       },
       alternates: {
-        canonical: state.code === 'FL' ? '/' : `/?state=${state.code}`,
+        canonical,
+        languages: {
+          'en-US': canonical,
+          es: `${canonical}${canonical.includes('?') ? '&' : '?'}lang=es`,
+          'x-default': canonical,
+        },
       },
     };
   }

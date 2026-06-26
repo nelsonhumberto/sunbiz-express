@@ -6,11 +6,13 @@ import { useTranslations } from 'next-intl';
 export function StatsBar() {
   const t = useTranslations('stats');
 
+  // Only claims we can actually stand behind — no unverifiable review counts or
+  // star ratings (those need third-party proof before we display them).
   const STATS = [
-    { number: '2,400+', label: t('businessesFormed') },
-    { number: '15 min', label: t('averageTime') },
-    { number: '4.9 / 5', label: t('rating') },
     { number: 'Same day', label: t('stateApproval') },
+    { number: '15 min', label: t('averageTime') },
+    { number: t('raYearOneValue'), label: t('raYearOne') },
+    { number: t('moneyBackValue'), label: t('moneyBack') },
   ];
 
   return (

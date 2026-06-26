@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/file-annual-report`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/states`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/boi-reporting`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE_URL}/guides`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     // Cornerstone SEO guide pages — built in the May 2026 audit fix.
     {
       url: `${BASE_URL}/guides/wyoming-llc-vs-delaware-corp`,

@@ -1,4 +1,16 @@
 {
+  "assistant": {
+    "launcherLabel": "Abrir ayuda por chat",
+    "title": "Forma — tu asistente de trámites",
+    "close": "Cerrar chat",
+    "greeting": "¡Hola! Soy Forma. Pregúntame lo que sea sobre formar tu empresa — precios, qué es un Agente Registrado o si necesitas un EIN. Incluso puedo llenar el formulario contigo.",
+    "guidedButton": "Guíame paso a paso",
+    "guidedPrompt": "No sé por dónde empezar. Por favor guíame para formar mi empresa paso a paso, haciéndome una pregunta sencilla a la vez.",
+    "thinking": "Forma está pensando…",
+    "placeholder": "Escribe tu pregunta…",
+    "send": "Enviar",
+    "disclaimer": "Forma ofrece información general, no asesoría legal ni fiscal. Los datos sensibles como tu SSN solo se ingresan en el paso seguro del asistente."
+  },
   "common": {
     "appName": "LaunchForma",
     "tagline": "Forma tu empresa en Florida en minutos.",

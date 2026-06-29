@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getGuestUser } from '@/lib/guest';
 import { SkipLink } from '@/components/a11y/SkipLink';
+import { ChatWidget } from '@/components/assistant/ChatWidget';
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -29,6 +30,7 @@ export default async function WizardLayout({ children }: { children: React.React
           the sticky wizard header + progress bar, not just the page top. */}
       <SkipLink href="#wizard-step-content" />
       {children}
+      <ChatWidget />
     </div>
   );
 }

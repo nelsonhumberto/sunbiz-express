@@ -30,6 +30,8 @@ const StartSchema = z.object({
   // Preselected package from a pricing CTA. Defaults to STANDARD when absent
   // or invalid so the wizard's tier step still works.
   tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
+  // Business name seeded by the assistant (?name=) so the draft starts further along.
+  businessName: z.string().max(100).optional(),
 });
 
 export interface StartGuestResult {
@@ -56,6 +58,7 @@ export async function startGuestFiling(
     state: formData.get('state') ?? undefined,
     entityType: formData.get('entityType') ?? undefined,
     tier: (formData.get('tier') as string)?.toUpperCase() || undefined,
+    businessName: (formData.get('businessName') as string)?.trim() || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Invalid input.' };
@@ -63,6 +66,9 @@ export async function startGuestFiling(
 
   const { firstName, lastName, entityType } = parsed.data;
   const serviceTier = parsed.data.tier ?? 'STANDARD';
+  const seededName = parsed.data.businessName?.trim().slice(0, 100) || null;
+  const seededStep = seededName ? 3 : 2;
+  const seededCompleted = JSON.stringify(seededName ? [1, 2] : [1]);
   const email = parsed.data.email.toLowerCase().trim();
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
@@ -78,12 +84,13 @@ export async function startGuestFiling(
         entityType: entityType ?? 'LLC',
         state: stateCode,
         serviceTier,
-        currentStep: 2,
-        completedSteps: JSON.stringify([1]),
+        businessName: seededName,
+        currentStep: seededStep,
+        completedSteps: seededCompleted,
         ...filingUtmCreateFields(),
       },
     });
-    redirect(`/wizard/${filing.id}/2`);
+    redirect(`/wizard/${filing.id}/${seededStep}`);
   }
 
   // Block reuse of an existing ACTIVE account from this entry path.
@@ -161,13 +168,14 @@ export async function startGuestFiling(
       entityType: entityType ?? 'LLC',
       state: stateCode,
       serviceTier,
-      currentStep: 2,
-      completedSteps: JSON.stringify([1]),
+      businessName: seededName,
+      currentStep: seededStep,
+      completedSteps: seededCompleted,
       ...filingUtmCreateFields(),
     },
   });
 
-  redirect(`/wizard/${filing.id}/2`);
+  redirect(`/wizard/${filing.id}/${seededStep}`);
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────

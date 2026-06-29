@@ -561,3 +561,31 @@ model FaxMessage {
   @@index([direction, createdAt])
 }
 
+// Conversion assistant ("Forma") transcripts. Stored loosely (no hard FKs) so a
+// guest/user deletion never cascades; kept for handoff context + KB tuning.
+// PII the user volunteers in chat may appear here; SSNs are never collected.
+model AssistantConversation {
+  id        String             @id @default(cuid())
+  actorId   String? // user/guest id when known
+  actorKind String? // 'user' | 'guest'
+  filingId  String? // active draft at the time, if any
+  locale    String?            @default("en")
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  messages  AssistantMessage[]
+
+  @@index([actorId, createdAt])
+  @@index([filingId])
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // 'user' | 'assistant'
+  content        String // plain text of the turn
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+}
+

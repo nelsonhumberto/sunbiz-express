@@ -25,7 +25,7 @@ function resolveTier(raw: string | undefined): 'BASIC' | 'STANDARD' | 'PREMIUM' 
 }
 
 interface StartPageProps {
-  searchParams?: { state?: string; entity?: string; tier?: string };
+  searchParams?: { state?: string; entity?: string; tier?: string; name?: string };
 }
 
 export default async function StartPage({ searchParams }: StartPageProps) {
@@ -39,20 +39,23 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       : 'FL') as StateCode;
     const entity =
       (searchParams?.entity ?? 'LLC').toUpperCase() === 'CORP' ? 'CORP' : 'LLC';
+    const seededName = searchParams?.name?.trim().slice(0, 100) || null;
     const filing = await prisma.filing.create({
       data: {
         userId: session.user.id,
         entityType: entity,
         state: stateCode,
         serviceTier: resolveTier(searchParams?.tier),
-        // Step 1 (entity + state) is implicitly complete because /start
-        // already collected both — jump straight into the name step.
-        currentStep: 2,
-        completedSteps: JSON.stringify([1]),
+        // Step 1 (entity + state) is implicitly complete because /start already
+        // collected both. If the assistant also passed a business name, seed it
+        // and skip to step 3.
+        businessName: seededName,
+        currentStep: seededName ? 3 : 2,
+        completedSteps: JSON.stringify(seededName ? [1, 2] : [1]),
         ...filingUtmCreateFields(),
       },
     });
-    redirect(`/wizard/${filing.id}/2`);
+    redirect(`/wizard/${filing.id}/${seededName ? 3 : 2}`);
   }
 
   const requested = (searchParams?.state ?? 'FL').toUpperCase();
@@ -91,6 +94,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           defaultState={stateCode}
           defaultEntity={entityType as 'LLC' | 'CORP'}
           defaultTier={resolveTier(searchParams?.tier)}
+          defaultBusinessName={searchParams?.name?.trim().slice(0, 100) || undefined}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

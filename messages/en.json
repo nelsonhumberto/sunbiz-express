@@ -1,4 +1,16 @@
 {
+  "assistant": {
+    "launcherLabel": "Open chat help",
+    "title": "Forma — your filing assistant",
+    "close": "Close chat",
+    "greeting": "Hi! I'm Forma. Ask me anything about forming your business — pricing, what a Registered Agent is, or whether you need an EIN. I can even fill out the form with you.",
+    "guidedButton": "Walk me through it",
+    "guidedPrompt": "I'm not sure where to start. Please walk me through forming my business step by step, asking me one simple question at a time.",
+    "thinking": "Forma is thinking…",
+    "placeholder": "Ask a question…",
+    "send": "Send",
+    "disclaimer": "Forma gives general information, not legal or tax advice. Sensitive info like your SSN is only entered on the secure wizard step."
+  },
   "common": {
     "appName": "LaunchForma",
     "tagline": "Form your Florida business in minutes.",

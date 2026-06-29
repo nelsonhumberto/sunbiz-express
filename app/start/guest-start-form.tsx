@@ -25,12 +25,15 @@ export function GuestStartForm({
   defaultState,
   defaultEntity,
   defaultTier,
+  defaultBusinessName,
 }: {
   defaultState: 'FL' | 'WY' | 'DE';
   defaultEntity: 'LLC' | 'CORP';
   /** Preselected package from a pricing CTA (?tier=). Carried through so the
    *  visitor doesn't have to re-pick the package they already chose. */
   defaultTier?: string;
+  /** Business name prefilled by the assistant (?name=) so the draft is seeded. */
+  defaultBusinessName?: string;
 }) {
   const [state, formAction] = useFormState(startGuestFiling, initial);
 
@@ -46,6 +49,9 @@ export function GuestStartForm({
           className="space-y-5"
         >
           {defaultTier && <input type="hidden" name="tier" value={defaultTier} />}
+          {defaultBusinessName && (
+            <input type="hidden" name="businessName" value={defaultBusinessName} />
+          )}
           {state.error && (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {state.error}

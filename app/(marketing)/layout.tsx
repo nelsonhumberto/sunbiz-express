@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { NavBar } from '@/components/marketing/NavBar';
 import { Footer } from '@/components/marketing/Footer';
 import { SkipLink } from '@/components/a11y/SkipLink';
+import { ChatWidget } from '@/components/assistant/ChatWidget';
 
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -16,6 +17,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
         {children}
       </main>
       <Footer />
+      <ChatWidget />
     </>
   );
 }

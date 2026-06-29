@@ -6,6 +6,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { MessageCircle, X, Send, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
 
@@ -236,18 +238,50 @@ function MessageBubble({
 
   return (
     <div className={cn('flex flex-col gap-2', isUser ? 'items-end' : 'items-start')}>
-      {text && (
-        <div
-          className={cn(
-            'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm',
-            isUser
-              ? 'rounded-tr-sm bg-primary text-white'
-              : 'rounded-tl-sm bg-muted text-ink',
-          )}
-        >
-          {text}
-        </div>
-      )}
+      {text &&
+        (isUser ? (
+          <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-primary px-3 py-2 text-sm text-white">
+            {text}
+          </div>
+        ) : (
+          <div className="assistant-md max-w-[85%] rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-sm text-ink">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0 leading-snug">{children}</p>,
+                ul: ({ children }) => <ul className="mb-2 list-disc pl-4 space-y-0.5 last:mb-0">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 space-y-0.5 last:mb-0">{children}</ol>,
+                li: ({ children }) => <li className="leading-snug">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                code: ({ children }) => (
+                  <code className="rounded bg-black/5 px-1 py-0.5 text-[0.85em] font-mono">{children}</code>
+                ),
+                a: ({ href, children }) => {
+                  const url = href ?? '';
+                  const internal = url.startsWith('/');
+                  return (
+                    <a
+                      href={url}
+                      onClick={(e) => {
+                        if (internal) {
+                          e.preventDefault();
+                          onOpenLink(url);
+                        }
+                      }}
+                      target={internal ? undefined : '_blank'}
+                      rel={internal ? undefined : 'noopener noreferrer'}
+                      className="font-medium text-primary underline underline-offset-2"
+                    >
+                      {children}
+                    </a>
+                  );
+                },
+              }}
+            >
+              {text}
+            </ReactMarkdown>
+          </div>
+        ))}
       {cards.map((c) => (
         <ToolCard key={c.id} output={c.output} onOpenLink={onOpenLink} />
       ))}

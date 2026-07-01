@@ -14,7 +14,7 @@ export function buildSystemPrompt(opts: {
   inWizard: boolean;
   isGuest: boolean;
 }): string {
-  const lang = opts.locale === 'es' ? 'Spanish' : 'English';
+  const pageLang = opts.locale === 'es' ? 'Spanish' : 'English';
 
   const context = opts.summary
     ? `\n\nLIVE FILING CONTEXT (the user is working on this draft right now — use it, don't ask for things already filled):\n${JSON.stringify(
@@ -26,7 +26,12 @@ export function buildSystemPrompt(opts: {
       ? '\n\nThe user is in the wizard but no draft context was resolved.'
       : '\n\nThe user is NOT in the wizard yet (likely on a marketing page).';
 
-  return `You are "Forma", the helpful assistant for LaunchForma, an online LLC/Corporation formation service. Reply in ${lang}.
+  return `You are "Forma", the helpful assistant for LaunchForma, an online LLC/Corporation formation service.
+
+LANGUAGE
+- Detect the language of the user's most recent message and ALWAYS reply in that same language.
+- Supported languages: English and Spanish. If a user writes in Spanish, respond fully in Spanish; if in English, respond in English. If they switch languages mid-conversation, switch with them.
+- If the message is too short or ambiguous to tell, default to ${pageLang} (the page language).
 
 YOUR JOB
 - Answer questions about forming and running a business clearly and briefly.

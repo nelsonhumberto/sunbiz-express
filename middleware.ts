@@ -80,22 +80,35 @@ export function middleware(request: NextRequest) {
 
   let response: NextResponse | null = null;
 
-  // Capture `?lang=` *first* so any later short-circuit return paths still
-  // carry the locale cookie. We both:
-  //   1. mutate request.cookies — so this request's server components
+  // Capture locale *first* so any later short-circuit return paths still
+  // carry the locale cookie. Priority:
+  //   1. Explicit `?lang=es|en` (wins — for ads and language toggle)
+  //   2. `utm_campaign` prefix `es-` / `en-` (so `es-fl-llc` lands in Spanish
+  //      even if the marketer forgot `lang=es`)
+  // We both:
+  //   a. mutate request.cookies — so this request's server components
   //      pick up the new value via i18n/request.ts; and
-  //   2. set the cookie on the outbound response so the browser persists
-  //      it for subsequent requests.
+  //   b. set the cookie on the outbound response so the browser persists
+  //      it for subsequent requests (offer → /start → wizard).
   let lockedLocale: Locale | null = null;
   const langParam = searchParams.get('lang');
   if (langParam) {
     const normalized = langParam.toLowerCase() as Locale;
     if (locales.includes(normalized)) {
       lockedLocale = normalized;
-      // Use NextResponse.next({ request }) further down so the mutated
-      // request cookies are forwarded to the server render.
-      request.cookies.set(LOCALE_COOKIE, normalized);
     }
+  } else {
+    const campaign = (searchParams.get('utm_campaign') ?? '').toLowerCase();
+    if (campaign.startsWith('es-') || campaign.startsWith('es_')) {
+      lockedLocale = 'es';
+    } else if (campaign.startsWith('en-') || campaign.startsWith('en_')) {
+      lockedLocale = 'en';
+    }
+  }
+  if (lockedLocale) {
+    // Use NextResponse.next({ request }) further down so the mutated
+    // request cookies are forwarded to the server render.
+    request.cookies.set(LOCALE_COOKIE, lockedLocale);
   }
 
   // Capture full UTM attribution set into a single JSON cookie so it

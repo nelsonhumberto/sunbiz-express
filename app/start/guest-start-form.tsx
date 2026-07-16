@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from 'react-dom';
 import { Loader2, ArrowRight } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -14,10 +15,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { startGuestFiling, type StartGuestResult } from '@/actions/guest-start';
-import { ACTIVE_FORMATION_STATES, getFormationState } from '@/lib/formation-states';
+import { ACTIVE_FORMATION_STATES } from '@/lib/formation-states';
 import { trackSignupStarted } from '@/lib/analytics';
 import { getClientUtmAttribution } from '@/lib/utm-client';
 import { utmToAnalyticsProps } from '@/lib/utm';
+import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 
 const initial: StartGuestResult = {};
 
@@ -35,6 +37,8 @@ export function GuestStartForm({
   /** Business name prefilled by the assistant (?name=) so the draft is seeded. */
   defaultBusinessName?: string;
 }) {
+  const t = useTranslations('start');
+  const locale = useLocale();
   const [state, formAction] = useFormState(startGuestFiling, initial);
 
   return (
@@ -60,58 +64,56 @@ export function GuestStartForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="firstName">First name</Label>
+              <Label htmlFor="firstName">{t('firstName')}</Label>
               <Input id="firstName" name="firstName" required autoComplete="given-name" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lastName">Last name</Label>
+              <Label htmlFor="lastName">{t('lastName')}</Label>
               <Input id="lastName" name="lastName" required autoComplete="family-name" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="email">Work email</Label>
+            <Label htmlFor="email">{t('email')}</Label>
             <Input
               id="email"
               name="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="you@yourcompany.com"
+              placeholder={t('emailPlaceholder')}
             />
-            <p className="text-[11px] text-ink-subtle">
-              We&apos;ll save your draft to this email — no password needed yet.
-            </p>
+            <p className="text-[11px] text-ink-subtle">{t('emailHint')}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="state">Filing state</Label>
+              <Label htmlFor="state">{t('state')}</Label>
               <Select name="state" defaultValue={defaultState}>
                 <SelectTrigger id="state">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ACTIVE_FORMATION_STATES.map((code) => (
-                    <SelectItem key={code} value={code}>
-                      {getFormationState(code).name}
+                  {ACTIVE_MARKETING_STATES.filter((s) =>
+                    (ACTIVE_FORMATION_STATES as readonly string[]).includes(s.code),
+                  ).map((ms) => (
+                    <SelectItem key={ms.code} value={ms.code}>
+                      {localizedStateName(ms, locale)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-ink-subtle">
-                You can change this later in the wizard.
-              </p>
+              <p className="text-[11px] text-ink-subtle">{t('stateHint')}</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="entityType">Entity type</Label>
+              <Label htmlFor="entityType">{t('entityType')}</Label>
               <Select name="entityType" defaultValue={defaultEntity}>
                 <SelectTrigger id="entityType">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="LLC">LLC</SelectItem>
-                  <SelectItem value="CORP">Corporation</SelectItem>
+                  <SelectItem value="LLC">{t('entityLLC')}</SelectItem>
+                  <SelectItem value="CORP">{t('entityCorp')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -125,17 +127,18 @@ export function GuestStartForm({
 }
 
 function SubmitButton() {
+  const t = useTranslations('start');
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" className="w-full group" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Starting your draft…
+          {t('starting')}
         </>
       ) : (
         <>
-          Continue
+          {t('continue')}
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </>
       )}

@@ -20,6 +20,7 @@ import {
   filingUtmCreateFields,
   userUtmCreateFields,
 } from '@/lib/utm-attribution';
+import { getTranslations } from 'next-intl/server';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
@@ -60,8 +61,9 @@ export async function startGuestFiling(
     tier: (formData.get('tier') as string)?.toUpperCase() || undefined,
     businessName: (formData.get('businessName') as string)?.trim() || undefined,
   });
+  const t = await getTranslations('start');
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Invalid input.' };
+    return { error: t('errorInvalid') };
   }
 
   const { firstName, lastName, entityType } = parsed.data;
@@ -72,7 +74,7 @@ export async function startGuestFiling(
   const email = parsed.data.email.toLowerCase().trim();
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
-    return { error: 'That state is not yet available.' };
+    return { error: t('errorStateUnavailable') };
   }
 
   // Authed users skip guest entirely — go straight to filing creation.

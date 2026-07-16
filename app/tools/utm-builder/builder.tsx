@@ -71,8 +71,8 @@ const CHANNELS: Record<string, ChannelPreset> = {
 };
 
 const LANDING_PAGES = [
-  { value: '/offer', label: '/offer — paid-ad landing (recommended)' },
-  { value: '/start', label: '/start — straight into guest intake' },
+  { value: '/start', label: '/start — straight into guest intake (recommended for paid)' },
+  { value: '/offer', label: '/offer — pitch + packages landing' },
   { value: '/', label: '/ — homepage' },
   { value: '/pricing', label: '/pricing — package comparison' },
 ];
@@ -99,20 +99,24 @@ const ORIGIN = 'https://launchforma.com';
 
 const EXAMPLES: { use: string; url: string }[] = [
   {
-    use: 'Google Search · FL LLC',
-    url: 'https://launchforma.com/offer?state=FL&tier=STANDARD&utm_source=google&utm_medium=cpc&utm_campaign=en-fl-llc&utm_content=rsa-1&utm_term={keyword}',
+    use: 'Google Search · FL LLC (EN)',
+    url: 'https://launchforma.com/start?state=FL&tier=STANDARD&utm_source=google&utm_medium=cpc&utm_campaign=en-fl-llc&utm_content=rsa-1&utm_term={keyword}',
   },
   {
-    use: 'Google Search · Spanish',
+    use: 'Google Search · Spanish (ES)',
+    url: 'https://launchforma.com/start?lang=es&state=FL&utm_source=google&utm_medium=cpc&utm_campaign=es-fl-llc&utm_content=rsa-1&utm_term={keyword}',
+  },
+  {
+    use: 'Offer LP · Spanish (pitch first)',
     url: 'https://launchforma.com/offer?lang=es&state=FL&utm_source=google&utm_medium=cpc&utm_campaign=es-fl-llc&utm_content=rsa-1&utm_term={keyword}',
   },
   {
     use: 'Facebook · cold FL',
-    url: 'https://launchforma.com/offer?state=FL&utm_source=facebook&utm_medium=paid-social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}',
+    url: 'https://launchforma.com/start?state=FL&utm_source=facebook&utm_medium=paid-social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}',
   },
   {
     use: 'Instagram · Latino founder',
-    url: 'https://launchforma.com/offer?lang=es&state=FL&utm_source=instagram&utm_medium=paid-social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}',
+    url: 'https://launchforma.com/start?lang=es&state=FL&utm_source=instagram&utm_medium=paid-social&utm_campaign=es-fl-latinofounder&utm_content={{ad.name}}&utm_term={{adset.name}}',
   },
   {
     use: 'Meta retarget · pricing',
@@ -158,7 +162,7 @@ const inputCls =
 
 export function UtmBuilder() {
   const [channel, setChannel] = useState('google_search');
-  const [path, setPath] = useState('/offer');
+  const [path, setPath] = useState('/start');
   const [stateCode, setStateCode] = useState('FL');
   const [tier, setTier] = useState('');
   const [lang, setLang] = useState('en');
@@ -166,6 +170,17 @@ export function UtmBuilder() {
   const [content, setContent] = useState('rsa-1');
   const [term, setTerm] = useState('{keyword}');
   const [copied, setCopied] = useState(false);
+
+  const setLangAndCampaign = (nextLang: string) => {
+    setLang(nextLang);
+    // Keep campaign prefix aligned with language so middleware can also
+    // infer locale from utm_campaign=es-* even without ?lang=.
+    setCampaign((prev) => {
+      const rest = prev.replace(/^(en|es)[-_]/i, '');
+      const body = rest || 'fl-llc';
+      return `${nextLang}-${body}`;
+    });
+  };
 
   const preset = CHANNELS[channel] ?? CHANNELS.google_search;
   const url = useMemo(
@@ -243,7 +258,11 @@ export function UtmBuilder() {
             </select>
           </Field>
           <Field label="Language">
-            <select className={inputCls} value={lang} onChange={(e) => setLang(e.target.value)}>
+            <select
+              className={inputCls}
+              value={lang}
+              onChange={(e) => setLangAndCampaign(e.target.value)}
+            >
               {LANGS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -367,7 +386,9 @@ export function UtmBuilder() {
         </div>
         <p className="text-xs text-ink-subtle">
           Tip: keep <code>utm_campaign</code> values lowercase and hyphenated (e.g.{' '}
-          <code>es-fl-latinofounder</code>) so reports group cleanly.
+          <code>es-fl-latinofounder</code>). Campaigns starting with <code>es-</code> or{' '}
+          <code>en-</code> auto-set the site language (in addition to <code>?lang=</code>).
+          Prefer <code>/start</code> for paid ads so visitors land in the filing intake.
         </p>
       </section>
     </div>

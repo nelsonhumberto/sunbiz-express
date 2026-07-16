@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
@@ -7,10 +8,10 @@ import { COPYRIGHT_YEAR } from '@/lib/constants';
 import { GuestStartForm } from './guest-start-form';
 import {
   ACTIVE_FORMATION_STATES,
-  getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
+import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,36 +59,36 @@ export default async function StartPage({ searchParams }: StartPageProps) {
     redirect(`/wizard/${filing.id}/${seededName ? 3 : 2}`);
   }
 
+  const t = await getTranslations('start');
+  const locale = await getLocale();
   const requested = (searchParams?.state ?? 'FL').toUpperCase();
   const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
     ? (requested as StateCode)
     : 'FL';
   const entityType = (searchParams?.entity ?? 'LLC').toUpperCase() === 'CORP' ? 'CORP' : 'LLC';
-  const stateRule = getFormationState(stateCode);
+  const marketingState = resolveMarketingState(stateCode);
+  const stateName = localizedStateName(marketingState, locale);
+  const entityLabel =
+    entityType === 'LLC' ? t('entityLLC') : t('entityCorp');
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <header className="container py-6 flex items-center justify-between">
         <Logo />
         <Link href="/sign-in" className="text-sm text-ink-muted hover:text-primary">
-          Already a customer? Sign in →
+          {t('signInLink')}
         </Link>
       </header>
 
       <main className="flex-1 container max-w-3xl py-10">
         <div className="space-y-2 text-center mb-8">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-            Start your filing
+            {t('kicker')}
           </p>
           <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight">
-            Form your{' '}
-            <span className="italic text-primary">{stateRule.name}</span>{' '}
-            {entityType === 'LLC' ? 'LLC' : 'Corporation'}
+            {t('headline', { state: stateName, entity: entityLabel })}
           </h1>
-          <p className="text-ink-muted max-w-lg mx-auto">
-            We just need a few details to spin up your draft — no account
-            required, no credit card to begin.
-          </p>
+          <p className="text-ink-muted max-w-lg mx-auto">{t('subhead')}</p>
         </div>
 
         <GuestStartForm
@@ -98,10 +99,15 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">
-          By continuing you agree to our{' '}
-          <Link href="/terms" className="underline hover:text-ink-muted">Terms</Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="underline hover:text-ink-muted">Privacy Policy</Link>.
+          {t('termsPrefix')}{' '}
+          <Link href="/terms" className="underline hover:text-ink-muted">
+            {t('terms')}
+          </Link>{' '}
+          {t('and')}{' '}
+          <Link href="/privacy" className="underline hover:text-ink-muted">
+            {t('privacy')}
+          </Link>
+          .
         </p>
       </main>
 

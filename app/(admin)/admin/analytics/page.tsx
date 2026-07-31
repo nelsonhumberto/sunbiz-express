@@ -6,7 +6,9 @@ import { formatCurrency } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminAnalyticsPage() {
+  // Exclude admin-archived / test filings so auditor fakes don't skew KPIs.
   const filings = await prisma.filing.findMany({
+    where: { adminArchivedAt: null },
     select: { status: true, serviceTier: true, totalCents: true, createdAt: true, entityType: true },
   });
 

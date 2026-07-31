@@ -146,6 +146,11 @@ model Filing {
   // customer reached) for retention / outreach. NULL = visible on dashboard.
   userArchivedAt           DateTime?
 
+  // Admin-only archive / "test filing" flag. When set, the filing is hidden
+  // from default admin lists and excluded from analytics KPIs (revenue,
+  // formation counts, charts). The row is never deleted — toggle to restore.
+  adminArchivedAt          DateTime?
+
   steps                    FilingStep[]
   managersMembers          ManagerMember[]
   payments                 Payment[]

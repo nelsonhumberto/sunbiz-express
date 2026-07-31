@@ -30,6 +30,7 @@ import {
   resolveProcessingOption,
   type StateCode,
 } from '@/lib/formation-states';
+import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
 import { AdminApprovalForm } from './approval-form';
 import { AdminUploadForm } from './upload-form';
 
@@ -174,7 +175,16 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 text-right">
+        <div className="flex flex-col items-end gap-2 text-right">
+          <ArchiveFilingButton
+            filingId={filing.id}
+            archived={Boolean(filing.adminArchivedAt)}
+          />
+          {filing.adminArchivedAt && (
+            <Badge variant="secondary" size="sm">
+              Archived · excluded from analytics
+            </Badge>
+          )}
           <p className="text-xs text-ink-subtle uppercase tracking-wider">{t('totalPaidLabel')}</p>
           <p className={`font-display text-2xl font-medium ${totalRevenue > 0 ? 'text-success' : 'text-ink-subtle'}`}>
             {formatCurrency(totalRevenue, { showZero: true })}

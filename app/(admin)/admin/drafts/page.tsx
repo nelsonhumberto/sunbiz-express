@@ -23,8 +23,9 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
 
   // Surface every DRAFT filing, including those the customer chose to hide
   // from their dashboard, so the team can measure abandonment and reach out.
+  // Admin-archived (test/auditor) filings are excluded from the funnel view.
   const drafts = await prisma.filing.findMany({
-    where: { status: 'DRAFT' },
+    where: { status: 'DRAFT', adminArchivedAt: null },
     orderBy: { updatedAt: 'desc' },
     include: {
       user: { select: { firstName: true, lastName: true, email: true } },

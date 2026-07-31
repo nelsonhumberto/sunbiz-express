@@ -274,3 +274,79 @@ export async function rejectFiling(filingId: string, reason: string) {
   revalidatePath('/admin');
   revalidatePath('/admin/filings');
 }
+
+/**
+ * Toggle admin archive on a filing. Archived filings stay in the DB (never
+ * deleted) but are excluded from analytics and hidden from the default
+ * admin filings list — use for auditors, internal tests, and junk drafts.
+ */
+export async function toggleAdminArchiveFiling(filingId: string) {
+  const session = await requireAdmin();
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: { id: true, adminArchivedAt: true, businessName: true },
+  });
+  if (!filing) throw new Error('Filing not found');
+
+  const nextArchivedAt = filing.adminArchivedAt ? null : new Date();
+  await prisma.filing.update({
+    where: { id: filingId },
+    data: { adminArchivedAt: nextArchivedAt },
+  });
+
+  await prisma.adminAction.create({
+    data: {
+      adminUserId: session.user!.id,
+      filingId,
+      actionType: nextArchivedAt ? 'ADMIN_ARCHIVE' : 'ADMIN_UNARCHIVE',
+      description: nextArchivedAt
+        ? `Archived filing (excluded from analytics): ${filing.businessName ?? filingId}`
+        : `Restored filing to analytics: ${filing.businessName ?? filingId}`,
+    },
+  });
+
+  revalidatePath('/admin');
+  revalidatePath('/admin/filings');
+  revalidatePath('/admin/analytics');
+  revalidatePath(`/admin/filings/${filingId}`);
+  return { archived: Boolean(nextArchivedAt) };
+}
+
+/**
+ * Re-attempt delivery of a previously FAILED/QUEUED email notification,
+ * re-rendering the template with current branding. Used after SMTP/Resend
+ * credentials are fixed so real customers (e.g. Cafecito Tech) get their mail.
+ */
+export async function resendEmailNotification(notificationId: string) {
+  await requireAdmin();
+  const existing = await prisma.emailNotification.findUnique({
+    where: { id: notificationId },
+    include: {
+      filing: { select: { id: true, businessName: true, entityType: true, sunbizFilingNumber: true, sunbizTrackingNumber: true, sunbizPin: true, totalCents: true } },
+      user: { select: { id: true, firstName: true, email: true } },
+    },
+  });
+  if (!existing) throw new Error('Email notification not found');
+
+  const type = existing.notificationType as import('@/lib/email').NotificationType;
+  const result = await sendEmail({
+    type,
+    to: existing.recipientEmail,
+    filingId: existing.filingId ?? undefined,
+    userId: existing.userId ?? undefined,
+    context: {
+      firstName: existing.user?.firstName ?? undefined,
+      businessName: existing.filing?.businessName ?? undefined,
+      entityType: (existing.filing?.entityType as 'LLC' | 'CORP') ?? undefined,
+      totalCents: existing.filing?.totalCents ?? undefined,
+      filingNumber: existing.filing?.sunbizFilingNumber ?? undefined,
+      trackingNumber: existing.filing?.sunbizTrackingNumber ?? undefined,
+      pin: existing.filing?.sunbizPin ?? undefined,
+      loginEmail: existing.user?.email ?? existing.recipientEmail,
+    },
+  });
+
+  revalidatePath('/admin/outbox');
+  revalidatePath('/admin');
+  return { status: result.status, errorMessage: result.errorMessage ?? null };
+}

@@ -6,13 +6,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
 import { formatCurrency, formatRelative } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminFilingsPage() {
+export default async function AdminFilingsPage({
+  searchParams,
+}: {
+  searchParams?: { showArchived?: string };
+}) {
   const t = await getTranslations('admin');
+  const showArchived = searchParams?.showArchived === '1';
+
   const filings = await prisma.filing.findMany({
+    where: showArchived ? undefined : { adminArchivedAt: null },
     include: {
       user: true,
       _count: { select: { documents: true } },
@@ -29,11 +37,37 @@ export default async function AdminFilingsPage() {
     orderBy: { updatedAt: 'desc' },
   });
 
+  const archivedCount = await prisma.filing.count({
+    where: { adminArchivedAt: { not: null } },
+  });
+
   return (
     <div className="container max-w-7xl py-10 space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-medium tracking-tight">{t('filingsTitle')}</h1>
-        <p className="mt-1 text-ink-muted">{t('filingsCount', { count: filings.length })}</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-medium tracking-tight">{t('filingsTitle')}</h1>
+          <p className="mt-1 text-ink-muted">
+            {showArchived
+              ? `${filings.length} filings (including archived)`
+              : t('filingsCount', { count: filings.length })}
+            {archivedCount > 0 && !showArchived ? (
+              <span className="text-ink-subtle"> · {archivedCount} archived</span>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {showArchived ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/admin/filings">Hide archived</Link>
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/admin/filings?showArchived=1">
+                Show archived ({archivedCount})
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -70,7 +104,7 @@ export default async function AdminFilingsPage() {
             <tbody className="divide-y divide-border">
               {filings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-ink-muted">
+                  <td colSpan={8} className="px-6 py-12 text-center text-ink-muted">
                     {t('noFilings')}
                   </td>
                 </tr>
@@ -78,19 +112,33 @@ export default async function AdminFilingsPage() {
                 filings.map((filing) => {
                   const totalRevenue = filing.payments.reduce((s, p) => s + p.amountCents, 0);
                   const latestAr = filing.annualReports[0];
+                  const archived = Boolean(filing.adminArchivedAt);
                   return (
-                    <tr key={filing.id} className="hover:bg-muted/20 transition-colors">
+                    <tr
+                      key={filing.id}
+                      className={`hover:bg-muted/20 transition-colors ${
+                        archived ? 'opacity-60 bg-muted/10' : ''
+                      }`}
+                    >
                       <td className="px-6 py-4">
                         <Link
                           href={`/admin/filings/${filing.id}`}
                           className="font-medium hover:text-primary inline-flex items-center gap-1.5"
                         >
-                          {filing.businessName ?? <span className="italic text-ink-subtle">untitled</span>}
+                          {filing.businessName ?? (
+                            <span className="italic text-ink-subtle">untitled</span>
+                          )}
                           <ArrowUpRight className="h-3 w-3" />
                         </Link>
                         <p className="text-xs text-ink-subtle font-mono">
-                          {filing.entityType} · {filing.sunbizFilingNumber ?? filing.id.slice(0, 8)}
+                          {filing.entityType} ·{' '}
+                          {filing.sunbizFilingNumber ?? filing.id.slice(0, 8)}
                         </p>
+                        {archived && (
+                          <Badge variant="secondary" size="sm" className="mt-1">
+                            Archived · excluded from analytics
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium">
@@ -113,11 +161,17 @@ export default async function AdminFilingsPage() {
                       <td className="px-6 py-4">
                         {latestAr ? (
                           <div className="text-xs">
-                            <span className={`font-medium ${latestAr.status === 'FILED' ? 'text-success' : 'text-amber-600'}`}>
+                            <span
+                              className={`font-medium ${
+                                latestAr.status === 'FILED' ? 'text-success' : 'text-amber-600'
+                              }`}
+                            >
                               {latestAr.reportYear} · {latestAr.status}
                             </span>
                             {latestAr.status === 'FILED' && (
-                              <p className="text-ink-subtle">{formatCurrency(latestAr.totalCostCents)}</p>
+                              <p className="text-ink-subtle">
+                                {formatCurrency(latestAr.totalCostCents)}
+                              </p>
                             )}
                           </div>
                         ) : (
@@ -125,17 +179,26 @@ export default async function AdminFilingsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right font-medium tabular-nums">
-                        {totalRevenue > 0
-                          ? <span className="text-success">{formatCurrency(totalRevenue)}</span>
-                          : <span className="text-ink-subtle">$0.00</span>}
+                        {totalRevenue > 0 ? (
+                          <span className="text-success">{formatCurrency(totalRevenue)}</span>
+                        ) : (
+                          <span className="text-ink-subtle">$0.00</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-ink-muted text-xs">
                         {formatRelative(filing.updatedAt)}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/admin/filings/${filing.id}`}>{t('open')}</Link>
-                        </Button>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <ArchiveFilingButton
+                            filingId={filing.id}
+                            archived={archived}
+                            compact
+                          />
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/filings/${filing.id}`}>{t('open')}</Link>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );

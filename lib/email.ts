@@ -78,25 +78,24 @@ const TEMPLATES: Record<
 > = {
   WELCOME: ({ firstName, tempPassword, loginEmail }) => ({
     subject: tempPassword
-      ? 'Your LaunchForma account is ready ☀️'
-      : 'Welcome to LaunchForma ☀️',
+      ? 'Your LaunchForma account is ready'
+      : 'Welcome to LaunchForma',
     body: tempPassword
       ? html`
-          <h1>Welcome, ${firstName ?? 'there'}!</h1>
-          <p>Your account is ready. Use the credentials below to sign in any time and pick up your filing.</p>
-          <div style="margin:16px 0; padding:14px 16px; border:1px solid #d6e2df; border-radius:8px; background:#f7faf9; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:14px;">
-            <div><strong>Email:</strong> ${loginEmail ?? ''}</div>
-            <div><strong>Temporary password:</strong> ${tempPassword}</div>
+          <h1>Welcome, ${firstName ?? 'there'} — your account is ready</h1>
+          <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
+          <div class="panel mono">
+            <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
+            <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
           </div>
-          <p>For your security, please change this password the first time you sign in.</p>
           <a class="cta" href="${siteUrl}/sign-in">Sign in to my dashboard</a>
-          <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+          <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> — a real person will help.</p>
         `
       : html`
-          <h1>Welcome, ${firstName ?? 'there'}!</h1>
-          <p>You're moments away from forming your business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
-          <a class="cta" href="${siteUrl}/dashboard">Go to Dashboard</a>
-          <p class="muted">Need a hand? Reply to this email or write us at <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+          <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
+          <p>You're moments away from forming your business. When you're ready, your dashboard is waiting — no busywork, one clear price.</p>
+          <a class="cta" href="${siteUrl}/dashboard">Go to dashboard</a>
+          <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
         `,
   }),
   FILING_STARTED: ({ firstName, businessName, resumeUrl }) => ({
@@ -160,17 +159,18 @@ const TEMPLATES: Record<
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Payment received</h1>
-      <p>We charged your card ${totalCents != null ? formatCurrency(totalCents) : ''}. Your filing is being submitted to the state now.</p>
+      <h1>Payment received — thank you</h1>
+      <p>We charged <strong>${totalCents != null ? formatCurrency(totalCents) : 'your card'}</strong> for <strong>${businessName ?? 'your business'}</strong>. Your filing is being prepared and submitted to the state now.</p>
       <a class="cta" href="${siteUrl}/dashboard">View filing status</a>
+      <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
     `,
   }),
   FILING_SUBMITTED: ({ businessName, trackingNumber, pin }) => ({
     subject: `${businessName ?? 'Your business'} has been submitted to the state`,
     body: html`
-      <h1>Filing submitted</h1>
-      <p>The state is processing your filing. We'll email you the moment it's approved.</p>
-      <table>
+      <h1>Your filing is with the state</h1>
+      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved — usually within 1–2 business days.</p>
+      <table class="meta">
         <tr><td>Tracking #</td><td><code>${trackingNumber ?? '—'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '—'}</code></td></tr>
       </table>
@@ -178,14 +178,14 @@ const TEMPLATES: Record<
     `,
   }),
   FILING_APPROVED: ({ businessName, filingNumber }) => ({
-    subject: `🎉 ${businessName ?? 'Your business'} is officially formed!`,
+    subject: `${businessName ?? 'Your business'} is officially formed`,
     body: html`
-      <h1>Approved!</h1>
-      <p>The state has approved your formation. Documents are ready to download from your dashboard.</p>
-      <table>
+      <h1>You're official — congrats!</h1>
+      <p>The state has approved <strong>${businessName ?? 'your business'}</strong>. Your formation documents are ready to download.</p>
+      <table class="meta">
         <tr><td>Filing #</td><td><code>${filingNumber ?? '—'}</code></td></tr>
       </table>
-      <p>Next steps: open a business bank account, file Form SS-4 for your EIN (if not already), and review your operating agreement.</p>
+      <p>Next up: open a business bank account, confirm your EIN, and keep your annual report deadline on the calendar — we'll remind you.</p>
       <a class="cta" href="${siteUrl}/dashboard">Download documents</a>
     `,
   }),
@@ -253,32 +253,75 @@ function html(strings: TemplateStringsArray, ...vars: unknown[]) {
 }
 
 function wrap(inner: string) {
-  return `<!doctype html><html><head><meta charset="utf-8"/><style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #0F1F1C; background: #F8FAF9; }
-    h1 { font-size: 22px; font-weight: 600; margin: 0 0 12px; color: #0F1F1C; }
-    p { line-height: 1.6; color: #475A56; margin: 0 0 16px; }
-    a { color: #0B7A6B; }
-    .cta { display: inline-block; background: #0B7A6B; color: #fff !important; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 8px 0 16px; }
-    .muted { color: #8A9A95; font-size: 13px; }
-    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-    td { padding: 8px 12px; border-bottom: 1px solid #E5EBEA; font-size: 14px; }
-    td:first-child { color: #475A56; font-weight: 500; }
-    code { background: #EEF2F1; padding: 2px 8px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 13px; }
-    blockquote { border-left: 3px solid #F4A261; padding: 8px 16px; margin: 16px 0; background: #FEF6EE; color: #6E3F18; }
-  </style></head><body>
-    <div style="text-align:center; padding-bottom:20px;">
-      <a href="${siteUrl}" style="text-decoration:none; display:inline-flex; align-items:center; gap:10px;">
-        <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#0B7A6B; border-radius:9px; color:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; font-size:15px; font-weight:800; letter-spacing:-0.5px;">LF</span>
-        <span style="font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; font-size:18px; font-weight:700; color:#0F1F1C; letter-spacing:-0.3px;">LaunchForma</span>
-      </a>
+  // Modern transactional shell: full-bleed canvas, white card, brand blue
+  // CTA matching the live site (#1565FF). Table-based for Outlook safety.
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="color-scheme" content="light"/>
+  <meta name="supported-color-schemes" content="light"/>
+  <title>LaunchForma</title>
+  <style>
+    body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+    table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse}
+    img{-ms-interpolation-mode:bicubic;border:0;outline:none;text-decoration:none;display:block}
+    body{margin:0!important;padding:0!important;width:100%!important;background:#F2F4F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1A1F2B}
+    a{color:#1565FF;text-decoration:none}
+    .wrapper{width:100%;background:#F2F4F7;padding:32px 12px}
+    .card{max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06)}
+    .brand-bar{height:4px;background:linear-gradient(90deg,#1565FF 0%,#4CAF50 100%)}
+    .header{padding:28px 32px 8px;text-align:left}
+    .logo-mark{display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#1565FF;border-radius:10px;color:#fff;font-weight:800;font-size:14px;letter-spacing:-.4px;vertical-align:middle}
+    .logo-text{display:inline-block;margin-left:10px;font-size:18px;font-weight:700;color:#1A1F2B;letter-spacing:-.3px;vertical-align:middle}
+    .body{padding:8px 32px 28px}
+    h1{font-size:24px;font-weight:650;line-height:1.25;margin:0 0 12px;color:#1A1F2B;letter-spacing:-.4px}
+    p{font-size:15px;line-height:1.65;color:#475467;margin:0 0 14px}
+    .cta{display:inline-block;background:#1565FF;color:#ffffff!important;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin:6px 0 14px;box-shadow:0 1px 2px rgba(21,101,255,.25)}
+    .muted{color:#98A2B3;font-size:13px;line-height:1.5}
+    .panel{margin:16px 0;padding:14px 16px;border:1px solid #E4E7EC;border-radius:12px;background:#F9FAFB}
+    .panel code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+    table.meta{width:100%;border-collapse:collapse;margin:14px 0;border:1px solid #E4E7EC;border-radius:12px;overflow:hidden}
+    table.meta td{padding:10px 14px;font-size:14px;border-bottom:1px solid #E4E7EC}
+    table.meta tr:last-child td{border-bottom:none}
+    table.meta td:first-child{color:#667085;font-weight:500;width:42%}
+    table.meta td:last-child{color:#1A1F2B;font-weight:600}
+    code{background:#F2F4F7;padding:2px 8px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:#1A1F2B}
+    blockquote{border-left:3px solid #F79009;padding:10px 14px;margin:16px 0;background:#FFFAEB;color:#7A2E0E;border-radius:0 10px 10px 0}
+    .footer{max-width:560px;margin:20px auto 0;padding:0 8px;text-align:center}
+    .footer p{color:#98A2B3;font-size:12px;line-height:1.55;margin:0 0 6px}
+    @media only screen and (max-width:600px){
+      .header,.body{padding-left:20px!important;padding-right:20px!important}
+      h1{font-size:22px!important}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="brand-bar"></div>
+      <div class="header">
+        <a href="${siteUrl}" style="text-decoration:none;color:inherit">
+          <span class="logo-mark">LF</span>
+          <span class="logo-text">LaunchForma</span>
+        </a>
+      </div>
+      <div class="body">
+        ${inner}
+      </div>
     </div>
-    ${inner}
-    <hr style="border:none; border-top:1px solid #E5EBEA; margin:32px 0;"/>
-    <p class="muted" style="text-align:center;">
-      LaunchForma · Questions? <a href="mailto:help@launchforma.com">help@launchforma.com</a><br/>
-      <a href="#" style="color:#8A9A95;">Unsubscribe</a>
-    </p>
-  </body></html>`;
+    <div class="footer">
+      <p>LaunchForma · Form your business the honest way</p>
+      <p>
+        Questions? <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
+        · <a href="${siteUrl}/dashboard/settings" style="color:#667085;text-decoration:underline">Email preferences</a>
+      </p>
+      <p>© ${new Date().getFullYear()} LaunchForma, Inc. · Not a law firm</p>
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 // ─── Public helper — render a template without sending ────────────────────────

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminOverview() {
   const t = await getTranslations('admin');
   const tCommon = await getTranslations('common');
+  const activeOnly = { adminArchivedAt: null } as const;
   const [
     totalFilings,
     activeFilings,
@@ -20,14 +21,20 @@ export default async function AdminOverview() {
     recentFilings,
     recentEmails,
   ] = await Promise.all([
-    prisma.filing.count(),
-    prisma.filing.count({ where: { status: { in: ['SUBMITTED', 'APPROVED'] } } }),
+    prisma.filing.count({ where: activeOnly }),
+    prisma.filing.count({
+      where: { ...activeOnly, status: { in: ['SUBMITTED', 'APPROVED'] } },
+    }),
     prisma.user.count(),
     prisma.payment.aggregate({
       _sum: { amountCents: true },
-      where: { status: 'SUCCEEDED' },
+      where: {
+        status: 'SUCCEEDED',
+        filing: { adminArchivedAt: null },
+      },
     }),
     prisma.filing.findMany({
+      where: activeOnly,
       orderBy: { updatedAt: 'desc' },
       take: 6,
       include: { user: true },

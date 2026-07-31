@@ -165,16 +165,17 @@ const TEMPLATES: Record<
       <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
     `,
   }),
-  FILING_SUBMITTED: ({ businessName, trackingNumber, pin }) => ({
+  FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl }) => ({
     subject: `${businessName ?? 'Your business'} has been submitted to the state`,
     body: html`
       <h1>Your filing is with the state</h1>
       <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved — usually within 1–2 business days.</p>
       <table class="meta">
-        <tr><td>Tracking #</td><td><code>${trackingNumber ?? '—'}</code></td></tr>
+        <tr><td>Reference #</td><td><code>${trackingNumber ?? '—'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '—'}</code></td></tr>
       </table>
-      <a class="cta" href="${siteUrl}/dashboard">Track status</a>
+      <p class="muted">Your reference # and PIN identify this filing in your LaunchForma dashboard (and on support requests). Status updates live in your dashboard — there isn't a separate public tracking page.</p>
+      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">View filing status</a>
     `,
   }),
   FILING_APPROVED: ({ businessName, filingNumber }) => ({

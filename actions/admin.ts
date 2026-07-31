@@ -316,19 +316,51 @@ export async function toggleAdminArchiveFiling(filingId: string) {
  * Re-attempt delivery of a previously FAILED/QUEUED email notification,
  * re-rendering the template with current branding. Used after SMTP/Resend
  * credentials are fixed so real customers (e.g. Cafecito Tech) get their mail.
+ *
+ * For WELCOME emails that originally included a temp password: mint a fresh
+ * password, update the user hash, and include credentials in the resend
+ * (we never store plaintext passwords, so the original cannot be recovered).
  */
 export async function resendEmailNotification(notificationId: string) {
   await requireAdmin();
   const existing = await prisma.emailNotification.findUnique({
     where: { id: notificationId },
     include: {
-      filing: { select: { id: true, businessName: true, entityType: true, sunbizFilingNumber: true, sunbizTrackingNumber: true, sunbizPin: true, totalCents: true } },
+      filing: {
+        select: {
+          id: true,
+          businessName: true,
+          entityType: true,
+          sunbizFilingNumber: true,
+          sunbizTrackingNumber: true,
+          sunbizPin: true,
+          totalCents: true,
+        },
+      },
       user: { select: { id: true, firstName: true, email: true } },
     },
   });
   if (!existing) throw new Error('Email notification not found');
 
   const type = existing.notificationType as import('@/lib/email').NotificationType;
+  const loginEmail = existing.user?.email ?? existing.recipientEmail;
+  const filingUrl = existing.filingId
+    ? `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com'}/dashboard/filings/${existing.filingId}`
+    : undefined;
+
+  let tempPassword: string | undefined;
+  // WELCOME with credentials: always issue a fresh temp password on resend so
+  // the customer can sign in. (Plaintext from the original send is not stored.)
+  if (type === 'WELCOME' && existing.userId) {
+    const { generateReadableTempPassword } = await import('@/lib/temp-password');
+    const bcrypt = (await import('bcryptjs')).default;
+    tempPassword = generateReadableTempPassword();
+    await prisma.user.update({
+      where: { id: existing.userId },
+      data: { passwordHash: await bcrypt.hash(tempPassword, 10) },
+    });
+  }
+
   const result = await sendEmail({
     type,
     to: existing.recipientEmail,
@@ -342,7 +374,9 @@ export async function resendEmailNotification(notificationId: string) {
       filingNumber: existing.filing?.sunbizFilingNumber ?? undefined,
       trackingNumber: existing.filing?.sunbizTrackingNumber ?? undefined,
       pin: existing.filing?.sunbizPin ?? undefined,
-      loginEmail: existing.user?.email ?? existing.recipientEmail,
+      loginEmail,
+      tempPassword,
+      resumeUrl: filingUrl,
     },
   });
 

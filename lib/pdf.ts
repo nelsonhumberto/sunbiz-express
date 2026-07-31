@@ -14,7 +14,7 @@ import {
   type StateCode,
 } from './formation-states';
 
-interface FilingForDoc {
+export interface FilingForDoc {
   id: string;
   businessName: string;
   entityType: 'LLC' | 'CORP';
@@ -99,28 +99,29 @@ function ruleFor(filing: FilingForDoc): FormationStateRule {
 
 function docShell(title: string, body: string) {
   return `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title><style>
-    @page { size: letter; margin: 1in; }
-    body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; line-height: 1.6; color: #0F1F1C; max-width: 8.5in; margin: 1in auto; padding: 0 1in; background: #fff; }
-    h1 { font-size: 18pt; text-align: center; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; font-weight: bold; }
-    h2 { font-size: 13pt; text-align: center; margin: 0 0 32px; font-weight: normal; font-style: italic; }
-    h3 { font-size: 13pt; margin: 24px 0 8px; font-weight: bold; border-bottom: 1px solid #0F1F1C; padding-bottom: 4px; }
-    p { margin: 8px 0; }
-    .article { margin: 16px 0; }
-    .article-title { font-weight: bold; }
-    .signature-block { margin-top: 48px; padding-top: 24px; border-top: 1px solid #475A56; }
-    .signature-line { display: flex; justify-content: space-between; margin: 24px 0 4px; }
-    .signature-name { font-family: 'Brush Script MT', cursive; font-size: 18pt; color: #0B7A6B; }
-    .filing-stamp { float: right; border: 2px solid #0B7A6B; padding: 8px 16px; font-family: 'Inter', sans-serif; color: #0B7A6B; font-size: 9pt; transform: rotate(-3deg); margin-bottom: 16px; }
-    .filing-stamp h4 { margin: 0; font-size: 10pt; }
-    .pending-badge { float: right; border: 1px dashed #B45309; padding: 6px 12px; font-family: 'Inter', sans-serif; color: #B45309; background: #FEF3C7; font-size: 9pt; margin-bottom: 16px; max-width: 220px; }
-    .pending-badge strong { display: block; font-size: 10pt; }
-    .legend { font-size: 9pt; color: #475A56; margin: 4px 0 12px; font-style: italic; }
-    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-    td { padding: 6px 8px; vertical-align: top; }
-    .label { font-weight: bold; width: 30%; }
-    .footer-note { margin-top: 32px; font-size: 9pt; color: #475A56; text-align: center; font-style: italic; }
-    .seal { display: block; margin: 16px auto; width: 96px; height: 96px; border: 3px double #0B7A6B; border-radius: 50%; text-align: center; line-height: 1.3; padding: 16px 8px; font-size: 8pt; color: #0B7A6B; font-weight: bold; }
-    .gold-border { border: 2px solid #D4AF37; padding: 12px; }
+    @page { size: letter; margin: 0.85in; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; line-height: 1.45; color: #111; max-width: 7.5in; margin: 0.75in auto; padding: 0; background: #fff; }
+    h1 { font-size: 15pt; text-align: center; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 6px; font-weight: bold; }
+    h2 { font-size: 11pt; text-align: center; margin: 0 0 18px; font-weight: normal; font-style: italic; color: #333; }
+    .entity-name { text-align: center; font-weight: bold; font-size: 13pt; margin: 10px 0 4px; letter-spacing: 0.01em; }
+    .preamble { margin: 0 0 18px; text-align: justify; }
+    section.article { margin: 0 0 14px; page-break-inside: avoid; break-inside: avoid; }
+    h3 { font-size: 11.5pt; margin: 0 0 6px; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 3px; text-transform: none; }
+    p { margin: 6px 0; text-align: justify; }
+    .signature-block { margin-top: 28px; padding-top: 16px; border-top: 1px solid #444; page-break-inside: avoid; break-inside: avoid; }
+    .signature-line { display: flex; justify-content: space-between; margin: 18px 0 4px; gap: 24px; }
+    .signature-name { font-family: 'Times New Roman', Times, serif; font-size: 12pt; font-weight: bold; color: #111; text-decoration: underline; text-underline-offset: 4px; }
+    .ra-signature-label { font-size: 10.5pt; margin-top: 4px; }
+    .filing-stamp { float: right; border: 1.5px solid #0B7A6B; padding: 8px 12px; font-family: Georgia, serif; color: #0B7A6B; font-size: 8.5pt; margin: 0 0 12px 16px; max-width: 200px; }
+    .filing-stamp h4 { margin: 0 0 2px; font-size: 10pt; letter-spacing: 0.06em; }
+    .pending-badge { float: right; border: 1px solid #9A6B2F; padding: 6px 10px; font-family: Georgia, serif; color: #7A4E14; background: #FFF8EB; font-size: 8.5pt; margin: 0 0 12px 16px; max-width: 210px; }
+    .pending-badge strong { display: block; font-size: 9.5pt; letter-spacing: 0.04em; }
+    .legend { font-size: 9pt; color: #444; margin: 4px 0 8px; font-style: italic; text-align: left; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+    td { padding: 5px 6px; vertical-align: top; border-bottom: 1px solid #e6e6e6; }
+    .label { font-weight: bold; width: 32%; border-bottom: none; }
+    .footer-note { margin-top: 24px; font-size: 8.5pt; color: #555; text-align: center; font-style: italic; }
+    .acceptance { font-size: 10.5pt; font-style: italic; margin-top: 12px; text-align: justify; }
   </style></head><body>${body}</body></html>`;
 }
 
@@ -231,13 +232,17 @@ function raAcceptanceBlock(
   if (!ra) return '';
   const date = ra.signedAt ? formatDateLong(new Date(ra.signedAt)) : 'Date of filing';
   if (ra.useOurService) {
-    // When LaunchForma is the registered agent, the executed Articles show the
-    // RA entity name as the signature — nothing else.
+    // Florida DOS: when the registered agent is an entity, a principal of that
+    // entity must sign. Format requested for LaunchForma filings:
+    // "Registered Agent Signature: Nelson Medina, LaunchForma LLC"
+    const officer = rule.registeredAgent.signingOfficerName;
+    const entity = rule.registeredAgent.name;
+    const line = `${officer}, ${entity}`;
     return `
       <div class="signature-line">
         <span>
-          <span class="signature-name">${escapeHtml(rule.registeredAgent.name)}</span>
-          <br/>Registered Agent's Signature (REQUIRED)
+          <div class="ra-signature-label">Registered Agent Signature:</div>
+          <span class="signature-name">${escapeHtml(line)}</span>
         </span>
         <span>Date: ${date}</span>
       </div>
@@ -246,8 +251,8 @@ function raAcceptanceBlock(
   return `
     <div class="signature-line">
       <span>
+        <div class="ra-signature-label">Registered Agent Signature:</div>
         <span class="signature-name">${escapeHtml(ra.signature ?? ra.name)}</span>
-        <br/>Registered Agent's Signature (REQUIRED)
       </span>
       <span>Date: ${date}</span>
     </div>
@@ -267,101 +272,110 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
       : filing.mailingAddress;
   const opt = filing.optionalDetails;
 
-  // Authorized-persons table (Article IV) — the section is OPTIONAL on
-  // CR2E047, but most banks and the Department of Financial Services rely on
-  // it, so we render whatever the user supplied.
-  const authorizedPersonsLegend =
+  // Article IV — optional under s. 605.0201 / CR2E047, but banks and DFS
+  // typically require managers / authorized representatives on the public record.
+  // Heading follows current Florida DOS language ("Managers and Authorized
+  // Representatives"), not the colloquial "Authorized Persons."
+  const managementLegend =
     rule.code === 'FL'
-      ? 'Title key — AMBR: Authorized Member · MGR: Manager · MGRM: Managing Member.'
-      : 'Title key — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member · OFFICER: Officer.';
-  // Delaware lets LLCs withhold initial member info from the publicly-filed
-  // Certificate of Formation. When the customer opted out (default), we
-  // replace the table with a privacy notice so the document still flags the
-  // choice but doesn't expose member identities to the public record.
+      ? 'Title abbreviations — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member (management).'
+      : 'Title abbreviations — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member · OFFICER: Officer.';
   const deWithholdsMembers = rule.code === 'DE' && opt?.includeMembersOnArticles !== true;
-  const authorizedPersons = deWithholdsMembers
+  const managementBlock = deWithholdsMembers
     ? `<p><em>Initial member information is intentionally omitted from this Certificate of Formation, as permitted under ${escapeHtml(rule.statuteReferences.llc)}. Member records are maintained at the Limited Liability Company's principal office.</em></p>`
     : filing.managersMembers.length > 0
       ? `<table>
           <tr><td class="label">Title</td><td class="label">Name</td><td class="label">Address</td></tr>
           ${filing.managersMembers.map((m) => renderMemberRow(m)).join('')}
         </table>
-        <p class="legend">${escapeHtml(authorizedPersonsLegend)}</p>`
-      : `<p><em>No authorized persons listed at filing. (Optional under ${escapeHtml(rule.statuteReferences.llc)} — most banks require this section to open accounts.)</em></p>`;
+        <p class="legend">${escapeHtml(managementLegend)}</p>`
+      : `<p><em>None designated at formation. Optional under ${escapeHtml(rule.statuteReferences.llc)}; financial institutions often require this information on the public record.</em></p>`;
 
   const otherProvisions = opt?.businessPurpose
-    ? `<h3>Article VI — Other Provisions</h3><p>${escapeHtml(opt.businessPurpose)}</p>`
+    ? `<section class="article"><h3>Article VI — Additional Provisions</h3><p>${escapeHtml(opt.businessPurpose)}</p></section>`
     : '';
 
-  // Wyoming-only block: organizer email + electronic-service consent are
-  // required on the Articles of Organization per the WY Sec. of State form.
   const wyExtras =
     rule.code === 'WY'
       ? `
-        <h3>Article VII — Organizer Email &amp; Electronic Service of Process</h3>
-        <table>
-          <tr><td class="label">Organizer Email</td><td>${escapeHtml(opt?.organizerEmail ?? '')}</td></tr>
-          <tr><td class="label">Electronic Service Consent</td><td>${opt?.electronicServiceConsent ? 'YES — Organizer consents to electronic service of process by the Wyoming Secretary of State.' : 'NO — Organizer has not consented.'}</td></tr>
-        </table>
+        <section class="article">
+          <h3>Article VII — Organizer Email &amp; Electronic Service of Process</h3>
+          <table>
+            <tr><td class="label">Organizer Email</td><td>${escapeHtml(opt?.organizerEmail ?? '')}</td></tr>
+            <tr><td class="label">Electronic Service Consent</td><td>${opt?.electronicServiceConsent ? 'YES — Organizer consents to electronic service of process by the Wyoming Secretary of State.' : 'NO — Organizer has not consented.'}</td></tr>
+          </table>
+        </section>
       `
       : '';
 
-  const officeLabel = rule.code === 'DE' ? "Registered Office" : "Registered Office";
   const html = `
     ${filingStatusHeader(filing)}
     <h1>${escapeHtml(docTitle)}</h1>
-    <h2>For ${escapeHtml(rule.name)} Limited Liability Company</h2>
-    <p>Pursuant to ${escapeHtml(rule.statuteReferences.llc)}, the undersigned, desiring to form a limited liability company under the laws of the State of ${escapeHtml(rule.name)}, hereby submits the following ${escapeHtml(docTitle)}:</p>
+    <h2>State of ${escapeHtml(rule.name)} · Limited Liability Company</h2>
+    <p class="preamble">The undersigned, acting as an authorized representative under ${escapeHtml(rule.statuteReferences.llc)}, hereby forms a limited liability company and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>
 
-    <h3>Article I — Name</h3>
-    <p>The name of the limited liability company is:</p>
-    <p style="text-align:center; font-weight:bold; font-size:14pt;">${escapeHtml(filing.businessName)}</p>
+    <section class="article">
+      <h3>Article I — Name of Limited Liability Company</h3>
+      <p>The name of the limited liability company is:</p>
+      <p class="entity-name">${escapeHtml(filing.businessName)}</p>
+    </section>
 
-    <h3>Article II — Address</h3>
-    <table>
-      <tr>
-        <td class="label">Principal Office Address</td>
-        <td>${addressLines(principal)}</td>
-      </tr>
-      <tr>
-        <td class="label">Mailing Address</td>
-        <td>${addressLines(mailing)}</td>
-      </tr>
-    </table>
+    <section class="article">
+      <h3>Article II — Principal Office and Mailing Address</h3>
+      <table>
+        <tr>
+          <td class="label">Principal Office Address</td>
+          <td>${addressLines(principal)}</td>
+        </tr>
+        <tr>
+          <td class="label">Mailing Address</td>
+          <td>${addressLines(mailing)}</td>
+        </tr>
+      </table>
+    </section>
 
-    <h3>Article III — Registered Agent, ${escapeHtml(officeLabel)}, &amp; Registered Agent's Signature</h3>
-    <p>The Limited Liability Company cannot serve as its own Registered Agent. The name and the ${escapeHtml(rule.name)} street address of the registered agent are:</p>
-    <table>
-      <tr><td class="label">Name</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
-      <tr><td class="label">${escapeHtml(rule.name)} Street Address</td><td>${addressLines(ra)}</td></tr>
-    </table>
-    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated limited liability company at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.llc)}.</em></p>
-    ${raAcceptanceBlock(ra, rule)}
+    <section class="article">
+      <h3>Article III — Registered Agent and Registered Office</h3>
+      <p>The limited liability company cannot serve as its own registered agent. The name and ${escapeHtml(rule.name)} street address of the initial registered agent are:</p>
+      <table>
+        <tr><td class="label">Registered Agent</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
+        <tr><td class="label">Registered Office</td><td>${addressLines(ra)}</td></tr>
+      </table>
+      <p class="acceptance">Having been named as registered agent and to accept service of process for the above-stated limited liability company at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.llc)}.</p>
+      ${raAcceptanceBlock(ra, rule)}
+    </section>
 
-    <h3>Article IV — Authorized Persons</h3>
-    <p>The name and address of each person authorized to manage and control the Limited Liability Company:</p>
-    ${authorizedPersons}
+    <section class="article">
+      <h3>Article IV — Managers and Authorized Representatives</h3>
+      <p>The name and address of each person authorized to manage and control the Limited Liability Company:</p>
+      ${managementBlock}
+    </section>
 
-    <h3>Article V — Effective Date</h3>
-    <p>${
-      opt?.effectiveDate
-        ? formatDateLong(new Date(opt.effectiveDate))
-        : 'Effective on the date of filing.'
-    }</p>
+    <section class="article">
+      <h3>Article V — Effective Date</h3>
+      <p>${
+        opt?.effectiveDate
+          ? formatDateLong(new Date(opt.effectiveDate))
+          : 'Effective upon filing by the Department of State.'
+      }</p>
+    </section>
 
     ${otherProvisions}
     ${wyExtras}
 
     <div class="signature-block">
-      <p><strong>Required Signature — Signature of a member or an authorized representative of a member:</strong></p>
+      <p><strong>Required signature.</strong> Signature of a member or an authorized representative of a member, pursuant to ${escapeHtml(rule.statuteReferences.llc)}:</p>
       <div class="signature-line">
-        <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
+        <span>
+          <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
+          <div class="ra-signature-label">Typed / electronic signature</div>
+        </span>
         <span>Date: ${filing.incorporatorSignedAt ? formatDateLong(filing.incorporatorSignedAt) : 'Date of filing'}</span>
       </div>
-      <p style="font-size:9pt; color:#475A56;">The undersigned is aware that any false information submitted in a document to the State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
+      <p class="legend">I am aware that any false information submitted in a document to the Department of State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
     </div>
 
-    <p class="footer-note">Filed pursuant to ${escapeHtml(rule.statuteReferences.llc)} — ${escapeHtml(rule.filingMailingAddress.label)}.</p>
+    <p class="footer-note">${escapeHtml(docTitle)} · ${escapeHtml(rule.statuteReferences.llc)} · ${escapeHtml(rule.filingMailingAddress.label)}</p>
   `;
   return docShell(docTitle, html);
 }
@@ -414,56 +428,75 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
   const html = `
     ${filingStatusHeader(filing)}
     <h1>${escapeHtml(docTitle)}</h1>
-    <h2>For ${escapeHtml(rule.name)} ${rule.code === 'DE' ? 'Stock Corporation' : 'Profit Corporation'}</h2>
-    <p>Pursuant to ${escapeHtml(rule.statuteReferences.corp)}, the undersigned, acting as incorporator, hereby submits this ${escapeHtml(docTitle)}:</p>
+    <h2>State of ${escapeHtml(rule.name)} · ${rule.code === 'DE' ? 'Stock Corporation' : 'Profit Corporation'}</h2>
+    <p class="preamble">The undersigned, acting as incorporator under ${escapeHtml(rule.statuteReferences.corp)}, hereby forms a corporation and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>
 
-    <h3>Article I — Name</h3>
-    <p style="text-align:center; font-weight:bold; font-size:14pt;">${escapeHtml(filing.businessName)}</p>
+    <section class="article">
+      <h3>Article I — Corporate Name</h3>
+      <p class="entity-name">${escapeHtml(filing.businessName)}</p>
+    </section>
 
-    <h3>Article II — Principal Office and Mailing Address</h3>
-    <table>
-      <tr><td class="label">Principal Office</td><td>${addressLines(principal)}</td></tr>
-      <tr><td class="label">Mailing Address</td><td>${addressLines(mailing)}</td></tr>
-    </table>
+    <section class="article">
+      <h3>Article II — Principal Office and Mailing Address</h3>
+      <table>
+        <tr><td class="label">Principal Office</td><td>${addressLines(principal)}</td></tr>
+        <tr><td class="label">Mailing Address</td><td>${addressLines(mailing)}</td></tr>
+      </table>
+    </section>
 
-    <h3>Article III — Purpose</h3>
-    <p>${purpose}</p>
+    <section class="article">
+      <h3>Article III — Purpose</h3>
+      <p>${purpose}</p>
+    </section>
 
-    <h3>Article IV — Capital Stock</h3>
-    <p>The number of shares of stock that this corporation is authorized to issue is: <strong>${authorizedShares}</strong> shares of common stock, all of one class.${parValueClause}</p>
+    <section class="article">
+      <h3>Article IV — Authorized Shares</h3>
+      <p>The corporation is authorized to issue <strong>${authorizedShares}</strong> shares of common stock, all of one class.${parValueClause}</p>
+    </section>
 
-    <h3>Article V — Initial Officers and/or Directors</h3>
-    ${officersBlock}
+    <section class="article">
+      <h3>Article V — Initial Officers and Directors</h3>
+      ${officersBlock}
+    </section>
 
-    <h3>Article VI — Registered Agent, Registered Office, &amp; Registered Agent's Signature</h3>
-    <p>The Corporation cannot serve as its own Registered Agent. The name and the ${escapeHtml(rule.name)} street address of the registered agent are:</p>
-    <table>
-      <tr><td class="label">Name</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
-      <tr><td class="label">${escapeHtml(rule.name)} Street Address</td><td>${addressLines(ra)}</td></tr>
-    </table>
-    <p style="margin-top:16px;"><em>Having been named as registered agent and to accept service of process for the above stated corporation at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.corp)}.</em></p>
-    ${raAcceptanceBlock(ra, rule)}
+    <section class="article">
+      <h3>Article VI — Registered Agent and Registered Office</h3>
+      <p>The corporation cannot serve as its own registered agent. The name and ${escapeHtml(rule.name)} street address of the initial registered agent are:</p>
+      <table>
+        <tr><td class="label">Registered Agent</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
+        <tr><td class="label">Registered Office</td><td>${addressLines(ra)}</td></tr>
+      </table>
+      <p class="acceptance">Having been named as registered agent and to accept service of process for the above-stated corporation at the place designated in this certificate, I hereby accept the appointment as registered agent and agree to act in this capacity. I further agree to comply with the provisions of all statutes relating to the proper and complete performance of my duties, and I am familiar with and accept the obligations of my position as registered agent as provided for in ${escapeHtml(rule.statuteReferences.corp)}.</p>
+      ${raAcceptanceBlock(ra, rule)}
+    </section>
 
-    <h3>Article VII — Effective Date</h3>
-    <p>${
-      opt?.effectiveDate
-        ? formatDateLong(new Date(opt.effectiveDate))
-        : 'Effective on the date of filing.'
-    }</p>
+    <section class="article">
+      <h3>Article VII — Effective Date</h3>
+      <p>${
+        opt?.effectiveDate
+          ? formatDateLong(new Date(opt.effectiveDate))
+          : 'Effective upon filing by the Department of State.'
+      }</p>
+    </section>
 
-    <h3>Article VIII — Incorporator</h3>
-    <p>The name and address of the incorporator is: <strong>${escapeHtml(filing.incorporatorSignature ?? 'Authorized Person')}</strong>${principal ? `, ${escapeHtml([principal.street1, principal.city, principal.state, principal.zip].filter(Boolean).join(', '))}` : ''}.</p>
+    <section class="article">
+      <h3>Article VIII — Incorporator</h3>
+      <p>The name and address of the incorporator is: <strong>${escapeHtml(filing.incorporatorSignature ?? '')}</strong>${principal ? `, ${escapeHtml([principal.street1, principal.city, principal.state, principal.zip].filter(Boolean).join(', '))}` : ''}.</p>
+    </section>
 
     <div class="signature-block">
-      <p><strong>Required Signature — Incorporator:</strong></p>
+      <p><strong>Required signature — Incorporator:</strong></p>
       <div class="signature-line">
-        <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
+        <span>
+          <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
+          <div class="ra-signature-label">Typed / electronic signature</div>
+        </span>
         <span>Date: ${filing.incorporatorSignedAt ? formatDateLong(filing.incorporatorSignedAt) : 'Date of filing'}</span>
       </div>
-      <p style="font-size:9pt; color:#475A56;">The undersigned is aware that any false information submitted in a document to the State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
+      <p class="legend">I am aware that any false information submitted in a document to the Department of State constitutes a criminal offense under ${escapeHtml(rule.name)} law.</p>
     </div>
 
-    <p class="footer-note">Filed pursuant to ${escapeHtml(rule.statuteReferences.corp)} — ${escapeHtml(rule.filingMailingAddress.label)}.</p>
+    <p class="footer-note">${escapeHtml(docTitle)} · ${escapeHtml(rule.statuteReferences.corp)} · ${escapeHtml(rule.filingMailingAddress.label)}</p>
   `;
   return docShell(docTitle, html);
 }

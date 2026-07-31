@@ -1092,7 +1092,18 @@
     "officersTitle": "Officers & Directors",
     "principalAddress": "Principal address",
     "payment": "Payment",
-    "noPayments": "No payments yet."
+    "noPayments": "No payments yet.",
+    "fileCompanyTitle": "File with Sunbiz",
+    "fileCompanyDesc": "Two-step filing package: upload the Sunbiz cover page, then merge it with the Articles and download for review. Faxing comes next.",
+    "fileCompanyStep1": "Upload the 1-page Sunbiz cover page PDF (generated on Sunbiz).",
+    "fileCompanyStep2": "Merge cover page + Articles and download the package (fax later).",
+    "fileCompanyUploadCover": "Upload cover page",
+    "fileCompanyButton": "FILE the company",
+    "fileCompanyDownloadHint": "Downloads the merged PDF only — does not fax yet.",
+    "fileCompanyCoverReady": "Cover page ready",
+    "fileCompanyCoverNeeded": "Cover page needed",
+    "fileCompanyCoverUploaded": "Sunbiz cover page uploaded.",
+    "fileCompanyCoverMustBePdf": "Cover page must be a PDF."
   },
   "documentTypes": {
     "ARTICLES_ORG": "Articles of Organization",
@@ -1100,6 +1111,8 @@
     "OPERATING_AGREEMENT": "Operating Agreement",
     "COVER_LETTER": "Cover Letter",
     "COVER_LETTER_ADMIN": "Cover Letter (admin only)",
+    "SUNBIZ_COVER_PAGE": "Sunbiz Cover Page",
+    "FILE_PACKAGE": "Sunbiz File Package",
     "EIN_LETTER": "EIN Letter",
     "CERT_STATUS": "Certificate of Status",
     "CERT_COPY": "Certified Copy",

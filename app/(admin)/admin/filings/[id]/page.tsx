@@ -33,6 +33,7 @@ import {
 import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
 import { AdminApprovalForm } from './approval-form';
 import { AdminUploadForm } from './upload-form';
+import { FileCompanyPanel } from './file-company-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,8 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     ARTICLES_INC: tDocs('ARTICLES_INC'),
     OPERATING_AGREEMENT: tDocs('OPERATING_AGREEMENT'),
     COVER_LETTER: tDocs('COVER_LETTER_ADMIN'),
+    SUNBIZ_COVER_PAGE: tDocs('SUNBIZ_COVER_PAGE'),
+    FILE_PACKAGE: tDocs('FILE_PACKAGE'),
     EIN_LETTER: tDocs('EIN_LETTER'),
     CERT_STATUS: tDocs('CERT_STATUS'),
     CERT_COPY: tDocs('CERT_COPY'),
@@ -400,6 +403,25 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                   )}
                 </ul>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Sunbiz FILE workflow: cover page upload → merge + download */}
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-ink-subtle flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                {t('fileCompanyTitle')}
+              </h3>
+              <FileCompanyPanel
+                filingId={filing.id}
+                hasCoverPage={filing.documents.some(
+                  (d) => d.documentType === 'SUNBIZ_COVER_PAGE' && !!d.base64,
+                )}
+                coverTitle={
+                  filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE')?.title
+                }
+              />
             </CardContent>
           </Card>
 

@@ -3,11 +3,15 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { decodeDocument } from '@/lib/pdf';
 import { htmlDocumentToPdf, pdfFilename } from '@/lib/html-to-pdf';
+import { renderArticlesHtml } from '@/lib/filing-documents';
 import {
   filingHasOperatingAgreement,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+
+const ARTICLES_TYPES = new Set(['ARTICLES_ORG', 'ARTICLES_INC']);
+const ADMIN_ONLY_TYPES = new Set(['COVER_LETTER', 'SUNBIZ_COVER_PAGE', 'FILE_PACKAGE']);
 
 function isPdfMime(mime: string | null | undefined): boolean {
   return (mime || '').toLowerCase().includes('pdf');
@@ -44,11 +48,10 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Cover letters are admin-only — they accompany the Articles to the state
-  // and contain our internal handling info, not a customer deliverable.
-  if (doc.documentType === 'COVER_LETTER' && !isAdmin) {
+  // Cover letters / Sunbiz cover pages / file packages are admin-only.
+  if (ADMIN_ONLY_TYPES.has(doc.documentType) && !isAdmin) {
     return NextResponse.json(
-      { error: 'Forbidden', message: 'Cover letters are reserved for our filing team.' },
+      { error: 'Forbidden', message: 'This document is reserved for our filing team.' },
       { status: 403 },
     );
   }
@@ -94,6 +97,35 @@ export async function GET(
     }
   }
 
+  // Articles regenerate from live filing data so template fixes (Article IV
+  // title, RA signature, layout) apply without re-submitting.
+  if (ARTICLES_TYPES.has(doc.documentType)) {
+    try {
+      const html = renderArticlesHtml(doc.filing);
+      const pdfBytes = await htmlDocumentToPdf(html, doc.title);
+      await prisma.document.update({
+        where: { id: doc.id },
+        data: {
+          downloadedCount: { increment: 1 },
+          lastDownloadedAt: new Date(),
+        },
+      });
+      return new NextResponse(Buffer.from(pdfBytes), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${pdfFilename(doc.title)}"`,
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    } catch (err) {
+      console.error('[documents] Articles PDF failed', doc.id, err);
+      return NextResponse.json(
+        { error: 'pdf_failed', message: 'Could not generate PDF for this document.' },
+        { status: 500 },
+      );
+    }
+  }
+
   if (!doc.base64) {
     return NextResponse.json(
       { error: 'empty', message: 'This document has no file yet.' },
@@ -123,8 +155,7 @@ export async function GET(
     });
   }
 
-  // Generated Articles / Receipt / OA / Form 2553 are stored as HTML — convert
-  // on the fly so the customer always downloads a real PDF.
+  // Receipt / OA / Form 2553 stored as HTML — convert on the fly.
   if (isHtmlMime(doc.mimeType) || rawBytes.subarray(0, 15).toString('utf-8').includes('<')) {
     try {
       const html = decodeDocument(doc.base64);

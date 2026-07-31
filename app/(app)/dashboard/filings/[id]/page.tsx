@@ -90,6 +90,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
     });
   const visibleDocuments = filing.documents.filter((d) => {
     if (d.documentType === 'COVER_LETTER') return false;
+    if (d.documentType === 'SUNBIZ_COVER_PAGE' || d.documentType === 'FILE_PACKAGE') return false;
     if (d.documentType === 'OPERATING_AGREEMENT' && !oaEntitled) return false;
     return true;
   });

@@ -1092,7 +1092,18 @@
     "officersTitle": "Oficiales y Directores",
     "principalAddress": "Domicilio principal",
     "payment": "Pago",
-    "noPayments": "Aún no hay pagos."
+    "noPayments": "Aún no hay pagos.",
+    "fileCompanyTitle": "Presentar en Sunbiz",
+    "fileCompanyDesc": "Paquete en dos pasos: sube la portada de Sunbiz, luego combínala con los Artículos y descarga para revisar. El fax viene después.",
+    "fileCompanyStep1": "Sube el PDF de 1 página de la portada de Sunbiz (generada en Sunbiz).",
+    "fileCompanyStep2": "Combina portada + Artículos y descarga el paquete (fax más adelante).",
+    "fileCompanyUploadCover": "Subir portada",
+    "fileCompanyButton": "PRESENTAR la compañía",
+    "fileCompanyDownloadHint": "Solo descarga el PDF combinado — aún no envía fax.",
+    "fileCompanyCoverReady": "Portada lista",
+    "fileCompanyCoverNeeded": "Falta la portada",
+    "fileCompanyCoverUploaded": "Portada de Sunbiz subida.",
+    "fileCompanyCoverMustBePdf": "La portada debe ser un PDF."
   },
   "documentTypes": {
     "ARTICLES_ORG": "Artículos de Organización",
@@ -1100,6 +1111,8 @@
     "OPERATING_AGREEMENT": "Acuerdo Operativo",
     "COVER_LETTER": "Carta de presentación",
     "COVER_LETTER_ADMIN": "Carta de presentación (solo admin)",
+    "SUNBIZ_COVER_PAGE": "Portada de Sunbiz",
+    "FILE_PACKAGE": "Paquete de presentación Sunbiz",
     "EIN_LETTER": "Carta de EIN",
     "CERT_STATUS": "Certificado de Buen Estado",
     "CERT_COPY": "Copia Certificada",

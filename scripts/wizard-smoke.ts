@@ -296,7 +296,7 @@ const baseFiling = {
 
 {
   // LLC Articles ordering must match Florida CR2E047:
-  //   I Name → II Address → III Registered Agent → IV Authorized Persons →
+  //   I Name → II Address → III Registered Agent → IV Managers/Auth Reps →
   //   V Effective Date → VI Other Provisions
   const html = generateArticlesOfOrganization(baseFiling);
   const articleOrderRe =
@@ -313,8 +313,18 @@ const baseFiling = {
     true,
   );
   check(
+    'LLC Article IV uses Managers and Authorized Representatives heading',
+    /Article IV — Managers and Authorized Representatives/.test(html),
+    true,
+  );
+  check(
     'LLC Article IV legend explains AMBR/MGR/MGRM',
-    /Title key[\s\S]*AMBR[\s\S]*MGR[\s\S]*MGRM/.test(html),
+    /Title abbreviations[\s\S]*MGR[\s\S]*MGRM[\s\S]*AMBR/.test(html),
+    true,
+  );
+  check(
+    'LLC Articles do not use colloquial Authorized Persons heading',
+    !/Article IV — Authorized Persons/.test(html),
     true,
   );
 }
@@ -374,13 +384,12 @@ const baseFiling = {
 }
 
 {
-  // RA "use us" path: customer never types a signature. The Articles should
-  // print our entity name + internal officer countersignature instead, with
-  // no customer-typed value bleeding through.
+  // RA "use us" path: customer never types a signature. Articles show
+  // "Registered Agent Signature: Nelson Medina, LaunchForma LLC" (FL profile).
   const html = generateArticlesOfOrganization(baseFiling);
   check(
-    'Internal RA signature renders entity name + officer',
-    /LaunchForma RA Services LLC, by [A-Z]/.test(html),
+    'Internal RA signature is Nelson Medina, LaunchForma LLC',
+    /Registered Agent Signature:[\s\S]*Nelson Medina, LaunchForma LLC/.test(html),
     true,
   );
 }
@@ -406,9 +415,9 @@ const baseFiling = {
     true,
   );
   check(
-    'External RA: no internal-officer countersignature',
-    /, by Maria Acosta/.test(html),
-    false,
+    'External RA: no LaunchForma officer signature',
+    !html.includes('Nelson Medina, LaunchForma LLC'),
+    true,
   );
 }
 

@@ -418,8 +418,8 @@ const FLORIDA_RULE: FormationStateRule = {
   },
   registeredAgent: {
     name: 'LaunchForma LLC',
-    signingOfficerName: 'Maria Acosta',
-    signingOfficerTitle: 'Authorized Signer',
+    signingOfficerName: 'Nelson Medina',
+    signingOfficerTitle: 'Authorized Officer',
     email: 'agent@launchforma.com',
     phone: '+1 (305) 555-0100',
     street1: '14160 Palmetto Frontage Road',

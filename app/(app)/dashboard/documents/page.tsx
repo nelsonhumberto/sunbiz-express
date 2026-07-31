@@ -122,9 +122,9 @@ export default async function DocumentsPage() {
                       </li>
                     ) : (
                       <li key={doc.id}>
-                        <Link
+                        <a
                           href={`/api/documents/${doc.id}`}
-                          target="_blank"
+                          download
                           className="flex items-center gap-4 px-6 py-3.5 hover:bg-muted/30 transition-colors"
                         >
                           <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -137,7 +137,7 @@ export default async function DocumentsPage() {
                             </p>
                           </div>
                           <Download className="h-4 w-4 text-ink-subtle" />
-                        </Link>
+                        </a>
                       </li>
                     ),
                   )}

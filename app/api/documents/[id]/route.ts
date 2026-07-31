@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { decodeDocument } from '@/lib/pdf';
+import { htmlDocumentToPdf, pdfFilename } from '@/lib/html-to-pdf';
 import {
   filingHasOperatingAgreement,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+
+function isPdfMime(mime: string | null | undefined): boolean {
+  return (mime || '').toLowerCase().includes('pdf');
+}
+
+function isHtmlMime(mime: string | null | undefined): boolean {
+  const m = (mime || '').toLowerCase();
+  return m.includes('html') || m.includes('text/plain') || m === '';
+}
 
 export async function GET(
   _req: NextRequest,
@@ -84,6 +94,13 @@ export async function GET(
     }
   }
 
+  if (!doc.base64) {
+    return NextResponse.json(
+      { error: 'empty', message: 'This document has no file yet.' },
+      { status: 404 },
+    );
+  }
+
   await prisma.document.update({
     where: { id: doc.id },
     data: {
@@ -92,11 +109,49 @@ export async function GET(
     },
   });
 
-  const body = decodeDocument(doc.base64);
-  return new NextResponse(body, {
+  const filename = pdfFilename(doc.title);
+  const rawBytes = Buffer.from(doc.base64, 'base64');
+
+  // Already a PDF (admin-uploaded Cert of Status / EIN letter / etc.)
+  if (isPdfMime(doc.mimeType) || rawBytes.subarray(0, 4).toString('utf-8') === '%PDF') {
+    return new NextResponse(rawBytes, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
+
+  // Generated Articles / Receipt / OA / Form 2553 are stored as HTML — convert
+  // on the fly so the customer always downloads a real PDF.
+  if (isHtmlMime(doc.mimeType) || rawBytes.subarray(0, 15).toString('utf-8').includes('<')) {
+    try {
+      const html = decodeDocument(doc.base64);
+      const pdfBytes = await htmlDocumentToPdf(html, doc.title);
+      return new NextResponse(Buffer.from(pdfBytes), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    } catch (err) {
+      console.error('[documents] HTML→PDF failed', doc.id, err);
+      return NextResponse.json(
+        { error: 'pdf_failed', message: 'Could not generate PDF for this document.' },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Unknown binary — still force download rather than inline HTML.
+  const safeExt = isPdfMime(doc.mimeType) ? 'pdf' : 'bin';
+  return new NextResponse(rawBytes, {
     headers: {
-      'Content-Type': doc.mimeType,
-      'Content-Disposition': `inline; filename="${doc.title}.html"`,
+      'Content-Type': doc.mimeType || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${pdfFilename(doc.title).replace(/\.pdf$/i, `.${safeExt}`)}"`,
+      'Cache-Control': 'private, no-store',
     },
   });
 }

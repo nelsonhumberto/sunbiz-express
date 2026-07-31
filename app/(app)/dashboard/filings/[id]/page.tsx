@@ -431,9 +431,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
                     </li>
                   ) : (
                     <li key={doc.id}>
-                      <Link
+                      <a
                         href={`/api/documents/${doc.id}`}
-                        target="_blank"
+                        download
                         className="flex items-center gap-3 px-2 py-3 hover:bg-muted/30 rounded-md transition-colors"
                       >
                         <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -444,7 +444,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                           <p className="text-xs text-ink-subtle">{formatDate(doc.generatedAt)}</p>
                         </div>
                         <Download className="h-4 w-4 text-ink-subtle" />
-                      </Link>
+                      </a>
                     </li>
                   ),
                 )}

@@ -148,7 +148,7 @@ export async function POST(
     },
   });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://launchforma.com';
   const mediaUrl = `${siteUrl}/api/admin/fax/media/${fax.id}?t=${accessToken}`;
 
   try {

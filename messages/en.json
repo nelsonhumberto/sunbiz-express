@@ -1107,9 +1107,9 @@
     "fileCompanyCoverUploadedWithEmail": "Cover uploaded — email set to {email}.",
     "fileCompanyCoverMustBePdf": "Cover page must be a PDF.",
     "fileCompanyCoverMustBeFile": "Upload a .html, .htm, .mhtml, or .pdf cover sheet.",
-    "fileCompanyEmailHint": "HTML covers get Email Address filled with {email} ({source}).",
-    "fileCompanyEmailSourceCustomer": "LaunchForma is RA → customer email",
-    "fileCompanyEmailSourceNotice": "external RA → notice@launchforma.com"
+    "fileCompanyEmailHint": "Cover Email Address will be set to {email} ({source}). Prefer .mhtml or .pdf so the barcode is preserved.",
+    "fileCompanyEmailSourceCustomer": "external RA → customer email",
+    "fileCompanyEmailSourceNotice": "LaunchForma is RA → notice@launchforma.com"
   },
   "documentTypes": {
     "ARTICLES_ORG": "Articles of Organization",

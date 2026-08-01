@@ -7,6 +7,7 @@ import { safeParseJson } from '@/lib/utils';
 import {
   detectCoverKind,
   filingUsesOurRa,
+  processSunbizCoverPdf,
   processSunbizCoverUpload,
   resolveSunbizCoverEmail,
 } from '@/lib/sunbiz-cover';
@@ -23,8 +24,9 @@ async function requireAdmin() {
 
 /**
  * Step 1 of the Sunbiz filing workflow: admin uploads the cover sheet from
- * Sunbiz (HTML preferred, also MHTML / PDF). HTML/MHTML are cleaned and the
- * annual-report email blank is filled from the RA choice.
+ * Sunbiz (HTML / MHTML / PDF). Email blank is filled with notice@ when
+ * LaunchForma is RA, otherwise the customer email. PDFs keep the barcode
+ * and lose the blank trailing page; HTML/MHTML keep layout and inline the barcode.
  */
 export async function uploadSunbizCoverPage(args: {
   filingId: string;
@@ -32,6 +34,8 @@ export async function uploadSunbizCoverPage(args: {
   mimeType?: string;
   title?: string;
   filename?: string;
+  /** Optional barcode JPEG base64 from HTML "Save As" _files/idalin.asp */
+  barcodeJpegBase64?: string;
 }) {
   await requireAdmin();
   if (!args.fileBase64 || args.fileBase64.length < 8) {
@@ -70,17 +74,24 @@ export async function uploadSunbizCoverPage(args: {
 
   if (kind === 'html') {
     const rawText = Buffer.from(args.fileBase64, 'base64').toString('utf-8');
+    const barcodeJpeg = args.barcodeJpegBase64
+      ? Buffer.from(args.barcodeJpegBase64, 'base64')
+      : undefined;
     const processed = processSunbizCoverUpload({
       rawText,
       filename,
       email: coverEmail,
+      barcodeJpeg,
     });
     storeBase64 = Buffer.from(processed.html, 'utf-8').toString('base64');
     mimeType = processed.mimeType;
     title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
   } else {
+    const raw = Buffer.from(args.fileBase64, 'base64');
+    const processed = await processSunbizCoverPdf(new Uint8Array(raw), coverEmail);
+    storeBase64 = Buffer.from(processed).toString('base64');
     mimeType = 'application/pdf';
-    title = args.title?.trim() || 'Sunbiz Cover Page (PDF)';
+    title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
   }
 
   const fileSizeBytes = Math.floor((storeBase64.length * 3) / 4);

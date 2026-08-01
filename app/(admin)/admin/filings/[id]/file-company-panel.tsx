@@ -32,44 +32,60 @@ export function FileCompanyPanel({
   const [filename, setFilename] = useState<string | null>(null);
   const [coverReady, setCoverReady] = useState(hasCoverPage);
 
-  const onUpload = async (file: File | null) => {
-    if (!file) {
+  const fileToBase64 = async (file: File) => {
+    const buf = await file.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  };
+
+  const onUpload = async (fileList: FileList | null) => {
+    const files = fileList ? Array.from(fileList) : [];
+    if (!files.length) {
       setFilename(null);
       return;
     }
-    if (file.size > MAX_BYTES) {
+
+    const cover =
+      files.find((f) => /\.(pdf|html?|mhtml|mht)$/i.test(f.name)) || files[0];
+    const barcodeSidecar = files.find(
+      (f) =>
+        /idalin/i.test(f.name) ||
+        (f.type.startsWith('image/') && f.name.toLowerCase().endsWith('.asp')) ||
+        /\.(jpe?g|png)$/i.test(f.name),
+    );
+
+    if (cover.size > MAX_BYTES) {
       toast.error(t('uploadFailedTooLarge', { mb: MAX_BYTES / 1024 / 1024 }));
       return;
     }
-    const lower = file.name.toLowerCase();
+    const lower = cover.name.toLowerCase();
     const ok =
       lower.endsWith('.pdf') ||
       lower.endsWith('.html') ||
       lower.endsWith('.htm') ||
       lower.endsWith('.mhtml') ||
       lower.endsWith('.mht') ||
-      file.type.includes('pdf') ||
-      file.type.includes('html');
+      cover.type.includes('pdf') ||
+      cover.type.includes('html');
     if (!ok) {
       toast.error(t('fileCompanyCoverMustBeFile'));
       return;
     }
-    setFilename(file.name);
-
-    const buf = await file.arrayBuffer();
-    let binary = '';
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-    const base64 = btoa(binary);
+    setFilename(cover.name + (barcodeSidecar ? ` + ${barcodeSidecar.name}` : ''));
 
     start(async () => {
       try {
         const result = await uploadSunbizCoverPage({
           filingId,
-          fileBase64: base64,
-          mimeType: file.type || undefined,
-          title: file.name,
-          filename: file.name,
+          fileBase64: await fileToBase64(cover),
+          mimeType: cover.type || undefined,
+          title: cover.name,
+          filename: cover.name,
+          barcodeJpegBase64: barcodeSidecar
+            ? await fileToBase64(barcodeSidecar)
+            : undefined,
         });
         setCoverReady(true);
         toast.success(
@@ -114,9 +130,10 @@ export function FileCompanyPanel({
             <input
               ref={ref}
               type="file"
-              accept={ACCEPT}
+              accept={`${ACCEPT},image/jpeg,image/png,.asp`}
+              multiple
               className="hidden"
-              onChange={(e) => onUpload(e.target.files?.[0] ?? null)}
+              onChange={(e) => onUpload(e.target.files)}
             />
             <Button
               type="button"

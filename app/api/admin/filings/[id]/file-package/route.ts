@@ -3,13 +3,18 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { renderArticlesHtml } from '@/lib/filing-documents';
 import { htmlDocumentToPdf, mergePdfDocuments, pdfFilename } from '@/lib/html-to-pdf';
+import {
+  NOTICE_EMAIL,
+  stripBlankPdfPages,
+  sunbizCoverHtmlToPdf,
+} from '@/lib/sunbiz-cover';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Step 2 of Sunbiz filing (no fax yet):
- * Merge the uploaded Sunbiz cover page + freshly generated Articles into one
- * PDF and download it. Cover may be HTML (preferred) or PDF.
+ * Merge cover + Articles into one PDF. HTML covers are rendered with the
+ * barcode preserved; PDF covers are used as-is (email already stamped on upload).
  */
 export async function GET(
   _req: NextRequest,
@@ -40,25 +45,23 @@ export async function GET(
   try {
     const raw = Buffer.from(cover.base64, 'base64');
     const mime = (cover.mimeType || '').toLowerCase();
+    const asText = raw.subarray(0, 80).toString('utf-8').toLowerCase();
     const isHtml =
-      mime.includes('html') ||
-      raw.subarray(0, 80).toString('utf-8').toLowerCase().includes('<!doctype') ||
-      raw.subarray(0, 80).toString('utf-8').toLowerCase().includes('<html');
+      mime.includes('html') || asText.includes('<!doctype') || asText.includes('<html');
 
     let coverPdf: Uint8Array;
     if (isHtml) {
-      coverPdf = await htmlDocumentToPdf(raw.toString('utf-8'), 'Sunbiz Cover Page');
-    } else if (
-      mime.includes('pdf') ||
-      raw.subarray(0, 4).toString('utf-8') === '%PDF'
-    ) {
-      coverPdf = new Uint8Array(raw);
+      const html = raw.toString('utf-8');
+      const emailFromHtml =
+        /Email Address:\s*([^\s_<][^\s<]*)/i.exec(html)?.[1] ||
+        extractEmailFromTitle(cover.title);
+      coverPdf = await sunbizCoverHtmlToPdf(html, { email: emailFromHtml });
+    } else if (mime.includes('pdf') || raw.subarray(0, 4).toString('utf-8') === '%PDF') {
+      // Email was stamped on upload — only drop any leftover blank page.
+      coverPdf = await stripBlankPdfPages(new Uint8Array(raw));
     } else {
       return NextResponse.json(
-        {
-          error: 'unsupported_cover',
-          message: 'Cover page must be HTML or PDF.',
-        },
+        { error: 'unsupported_cover', message: 'Cover page must be HTML or PDF.' },
         { status: 400 },
       );
     }
@@ -116,4 +119,9 @@ export async function GET(
       { status: 500 },
     );
   }
+}
+
+function extractEmailFromTitle(title: string | null | undefined): string {
+  const m = /\(([^@\s)]+@[^)\s]+)\)/.exec(title || '');
+  return m?.[1] || NOTICE_EMAIL;
 }

@@ -129,7 +129,9 @@ function FaxTable({
             return (
               <tr key={f.id} className="border-b border-border last:border-0 align-top">
                 <td className="px-4 py-2.5 whitespace-nowrap text-ink-muted">
-                  {f.createdAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  <time dateTime={f.createdAt.toISOString()} suppressHydrationWarning>
+                    {f.createdAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })}
+                  </time>
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">

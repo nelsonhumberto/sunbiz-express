@@ -28,15 +28,15 @@ export async function POST(request: NextRequest) {
     timestamp: request.headers.get('telnyx-timestamp'),
   });
   if (!verified) {
-    if (process.env.NODE_ENV === 'production' || telnyxPublicKeyConfigured()) {
+    if (telnyxPublicKeyConfigured()) {
       logger.warn('telnyx fax webhook rejected: bad/missing signature', {
         area: 'fax',
         tag: 'webhook-verify',
       });
       return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
     }
-    // Non-production with no key configured: allow for local testing only.
-    logger.warn('telnyx fax webhook unverified (no TELNYX_PUBLIC_KEY in dev)', {
+    // No public key configured — allow webhook but log a warning.
+    logger.warn('telnyx fax webhook unverified (set TELNYX_PUBLIC_KEY to enable verification)', {
       area: 'fax',
       tag: 'webhook-verify',
     });

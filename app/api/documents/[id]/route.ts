@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { decodeDocument } from '@/lib/pdf';
+import { decodeDocument, filingStatusBadgeHtml } from '@/lib/pdf';
 import { htmlDocumentToPdf, pdfFilename } from '@/lib/html-to-pdf';
-import { renderArticlesHtml } from '@/lib/filing-documents';
+import { renderArticlesHtml, toFilingForDoc } from '@/lib/filing-documents';
 import {
   filingHasOperatingAgreement,
   type AddOnSlug,
@@ -101,7 +101,21 @@ export async function GET(
   // title, RA signature, layout) apply without re-submitting.
   if (ARTICLES_TYPES.has(doc.documentType)) {
     try {
-      const html = renderArticlesHtml(doc.filing);
+      let html = renderArticlesHtml(doc.filing);
+      // Customer-facing downloads include the status badge (SUBMITTED or FILED).
+      // Admin file-package merges never include it.
+      const badge = filingStatusBadgeHtml(toFilingForDoc(doc.filing));
+      html = html.replace(/(<body[^>]*>)/, `$1\n${badge}`);
+      const companyName = (doc.filing.businessName || '')
+        .replace(/[^\w\s-]+/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 60);
+      const articleType =
+        doc.filing.entityType === 'LLC' ? 'Articles-of-Organization' : 'Articles-of-Incorporation';
+      const fname = companyName
+        ? pdfFilename(`${companyName}-${articleType}`)
+        : pdfFilename(doc.title);
       const pdfBytes = await htmlDocumentToPdf(html, doc.title);
       await prisma.document.update({
         where: { id: doc.id },
@@ -113,7 +127,7 @@ export async function GET(
       return new NextResponse(Buffer.from(pdfBytes), {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${pdfFilename(doc.title)}"`,
+          'Content-Disposition': `attachment; filename="${fname}"`,
           'Cache-Control': 'private, no-store',
         },
       });

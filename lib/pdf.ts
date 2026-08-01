@@ -130,8 +130,10 @@ function docShell(title: string, body: string) {
  * of State only apply a real "FILED" stamp + filing number once the document
  * has been accepted. Until then we render a clearly non-binding "submitted,
  * awaiting approval" badge instead of a fake stamp.
+ *
+ * Only shown on customer-facing downloads — admin file-packages never include it.
  */
-function filingStatusHeader(filing: FilingForDoc): string {
+export function filingStatusBadgeHtml(filing: FilingForDoc): string {
   const rule = ruleFor(filing);
   if (filing.sunbizFilingNumber) {
     const date = filing.sunbizApprovedAt ?? filing.submittedAt;
@@ -309,7 +311,6 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
       : '';
 
   const html = `
-    ${filingStatusHeader(filing)}
     <h1>${escapeHtml(docTitle)}</h1>
     <h2>State of ${escapeHtml(rule.name)} · Limited Liability Company</h2>
     <p class="preamble">The undersigned, acting as an authorized representative under ${escapeHtml(rule.statuteReferences.llc)}, hereby forms a limited liability company and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>
@@ -426,7 +427,6 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
       : '';
 
   const html = `
-    ${filingStatusHeader(filing)}
     <h1>${escapeHtml(docTitle)}</h1>
     <h2>State of ${escapeHtml(rule.name)} · ${rule.code === 'DE' ? 'Stock Corporation' : 'Profit Corporation'}</h2>
     <p class="preamble">The undersigned, acting as incorporator under ${escapeHtml(rule.statuteReferences.corp)}, hereby forms a corporation and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>

@@ -74,11 +74,19 @@ type MhtmlPart = {
 
 function splitMhtmlParts(raw: string): MhtmlPart[] {
   // Chrome: ------MultipartBoundary--xxxx
-  const boundaryMatch = raw.match(/------MultipartBoundary[\w-]+/);
-  const boundary = boundaryMatch?.[0];
+  // Also detect boundary from Content-Type header: boundary="----=_Part_123"
+  let boundary: string | undefined;
+  const chromeBoundary = raw.match(/------MultipartBoundary[\w-]+/);
+  if (chromeBoundary) {
+    boundary = chromeBoundary[0];
+  } else {
+    const headerBoundary = raw.match(/boundary="?([^\s";]+)"?/i);
+    if (headerBoundary) boundary = '--' + headerBoundary[1];
+  }
+
   const chunks = boundary
     ? raw.split(new RegExp(`${boundary.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}(?:--)?`))
-    : raw.split(/\r?\n--[^\n]+(?:--)?\r?\n/);
+    : raw.split(/\r?\n--[^\n]{10,70}(?:--)?\r?\n/);
 
   const parts: MhtmlPart[] = [];
   for (const chunk of chunks) {
@@ -101,29 +109,71 @@ function partBytes(part: MhtmlPart): Buffer | null {
   const enc = part.transferEncoding.toLowerCase();
   const body = part.body.trim();
   if (!body) return null;
-  if (enc.includes('base64') || /^\/9j\//.test(body.replace(/\s+/g, '').slice(0, 10))) {
+  const stripped = body.replace(/\s+/g, '');
+  const looksBase64 =
+    enc.includes('base64') ||
+    /^\/9j\//.test(stripped.slice(0, 10)) ||
+    /^iVBOR/.test(stripped.slice(0, 10)) ||
+    /^R0lGOD/.test(stripped.slice(0, 10));
+  if (looksBase64) {
     try {
-      return Buffer.from(body.replace(/\s+/g, ''), 'base64');
+      return Buffer.from(stripped, 'base64');
     } catch {
       return null;
     }
   }
+  // Any image/* content type — try base64 decode regardless of encoding header
+  if (part.contentType.toLowerCase().includes('image/')) {
+    try {
+      const buf = Buffer.from(stripped, 'base64');
+      if (buf.length > 50 && isImageBuffer(buf)) return buf;
+    } catch { /* not base64 */ }
+  }
   if (enc.includes('quoted-printable') || enc === '' || enc.includes('7bit') || enc.includes('8bit')) {
-    // Already decoded QP above when flagged; treat as latin1 binary otherwise.
     return Buffer.from(body, 'binary');
   }
   return null;
 }
 
-/** Extract HTML document + optional barcode JPEG from an .mhtml archive. */
+function isJpegBuffer(buf: Buffer): boolean {
+  return buf.length > 100 && buf[0] === 0xff && buf[1] === 0xd8;
+}
+
+function isPngBuffer(buf: Buffer): boolean {
+  return (
+    buf.length > 100 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47
+  );
+}
+
+function isGifBuffer(buf: Buffer): boolean {
+  return (
+    buf.length > 100 &&
+    buf[0] === 0x47 && // G
+    buf[1] === 0x49 && // I
+    buf[2] === 0x46    // F
+  );
+}
+
+function isImageBuffer(buf: Buffer): boolean {
+  return isJpegBuffer(buf) || isPngBuffer(buf) || isGifBuffer(buf);
+}
+
+/** Extract HTML document + optional barcode image from an .mhtml archive. */
 export function extractFromMhtml(raw: string): { html: string; barcodeJpeg?: Buffer } {
   const parts = splitMhtmlParts(raw);
   let html = '';
   let barcodeJpeg: Buffer | undefined;
 
+  const imageParts: { bytes: Buffer; loc: string; type: string }[] = [];
+
   for (const part of parts) {
     const loc = part.contentLocation;
     const type = part.contentType.toLowerCase();
+
     if (type.includes('text/html') || part.body.includes('<html') || part.body.includes('<HTML')) {
       const candidate = part.body.trim();
       if (
@@ -136,30 +186,63 @@ export function extractFromMhtml(raw: string): { html: string; barcodeJpeg?: Buf
         html = candidate;
       }
     }
-    if (
-      /idalin\.asp/i.test(loc) ||
-      (/image\/jpeg/i.test(type) && /barcode|idalin/i.test(loc))
-    ) {
+
+    if (type.includes('image/') || /\.(jpe?g|png|gif|asp)$/i.test(loc)) {
       const bytes = partBytes(part);
-      if (bytes && bytes.length > 100 && bytes[0] === 0xff && bytes[1] === 0xd8) {
-        barcodeJpeg = bytes;
+      if (bytes && isImageBuffer(bytes)) {
+        imageParts.push({ bytes, loc, type });
       }
     }
   }
 
-  // Fallback: JPEG marker anywhere after idalin Content-Location
+  // Priority 1: image part with idalin/barcode in the location
+  barcodeJpeg = imageParts.find(
+    (p) => /idalin/i.test(p.loc) || /barcode/i.test(p.loc),
+  )?.bytes;
+
+  // Priority 2: first image part that looks like a barcode (wide & thin, or any image)
+  if (!barcodeJpeg && imageParts.length > 0) {
+    barcodeJpeg = imageParts[0].bytes;
+  }
+
+  // Fallback: scan raw text for base64 image data near "idalin" references
   if (!barcodeJpeg) {
     const idx = raw.search(/idalin\.asp[^\n]*\r?\n/i);
     if (idx >= 0) {
-      const after = raw.slice(idx);
-      const b64Match = after.match(/(\/9j\/[A-Za-z0-9+/=\s]{200,})/);
-      if (b64Match) {
+      const after = raw.slice(idx, idx + 50000);
+      // Try JPEG (starts with /9j/)
+      const jpgMatch = after.match(/(\/9j\/[A-Za-z0-9+/=\s]{200,})/);
+      if (jpgMatch) {
         try {
-          const buf = Buffer.from(b64Match[1].replace(/\s+/g, ''), 'base64');
-          if (buf[0] === 0xff && buf[1] === 0xd8) barcodeJpeg = buf;
-        } catch {
-          /* ignore */
+          const buf = Buffer.from(jpgMatch[1].replace(/\s+/g, ''), 'base64');
+          if (isJpegBuffer(buf)) barcodeJpeg = buf;
+        } catch { /* ignore */ }
+      }
+      // Try PNG (starts with iVBOR)
+      if (!barcodeJpeg) {
+        const pngMatch = after.match(/(iVBOR[A-Za-z0-9+/=\s]{200,})/);
+        if (pngMatch) {
+          try {
+            const buf = Buffer.from(pngMatch[1].replace(/\s+/g, ''), 'base64');
+            if (isPngBuffer(buf)) barcodeJpeg = buf;
+          } catch { /* ignore */ }
         }
+      }
+    }
+  }
+
+  // Last resort: scan ALL base64 blobs in the raw MHTML for an image
+  if (!barcodeJpeg) {
+    const b64Blocks = raw.match(/(?:\/9j\/|iVBOR|R0lGOD)[A-Za-z0-9+/=\s]{200,}/g);
+    if (b64Blocks) {
+      for (const block of b64Blocks) {
+        try {
+          const buf = Buffer.from(block.replace(/\s+/g, ''), 'base64');
+          if (isImageBuffer(buf)) {
+            barcodeJpeg = buf;
+            break;
+          }
+        } catch { /* ignore */ }
       }
     }
   }
@@ -194,21 +277,56 @@ export function sanitizeSunbizCoverHtml(html: string): string {
 /** Inline barcode `<img>` so the saved HTML still shows the fax barcode. */
 export function embedBarcodeInHtml(html: string, barcodeJpeg?: Buffer): string {
   if (!barcodeJpeg || barcodeJpeg.length < 100) return html;
-  const dataUri = `data:image/jpeg;base64,${barcodeJpeg.toString('base64')}`;
-  // Common patterns from Chrome "Save As" / MHTML
-  return html
-    .replace(
-      /(<img[^>]+src=["'])[^"']*idalin\.asp[^"']*(["'][^>]*>)/gi,
-      `$1${dataUri}$2`,
-    )
-    .replace(
-      /(<img[^>]+src=["'])\.\/Division of Corporations_files\/idalin\.asp(["'][^>]*>)/gi,
-      `$1${dataUri}$2`,
-    )
-    .replace(
-      /(<img[^>]+src=["'])https?:\/\/efile\.sunbiz\.org\/Scripts\/idalin\.asp[^"']*(["'][^>]*>)/gi,
-      `$1${dataUri}$2`,
-    );
+  const mimeType = isPngBuffer(barcodeJpeg)
+    ? 'image/png'
+    : isGifBuffer(barcodeJpeg)
+      ? 'image/gif'
+      : 'image/jpeg';
+  const dataUri = `data:${mimeType};base64,${barcodeJpeg.toString('base64')}`;
+
+  let result = html;
+  let replaced = false;
+
+  // Pattern 1: src containing idalin.asp (any variant)
+  const p1 = /(<img[^>]+src=["'])[^"']*idalin[^"']*(["'][^>]*>)/gi;
+  if (p1.test(result)) {
+    result = result.replace(p1, `$1${dataUri}$2`);
+    replaced = true;
+  }
+  // Pattern 2: Chrome "Save As" relative path
+  if (!replaced) {
+    const p2 = /(<img[^>]+src=["'])[^"']*Division of Corporations[_/][^"']*idalin[^"']*(["'][^>]*>)/gi;
+    if (p2.test(result)) {
+      result = result.replace(p2, `$1${dataUri}$2`);
+      replaced = true;
+    }
+  }
+  // Pattern 3: full Sunbiz URL to idalin
+  if (!replaced) {
+    const p3 = /(<img[^>]+src=["'])https?:\/\/[^"']*idalin[^"']*(["'][^>]*>)/gi;
+    if (p3.test(result)) {
+      result = result.replace(p3, `$1${dataUri}$2`);
+      replaced = true;
+    }
+  }
+  // Pattern 4: any img with src containing "barcode" or "BARCODE"
+  if (!replaced) {
+    const p4 = /(<img[^>]+src=["'])[^"']*[Bb][Aa][Rr][Cc][Oo][Dd][Ee][^"']*(["'][^>]*>)/gi;
+    if (p4.test(result)) {
+      result = result.replace(p4, `$1${dataUri}$2`);
+      replaced = true;
+    }
+  }
+  // Pattern 5: any img with a broken/relative src (non-http, non-data) — likely the barcode
+  if (!replaced) {
+    const p5 = /(<img[^>]+src=["'])(?!data:|https?:\/\/)[^"']+(["'][^>]*>)/i;
+    if (p5.test(result)) {
+      result = result.replace(p5, `$1${dataUri}$2`);
+      replaced = true;
+    }
+  }
+
+  return result;
 }
 
 export function injectSunbizCoverEmail(html: string, email: string): string {
@@ -369,14 +487,38 @@ export async function sunbizCoverHtmlToPdf(
   const pageCount = html.match(/Page Count<\/td><td[^>]*><b>(\d+)<\/b>/i)?.[1] || '';
   const charge = html.match(/Estimated Charge<\/td><td[^>]*><b>\s*([^<]+)<\/b>/i)?.[1]?.trim() || '';
 
-  // Prefer data-URI barcode already in HTML
+  // Prefer data-URI barcode already in HTML (supports JPEG, PNG, GIF)
   let barcode = opts?.barcodeJpeg;
   if (!barcode) {
     const dataUri = html.match(
-      /src=["'](data:image\/jpeg;base64,[A-Za-z0-9+/=]+)["']/i,
+      /src=["'](data:image\/(?:jpeg|png|gif);base64,[A-Za-z0-9+/=]+)["']/i,
     )?.[1];
     if (dataUri) {
       barcode = Buffer.from(dataUri.split(',')[1] || '', 'base64');
+    }
+  }
+  // Fallback: look for any base64-encoded image data anywhere in the HTML
+  if (!barcode) {
+    const b64 = html.match(
+      /data:image\/[a-z]+;base64,([A-Za-z0-9+/=]{200,})/i,
+    )?.[1];
+    if (b64) {
+      try {
+        const buf = Buffer.from(b64, 'base64');
+        if (isImageBuffer(buf)) barcode = buf;
+      } catch { /* ignore */ }
+    }
+  }
+  // Last resort: look for raw base64 image blobs in the HTML
+  if (!barcode) {
+    const blobs = html.match(/(?:\/9j\/|iVBOR|R0lGOD)[A-Za-z0-9+/=]{200,}/g);
+    if (blobs) {
+      for (const blob of blobs) {
+        try {
+          const buf = Buffer.from(blob, 'base64');
+          if (isImageBuffer(buf)) { barcode = buf; break; }
+        } catch { /* ignore */ }
+      }
     }
   }
 
@@ -415,7 +557,16 @@ export async function sunbizCoverHtmlToPdf(
 
   if (barcode && barcode.length > 100) {
     try {
-      const img = await pdf.embedJpg(barcode);
+      let img;
+      if (isPngBuffer(barcode)) {
+        img = await pdf.embedPng(barcode);
+      } else if (isGifBuffer(barcode)) {
+        // pdf-lib doesn't support GIF natively — convert GIF header check only
+        // Try as PNG first (some servers mislabel), fall back to JPG
+        try { img = await pdf.embedPng(barcode); } catch { img = await pdf.embedJpg(barcode); }
+      } else {
+        img = await pdf.embedJpg(barcode);
+      }
       const maxW = 360;
       const scale = Math.min(maxW / img.width, 48 / img.height);
       const w = img.width * scale;
@@ -423,7 +574,7 @@ export async function sunbizCoverHtmlToPdf(
       page.drawImage(img, { x: (612 - w) / 2, y: y - h, width: w, height: h });
       y -= h + 16;
     } catch {
-      /* ignore bad jpeg */
+      /* ignore bad image */
     }
   } else {
     y -= 8;

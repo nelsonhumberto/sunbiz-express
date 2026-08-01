@@ -83,6 +83,10 @@ export async function uploadSunbizCoverPage(args: {
       email: coverEmail,
       barcodeJpeg,
     });
+    console.log(
+      '[sunbiz-cover] HTML upload processed:',
+      { filename, hasBarcodeFromSidecar: !!barcodeJpeg, hasBarcodeInResult: !!processed.barcodeJpeg, htmlLen: processed.html.length },
+    );
     storeBase64 = Buffer.from(processed.html, 'utf-8').toString('base64');
     mimeType = processed.mimeType;
     title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;

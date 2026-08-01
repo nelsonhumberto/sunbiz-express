@@ -52,6 +52,14 @@ export async function GET(
     let coverPdf: Uint8Array;
     if (isHtml) {
       const html = raw.toString('utf-8');
+      const hasDataUri = /data:image\/[a-z]+;base64,/i.test(html);
+      const hasImgTag = /<img[^>]+src=/i.test(html);
+      console.log('[file-package] Cover is HTML:', {
+        len: html.length,
+        hasDataUri,
+        hasImgTag,
+        mimeStored: mime,
+      });
       const emailFromHtml =
         /Email Address:\s*([^\s_<][^\s<]*)/i.exec(html)?.[1] ||
         extractEmailFromTitle(cover.title);

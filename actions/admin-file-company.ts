@@ -5,10 +5,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
 import {
-  detectCoverKind,
   filingUsesOurRa,
   processSunbizCoverPdf,
-  processSunbizCoverUpload,
   resolveSunbizCoverEmail,
 } from '@/lib/sunbiz-cover';
 
@@ -23,10 +21,10 @@ async function requireAdmin() {
 }
 
 /**
- * Step 1 of the Sunbiz filing workflow: admin uploads the cover sheet from
- * Sunbiz (HTML / MHTML / PDF). Email blank is filled with notice@ when
- * LaunchForma is RA, otherwise the customer email. PDFs keep the barcode
- * and lose the blank trailing page; HTML/MHTML keep layout and inline the barcode.
+ * Step 1 of the Sunbiz filing workflow: admin uploads the cover sheet PDF
+ * from Sunbiz. The email blank is stamped with notice@launchforma.com when
+ * LaunchForma is RA, otherwise the customer email. Trailing blank pages
+ * are removed automatically.
  */
 export async function uploadSunbizCoverPage(args: {
   filingId: string;
@@ -34,8 +32,6 @@ export async function uploadSunbizCoverPage(args: {
   mimeType?: string;
   title?: string;
   filename?: string;
-  /** Optional barcode JPEG base64 from HTML "Save As" _files/idalin.asp */
-  barcodeJpegBase64?: string;
 }) {
   await requireAdmin();
   if (!args.fileBase64 || args.fileBase64.length < 8) {
@@ -46,10 +42,10 @@ export async function uploadSunbizCoverPage(args: {
     throw new Error(`Cover page too large (max ${MAX_COVER_BYTES / 1024 / 1024} MB).`);
   }
 
-  const filename = args.filename || args.title || 'cover';
-  const kind = detectCoverKind(filename, args.mimeType);
-  if (kind === 'unknown') {
-    throw new Error('Upload a Sunbiz cover as .html, .htm, .mhtml, or .pdf.');
+  const filename = args.filename || args.title || 'cover.pdf';
+  const lower = filename.toLowerCase();
+  if (!lower.endsWith('.pdf') && !(args.mimeType || '').includes('pdf')) {
+    throw new Error('Only PDF files are supported. Print the Sunbiz cover to PDF before uploading.');
   }
 
   const filing = await prisma.filing.findUnique({
@@ -68,35 +64,11 @@ export async function uploadSunbizCoverPage(args: {
     customerEmail: correspondence?.email || filing.user?.email,
   });
 
-  let storeBase64 = args.fileBase64;
-  let mimeType = args.mimeType || 'application/octet-stream';
-  let title = args.title?.trim() || 'Sunbiz Cover Page';
-
-  if (kind === 'html') {
-    const rawText = Buffer.from(args.fileBase64, 'base64').toString('utf-8');
-    const barcodeJpeg = args.barcodeJpegBase64
-      ? Buffer.from(args.barcodeJpegBase64, 'base64')
-      : undefined;
-    const processed = processSunbizCoverUpload({
-      rawText,
-      filename,
-      email: coverEmail,
-      barcodeJpeg,
-    });
-    console.log(
-      '[sunbiz-cover] HTML upload processed:',
-      { filename, hasBarcodeFromSidecar: !!barcodeJpeg, hasBarcodeInResult: !!processed.barcodeJpeg, htmlLen: processed.html.length },
-    );
-    storeBase64 = Buffer.from(processed.html, 'utf-8').toString('base64');
-    mimeType = processed.mimeType;
-    title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
-  } else {
-    const raw = Buffer.from(args.fileBase64, 'base64');
-    const processed = await processSunbizCoverPdf(new Uint8Array(raw), coverEmail);
-    storeBase64 = Buffer.from(processed).toString('base64');
-    mimeType = 'application/pdf';
-    title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
-  }
+  const raw = Buffer.from(args.fileBase64, 'base64');
+  const processed = await processSunbizCoverPdf(new Uint8Array(raw), coverEmail);
+  const storeBase64 = Buffer.from(processed).toString('base64');
+  const mimeType = 'application/pdf';
+  const title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
 
   const fileSizeBytes = Math.floor((storeBase64.length * 3) / 4);
   const existing = await prisma.document.findFirst({
@@ -132,5 +104,5 @@ export async function uploadSunbizCoverPage(args: {
   }
 
   revalidatePath(`/admin/filings/${args.filingId}`);
-  return { emailUsed: coverEmail, kind, useOurRa };
+  return { emailUsed: coverEmail, kind: 'pdf' as const, useOurRa };
 }

@@ -3,8 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { safeParseJson } from '@/lib/utils';
+import {
+  detectCoverKind,
+  filingUsesOurRa,
+  processSunbizCoverUpload,
+  resolveSunbizCoverEmail,
+} from '@/lib/sunbiz-cover';
 
-const MAX_COVER_BYTES = 5 * 1024 * 1024;
+const MAX_COVER_BYTES = 8 * 1024 * 1024;
 
 async function requireAdmin() {
   const session = await auth();
@@ -15,15 +22,16 @@ async function requireAdmin() {
 }
 
 /**
- * Step 1 of the Sunbiz filing workflow: admin uploads the 1-page cover page
- * generated on Sunbiz. Stored as SUNBIZ_COVER_PAGE (admin-only). Step 2
- * (merge + download) is handled by /api/admin/filings/[id]/file-package.
+ * Step 1 of the Sunbiz filing workflow: admin uploads the cover sheet from
+ * Sunbiz (HTML preferred, also MHTML / PDF). HTML/MHTML are cleaned and the
+ * annual-report email blank is filled from the RA choice.
  */
 export async function uploadSunbizCoverPage(args: {
   filingId: string;
   fileBase64: string;
   mimeType?: string;
   title?: string;
+  filename?: string;
 }) {
   await requireAdmin();
   if (!args.fileBase64 || args.fileBase64.length < 8) {
@@ -33,15 +41,49 @@ export async function uploadSunbizCoverPage(args: {
   if (approxBytes > MAX_COVER_BYTES) {
     throw new Error(`Cover page too large (max ${MAX_COVER_BYTES / 1024 / 1024} MB).`);
   }
-  const mime = (args.mimeType || 'application/pdf').toLowerCase();
-  if (!mime.includes('pdf')) {
-    throw new Error('Sunbiz cover page must be a PDF.');
+
+  const filename = args.filename || args.title || 'cover';
+  const kind = detectCoverKind(filename, args.mimeType);
+  if (kind === 'unknown') {
+    throw new Error('Upload a Sunbiz cover as .html, .htm, .mhtml, or .pdf.');
   }
 
-  const filing = await prisma.filing.findUnique({ where: { id: args.filingId } });
+  const filing = await prisma.filing.findUnique({
+    where: { id: args.filingId },
+    include: { user: { select: { email: true } } },
+  });
   if (!filing) throw new Error('Filing not found');
 
-  const title = args.title?.trim() || 'Sunbiz Cover Page';
+  const correspondence = safeParseJson<{ email?: string } | null>(
+    filing.correspondenceContact,
+    null,
+  );
+  const useOurRa = filingUsesOurRa(filing.registeredAgent);
+  const coverEmail = resolveSunbizCoverEmail({
+    useOurRegisteredAgent: useOurRa,
+    customerEmail: correspondence?.email || filing.user?.email,
+  });
+
+  let storeBase64 = args.fileBase64;
+  let mimeType = args.mimeType || 'application/octet-stream';
+  let title = args.title?.trim() || 'Sunbiz Cover Page';
+
+  if (kind === 'html') {
+    const rawText = Buffer.from(args.fileBase64, 'base64').toString('utf-8');
+    const processed = processSunbizCoverUpload({
+      rawText,
+      filename,
+      email: coverEmail,
+    });
+    storeBase64 = Buffer.from(processed.html, 'utf-8').toString('base64');
+    mimeType = processed.mimeType;
+    title = args.title?.trim() || `Sunbiz Cover Page (${coverEmail})`;
+  } else {
+    mimeType = 'application/pdf';
+    title = args.title?.trim() || 'Sunbiz Cover Page (PDF)';
+  }
+
+  const fileSizeBytes = Math.floor((storeBase64.length * 3) / 4);
   const existing = await prisma.document.findFirst({
     where: { filingId: filing.id, documentType: 'SUNBIZ_COVER_PAGE' },
   });
@@ -50,9 +92,9 @@ export async function uploadSunbizCoverPage(args: {
     await prisma.document.update({
       where: { id: existing.id },
       data: {
-        base64: args.fileBase64,
-        mimeType: 'application/pdf',
-        fileSizeBytes: approxBytes,
+        base64: storeBase64,
+        mimeType,
+        fileSizeBytes,
         title,
         pendingState: false,
         uploadedAt: new Date(),
@@ -65,9 +107,9 @@ export async function uploadSunbizCoverPage(args: {
         filingId: filing.id,
         documentType: 'SUNBIZ_COVER_PAGE',
         title,
-        base64: args.fileBase64,
-        mimeType: 'application/pdf',
-        fileSizeBytes: approxBytes,
+        base64: storeBase64,
+        mimeType,
+        fileSizeBytes,
         pendingState: false,
         uploadedAt: new Date(),
       },
@@ -75,4 +117,5 @@ export async function uploadSunbizCoverPage(args: {
   }
 
   revalidatePath(`/admin/filings/${args.filingId}`);
+  return { emailUsed: coverEmail, kind, useOurRa };
 }

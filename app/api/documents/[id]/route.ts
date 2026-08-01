@@ -144,6 +144,27 @@ export async function GET(
   const filename = pdfFilename(doc.title);
   const rawBytes = Buffer.from(doc.base64, 'base64');
 
+  // Sunbiz cover sheets prefer HTML download (easier to edit). PDFs pass through.
+  if (doc.documentType === 'SUNBIZ_COVER_PAGE') {
+    if (isPdfMime(doc.mimeType) || rawBytes.subarray(0, 4).toString('utf-8') === '%PDF') {
+      return new NextResponse(rawBytes, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    }
+    const htmlName = pdfFilename(doc.title).replace(/\.pdf$/i, '.html');
+    return new NextResponse(rawBytes, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${htmlName}"`,
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
+
   // Already a PDF (admin-uploaded Cert of Status / EIN letter / etc.)
   if (isPdfMime(doc.mimeType) || rawBytes.subarray(0, 4).toString('utf-8') === '%PDF') {
     return new NextResponse(rawBytes, {

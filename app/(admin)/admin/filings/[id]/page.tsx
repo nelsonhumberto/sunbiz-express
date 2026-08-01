@@ -34,6 +34,11 @@ import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
 import { AdminApprovalForm } from './approval-form';
 import { AdminUploadForm } from './upload-form';
 import { FileCompanyPanel } from './file-company-panel';
+import {
+  NOTICE_EMAIL,
+  filingUsesOurRa,
+  resolveSunbizCoverEmail,
+} from '@/lib/sunbiz-cover';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +123,23 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     'CERT_COPY',
     'EIN_LETTER',
   ];
+
+  const useOurRa = filingUsesOurRa(filing.registeredAgent);
+  const coverEmail = resolveSunbizCoverEmail({
+    useOurRegisteredAgent: useOurRa,
+    customerEmail: correspondence?.email || filing.user.email,
+  });
+  const sunbizCover = filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE');
+  const sunbizCoverReady = Boolean(sunbizCover?.base64);
+
+  // COVER_LETTER is an internal draft helper — not shown for download here.
+  // SUNBIZ_COVER_PAGE is listed separately as Missing / Available.
+  const listDocuments = filing.documents.filter(
+    (d) =>
+      d.documentType !== 'COVER_LETTER' &&
+      d.documentType !== 'SUNBIZ_COVER_PAGE' &&
+      d.documentType !== 'FILE_PACKAGE',
+  );
 
   return (
     <div className="container max-w-6xl py-10 space-y-8">
@@ -352,13 +374,54 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
           <Card>
             <CardContent className="p-6">
               <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-ink-subtle">
-                {t('documents')} ({filing.documents.length})
+                {t('documents')} ({listDocuments.length + 1})
               </h3>
-              {filing.documents.length === 0 ? (
-                <p className="text-sm text-ink-muted">{t('noDocuments')}</p>
-              ) : (
-                <ul className="divide-y divide-border -mx-2">
-                  {filing.documents.map((doc) =>
+              <ul className="divide-y divide-border -mx-2">
+                {/* Sunbiz cover — Missing until uploaded; then downloadable */}
+                {sunbizCoverReady && sunbizCover ? (
+                  <li>
+                    <a
+                      href={`/api/documents/${sunbizCover.id}`}
+                      download
+                      className="flex items-center gap-3 px-2 py-3 hover:bg-muted/30 rounded-md transition-colors"
+                    >
+                      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {sunbizCover.title || tDocs('SUNBIZ_COVER_PAGE')}
+                        </p>
+                        <p className="text-xs text-ink-subtle">
+                          {tDocs('SUNBIZ_COVER_PAGE')}
+                          {sunbizCover.uploadedAt
+                            ? ` · ${t('uploadedAt', { date: formatDate(sunbizCover.uploadedAt) })}`
+                            : ''}
+                        </p>
+                      </div>
+                      <Badge variant="success" size="sm">
+                        {t('fileCompanyCoverReady')}
+                      </Badge>
+                      <Download className="h-4 w-4 text-ink-subtle" />
+                    </a>
+                  </li>
+                ) : (
+                  <li className="px-2 py-3 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{tDocs('SUNBIZ_COVER_PAGE')}</p>
+                      <p className="text-xs text-amber-700">{t('fileCompanyCoverMissingHint')}</p>
+                    </div>
+                    <Badge variant="outline" size="sm" className="border-amber-300 text-amber-700">
+                      {t('fileCompanyCoverNeeded')}
+                    </Badge>
+                  </li>
+                )}
+
+                {listDocuments.length === 0 ? null : (
+                  listDocuments.map((doc) =>
                     doc.pendingState ? (
                       <li key={doc.id} className="px-2 py-3 flex items-center gap-3">
                         <div className="h-9 w-9 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
@@ -400,9 +463,9 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                         </a>
                       </li>
                     ),
-                  )}
-                </ul>
-              )}
+                  )
+                )}
+              </ul>
             </CardContent>
           </Card>
 
@@ -415,12 +478,10 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               </h3>
               <FileCompanyPanel
                 filingId={filing.id}
-                hasCoverPage={filing.documents.some(
-                  (d) => d.documentType === 'SUNBIZ_COVER_PAGE' && !!d.base64,
-                )}
-                coverTitle={
-                  filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE')?.title
-                }
+                hasCoverPage={sunbizCoverReady}
+                coverTitle={sunbizCover?.title}
+                previewEmail={coverEmail || NOTICE_EMAIL}
+                useOurRa={useOurRa}
               />
             </CardContent>
           </Card>

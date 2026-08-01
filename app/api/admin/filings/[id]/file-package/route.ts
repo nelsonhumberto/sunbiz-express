@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Step 2 of Sunbiz filing (no fax yet):
  * Merge the uploaded Sunbiz cover page + freshly generated Articles into one
- * PDF and download it so the admin can review before we wire faxing.
+ * PDF and download it. Cover may be HTML (preferred) or PDF.
  */
 export async function GET(
   _req: NextRequest,
@@ -31,22 +31,43 @@ export async function GET(
     return NextResponse.json(
       {
         error: 'cover_missing',
-        message: 'Upload the Sunbiz cover page PDF first, then click FILE the company.',
+        message: 'Upload the Sunbiz cover page first, then click FILE the company.',
       },
       { status: 400 },
     );
   }
 
   try {
-    const coverBytes = Buffer.from(cover.base64, 'base64');
+    const raw = Buffer.from(cover.base64, 'base64');
+    const mime = (cover.mimeType || '').toLowerCase();
+    const isHtml =
+      mime.includes('html') ||
+      raw.subarray(0, 80).toString('utf-8').toLowerCase().includes('<!doctype') ||
+      raw.subarray(0, 80).toString('utf-8').toLowerCase().includes('<html');
+
+    let coverPdf: Uint8Array;
+    if (isHtml) {
+      coverPdf = await htmlDocumentToPdf(raw.toString('utf-8'), 'Sunbiz Cover Page');
+    } else if (
+      mime.includes('pdf') ||
+      raw.subarray(0, 4).toString('utf-8') === '%PDF'
+    ) {
+      coverPdf = new Uint8Array(raw);
+    } else {
+      return NextResponse.json(
+        {
+          error: 'unsupported_cover',
+          message: 'Cover page must be HTML or PDF.',
+        },
+        { status: 400 },
+      );
+    }
+
     const articlesHtml = renderArticlesHtml(filing);
     const articlesTitle =
       filing.entityType === 'LLC' ? 'Articles of Organization' : 'Articles of Incorporation';
     const articlesBytes = await htmlDocumentToPdf(articlesHtml, articlesTitle);
-    const merged = await mergePdfDocuments([
-      new Uint8Array(coverBytes),
-      articlesBytes,
-    ]);
+    const merged = await mergePdfDocuments([coverPdf, articlesBytes]);
 
     const safeName = (filing.businessName || 'filing')
       .replace(/[^\w\s-]+/g, '')
@@ -55,7 +76,6 @@ export async function GET(
       .slice(0, 60);
     const filename = pdfFilename(`${safeName}-Sunbiz-File-Package`);
 
-    // Persist last merged package for admin re-download (optional audit trail).
     const existing = filing.documents.find((d) => d.documentType === 'FILE_PACKAGE');
     const mergedB64 = Buffer.from(merged).toString('base64');
     if (existing) {

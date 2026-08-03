@@ -174,6 +174,7 @@ export function Step7CorpRoles({
 
   const [roles, setRoles] = useState<CorpRole[]>(initialRoles);
   const [showTitleHelp, setShowTitleHelp] = useState(false);
+  const [showMissing, setShowMissing] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -365,7 +366,11 @@ export function Step7CorpRoles({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>
+            <Label
+              className={
+                showMissing && role.required && !role.name.trim() ? 'text-destructive' : undefined
+              }
+            >
               {t('fullName')} <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -373,6 +378,12 @@ export function Step7CorpRoles({
               onChange={(e) => updateRole(idx, { name: e.target.value })}
               placeholder={t('fullNamePlaceholder')}
               autoComplete="name"
+              aria-invalid={showMissing && !!role.required && !role.name.trim()}
+              className={
+                showMissing && role.required && !role.name.trim()
+                  ? 'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive'
+                  : undefined
+              }
             />
           </div>
           <div className="space-y-1.5">
@@ -534,6 +545,10 @@ export function Step7CorpRoles({
         prevHref={`/wizard/${filing.id}/6`}
         onNext={onContinue}
         nextDisabled={!valid}
+        onBlocked={() => {
+          setShowMissing(true);
+          onContinue();
+        }}
         pending={pending}
       />
     </div>

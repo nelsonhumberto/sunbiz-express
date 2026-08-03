@@ -71,7 +71,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
           <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
             {state.code === 'FL'
               ? t('subhead')
-              : `File your LLC or Corporation with the State of ${state.name} — without the LegalZoom upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
+              : `File your LLC or Corporation with the State of ${state.name} — without the upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">

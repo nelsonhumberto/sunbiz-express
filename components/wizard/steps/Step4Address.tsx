@@ -31,6 +31,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
     zip: '',
   });
   const [address, setAddress] = useState<AddressValue>(initial);
+  const [showMissing, setShowMissing] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -40,7 +41,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
     address.city.trim() &&
     address.state &&
     address.zip.trim();
-  const valid = principalRequired ? filledOut : true;
+  const valid = principalRequired ? !!filledOut : true;
 
   // Foreign-registration callout: shown when the principal address is in
   // a state different from the formation state. We do NOT block submission —
@@ -67,7 +68,11 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
         onChange={setAddress}
         showInCareOf
         defaultStateCode={filingState}
+        highlightMissing={showMissing && principalRequired}
       />
+      {showMissing && !valid && (
+        <p className="text-sm text-destructive">{t('missingFields')}</p>
+      )}
 
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted">
         <p className="font-medium text-ink mb-1 flex items-center gap-1.5">
@@ -97,6 +102,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/3`}
         onNext={onContinue}
         nextDisabled={!valid}
+        onBlocked={() => setShowMissing(true)}
         pending={pending}
       />
     </div>

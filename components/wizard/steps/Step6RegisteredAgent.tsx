@@ -70,6 +70,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
     stored?.useOurService === false ? stored?.signature ?? '' : '',
   );
   const [showRAHelp, setShowRAHelp] = useState(false);
+  const [showMissing, setShowMissing] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -267,7 +268,10 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
         <div className="space-y-5 rounded-lg border border-border bg-white p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="raName">
+              <Label
+                htmlFor="raName"
+                className={showMissing && !external.name.trim() ? 'text-destructive' : undefined}
+              >
                 {t('agentName')} <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -275,6 +279,12 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
                 value={external.name}
                 onChange={(e) => setExternal({ ...external, name: e.target.value })}
                 placeholder="Jane Doe or Doe Registered Agent Services LLC"
+                aria-invalid={showMissing && !external.name.trim()}
+                className={
+                  showMissing && !external.name.trim()
+                    ? 'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive'
+                    : undefined
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -303,6 +313,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               lockedStateCode={stateCode}
               lockedReason={stateRule.addressRules.inStateRequirementNote}
               prefix="ra-"
+              highlightMissing={showMissing}
             />
             {external.address.street1 && isPoBox(external.address.street1) && (
               <p className="text-xs text-destructive mt-2">
@@ -321,15 +332,24 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             <p>{t('raExternalLegalCopy')}</p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="signature">
+            <Label
+              htmlFor="signature"
+              className={showMissing && !externalSignature.trim() ? 'text-destructive' : undefined}
+            >
               {t('raSignatureLabel')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="signature"
+              aria-invalid={showMissing && !externalSignature.trim()}
               value={externalSignature}
               onChange={(e) => setExternalSignature(e.target.value)}
               placeholder={t('raSignatureLabel')}
-              className="font-display text-lg italic"
+              className={cn(
+                'font-display text-lg italic',
+                showMissing &&
+                  !externalSignature.trim() &&
+                  'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive',
+              )}
             />
           </div>
         </div>
@@ -403,6 +423,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/5`}
         onNext={onContinue}
         nextDisabled={!canContinue}
+        onBlocked={() => setShowMissing(true)}
         pending={pending}
       />
     </div>

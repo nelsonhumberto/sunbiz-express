@@ -12,7 +12,7 @@ interface TestimonialsProps {
 
 const TESTIMONIALS_EN = [
   {
-    quote: "I'd done LegalZoom twice and dreaded it both times. LaunchForma felt like ordering a sandwich — pick what you want, pay once, done.",
+    quote: "I'd used other online formation services twice and dreaded it both times. LaunchForma felt like ordering a sandwich — pick what you want, pay once, done.",
     name: 'Mariana C.',
     role: 'Founder · Coral Gables Realty Group',
     avatar: 'MC',
@@ -51,7 +51,7 @@ const TESTIMONIALS_EN = [
 
 const TESTIMONIALS_ES = [
   {
-    quote: 'Hice LegalZoom dos veces y temí ambas. LaunchForma se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
+    quote: 'Usé otros servicios en línea dos veces y temí ambas. LaunchForma se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
     name: 'Mariana C.',
     role: 'Fundadora · Coral Gables Realty Group',
     avatar: 'MC',
@@ -101,7 +101,7 @@ const TESTIMONIALS_WY_EN: typeof TESTIMONIALS_EN = [
     avatar: 'JH',
   },
   {
-    quote: 'My CPA recommended a Wyoming LLC for our holding-company structure. The all-in pricing and bundled cert of status saved a back-and-forth I usually have with LegalZoom.',
+    quote: 'My CPA recommended a Wyoming LLC for our holding-company structure. The all-in pricing and bundled cert of status saved a back-and-forth I usually have with other online filers.',
     name: 'Priya R.',
     role: 'Investor · Casper, WY',
     avatar: 'PR',
@@ -122,7 +122,7 @@ const TESTIMONIALS_WY_ES: typeof TESTIMONIALS_ES = [
     avatar: 'JH',
   },
   {
-    quote: 'Mi contadora recomendó una LLC de Wyoming para nuestra holding. El precio todo-incluido y el certificado de estatus me ahorraron los típicos rebotes con LegalZoom.',
+    quote: 'Mi contadora recomendó una LLC de Wyoming para nuestra holding. El precio todo-incluido y el certificado de estatus me ahorraron los típicos rebotes con otros servicios en línea.',
     name: 'Priya R.',
     role: 'Inversionista · Casper, WY',
     avatar: 'PR',

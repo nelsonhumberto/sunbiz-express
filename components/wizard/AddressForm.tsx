@@ -86,6 +86,14 @@ interface AddressFormProps {
   /** Optional explanatory hint shown next to a locked state field. */
   lockedReason?: string;
   prefix?: string;
+  /** When true, empty required fields get a red border + label tint. */
+  highlightMissing?: boolean;
+}
+
+function missingClass(show: boolean | undefined, empty: boolean) {
+  return show && empty
+    ? 'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive'
+    : undefined;
 }
 
 export function AddressForm({
@@ -97,12 +105,17 @@ export function AddressForm({
   defaultStateCode = 'FL',
   lockedReason,
   prefix = '',
+  highlightMissing,
 }: AddressFormProps) {
   const lockState = lockedStateCode ?? (floridaOnly ? 'FL' : undefined);
   const t = useTranslations('wizard');
   const set = <K extends keyof AddressValue>(key: K, v: AddressValue[K]) =>
     onChange({ ...value, [key]: v });
   const id = (k: string) => `${prefix}${k}`;
+  const streetMissing = !value.street1.trim();
+  const cityMissing = !value.city.trim();
+  const stateMissing = !(value.state || lockState || defaultStateCode);
+  const zipMissing = !value.zip.trim();
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -119,7 +132,10 @@ export function AddressForm({
       )}
 
       <div className="md:col-span-4 space-y-1.5">
-        <Label htmlFor={id('street1')}>
+        <Label
+          htmlFor={id('street1')}
+          className={highlightMissing && streetMissing ? 'text-destructive' : undefined}
+        >
           {t('addrStreet')} <span className="text-destructive">*</span>
         </Label>
         <Input
@@ -129,6 +145,8 @@ export function AddressForm({
           placeholder="500 Brickell Avenue"
           autoComplete="address-line1"
           required
+          aria-invalid={highlightMissing && streetMissing}
+          className={missingClass(highlightMissing, streetMissing)}
         />
       </div>
 
@@ -147,7 +165,10 @@ export function AddressForm({
       </div>
 
       <div className="md:col-span-3 space-y-1.5">
-        <Label htmlFor={id('city')}>
+        <Label
+          htmlFor={id('city')}
+          className={highlightMissing && cityMissing ? 'text-destructive' : undefined}
+        >
           {t('addrCity')} <span className="text-destructive">*</span>
         </Label>
         <Input
@@ -157,11 +178,16 @@ export function AddressForm({
           placeholder="Miami"
           autoComplete="address-level2"
           required
+          aria-invalid={highlightMissing && cityMissing}
+          className={missingClass(highlightMissing, cityMissing)}
         />
       </div>
 
       <div className="md:col-span-2 space-y-1.5">
-        <Label htmlFor={id('state')}>
+        <Label
+          htmlFor={id('state')}
+          className={highlightMissing && stateMissing ? 'text-destructive' : undefined}
+        >
           {t('addrState')} <span className="text-destructive">*</span>
         </Label>
         {lockState ? (
@@ -173,7 +199,11 @@ export function AddressForm({
           </>
         ) : (
           <Select value={value.state || defaultStateCode} onValueChange={(v) => set('state', v)}>
-            <SelectTrigger id={id('state')}>
+            <SelectTrigger
+              id={id('state')}
+              aria-invalid={highlightMissing && stateMissing}
+              className={missingClass(highlightMissing, stateMissing)}
+            >
               <SelectValue placeholder={t('addrState')} />
             </SelectTrigger>
             <SelectContent>
@@ -188,7 +218,10 @@ export function AddressForm({
       </div>
 
       <div className="md:col-span-1 space-y-1.5">
-        <Label htmlFor={id('zip')}>
+        <Label
+          htmlFor={id('zip')}
+          className={highlightMissing && zipMissing ? 'text-destructive' : undefined}
+        >
           {t('addrZip')} <span className="text-destructive">*</span>
         </Label>
         <Input
@@ -199,6 +232,8 @@ export function AddressForm({
           autoComplete="postal-code"
           maxLength={10}
           required
+          aria-invalid={highlightMissing && zipMissing}
+          className={missingClass(highlightMissing, zipMissing)}
         />
       </div>
     </div>

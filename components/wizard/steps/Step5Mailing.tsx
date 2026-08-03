@@ -32,12 +32,14 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
 
   const [sameAsPrincipal, setSame] = useState(initialSame);
   const [address, setAddress] = useState<AddressValue>(initialAddress);
+  const [showMissing, setShowMissing] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
-  const valid =
+  const valid = !!(
     sameAsPrincipal ||
-    (address.street1.trim() && address.city.trim() && address.state && address.zip.trim());
+    (address.street1.trim() && address.city.trim() && address.state && address.zip.trim())
+  );
 
   const onContinue = () => {
     start(async () => {
@@ -103,7 +105,12 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
       {!sameAsPrincipal && (
         <div className="space-y-3">
           <Label className="text-base">Mailing address</Label>
-          <AddressForm value={address} onChange={setAddress} defaultStateCode={filingState} />
+          <AddressForm
+            value={address}
+            onChange={setAddress}
+            defaultStateCode={filingState}
+            highlightMissing={showMissing}
+          />
           <p className="text-xs text-ink-muted">
             Mailing addresses can be a P.O. Box. Government correspondence will be sent here.
           </p>
@@ -114,6 +121,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/4`}
         onNext={onContinue}
         nextDisabled={!valid}
+        onBlocked={() => setShowMissing(true)}
         pending={pending}
       />
     </div>

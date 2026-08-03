@@ -31,7 +31,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: "Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $119/year — well below LegalZoom's $249/year. You can cancel any time and switch to your own agent.",
+    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $119/year — well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -82,7 +82,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $119/año — muy por debajo de los $249/año de LegalZoom. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $119/año — muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',

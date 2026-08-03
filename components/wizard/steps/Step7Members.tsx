@@ -173,6 +173,7 @@ export function Step7Members({
 
   const [members, setMembers] = useState<Member[]>(initial);
   const [showTitleHelp, setShowTitleHelp] = useState(false);
+  const [showMissing, setShowMissing] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -319,6 +320,7 @@ export function Step7Members({
 
   const onContinue = () => {
     if (!allNamed) {
+      setShowMissing(true);
       toast.error(t('errorMembersRequired'));
       return;
     }
@@ -560,7 +562,7 @@ export function Step7Members({
               </>
             ) : (
               <div className="md:col-span-2 space-y-1.5">
-                <Label>
+                <Label className={showMissing && !member.name.trim() ? 'text-destructive' : undefined}>
                   {t('fullName')} <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -568,6 +570,12 @@ export function Step7Members({
                   onChange={(e) => updateMember(idx, { name: e.target.value })}
                   placeholder={t('fullNamePlaceholder')}
                   autoComplete="name"
+                  aria-invalid={showMissing && !member.name.trim()}
+                  className={
+                    showMissing && !member.name.trim()
+                      ? 'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive'
+                      : undefined
+                  }
                 />
               </div>
             )}
@@ -762,6 +770,12 @@ export function Step7Members({
         prevHref={`/wizard/${filing.id}/6`}
         onNext={onContinue}
         nextDisabled={!valid}
+        onBlocked={() => {
+          setShowMissing(true);
+          if (!allNamed) toast.error(t('errorMembersRequired'));
+          else if (!hasManager) toast.error(t('managerRequired'));
+          else if (!ownershipOk) toast.error(t('ownershipMustTotal', { total: totalOwnership.toFixed(2) }));
+        }}
         pending={pending}
       />
     </div>

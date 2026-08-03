@@ -16,7 +16,7 @@ import {
 const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $80
 
 const competitors = [
-  { name: 'LegalZoom',         fee: 9_900,  icon: 'x' },
+  { name: 'Typical online filer', fee: 9_900,  icon: 'x' },
   { name: 'FilingServices.com', fee: 14_900, icon: 'x' },
   { name: 'LaunchForma',        fee: OUR_FEE, icon: 'check', us: true },
 ];

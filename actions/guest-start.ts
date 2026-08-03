@@ -21,19 +21,31 @@ import {
   userUtmCreateFields,
 } from '@/lib/utm-attribution';
 import { getTranslations } from 'next-intl/server';
+import { syncSCorpElectionAddOn } from '@/actions/wizard';
+import type { TierSlug } from '@/lib/pricing';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
   lastName: z.string().min(1).max(60),
   email: z.string().email(),
   state: z.enum(['FL', 'WY', 'DE']).optional(),
-  entityType: z.enum(['LLC', 'CORP']).optional(),
+  // SCORP is a customer-facing label for Corporation + S-Corp tax election.
+  entityType: z.enum(['LLC', 'CORP', 'SCORP']).optional(),
   // Preselected package from a pricing CTA. Defaults to STANDARD when absent
   // or invalid so the wizard's tier step still works.
   tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
   // Business name seeded by the assistant (?name=) so the draft starts further along.
   businessName: z.string().max(100).optional(),
 });
+
+function resolveEntityChoice(choice: 'LLC' | 'CORP' | 'SCORP' | undefined): {
+  entityType: 'LLC' | 'CORP';
+  taxElection: 'S_CORP' | null;
+} {
+  if (choice === 'SCORP') return { entityType: 'CORP', taxElection: 'S_CORP' };
+  if (choice === 'CORP') return { entityType: 'CORP', taxElection: null };
+  return { entityType: 'LLC', taxElection: null };
+}
 
 export interface StartGuestResult {
   ok?: boolean;
@@ -66,7 +78,8 @@ export async function startGuestFiling(
     return { error: t('errorInvalid') };
   }
 
-  const { firstName, lastName, entityType } = parsed.data;
+  const { firstName, lastName } = parsed.data;
+  const { entityType, taxElection } = resolveEntityChoice(parsed.data.entityType);
   const serviceTier = parsed.data.tier ?? 'STANDARD';
   const seededName = parsed.data.businessName?.trim().slice(0, 100) || null;
   const seededStep = seededName ? 3 : 2;
@@ -83,7 +96,8 @@ export async function startGuestFiling(
     const filing = await prisma.filing.create({
       data: {
         userId: session.user.id,
-        entityType: entityType ?? 'LLC',
+        entityType,
+        taxElection,
         state: stateCode,
         serviceTier,
         businessName: seededName,
@@ -92,6 +106,7 @@ export async function startGuestFiling(
         ...filingUtmCreateFields(),
       },
     });
+    await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
     redirect(`/wizard/${filing.id}/${seededStep}`);
   }
 
@@ -167,7 +182,8 @@ export async function startGuestFiling(
   const filing = await prisma.filing.create({
     data: {
       userId: guestUser.id,
-      entityType: entityType ?? 'LLC',
+      entityType,
+      taxElection,
       state: stateCode,
       serviceTier,
       businessName: seededName,
@@ -176,6 +192,7 @@ export async function startGuestFiling(
       ...filingUtmCreateFields(),
     },
   });
+  await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
 
   redirect(`/wizard/${filing.id}/${seededStep}`);
 }

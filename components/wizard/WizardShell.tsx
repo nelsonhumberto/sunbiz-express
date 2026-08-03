@@ -216,6 +216,7 @@ export function WizardActions({
   nextDisabled,
   pending,
   onNext,
+  onBlocked,
   isSubmit,
   hideBack,
 }: {
@@ -224,37 +225,50 @@ export function WizardActions({
   nextDisabled?: boolean;
   pending?: boolean;
   onNext?: () => void;
+  /** Called when Continue is clicked while `nextDisabled` — use to highlight missing fields. */
+  onBlocked?: () => void;
   isSubmit?: boolean;
   hideBack?: boolean;
 }) {
   const tCommon = useTranslations('common');
   const label = nextLabel ?? tCommon('continue');
   return (
-    <div className="mt-10 pt-6 border-t border-border flex items-center justify-between">
-      {prevHref && !hideBack ? (
-        <Link
-          href={prevHref}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {tCommon('back')}
-        </Link>
-      ) : (
-        <span />
-      )}
-      <button
-        type={isSubmit ? 'submit' : 'button'}
-        onClick={onNext}
-        disabled={nextDisabled || pending}
-        className={cn(
-          'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
-          'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100'
+    <div className="sticky bottom-0 z-20 mt-10 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border">
+      <div className="flex items-center justify-between gap-3">
+        {prevHref && !hideBack ? (
+          <Link
+            href={prevHref}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {tCommon('back')}
+          </Link>
+        ) : (
+          <span />
         )}
-      >
-        {pending ? tCommon('saving') : label}
-        {!pending && <span className="text-lg leading-none">→</span>}
-      </button>
+        <button
+          type={isSubmit ? 'submit' : 'button'}
+          onClick={() => {
+            if (pending) return;
+            if (nextDisabled) {
+              onBlocked?.();
+              return;
+            }
+            onNext?.();
+          }}
+          disabled={pending}
+          aria-disabled={nextDisabled || pending}
+          className={cn(
+            'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
+            'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',
+            (pending || nextDisabled) && 'opacity-50',
+            pending && 'cursor-not-allowed active:scale-100',
+          )}
+        >
+          {pending ? tCommon('saving') : label}
+          {!pending && <span className="text-lg leading-none">→</span>}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
@@ -11,7 +11,8 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
-import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
+import { syncSCorpElectionAddOn } from '@/actions/wizard';
+import type { TierSlug } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,21 @@ function resolveTier(raw: string | undefined): 'BASIC' | 'STANDARD' | 'PREMIUM' 
     | 'BASIC'
     | 'STANDARD'
     | 'PREMIUM';
+}
+
+function resolveEntityParam(raw: string | undefined): {
+  choice: 'LLC' | 'CORP' | 'SCORP';
+  entityType: 'LLC' | 'CORP';
+  taxElection: 'S_CORP' | null;
+} {
+  const upper = (raw ?? 'LLC').toUpperCase();
+  if (upper === 'SCORP' || upper === 'S-CORP' || upper === 'S_CORP') {
+    return { choice: 'SCORP', entityType: 'CORP', taxElection: 'S_CORP' };
+  }
+  if (upper === 'CORP' || upper === 'CORPORATION') {
+    return { choice: 'CORP', entityType: 'CORP', taxElection: null };
+  }
+  return { choice: 'LLC', entityType: 'LLC', taxElection: null };
 }
 
 interface StartPageProps {
@@ -38,15 +54,16 @@ export default async function StartPage({ searchParams }: StartPageProps) {
     const stateCode = (ACTIVE_FORMATION_STATES.includes(requested as StateCode)
       ? requested
       : 'FL') as StateCode;
-    const entity =
-      (searchParams?.entity ?? 'LLC').toUpperCase() === 'CORP' ? 'CORP' : 'LLC';
+    const { entityType, taxElection } = resolveEntityParam(searchParams?.entity);
     const seededName = searchParams?.name?.trim().slice(0, 100) || null;
+    const serviceTier = resolveTier(searchParams?.tier);
     const filing = await prisma.filing.create({
       data: {
         userId: session.user.id,
-        entityType: entity,
+        entityType,
+        taxElection,
         state: stateCode,
-        serviceTier: resolveTier(searchParams?.tier),
+        serviceTier,
         // Step 1 (entity + state) is implicitly complete because /start already
         // collected both. If the assistant also passed a business name, seed it
         // and skip to step 3.
@@ -56,20 +73,16 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         ...filingUtmCreateFields(),
       },
     });
+    await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
     redirect(`/wizard/${filing.id}/${seededName ? 3 : 2}`);
   }
 
   const t = await getTranslations('start');
-  const locale = await getLocale();
   const requested = (searchParams?.state ?? 'FL').toUpperCase();
   const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
     ? (requested as StateCode)
     : 'FL';
-  const entityType = (searchParams?.entity ?? 'LLC').toUpperCase() === 'CORP' ? 'CORP' : 'LLC';
-  const marketingState = resolveMarketingState(stateCode);
-  const stateName = localizedStateName(marketingState, locale);
-  const entityLabel =
-    entityType === 'LLC' ? t('entityLLC') : t('entityCorp');
+  const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -81,19 +94,9 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       </header>
 
       <main className="flex-1 container max-w-3xl py-10">
-        <div className="space-y-2 text-center mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-            {t('kicker')}
-          </p>
-          <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight">
-            {t('headline', { state: stateName, entity: entityLabel })}
-          </h1>
-          <p className="text-ink-muted max-w-lg mx-auto">{t('subhead')}</p>
-        </div>
-
         <GuestStartForm
           defaultState={stateCode}
-          defaultEntity={entityType as 'LLC' | 'CORP'}
+          defaultEntity={entityChoice}
           defaultTier={resolveTier(searchParams?.tier)}
           defaultBusinessName={searchParams?.name?.trim().slice(0, 100) || undefined}
         />

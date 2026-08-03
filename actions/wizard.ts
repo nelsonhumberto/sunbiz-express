@@ -183,7 +183,7 @@ export async function saveStep1(input: z.infer<typeof Step1Schema>) {
  * Attach or detach the `s_corp_election` add-on to match the formation's tax
  * election. No-op for Premium (bundled). Idempotent.
  */
-async function syncSCorpElectionAddOn(
+export async function syncSCorpElectionAddOn(
   filingId: string,
   elected: boolean,
   tier: TierSlug,

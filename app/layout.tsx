@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -8,6 +9,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
+import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { JsonLd, organizationJsonLd } from '@/components/seo/JsonLd';
 
 const poppins = Poppins({
@@ -92,6 +94,9 @@ export default async function RootLayout({
           </NextIntlClientProvider>
           <Analytics />
           <SpeedInsights />
+          <Suspense fallback={null}>
+            <GoogleAnalytics />
+          </Suspense>
         </PostHogProvider>
       </body>
     </html>

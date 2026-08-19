@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
+import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
 import { GuestStartForm } from './guest-start-form';
 import {
@@ -78,6 +79,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
   }
 
   const t = await getTranslations('start');
+  const tDisc = await getTranslations('disclosure');
   const requested = (searchParams?.state ?? 'FL').toUpperCase();
   const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
     ? (requested as StateCode)
@@ -112,10 +114,13 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           </Link>
           .
         </p>
+
+        <GovDisclosure text={tDisc('notAffiliatedShort')} className="mt-4 max-w-md" />
       </main>
 
-      <footer className="container py-6 text-xs text-ink-subtle text-center">
-        © {COPYRIGHT_YEAR} LaunchForma
+      <footer className="container py-6 text-center">
+        <GovDisclosure text={tDisc('notAffiliated')} className="mb-3 max-w-2xl" />
+        <p className="text-xs text-ink-subtle">© {COPYRIGHT_YEAR} LaunchForma</p>
       </footer>
     </div>
   );

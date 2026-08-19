@@ -21,6 +21,11 @@ export interface MarketingFaqItem {
 
 const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: 'Is LaunchForma a government agency — and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service. We are not a government agency and are not affiliated with, endorsed by, or acting on behalf of the Florida Department of State, the IRS, or any government body. You can file yourself directly with the state at sunbiz.org, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee is charged for the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit to Florida on your behalf.",
+  },
+  {
     id: 'florida-llc',
     q: 'How long does it take to form a Florida LLC?',
     a: 'About 15 minutes to complete our wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
@@ -31,7 +36,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $119/year — well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
+    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $150/year — well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -49,7 +54,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
     id: 'ein',
     q: 'What about the EIN — do I need one?',
-    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Popular and Premium packages include EIN acquisition; you can add it as a $79 upgrade on Essential.",
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Popular and Premium packages include EIN application and filing; you can add it as a $79 upgrade on Essential. The IRS issues EINs for free — our fee covers preparing and filing your Form SS-4 for you.",
   },
   {
     id: 'boi',
@@ -72,6 +77,11 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
 
 const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
+    a: 'No. LaunchForma es un servicio privado e independiente de gestión de trámites. No somos una agencia gubernamental ni estamos afiliados, respaldados o actuando en nombre del Departamento de Estado de Florida, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el estado en sunbiz.org y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa de presentación del estado, que remitimos a Florida en tu nombre.',
+  },
+  {
     id: 'florida-llc',
     q: '¿Cuánto tarda formar una LLC en Florida?',
     a: 'Unos 15 minutos completar nuestro asistente. Enviamos al Departamento de Estado de Florida el mismo día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
@@ -82,7 +92,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $119/año — muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $150/año — muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
@@ -100,7 +110,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
     id: 'ein',
     q: '¿Qué pasa con el EIN — lo necesito?',
-    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Popular y Premium incluyen la obtención del EIN; puedes agregarlo por $79 en el plan Esencial.',
+    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Popular y Premium incluyen la solicitud y presentación del EIN; puedes agregarlo por $79 en el plan Esencial. El IRS emite los EIN de forma gratuita — nuestra tarifa cubre la preparación y presentación de tu Formulario SS-4.',
   },
   {
     id: 'boi',
@@ -125,6 +135,11 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
 
 const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: 'Is LaunchForma a government agency — and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service — not a government agency, and not affiliated with or endorsed by the Wyoming Secretary of State, the IRS, or any government body. You can file yourself directly with the Wyoming Secretary of State, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit on your behalf.",
+  },
+  {
     q: 'How long does it take to form a Wyoming LLC or Corporation?',
     a: 'About 15 minutes inside our wizard. We submit to the Wyoming Secretary of State the same business day. Standard Wyoming processing currently runs about 3 weeks. We offer an expedited option at checkout for an additional Wyoming state fee — final amount is confirmed at submission.',
   },
@@ -142,7 +157,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Wyoming registered agent?',
-    a: 'Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is $119/year.',
+    a: 'Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is $150/year.',
   },
   {
     q: 'When is the Wyoming annual report due?',
@@ -154,7 +169,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What about the EIN — do I need one?',
-    a: 'You will need an EIN to open a business bank account, hire employees, or file federal taxes. Standard and Concierge packages include EIN handling. If you have a U.S. SSN or ITIN we can complete the IRS EIN online application within one business day. Foreign owners without an SSN/ITIN cannot use the IRS online tool — we file Form SS-4 by phone or fax on your behalf, which takes longer (and may require an identity verification step).',
+    a: 'You will need an EIN to open a business bank account, hire employees, or file federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we can complete the IRS EIN online application within one business day. Foreign owners without an SSN/ITIN cannot use the IRS online tool — we file Form SS-4 by phone or fax on your behalf, which takes longer (and may require an identity verification step).',
   },
   {
     q: 'Does Wyoming require an Operating Agreement?',
@@ -185,6 +200,11 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
 
 const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
+    a: 'No. LaunchForma es un servicio privado e independiente — no es una agencia gubernamental ni está afiliado o respaldado por el Secretario de Estado de Wyoming, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el Secretario de Estado de Wyoming y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa del estado, que remitimos en tu nombre.',
+  },
+  {
     q: '¿Cuánto tarda formar una LLC o Corporación en Wyoming?',
     a: 'Aproximadamente 15 minutos en nuestro asistente. Enviamos al Secretario de Estado de Wyoming el mismo día hábil. El procesamiento estándar de Wyoming tarda alrededor de 3 semanas. Ofrecemos una opción acelerada al pagar por una tarifa adicional del estado — el monto final se confirma al enviarlo.',
   },
@@ -202,7 +222,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Wyoming?',
-    a: 'Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es $119/año.',
+    a: 'Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es $150/año.',
   },
   {
     q: '¿Cuándo se debe presentar el reporte anual de Wyoming?',
@@ -214,7 +234,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Y el EIN — lo necesito?',
-    a: 'Necesitarás un EIN para abrir cuenta bancaria empresarial, contratar empleados o declarar impuestos federales. Los planes Bank-Ready y Concierge incluyen el EIN. Si tienes SSN o ITIN podemos completar la solicitud en línea del IRS en un día hábil. Propietarios extranjeros sin SSN/ITIN no pueden usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax en tu nombre, lo que tarda más (y puede requerir un paso de verificación de identidad).',
+    a: 'Necesitarás un EIN para abrir cuenta bancaria empresarial, contratar empleados o declarar impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Si tienes SSN o ITIN podemos completar la solicitud en línea del IRS en un día hábil. Propietarios extranjeros sin SSN/ITIN no pueden usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax en tu nombre, lo que tarda más (y puede requerir un paso de verificación de identidad).',
   },
   {
     q: '¿Wyoming requiere un Operating Agreement?',
@@ -247,6 +267,11 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
 
 const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: 'Is LaunchForma a government agency — and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service — not a government agency, and not affiliated with or endorsed by the Delaware Division of Corporations, the IRS, or any government body. You can file yourself directly with the Delaware Division of Corporations, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit on your behalf.",
+  },
+  {
     q: 'How long does it take to form a Delaware LLC or Corporation?',
     a: 'About 15 minutes inside our wizard. Standard Delaware processing currently takes about 6 weeks (the Division of Corporations is backlogged). Delaware also offers an 8-business-day expedited service for an additional $50 state fee — you can choose either at checkout.',
   },
@@ -264,7 +289,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Delaware registered agent?',
-    a: 'Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is $149/year (Delaware RA market is more expensive than other states).',
+    a: 'Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is $150/year.',
   },
   {
     q: 'When are Delaware annual taxes due?',
@@ -276,7 +301,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What about the EIN — do I need one?',
-    a: 'Yes — for a business bank account, hiring, or federal taxes. Standard and Concierge packages include EIN handling. If you have a U.S. SSN or ITIN we file the IRS online EIN application within one business day. If you are a foreign founder without an SSN/ITIN, you cannot use the IRS online tool — we will file Form SS-4 by phone or fax for you (this takes longer and may require identity verification).',
+    a: 'Yes — for a business bank account, hiring, or federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we file the IRS online EIN application within one business day. If you are a foreign founder without an SSN/ITIN, you cannot use the IRS online tool — we will file Form SS-4 by phone or fax for you (this takes longer and may require identity verification).',
   },
   {
     q: 'Does Delaware require an Operating Agreement (LLC) or Bylaws (Corp)?',
@@ -311,6 +336,11 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
 
 const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   {
+    id: 'not-affiliated',
+    q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
+    a: 'No. LaunchForma es un servicio privado e independiente — no es una agencia gubernamental ni está afiliado o respaldado por la División de Corporaciones de Delaware, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con la División de Corporaciones de Delaware y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa del estado, que remitimos en tu nombre.',
+  },
+  {
     q: '¿Cuánto tarda formar una LLC o Corporación en Delaware?',
     a: 'Aproximadamente 15 minutos en nuestro asistente. El procesamiento estándar de Delaware actualmente tarda alrededor de 6 semanas (la División de Corporaciones tiene retrasos). Delaware también ofrece servicio acelerado de 8 días hábiles por una tarifa adicional de $50 — puedes elegir cualquiera de los dos al pagar.',
   },
@@ -328,7 +358,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Delaware?',
-    a: 'Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es $149/año.',
+    a: 'Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es $150/año.',
   },
   {
     q: '¿Cuándo se deben pagar los impuestos anuales de Delaware?',
@@ -340,7 +370,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Y el EIN — lo necesito?',
-    a: 'Sí — para cuenta bancaria, contratación o impuestos federales. Los planes Bank-Ready y Concierge incluyen el EIN. Con SSN o ITIN podemos hacer la solicitud en línea del IRS en un día hábil. Sin SSN/ITIN no puedes usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax (toma más tiempo y puede requerir verificación de identidad).',
+    a: 'Sí — para cuenta bancaria, contratación o impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Con SSN o ITIN podemos hacer la solicitud en línea del IRS en un día hábil. Sin SSN/ITIN no puedes usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax (toma más tiempo y puede requerir verificación de identidad).',
   },
   {
     q: '¿Delaware requiere Operating Agreement o Bylaws?',

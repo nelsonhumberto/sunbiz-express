@@ -13,6 +13,7 @@
  */
 
 import { prisma } from './db';
+import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export type NotificationType =
   | 'RA_RENEWAL_60'
   | 'RA_RENEWAL_30'
   | 'RA_RENEWAL_7'
+  | 'RA_RENEWED'
   | 'PAYMENT_CONFIRMATION'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
@@ -58,6 +60,17 @@ interface EmailContext {
    * the abandoned-draft recovery emails so the CTA isn't a dead-end.
    */
   resumeUrl?: string;
+  // ── Registered Agent renewal reminders ──
+  /** Whether the customer enrolled in automatic renewal at checkout. */
+  raAutoRenew?: boolean;
+  /** Price snapshotted on the service (grandfathered per customer). */
+  raRenewalPriceCents?: number;
+  /** The upcoming renewal date. */
+  raRenewalDate?: Date;
+  /** Last 4 of the card we'd charge (auto-renew) — for reassurance. */
+  raCardLast4?: string;
+  /** Deep link to the RA renewal page for this filing. */
+  raRenewUrl?: string;
 }
 
 export interface SendEmailArgs {
@@ -71,6 +84,60 @@ export interface SendEmailArgs {
 // ─── Templates ───────────────────────────────────────────────────────────────
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+
+/**
+ * Registered Agent renewal reminder body, shared by the 60/30/7-day cascade.
+ *
+ * Branches on whether the customer enrolled in automatic renewal:
+ *  - autoRenew ON  → reassurance: states the exact amount, date, and card, and
+ *    tells them how to change or cancel. No "pay now" pressure.
+ *  - autoRenew OFF → a genuine call to action driving to the renewal page. The
+ *    7-day note never promises we'll charge them (we won't without consent).
+ */
+function raRenewalEmail(
+  daysOut: 60 | 30 | 7,
+  ctx: EmailContext,
+): { subject: string; body: string } {
+  const business = ctx.businessName ?? 'your business';
+  const price = formatCurrency(ctx.raRenewalPriceCents ?? RA_RENEWAL_PRICE_CENTS);
+  const dateStr = ctx.raRenewalDate ? formatDateLong(ctx.raRenewalDate) : null;
+  const renewUrl = ctx.raRenewUrl ?? `${siteUrl}/dashboard/billing`;
+  const last4 = ctx.raCardLast4;
+
+  if (ctx.raAutoRenew) {
+    const when = dateStr ? `on ${dateStr}` : `in ${daysOut} days`;
+    const cardPhrase = last4 ? ` to your card ending ${last4}` : '';
+    return {
+      subject:
+        daysOut === 7
+          ? `Your Registered Agent for ${business} renews in 7 days`
+          : `Registered Agent auto-renewal for ${business} — ${daysOut} days`,
+      body: html`
+        <h1>Your Registered Agent renews automatically ${when}</h1>
+        <p>No action needed. We'll renew Registered Agent service for <strong>${business}</strong> ${when} and charge <strong>${price}</strong>${cardPhrase}, keeping your in-state address active and your home address off the public record.</p>
+        <p class="muted">Want to change your card or cancel? You can do that anytime before the renewal date.</p>
+        <a class="cta" href="${renewUrl}">Manage renewal</a>
+      `,
+    };
+  }
+
+  const urgency =
+    daysOut === 7
+      ? `<p>This is your final reminder. Renew now to avoid a lapse in coverage — a missed legal notice can lead to a default judgment or administrative dissolution.</p>`
+      : `<p>Your free Year-1 Registered Agent service for <strong>${business}</strong> is approaching its anniversary${dateStr ? ` on ${dateStr}` : ''}.</p>`;
+  return {
+    subject:
+      daysOut === 7
+        ? `Final reminder: renew your Registered Agent for ${business}`
+        : `Your Registered Agent for ${business} renews in ${daysOut} days`,
+    body: html`
+      <h1>Registered Agent renewal ${dateStr ? `— ${dateStr}` : `in ${daysOut} days`}</h1>
+      ${urgency}
+      <p>Renew for <strong>${price}/year</strong> to keep your in-state address active and your home address off the public record. Cancel anytime.</p>
+      <a class="cta" href="${renewUrl}">Renew now</a>
+    `,
+  };
+}
 
 const TEMPLATES: Record<
   NotificationType,
@@ -132,28 +199,18 @@ const TEMPLATES: Record<
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
-  RA_RENEWAL_60: ({ businessName }) => ({
-    subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
+  RA_RENEWAL_60: (ctx) => raRenewalEmail(60, ctx),
+  RA_RENEWAL_30: (ctx) => raRenewalEmail(30, ctx),
+  RA_RENEWAL_7: (ctx) => raRenewalEmail(7, ctx),
+  RA_RENEWED: ({ firstName, businessName, totalCents, dueDate }) => ({
+    subject: `Registered Agent renewed for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Heads up — RA renewal in 60 days</h1>
-      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year and keeps your home address off the public state record.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Manage Registered Agent</a>
-    `,
-  }),
-  RA_RENEWAL_30: ({ businessName }) => ({
-    subject: `RA renewal in 30 days for ${businessName ?? 'your business'}`,
-    body: html`
-      <h1>30 days until Registered Agent renewal</h1>
-      <p>Cancel anytime if you've found another agent. Otherwise we'll keep accepting service of process for you starting on your renewal date.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Review renewal</a>
-    `,
-  }),
-  RA_RENEWAL_7: ({ businessName }) => ({
-    subject: `Final notice: RA renewal in 7 days for ${businessName ?? 'your business'}`,
-    body: html`
-      <h1>RA renewal in 7 days</h1>
-      <p>If we don't hear from you, we'll renew Registered Agent service for ${businessName ?? 'your business'} for another year so you don't lose coverage.</p>
-      <a class="cta" href="${siteUrl}/dashboard">Manage renewal</a>
+      <h1>Registered Agent renewed — thank you</h1>
+      <p>${firstName ?? 'Hi'} — we've renewed Registered Agent service for <strong>${businessName ?? 'your business'}</strong>${
+        totalCents != null ? ` and charged <strong>${formatCurrency(totalCents)}</strong>` : ''
+      }. Your in-state address stays active and your home address stays off the public record.</p>
+      ${dueDate ? `<p class="muted">Your next renewal date is ${formatDateLong(dueDate)}.</p>` : ''}
+      <a class="cta" href="${siteUrl}/dashboard/billing">View billing</a>
     `,
   }),
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({

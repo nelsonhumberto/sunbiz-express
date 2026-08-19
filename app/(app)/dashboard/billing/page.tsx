@@ -135,9 +135,17 @@ export default async function BillingPage() {
                         {svc.filing.businessName ?? '—'}
                       </Link>
                     </span>
-                    <span className="text-xs text-ink-subtle whitespace-nowrap inline-flex items-center gap-1">
-                      <CalendarClock className="h-3 w-3" />
-                      {t('renewsOn')} {formatDate(svc.renewalDate)}
+                    <span className="text-right whitespace-nowrap">
+                      <span className="text-xs text-ink-subtle inline-flex items-center gap-1">
+                        <CalendarClock className="h-3 w-3" />
+                        {t('renewsOn')} {formatDate(svc.renewalDate)}
+                      </span>
+                      <Link
+                        href={`/dashboard/filings/${svc.filingId}/registered-agent`}
+                        className="mt-0.5 block text-xs font-medium text-primary hover:underline"
+                      >
+                        {t('raRenewNow')}
+                      </Link>
                     </span>
                   </li>
                 ))}

@@ -8,6 +8,7 @@ import { PricingTable } from '@/components/marketing/PricingTable';
 import { Testimonials } from '@/components/marketing/Testimonials';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
 
 interface OfferPageProps {
@@ -33,6 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function OfferPage({ searchParams }: OfferPageProps) {
   const t = await getTranslations('offer');
+  const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
   const state = resolveMarketingState(pickFirst(searchParams?.state));
   const tier = pickFirst(searchParams?.tier);
@@ -79,6 +81,8 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
             </Button>
           </div>
           <p className="mt-3 text-xs text-ink-subtle">{t('guarantee')}</p>
+
+          <GovDisclosure text={tDisc('notAffiliatedShort')} className="mt-4" />
         </div>
       </section>
 

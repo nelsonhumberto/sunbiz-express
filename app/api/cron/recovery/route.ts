@@ -140,7 +140,19 @@ async function runRaRenewalReminders(now: number) {
       renewalDate: { gte: new Date(now), lte: horizon },
       serviceProvider: 'INTERNAL',
     },
-    include: { filing: { include: { user: true } } },
+    include: {
+      filing: {
+        include: {
+          user: true,
+          payments: {
+            where: { status: 'SUCCEEDED' },
+            orderBy: { completedAt: 'desc' },
+            take: 1,
+            select: { cardLast4: true },
+          },
+        },
+      },
+    },
   });
 
   let sent = 0;
@@ -163,6 +175,11 @@ async function runRaRenewalReminders(now: number) {
       context: {
         firstName: svc.filing.user.firstName,
         businessName: svc.filing.businessName ?? undefined,
+        raAutoRenew: svc.autoRenew,
+        raRenewalPriceCents: svc.renewalPriceCents,
+        raRenewalDate: svc.renewalDate,
+        raCardLast4: svc.filing.payments[0]?.cardLast4 ?? undefined,
+        raRenewUrl: `${SITE_URL}/dashboard/filings/${svc.filingId}/registered-agent`,
       },
     });
     sent++;

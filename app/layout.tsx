@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: '%s · LaunchForma',
   },
   description:
-    'LaunchForma makes Florida LLC formation fast and affordable. File your LLC or Corporation online — Florida LLC filing, EIN acquisition, Sunbiz registration, free Year-1 Registered Agent. No hidden fees.',
+    'LaunchForma is a private filing service that prepares and files your Florida LLC or Corporation with the state on your behalf. Florida LLC filing, EIN application, free Year-1 Registered Agent, transparent all-in pricing. Not a government agency; no hidden fees.',
   keywords: [
     'LLC formation',
     'Corporation formation',
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'File your Florida LLC or Corporation online. Florida LLC formation, EIN, Sunbiz registration, free registered agent, and transparent all-in pricing. No hidden fees, ever.',
+      'A private filing service that prepares and files your Florida LLC or Corporation with the state. EIN application, free registered agent, and transparent all-in pricing. Not a government agency. No hidden fees, ever.',
     type: 'website',
     locale: 'en_US',
     siteName: 'LaunchForma',
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'Florida LLC formation, EIN, Sunbiz filing. All-in pricing, free registered agent, same-day submission.',
+      'Private Florida LLC formation & EIN application service. All-in pricing, free registered agent, same-day submission. Not a government agency.',
   },
   robots: {
     index: true,

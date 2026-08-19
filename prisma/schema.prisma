@@ -361,6 +361,20 @@ model RegisteredAgentService {
   renewalDate     DateTime
   expirationDate  DateTime?
   status          String   @default("ACTIVE") // ACTIVE | PENDING | EXPIRED | CANCELLED
+
+  // Price snapshotted at signup so a later change to RA_RENEWAL_PRICE_CENTS
+  // never silently re-prices an existing customer (grandfathering).
+  renewalPriceCents  Int      @default(15000)
+  // Auto-renew mandate. autoRenew stays false until the customer explicitly
+  // consents at checkout; autoRenewConsentAt records when they agreed (the
+  // proof required for off-session charging under FTC negative-option rules).
+  autoRenew          Boolean  @default(false)
+  autoRenewConsentAt DateTime?
+  // Phase 2 off-session charge bookkeeping (unused until automatic renewal
+  // ships; declared now so the schema is stable).
+  renewalAttempts    Int      @default(0)
+  lastRenewalError   String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

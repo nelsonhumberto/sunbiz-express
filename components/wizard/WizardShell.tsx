@@ -7,6 +7,7 @@ import { ArrowLeft, X, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
+import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { Progress } from '@/components/ui/progress';
 import {
   TOTAL_DISPLAYED_STEPS,
@@ -50,6 +51,7 @@ export function WizardShell({
   guestEmail,
 }: WizardShellProps) {
   const t = useTranslations('wizard');
+  const tDisc = useTranslations('disclosure');
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
   const subKey = `step${step}Subtitle` as keyof IntlMessages;
@@ -144,6 +146,12 @@ export function WizardShell({
                 {children}
               </motion.div>
             </AnimatePresence>
+
+            <GovDisclosure
+              text={tDisc('notAffiliatedShort')}
+              align="left"
+              className="mt-8"
+            />
           </div>
 
           <aside className="lg:sticky lg:top-32 lg:self-start">

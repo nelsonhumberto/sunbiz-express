@@ -6,6 +6,7 @@ import { COPYRIGHT_YEAR } from '@/lib/constants';
 export function Footer() {
   const tFooter = useTranslations('footer');
   const tNav = useTranslations('nav');
+  const tDisc = useTranslations('disclosure');
 
   const FOOTER_LINKS = {
     product: [
@@ -70,6 +71,10 @@ export function Footer() {
             </span>
           </div>
         </div>
+
+        <p className="mt-6 max-w-3xl text-[11px] leading-relaxed text-white/30">
+          {tDisc('notAffiliated')}
+        </p>
       </div>
     </footer>
   );

@@ -136,7 +136,13 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
-      ...(customerId ? { customer: customerId } : {}),
+      // Attach the Customer AND flag the card for future off-session reuse so
+      // Registered Agent renewals (and other post-checkout charges) can bill
+      // the saved method. Guests have no Customer, and Stripe rejects
+      // setup_future_usage without one — so only set both together.
+      ...(customerId
+        ? { customer: customerId, setup_future_usage: 'off_session' as const }
+        : {}),
       automatic_payment_methods: { enabled: true },
       // Metadata is set server-side only — never trust client metadata here.
       metadata: {

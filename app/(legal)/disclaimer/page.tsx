@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Legal Disclaimer',
   description:
-    'LaunchForma is a self-help business formation service, not a law firm. Read our legal disclaimers covering document accuracy, state filing acceptance, compliance reminders, and tax advice.',
+    'LaunchForma is a private, independent self-help business formation service — not a law firm and not a government agency. Read our legal disclaimers covering government affiliation, document accuracy, state filing acceptance, compliance reminders, and tax advice.',
   alternates: { canonical: '/disclaimer' },
 };
 
@@ -12,6 +12,30 @@ export default function DisclaimerPage() {
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>
       <h1>Legal Disclaimer</h1>
+
+      <h2>Not a government agency</h2>
+      <p>
+        LaunchForma is a private, independent document-preparation and filing service. We are not
+        a government agency, and we are <strong>not affiliated with, endorsed by, sponsored by, or
+        acting on behalf of</strong> the Florida Department of State, the Internal Revenue Service
+        (IRS), FinCEN, or any other federal, state, or local government agency.
+      </p>
+      <p>
+        You are free to prepare and submit these filings yourself, directly with the government,
+        and in many cases at a lower cost. For example, you can form a Florida business directly
+        through the Florida Department of State at{' '}
+        <a href="https://dos.fl.gov/sunbiz" target="_blank" rel="noopener noreferrer">
+          sunbiz.org
+        </a>
+        , and you can apply for an EIN directly with the IRS at{' '}
+        <a href="https://www.irs.gov" target="_blank" rel="noopener noreferrer">
+          irs.gov
+        </a>
+        , where the IRS issues EINs at no cost. Our fees are charged for the convenience of having
+        LaunchForma prepare and file the paperwork for you — not for the government documents
+        themselves. Where a package includes a state filing fee, that fee is set by the government
+        and remitted to the state on your behalf.
+      </p>
 
       <h2>LaunchForma is not a law firm</h2>
       <p>

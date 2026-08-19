@@ -43,6 +43,13 @@ export async function processCheckout(input: {
   couponId?: string;
   couponCode?: string;
   discountCents?: number;
+  /**
+   * Customer opted into Registered Agent auto-renewal at checkout. Persisted
+   * onto the filing's optionalDetails so submitFilingToState stamps consent
+   * (autoRenew + autoRenewConsentAt) onto the RegisteredAgentService it creates.
+   * Only meaningful when the customer chose our RA.
+   */
+  autoRenewRa?: boolean;
 }): Promise<CheckoutResult> {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
@@ -181,6 +188,18 @@ export async function processCheckout(input: {
     },
   });
 
+  // Merge auto-renew consent into optionalDetails so submitFilingToState (which
+  // creates the RA service) can read it. Untouched when no consent was given.
+  const existingOptional =
+    safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null) ?? {};
+  const optionalDetailsUpdate = input.autoRenewRa
+    ? JSON.stringify({
+        ...existingOptional,
+        autoRenewRa: true,
+        autoRenewConsentAt: new Date().toISOString(),
+      })
+    : filing.optionalDetails;
+
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
@@ -191,6 +210,7 @@ export async function processCheckout(input: {
       totalCents: expectedTotal,
       couponCode: input.couponCode ?? null,
       couponId: input.couponId ?? null,
+      optionalDetails: optionalDetailsUpdate,
       completedSteps: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     },
   });

@@ -108,7 +108,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     ribbon: 'Most Popular',
     features: [
       { label: 'Everything in Filing Only', included: true },
-      { label: 'EIN Acquisition (IRS Form SS-4)', included: true, highlight: true },
+      { label: 'EIN Application & Filing (IRS Form SS-4)', included: true, highlight: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
       {
         label: 'Certificate of Status (state-issued)',
@@ -221,6 +221,16 @@ export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
 /** Optional Registered Agent service upsell added to annual report checkout. */
 export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
 
+/**
+ * Canonical Registered Agent renewal price — the single source of truth for
+ * what we charge to keep RA service active for another year. Every quote,
+ * email, and charge derives from this. The price a customer actually pays is
+ * snapshotted onto {@link RegisteredAgentService.renewalPriceCents} at signup
+ * so a later change to this constant never silently re-prices existing
+ * customers (grandfathering is intentional).
+ */
+export const RA_RENEWAL_PRICE_CENTS = 15_000; // $150.00
+
 // ─── Add-on services ──────────────────────────────────────────────────────
 
 export type AddOnSlug =
@@ -278,9 +288,9 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
   },
   {
     slug: 'ein',
-    name: 'EIN Acquisition',
+    name: 'EIN Application & Filing',
     description:
-      'IRS Form SS-4 filed for you — federal Tax ID delivered within 1 business day. Required to open a business bank account.',
+      'We prepare and file IRS Form SS-4 for you — federal Tax ID delivered within 1 business day. The IRS issues EINs at no cost; our fee covers the preparation and filing service. Required to open a business bank account.',
     serviceMarginCents: 7_900,
     category: 'formation',
     iconKey: 'Hash',

@@ -9,6 +9,7 @@ import {
   computeCost,
   filingHasOperatingAgreement,
   tierBundledAddOns,
+  RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -423,6 +424,20 @@ export async function submitFilingToState(
     useOurService?: boolean;
   } | null>(filing.registeredAgent, null);
   if (ra && ra.useOurService) {
+    // Auto-renew consent is captured at checkout and persisted onto the
+    // filing's optionalDetails by processCheckout. Absent consent, autoRenew
+    // stays off — we never enroll someone in recurring billing silently.
+    const autoRenewConsent = optionalForCost?.autoRenewRa === true;
+    const consentAtRaw =
+      typeof optionalForCost?.autoRenewConsentAt === 'string'
+        ? (optionalForCost.autoRenewConsentAt as string)
+        : null;
+    const autoRenewConsentAt = autoRenewConsent
+      ? consentAtRaw
+        ? new Date(consentAtRaw)
+        : submittedAt
+      : null;
+
     await prisma.registeredAgentService.create({
       data: {
         filingId: filing.id,
@@ -438,6 +453,11 @@ export async function submitFilingToState(
         startDate: submittedAt,
         renewalDate: new Date(submittedAt.getFullYear() + 1, submittedAt.getMonth(), submittedAt.getDate()),
         status: 'ACTIVE',
+        // Snapshot the price the customer is quoted today so a future price
+        // change never re-prices them.
+        renewalPriceCents: RA_RENEWAL_PRICE_CENTS,
+        autoRenew: autoRenewConsent,
+        autoRenewConsentAt,
       },
     });
   }

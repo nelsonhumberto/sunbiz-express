@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { toast } from 'sonner';
 import {
   Lock,
@@ -24,7 +24,13 @@ import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCa
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { computeCost, type AddOnSlug, type TierSlug, TIER_BY_SLUG } from '@/lib/pricing';
+import {
+  computeCost,
+  RA_RENEWAL_PRICE_CENTS,
+  type AddOnSlug,
+  type TierSlug,
+  TIER_BY_SLUG,
+} from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import type { WizardFiling } from '../types';
@@ -54,6 +60,7 @@ export function Step12Payment({
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const locale = useLocale();
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const stateCode: StateCode = isActiveFormationState(filing.state)
@@ -86,7 +93,24 @@ export function Step12Payment({
   });
   const [einComplete, setEinComplete] = useState(einInitial.collected);
 
+  // Registered Agent auto-renew: only offer it when the customer chose our RA.
+  const registeredAgent = safeParseJson<{ useOurService?: boolean } | null>(
+    filing.registeredAgent,
+    null,
+  );
+  const usesOurRa = registeredAgent?.useOurService === true;
+
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
+  // Default the auto-renew mandate to on, with the full terms shown inline so
+  // it's affirmative, informed consent (not a hidden pre-check).
+  const [autoRenewRa, setAutoRenewRa] = useState(true);
+  // First renewal charge date — one year out. Computed once so SSR and the
+  // client render the same string (no hydration mismatch).
+  const [firstRenewalDate] = useState(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d;
+  });
   const [pending, start] = useTransition();
   const router = useRouter();
   const cardRef = useRef<StripeCardHandle>(null);
@@ -154,6 +178,7 @@ export function Step12Payment({
         couponId: appliedCoupon?.couponId,
         couponCode: appliedCoupon?.code,
         discountCents,
+        autoRenewRa: usesOurRa && autoRenewRa,
       });
       if (res.error) {
         toast.error(res.error);
@@ -335,6 +360,36 @@ export function Step12Payment({
             <StripeCardInput ref={cardRef} />
           </div>
         </div>
+      )}
+
+      {/* Registered Agent auto-renew mandate — affirmative, informed consent
+          with the amount, date, cadence, and cancel path shown inline. Only
+          when the customer chose our RA and there's a real charge to renew. */}
+      {usesOurRa && !isTester && (
+        <label className="flex items-start gap-3 rounded-lg border border-border bg-paper-soft p-4 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoRenewRa}
+            onChange={(e) => setAutoRenewRa(e.target.checked)}
+            className="mt-0.5 accent-primary h-4 w-4 shrink-0"
+          />
+          <span className="text-sm leading-relaxed">
+            <span className="font-medium text-ink flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+              {t('raAutoRenewLabel')}
+            </span>
+            <span className="mt-1 block text-xs text-ink-muted">
+              {t('raAutoRenewMandate', {
+                price: formatCurrency(RA_RENEWAL_PRICE_CENTS),
+                date: new Intl.DateTimeFormat(locale, {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                }).format(firstRenewalDate),
+              })}
+            </span>
+          </span>
+        </label>
       )}
 
       {/* Trust footer */}

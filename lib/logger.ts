@@ -12,7 +12,7 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface LogContext {
-  /** Logical area — `wizard`, `checkout`, `dashboard`, etc. */
+  /** Logical area - `wizard`, `checkout`, `dashboard`, etc. */
   area?: string;
   /** Identifier for the entity the event is about (filing id, payment id). */
   entityId?: string;
@@ -34,7 +34,7 @@ let externalSink: ((event: CapturedError) => void) | null = null;
 
 /**
  * Register an external sink (e.g. Sentry, Datadog Browser RUM). Called
- * once at app boot — usually from `app/layout.tsx` once the environment
+ * once at app boot - usually from `app/layout.tsx` once the environment
  * variables are present.
  */
 export function setExternalSink(sink: (event: CapturedError) => void) {

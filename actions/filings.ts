@@ -96,7 +96,7 @@ export async function submitFilingToState(
   // Normally invoked from the wizard with an authenticated session. The
   // `skipAuth` path lets trusted server-to-server callers (the Stripe webhook
   // backstop) finalize a paid filing whose browser died before processCheckout
-  // ran — there's no session in that context, so we trust the filing's owner.
+  // ran - there's no session in that context, so we trust the filing's owner.
   let actorId: string;
   let actorEmail: string | null;
   if (opts?.skipAuth) {
@@ -133,7 +133,7 @@ export async function submitFilingToState(
   //
   // IMPORTANT: We do NOT assign a Sunbiz filing number at submit time. The
   // real filing number is issued by Florida and entered by an admin once
-  // the state approves the filing. The Articles render a "Submitted —
+  // the state approves the filing. The Articles render a "Submitted - 
   // awaiting approval" badge until then.
   const filingForDoc = {
     id: filing.id,
@@ -216,14 +216,14 @@ export async function submitFilingToState(
     state: filingStateCode,
   });
 
-  // Cover letter — admin-only, mirrors the cover sheet on CR2E047. Customer
+  // Cover letter - admin-only, mirrors the cover sheet on CR2E047. Customer
   // dashboards filter this out via documentType !== 'COVER_LETTER'.
   const correspondence = safeParseJson<{ email?: string; phone?: string } | null>(
     filing.correspondenceContact,
     null,
   );
   // Bundled add-ons (Standard/Premium tiers include cert_status, cert_copy,
-  // and ein) entitle the customer to those documents too — so we still want
+  // and ein) entitle the customer to those documents too - so we still want
   // pending placeholders even if the customer didn't pick them à la carte.
   const allEntitledAddOns: AddOnSlug[] = [
     ...new Set<AddOnSlug>([
@@ -236,7 +236,7 @@ export async function submitFilingToState(
   const wantsEin = allEntitledAddOns.includes('ein');
   // The cover letter goes to the Florida Department of State alongside the
   // money order / check. It MUST reflect the actual amount we are remitting
-  // to Florida — never the customer's all-in package price (which includes
+  // to Florida - never the customer's all-in package price (which includes
   // LaunchForma's margin and add-ons that are not paid to FL).
   // Resolve the chosen processing option so it lands on the cover letter
   // when expedited (matches what we'll actually pay the state).
@@ -314,7 +314,7 @@ export async function submitFilingToState(
   }
 
   // S-Corp election (IRS Form 2553). Generated only when the customer actually
-  // elected S-Corp at Step 1 or explicitly bought the election add-on — never
+  // elected S-Corp at Step 1 or explicitly bought the election add-on - never
   // merely because Premium bundles it. Owners flow from the corp share
   // structure or the LLC member list; each owner consents by electing S-Corp.
   const electedSCorp =
@@ -364,7 +364,7 @@ export async function submitFilingToState(
     documents.push({
       filingId: filing.id,
       documentType: 'FORM_2553',
-      title: 'IRS Form 2553 — S-Corporation Election',
+      title: 'IRS Form 2553 - S-Corporation Election',
       base64: encodeDocument(form2553),
       mimeType: 'text/html',
       fileSizeBytes: form2553.length,
@@ -426,7 +426,7 @@ export async function submitFilingToState(
   if (ra && ra.useOurService) {
     // Auto-renew consent is captured at checkout and persisted onto the
     // filing's optionalDetails by processCheckout. Absent consent, autoRenew
-    // stays off — we never enroll someone in recurring billing silently.
+    // stays off - we never enroll someone in recurring billing silently.
     const autoRenewConsent = optionalForCost?.autoRenewRa === true;
     const consentAtRaw =
       typeof optionalForCost?.autoRenewConsentAt === 'string'

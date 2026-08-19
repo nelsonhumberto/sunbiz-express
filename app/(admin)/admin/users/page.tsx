@@ -149,7 +149,7 @@ export default async function AdminUsersPage({
                       {formatRelative(user.createdAt)}
                     </td>
                     <td className="px-5 py-3 text-ink-muted text-xs whitespace-nowrap">
-                      {user.lastLogin ? formatRelative(user.lastLogin) : '—'}
+                      {user.lastLogin ? formatRelative(user.lastLogin) : '-'}
                     </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1 flex-wrap">

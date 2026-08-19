@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   const [filings, upcomingReports, upcomingRaRenewals] = await Promise.all([
     prisma.filing.findMany({
       // Hide drafts the customer chose to remove from their dashboard.
-      // Submitted/approved/etc. filings always stay visible — only DRAFTs
+      // Submitted/approved/etc. filings always stay visible - only DRAFTs
       // can be archived (see actions/dashboard.ts). The row itself is
       // preserved for admin retention reporting.
       where: {

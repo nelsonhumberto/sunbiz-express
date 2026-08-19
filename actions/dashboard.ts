@@ -13,7 +13,7 @@ const ArchiveDraftSchema = z.object({
  * Hide a draft filing from the customer's dashboard.
  *
  * The row remains in the database (with `userArchivedAt` populated) so that
- * admins can still see who started a filing and where they dropped off —
+ * admins can still see who started a filing and where they dropped off - 
  * critical for retention outreach and conversion analytics. We deliberately
  * do NOT delete here:
  *   - non-DRAFT filings are protected (already filed = important data)

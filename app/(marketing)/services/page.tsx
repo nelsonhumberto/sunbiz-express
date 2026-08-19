@@ -21,14 +21,14 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Add-On Services — EIN, Registered Agent, BOI, Compliance',
+  title: 'Add-On Services - EIN, Registered Agent, BOI, Compliance',
   description:
-    'A la carte business formation services: EIN acquisition, Registered Agent, Operating Agreement, Certificate of Status, Certified Copy, BOI filing, S-Corp election, and ongoing compliance — transparent pricing with no upsell tricks.',
+    'A la carte business formation services: EIN acquisition, Registered Agent, Operating Agreement, Certificate of Status, Certified Copy, BOI filing, S-Corp election, and ongoing compliance - transparent pricing with no upsell tricks.',
   alternates: { canonical: '/services' },
   openGraph: {
-    title: 'LaunchForma Services — Formation, Compliance, Branding',
+    title: 'LaunchForma Services - Formation, Compliance, Branding',
     description:
-      'Everything you need to form, fund, and run your LLC or Corporation — a la carte add-ons with transparent pricing.',
+      'Everything you need to form, fund, and run your LLC or Corporation - a la carte add-ons with transparent pricing.',
     type: 'website',
   },
 };
@@ -61,7 +61,7 @@ export default function ServicesPage() {
             Services
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
-            Everything you need —{' '}
+            Everything you need - {' '}
             <span className="italic">all in one place.</span>
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
@@ -72,7 +72,7 @@ export default function ServicesPage() {
       </section>
 
       <ServiceCategory id="formation" title="Formation" subtitle="Everything to get your business legally formed and bank-ready." services={byCategory.formation} />
-      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of every state — annual reports, BOI, and franchise tax handled before deadlines bite." services={byCategory.compliance} />
+      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of every state - annual reports, BOI, and franchise tax handled before deadlines bite." services={byCategory.compliance} />
       <ServiceCategory id="branding" title="Branding" subtitle="Establish your online identity from day one." services={byCategory.branding} />
 
       <CTABanner />

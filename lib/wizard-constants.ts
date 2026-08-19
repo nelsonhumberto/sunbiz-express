@@ -3,7 +3,7 @@
 
 /**
  * Number of routable steps (URL `/wizard/<id>/<step>`). The add-ons screen
- * is one of these — the user can land on it by URL — but it is intentionally
+ * is one of these - the user can land on it by URL - but it is intentionally
  * presented as a bonus offer, not as a required form step. See
  * {@link TOTAL_DISPLAYED_STEPS}, {@link displayStepNumber}, and
  * {@link isBonusStep} for the customer-facing numbering.
@@ -74,7 +74,7 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
   1: {
     slug: 'entity',
     title: 'What kind of business?',
-    subtitle: "We'll handle the paperwork — you choose the structure.",
+    subtitle: "We'll handle the paperwork - you choose the structure.",
   },
   2: {
     slug: 'name',
@@ -94,7 +94,7 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
   5: {
     slug: 'mailing-address',
     title: 'Mailing address',
-    subtitle: 'Where you want official mail sent — can be the same as principal.',
+    subtitle: 'Where you want official mail sent - can be the same as principal.',
   },
   6: {
     slug: 'registered-agent',
@@ -119,7 +119,7 @@ export const STEP_NAMES: Record<number, { slug: string; title: string; subtitle:
   10: {
     slug: 'add-ons',
     title: 'Anything else?',
-    subtitle: 'Compliance, banking, branding — included or à la carte.',
+    subtitle: 'Compliance, banking, branding - included or à la carte.',
   },
   11: {
     slug: 'payment',

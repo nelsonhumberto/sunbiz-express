@@ -88,11 +88,11 @@ export default async function CheckoutSuccessPage({
               {t('filingReceipt')}
             </p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <DetailRow label={t('businessName')} value={filing.businessName ?? '—'} />
+              <DetailRow label={t('businessName')} value={filing.businessName ?? '-'} />
               <DetailRow label={t('entityType')} value={entityLabel} />
-              <DetailRow label={t('trackingNumber')} value={filing.sunbizTrackingNumber ?? '—'} mono />
-              <DetailRow label={t('pin')} value={filing.sunbizPin ?? '—'} mono />
-              <DetailRow label={t('filingNumber')} value={filing.sunbizFilingNumber ?? '—'} mono />
+              <DetailRow label={t('trackingNumber')} value={filing.sunbizTrackingNumber ?? '-'} mono />
+              <DetailRow label={t('pin')} value={filing.sunbizPin ?? '-'} mono />
+              <DetailRow label={t('filingNumber')} value={filing.sunbizFilingNumber ?? '-'} mono />
               <DetailRow
                 label={t('totalPaid')}
                 value={formatCurrency(filing.totalCents, { showZero: true })}
@@ -139,7 +139,7 @@ export default async function CheckoutSuccessPage({
             body={t('documentsReadyBody')}
             timing={t('availableNow')}
           />
-          {/* Federal compliance — almost every new entity owes BOI to FinCEN.
+          {/* Federal compliance - almost every new entity owes BOI to FinCEN.
               We keep the user on-site by linking to our internal BOI guide
               instead of bouncing them to fincen.gov. */}
           <NextStep

@@ -62,7 +62,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
   });
   if (!filing || filing.userId !== session.user.id) notFound();
 
-  // Resolve the formation state — defaults to FL for legacy filings that
+  // Resolve the formation state - defaults to FL for legacy filings that
   // pre-date the multi-state launch. We use the registry for state-specific
   // labels (Articles of Organization vs Certificate of Formation, "Annual
   // Report" vs "Annual Tax", etc.) instead of hardcoding Florida copy.
@@ -167,7 +167,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
         </Button>
       </div>
 
-      {/* Annual report action card — only for FL filings (in-app flow) */}
+      {/* Annual report action card - only for FL filings (in-app flow) */}
       {showInAppAnnualReport && (filing.status === 'APPROVED' || filing.filingSource === 'LINKED') && (() => {
         const filedReport = filing.annualReports.find((r) => r.status === 'FILED');
         const pendingReport = filing.annualReports.find(
@@ -187,7 +187,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                     {t('arFiledBody', { year: filedReport.reportYear })}
                   </p>
                   <div className="text-xs text-ink-subtle space-y-0.5 pt-1">
-                    <p>{t('arFiledDate')}: {filedReport.filedDate ? formatDate(filedReport.filedDate) : '—'}</p>
+                    <p>{t('arFiledDate')}: {filedReport.filedDate ? formatDate(filedReport.filedDate) : '-'}</p>
                     <p>{t('arFiledAmount')}: {formatCurrency(filedReport.totalCostCents)}</p>
                     {filedReport.notes && <p>{filedReport.notes}</p>}
                   </div>
@@ -238,7 +238,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
       })()}
 
       {/* For non-FL filings, surface the upcoming annual compliance window
-          inside the dashboard. We keep customers on-site — when our managed
+          inside the dashboard. We keep customers on-site - when our managed
           annual filing add-on is ready for that state we'll handle it here. */}
       {!showInAppAnnualReport && filing.status === 'APPROVED' && (() => {
         const compliance = stateRule.annualCompliance.find(
@@ -261,7 +261,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
-      {/* EIN status card — only when the customer's package includes EIN. */}
+      {/* EIN status card - only when the customer's package includes EIN. */}
       {filingIncludesEin({
         tier: filing.serviceTier as TierSlug,
         addOnSlugs: filingAddOnSlugs,
@@ -270,14 +270,14 @@ export default async function FilingDetailPage({ params }: PageProps) {
         const status = ein?.status ?? 'needs_info';
         const headline =
           status === 'delivered'
-            ? `EIN delivered${ein?.einNumberLast4 ? ` — ●●●●●${ein.einNumberLast4}` : ''}`
+            ? `EIN delivered${ein?.einNumberLast4 ? ` - ●●●●●${ein.einNumberLast4}` : ''}`
             : status === 'submitted'
-              ? 'EIN submitted to the IRS — awaiting confirmation'
+              ? 'EIN submitted to the IRS - awaiting confirmation'
               : status === 'manual_foreign'
-                ? 'EIN — manual processing in progress (foreign applicant)'
+                ? 'EIN - manual processing in progress (foreign applicant)'
                 : status === 'ready_online'
-                  ? 'EIN — IRS online filing scheduled'
-                  : 'EIN — responsible-party details required';
+                  ? 'EIN - IRS online filing scheduled'
+                  : 'EIN - responsible-party details required';
         const body =
           status === 'manual_foreign'
             ? 'Foreign applicants cannot use the IRS online EIN Assistant. We are preparing your SS-4 manually and will submit it by phone or fax. Typical turnaround is 4–6 business days.'
@@ -300,7 +300,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               )}
               {ein?.responsiblePartyType === 'foreign' && ein.passportLast4 && (
                 <p className="text-xs text-ink-subtle">
-                  Passport on file: ends in {ein.passportLast4} ({ein.passportCountry ?? '—'})
+                  Passport on file: ends in {ein.passportLast4} ({ein.passportCountry ?? '-'})
                 </p>
               )}
             </CardContent>
@@ -318,14 +318,14 @@ export default async function FilingDetailPage({ params }: PageProps) {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-ink">
-                Beneficial Ownership Information (BOI) — FinCEN
+                Beneficial Ownership Information (BOI) - FinCEN
               </h3>
               <p className="mt-1 text-sm text-ink-muted leading-relaxed">
                 Most U.S. LLCs and Corporations formed on or after January 1,
                 2025 must file a BOI report with FinCEN within 30 days of
                 formation. Penalties for non-compliance are up to $500/day.
                 LaunchForma can prepare and submit the filing on your behalf
-                for $49 — encrypted intake, internal review, and 30-day
+                for $49 - encrypted intake, internal review, and 30-day
                 update tracking for the first 12 months.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -532,7 +532,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="h-4 w-4 text-ink-subtle" />
-                <span className="font-mono">{correspondence?.email ?? '—'}</span>
+                <span className="font-mono">{correspondence?.email ?? '-'}</span>
               </div>
               {correspondence?.phone && (
                 <div className="flex items-center gap-2 text-sm">

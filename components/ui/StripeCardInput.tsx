@@ -38,7 +38,7 @@ import { stripePromise } from '@/lib/stripe-client';
 export interface ConfirmOptions {
   amountCents: number;
   cardholderName: string;
-  /** Optional — stored in Stripe PI metadata for reconciliation. */
+  /** Optional - stored in Stripe PI metadata for reconciliation. */
   filingId?: string;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
@@ -83,7 +83,7 @@ const InnerCard = forwardRef(function InnerCard(
       let result: Awaited<ReturnType<typeof stripe.confirmCardPayment>>;
 
       if (savedPaymentMethodId) {
-        // Returning customer — re-use stored PM
+        // Returning customer - re-use stored PM
         result = await stripe.confirmCardPayment(json.clientSecret, {
           payment_method: savedPaymentMethodId,
         });
@@ -132,7 +132,7 @@ const InnerCard = forwardRef(function InnerCard(
 // ── Public component (provides Elements context) ────────────────────────────
 
 interface StripeCardInputProps {
-  /** Pass false when a saved card is selected — hides the CardElement. */
+  /** Pass false when a saved card is selected - hides the CardElement. */
   showCardElement?: boolean;
 }
 

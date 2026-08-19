@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   });
   if (!filing || filing.userId !== user.id) return fail();
 
-  // Submitted filings can't be resumed in the wizard — send to /start which
+  // Submitted filings can't be resumed in the wizard - send to /start which
   // will route appropriately.
   if (filing.status !== 'DRAFT') return fail();
 

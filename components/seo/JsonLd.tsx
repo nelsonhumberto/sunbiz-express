@@ -100,7 +100,7 @@ export function pricingProductJsonLd(args: {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: `LaunchForma ${args.stateName} Business Formation Packages`,
-    description: `All-in pricing for forming a ${args.stateName} LLC or Corporation — state filing fee included, free Year-1 Registered Agent.`,
+    description: `All-in pricing for forming a ${args.stateName} LLC or Corporation - state filing fee included, free Year-1 Registered Agent.`,
     brand: { '@type': 'Brand', name: 'LaunchForma' },
     offers: {
       '@type': 'AggregateOffer',
@@ -146,7 +146,7 @@ export function servicesItemListJsonLd(
 }
 
 /**
- * Standalone Article schema for long-form guide pages — feeds Google's
+ * Standalone Article schema for long-form guide pages - feeds Google's
  * "Article" rich result.
  */
 export function articleJsonLd(args: {

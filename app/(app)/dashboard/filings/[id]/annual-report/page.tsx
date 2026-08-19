@@ -180,7 +180,7 @@ export default async function AnnualReportPage({ params }: PageProps) {
 
       <div>
         <p className="text-xs text-ink-subtle uppercase tracking-wider font-medium mb-1">
-          Annual Report — Florida
+          Annual Report - Florida
         </p>
         <h1 className="font-display text-3xl font-medium tracking-tight">
           {pendingReport.reportYear} Annual Report

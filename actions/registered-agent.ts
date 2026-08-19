@@ -149,7 +149,7 @@ export async function renewRegisteredAgent(input: z.infer<typeof RenewSchema>) {
     return { ok: false as const, error: 'Something went wrong recording your renewal. Please contact support.' };
   }
 
-  // Receipt (best-effort — never fail the renewal on email trouble).
+  // Receipt (best-effort - never fail the renewal on email trouble).
   try {
     await sendEmail({
       type: 'RA_RENEWED',

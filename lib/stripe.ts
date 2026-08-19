@@ -4,7 +4,7 @@ let _stripe: Stripe | null = null;
 
 /**
  * Returns the Stripe client singleton.
- * Call this inside request handlers — never at module top level —
+ * Call this inside request handlers - never at module top level - 
  * so the missing-key error only surfaces at runtime, not at build time.
  */
 export function getStripe(): Stripe {

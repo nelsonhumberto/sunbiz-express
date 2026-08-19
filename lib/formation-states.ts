@@ -5,14 +5,14 @@
 //
 // Currently active for production: Florida, Wyoming, Delaware. Adding a new
 // state means adding a new entry to {@link FORMATION_STATES} and (optionally)
-// custom validation in this file — no changes to the wizard UI should be
+// custom validation in this file - no changes to the wizard UI should be
 // required as long as the state matches the standard rule shape.
 //
 // Where a sub-rule needs special handling (e.g. Wyoming's "consent to
 // electronic service" or Delaware's stock-structure dependent corp fee), the
 // rule is marked here and the wizard renders an extra panel for it.
 //
-// IMPORTANT — fee accuracy: the dollar amounts here are remitted to the
+// IMPORTANT - fee accuracy: the dollar amounts here are remitted to the
 // respective Secretary of State and feed our internal accounting + cover
 // letter math. The marketing pricing presented to the customer is a single
 // all-in package that absorbs differences across LLC/Corp and across states.
@@ -50,7 +50,7 @@ export interface ManualReviewPattern {
   id: string;
   /** Plain-language reason shown to the customer. */
   reason: string;
-  /** Test function — return true if the name triggers this rule. */
+  /** Test function - return true if the name triggers this rule. */
   test: (trimmedName: string) => boolean;
 }
 
@@ -61,14 +61,14 @@ export interface NameRules {
   /**
    * Words that require special regulatory approval and that we conservatively
    * block from self-service formation (banks, trust, insurance, etc.).
-   * Kept for backwards compatibility — newer code should prefer
+   * Kept for backwards compatibility - newer code should prefer
    * {@link restrictedWordGroups} which carries an action + reason.
    */
   prohibitedWords: readonly string[];
   /**
    * Tokens that are not considered distinguishable when comparing names
    * (articles, ampersand replacements, common connectors, the entity-type
-   * suffix forms). Used by name-availability comparisons. Optional — falls
+   * suffix forms). Used by name-availability comparisons. Optional - falls
    * back to a sensible default when omitted.
    */
   nonDistinguishingTokens?: readonly string[];
@@ -95,7 +95,7 @@ export interface NameRules {
 
 /**
  * A processing-speed option the customer can choose at filing time. Some
- * states (DE, WY) offer multiple tiers — standard is free but slow,
+ * states (DE, WY) offer multiple tiers - standard is free but slow,
  * expedited is paid but fast. We always pass these through as part of the
  * remittance to the state, never as profit.
  */
@@ -207,7 +207,7 @@ export interface FormationStateRule {
   nameEs: string;
   /** Two-letter chamber name, used in marketing chip ("FL", "WY", "DE"). */
   shortName: string;
-  /** Whether real-time name search is wired up (FL only — Sunbiz API). */
+  /** Whether real-time name search is wired up (FL only - Sunbiz API). */
   hasLiveNameSearch: boolean;
   /** Document labels used by the wizard, PDFs, and admin. */
   documentLabels: {
@@ -320,7 +320,7 @@ const FLORIDA_RULE: FormationStateRule = {
     registeredAgentAddressMustBeInState: true,
     registeredAgentRequiresPhysicalStreet: true,
     inStateRequirementNote:
-      'Florida requires a registered agent with a physical Florida street address — no P.O. Box.',
+      'Florida requires a registered agent with a physical Florida street address - no P.O. Box.',
   },
   nameRules: {
     llcSuffixes: [
@@ -354,7 +354,7 @@ const FLORIDA_RULE: FormationStateRule = {
         words: ['bank', 'banking', 'banker', 'trust', 'savings', 'credit union'],
         action: 'block',
         reason:
-          'Florida requires written approval from the Office of Financial Regulation before forming a banking-related entity. Please contact us if you need this — we can route it through manual review.',
+          'Florida requires written approval from the Office of Financial Regulation before forming a banking-related entity. Please contact us if you need this - we can route it through manual review.',
       },
       {
         id: 'insurance',
@@ -370,7 +370,7 @@ const FLORIDA_RULE: FormationStateRule = {
         words: ['university', 'college'],
         action: 'manual_review',
         reason:
-          'Florida treats higher-education names cautiously — we will route this filing to manual review before submission.',
+          'Florida treats higher-education names cautiously - we will route this filing to manual review before submission.',
       },
     ],
   },
@@ -731,7 +731,7 @@ const WYOMING_RULE: FormationStateRule = {
       description:
         'Wyoming offers expedited processing for an additional fee paid to the Secretary of State. Final amount is confirmed at submission.',
       estimate: '~1 week',
-      feeCents: 5_000, // Provisional — confirmed by ops at submission.
+      feeCents: 5_000, // Provisional - confirmed by ops at submission.
       feeIsProvisional: true,
     },
   ],
@@ -829,7 +829,7 @@ const DELAWARE_RULE: FormationStateRule = {
       },
     ],
     subjectiveReviewNote:
-      'Delaware Division of Corporations may refuse a name on subjective grounds (deception, public-safety implications, abusive patterns, or extreme length) under 20 Del. Admin. Code § 102. We cannot fully pre-clear a Delaware name — final approval rests with the Division.',
+      'Delaware Division of Corporations may refuse a name on subjective grounds (deception, public-safety implications, abusive patterns, or extreme length) under 20 Del. Admin. Code § 102. We cannot fully pre-clear a Delaware name - final approval rests with the Division.',
   },
   annualCompliance: [
     {
@@ -839,7 +839,7 @@ const DELAWARE_RULE: FormationStateRule = {
       baseFeeCents: 30_000, // $300 flat
       lateFeeCents: 20_000, // $200 + 1.5%/mo penalty
       description:
-        'Delaware LLCs do not file an annual report — they pay a flat $300 Annual Tax due June 1 each year. Missing the deadline incurs a $200 penalty plus 1.5% monthly interest.',
+        'Delaware LLCs do not file an annual report - they pay a flat $300 Annual Tax due June 1 each year. Missing the deadline incurs a $200 penalty plus 1.5% monthly interest.',
       deadline: { kind: 'fixed_date', month: 6, day: 1 },
     },
     {
@@ -891,7 +891,7 @@ const DELAWARE_RULE: FormationStateRule = {
     corpFeeDependsOnStockStructure: true,
     onlineFilingOnly: false,
     customerNote:
-      'Delaware standard processing currently runs about 6 weeks. Choose 8-business-day expedited processing in the next step ($50 state fee) if you need it faster. Standard corporation filings assume up to 1,500 authorized shares with no par value — a higher share count can increase Delaware\'s franchise tax in future years.',
+      'Delaware standard processing currently runs about 6 weeks. Choose 8-business-day expedited processing in the next step ($50 state fee) if you need it faster. Standard corporation filings assume up to 1,500 authorized shares with no par value - a higher share count can increase Delaware\'s franchise tax in future years.',
   },
   marketingTiming: {
     badgeKey: 'badge_filedDelawareStandard',
@@ -962,7 +962,7 @@ export function isActiveFormationState(input: string | null | undefined): boolea
 /**
  * Look up the annual-compliance rule for a (state, entity type) pair.
  * Falls back to the first rule on the state if the entity type isn't
- * explicitly listed (defensive — every active state lists both LLC and CORP).
+ * explicitly listed (defensive - every active state lists both LLC and CORP).
  */
 export function annualComplianceFor(
   state: FormationStateRule,

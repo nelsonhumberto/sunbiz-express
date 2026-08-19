@@ -36,7 +36,7 @@ interface WizardShellProps {
     processingOptionId?: string | null;
   };
   saved?: boolean;
-  /** Guest context — drives the low-friction "Save & exit" account offer. */
+  /** Guest context - drives the low-friction "Save & exit" account offer. */
   isGuest?: boolean;
   guestEmail?: string;
 }
@@ -233,7 +233,7 @@ export function WizardActions({
   nextDisabled?: boolean;
   pending?: boolean;
   onNext?: () => void;
-  /** Called when Continue is clicked while `nextDisabled` — use to highlight missing fields. */
+  /** Called when Continue is clicked while `nextDisabled` - use to highlight missing fields. */
   onBlocked?: () => void;
   isSubmit?: boolean;
   hideBack?: boolean;

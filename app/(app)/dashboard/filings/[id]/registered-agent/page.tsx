@@ -66,7 +66,7 @@ export default async function RegisteredAgentRenewalPage({ params }: PageProps) 
   // Only offer the saved card when we actually have a reusable payment method
   // attached to the Stripe Customer. Cards taken before setup_future_usage
   // shipped have a last4 on the Payment row but no attached PM, so reuse would
-  // fail — those customers just see the new-card form.
+  // fail - those customers just see the new-card form.
   const lastPayment = filing.payments[0];
   const savedCard: RaSavedCard | null =
     lastPayment?.cardLast4 && lastPayment?.stripePaymentMethodId

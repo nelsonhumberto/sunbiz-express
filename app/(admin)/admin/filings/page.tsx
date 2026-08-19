@@ -175,7 +175,7 @@ export default async function AdminFilingsPage({
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs text-ink-subtle">—</span>
+                          <span className="text-xs text-ink-subtle"> - </span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right font-medium tabular-nums">

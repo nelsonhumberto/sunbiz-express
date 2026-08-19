@@ -70,7 +70,7 @@ export async function generateMetadata({
     description: t('heroSubhead', { state: stateName }),
     openGraph: { title, type: 'website' },
     alternates: { canonical: `/states/${state.slug}` },
-    // Coming-soon pages are near-duplicate templated content — keep them out
+    // Coming-soon pages are near-duplicate templated content - keep them out
     // of the index (still crawlable for the waitlist links) to avoid a
     // thin-content footprint across ~47 state slugs.
     robots: { index: false, follow: true },
@@ -91,14 +91,14 @@ export default function StateLandingPage({
   }
 
   // Florida already lives at "/", so redirect anyone hitting /states/florida
-  // to the canonical homepage — but preserve ?lang=, utm_*, and any other
+  // to the canonical homepage - but preserve ?lang=, utm_*, and any other
   // query params so ad campaigns land with attribution intact.
   if (state.code === 'FL') {
     const qs = searchParamsToQueryString(searchParams);
     redirect(qs ? `/?${qs}` : '/');
   }
 
-  // Active formation state (WY/DE) — render the full marketing layout with
+  // Active formation state (WY/DE) - render the full marketing layout with
   // state-aware hero, pricing footnote, FAQ, and CTA.
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 

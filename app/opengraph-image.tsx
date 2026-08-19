@@ -4,7 +4,7 @@ import { ImageResponse } from 'next/og';
 // auto-wires this as og:image + twitter:image, fixing the "no preview" gap on
 // shares across Slack/iMessage/LinkedIn/X.
 export const runtime = 'edge';
-export const alt = 'LaunchForma — Form your LLC or Corporation online';
+export const alt = 'LaunchForma - Form your LLC or Corporation online';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

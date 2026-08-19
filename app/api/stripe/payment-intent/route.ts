@@ -16,7 +16,7 @@ import {
 } from '@/lib/formation-states';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
-// Never statically analyse this route — it needs the Stripe key at runtime.
+// Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
 
 function asStateCode(input: string | null | undefined): StateCode {
@@ -33,11 +33,11 @@ function asStateCode(input: string | null | undefined): StateCode {
  *  - requires an authenticated user OR an active guest session,
  *  - rate-limited per IP,
  *  - when a filingId is supplied, verifies ownership and computes the expected
- *    amount SERVER-SIDE — the client-supplied amount may only be ≤ that total
+ *    amount SERVER-SIDE - the client-supplied amount may only be ≤ that total
  *    (coupons reduce it; it can never inflate or undercut beyond the discount).
  */
 export async function POST(request: NextRequest) {
-  // Rate limit PI creation hard — this is the classic card-testing surface.
+  // Rate limit PI creation hard - this is the classic card-testing surface.
   const limit = rateLimit(`payment-intent:${clientIp()}`, 10, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(
@@ -139,12 +139,12 @@ export async function POST(request: NextRequest) {
       // Attach the Customer AND flag the card for future off-session reuse so
       // Registered Agent renewals (and other post-checkout charges) can bill
       // the saved method. Guests have no Customer, and Stripe rejects
-      // setup_future_usage without one — so only set both together.
+      // setup_future_usage without one - so only set both together.
       ...(customerId
         ? { customer: customerId, setup_future_usage: 'off_session' as const }
         : {}),
       automatic_payment_methods: { enabled: true },
-      // Metadata is set server-side only — never trust client metadata here.
+      // Metadata is set server-side only - never trust client metadata here.
       metadata: {
         ...(verifiedFilingId ? { filingId: verifiedFilingId } : {}),
         userId: actor.id,

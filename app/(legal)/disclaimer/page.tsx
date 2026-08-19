@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Legal Disclaimer',
   description:
-    'LaunchForma is a private, independent self-help business formation service — not a law firm and not a government agency. Read our legal disclaimers covering government affiliation, document accuracy, state filing acceptance, compliance reminders, and tax advice.',
+    'LaunchForma is a private, independent self-help business formation service - not a law firm and not a government agency. Read our legal disclaimers covering government affiliation, document accuracy, state filing acceptance, compliance reminders, and tax advice.',
   alternates: { canonical: '/disclaimer' },
 };
 
@@ -32,7 +32,7 @@ export default function DisclaimerPage() {
           irs.gov
         </a>
         , where the IRS issues EINs at no cost. Our fees are charged for the convenience of having
-        LaunchForma prepare and file the paperwork for you — not for the government documents
+        LaunchForma prepare and file the paperwork for you - not for the government documents
         themselves. Where a package includes a state filing fee, that fee is set by the government
         and remitted to the state on your behalf.
       </p>
@@ -44,9 +44,9 @@ export default function DisclaimerPage() {
         apply to your specific situation.
       </p>
       <p>
-        For legal questions involving your business — including but not limited to: tax
+        For legal questions involving your business - including but not limited to: tax
         elections, securities offerings, professional licensing, multi-state operations,
-        intellectual property, employment law, or contract disputes — you should consult a
+        intellectual property, employment law, or contract disputes - you should consult a
         licensed attorney admitted to practice in Florida (or your relevant jurisdiction).
       </p>
 
@@ -90,7 +90,7 @@ export default function DisclaimerPage() {
       <h2>Tax advice</h2>
       <p>
         LaunchForma does not provide tax advice. S-Corp election guidance, EIN application
-        assistance, and similar services are administrative — not tax-strategic. Consult a
+        assistance, and similar services are administrative - not tax-strategic. Consult a
         licensed CPA for tax planning.
       </p>
 

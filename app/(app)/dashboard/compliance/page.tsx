@@ -139,7 +139,7 @@ export default async function CompliancePage() {
             <li>· Annual reports due between January 1 and May 1 each year (11:59 PM ET)</li>
             <li>· LLC fee: $138.75 · Corporation fee: $150.00</li>
             <li>
-              · <strong className="text-ink">$400 late fee is non-waivable</strong> — there is no
+              · <strong className="text-ink">$400 late fee is non-waivable</strong> - there is no
               hardship exception
             </li>
             <li>

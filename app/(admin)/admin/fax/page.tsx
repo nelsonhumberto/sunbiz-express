@@ -136,7 +136,7 @@ function FaxTable({
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
                     {isInbound ? <ArrowDownLeft className="h-3.5 w-3.5 text-primary" /> : <ArrowUpRight className="h-3.5 w-3.5 text-ink-subtle" />}
-                    {isInbound ? f.fromNumber ?? '—' : f.toNumber ?? '—'}
+                    {isInbound ? f.fromNumber ?? '-' : f.toNumber ?? '-'}
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
@@ -150,7 +150,7 @@ function FaxTable({
                       {f.mediaName ?? 'document.pdf'}
                     </a>
                   ) : (
-                    <span className="text-ink-subtle">{f.mediaName ?? '—'}</span>
+                    <span className="text-ink-subtle">{f.mediaName ?? '-'}</span>
                   )}
                   {f.pageCount ? <span className="text-ink-subtle"> · {f.pageCount}p</span> : null}
                 </td>

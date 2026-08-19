@@ -42,11 +42,11 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
 
   const deadlineCopy =
     state.code === 'FL'
-      ? 'Florida deadline: May 1 — $400 non-waivable late penalty after that'
+      ? 'Florida deadline: May 1 - $400 non-waivable late penalty after that'
       : state.code === 'WY'
         ? 'Wyoming: annual report due on your anniversary month each year'
         : state.code === 'DE'
-          ? 'Delaware LLC: $300 annual tax due June 1 — $200 penalty after that'
+          ? 'Delaware LLC: $300 annual tax due June 1 - $200 penalty after that'
           : `${state.name}: file on time to avoid late penalties`;
 
   const headlineCopy =
@@ -82,7 +82,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-          {/* Left — comparison + CTA */}
+          {/* Left - comparison + CTA */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -143,7 +143,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
             </p>
           </motion.div>
 
-          {/* Right — what's included cards */}
+          {/* Right - what's included cards */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -164,12 +164,12 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
                 title: 'We handle the paperwork',
-                body: `We prepare your ${state.name} annual compliance filing so you only review and confirm — no manual data entry.`,
+                body: `We prepare your ${state.name} annual compliance filing so you only review and confirm - no manual data entry.`,
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
                 title: 'Officers & addresses you control',
-                body: `Update any officer, address, or registered agent on the same form before we file — changes go live with the ${state.name} Secretary of State.`,
+                body: `Update any officer, address, or registered agent on the same form before we file - changes go live with the ${state.name} Secretary of State.`,
               },
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,

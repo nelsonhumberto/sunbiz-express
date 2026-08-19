@@ -6,10 +6,10 @@ const PUBLISHED = '2026-05-27';
 export const metadata: Metadata = {
   title: 'BOI Filing 2026: What Every LLC and Corporation Must Know',
   description:
-    'A 2026 guide to the FinCEN Beneficial Ownership Information report under the Corporate Transparency Act — who has to file, what to report, the 30-day rules, exemptions, and penalties.',
+    'A 2026 guide to the FinCEN Beneficial Ownership Information report under the Corporate Transparency Act - who has to file, what to report, the 30-day rules, exemptions, and penalties.',
   alternates: { canonical: '/guides/boi-filing-2026' },
   openGraph: {
-    title: 'BOI Filing 2026 — What Every LLC and Corporation Must Know',
+    title: 'BOI Filing 2026 - What Every LLC and Corporation Must Know',
     description:
       'Comprehensive 2026 guide to the FinCEN BOI report: deadlines, exemptions, penalties, and how to file.',
     type: 'article',
@@ -22,7 +22,7 @@ export default function BoiFiling2026Guide() {
     <GuideLayout
       slug="boi-filing-2026"
       title="BOI Filing 2026: What Every LLC and Corporation Must Know"
-      description="The Corporate Transparency Act requires most U.S. LLCs and Corporations to file Beneficial Ownership Information with FinCEN. Here is the 2026 state of the rule — who has to file, what to report, and the penalties for getting it wrong."
+      description="The Corporate Transparency Act requires most U.S. LLCs and Corporations to file Beneficial Ownership Information with FinCEN. Here is the 2026 state of the rule - who has to file, what to report, and the penalties for getting it wrong."
       datePublished={PUBLISHED}
       readingMinutes={11}
       cta={{
@@ -53,7 +53,7 @@ export default function BoiFiling2026Guide() {
       <h2>Who has to file?</h2>
       <p>
         Most domestic LLCs, Corporations, limited partnerships, and similar
-        entities formed in any U.S. state must file — that&apos;s the default
+        entities formed in any U.S. state must file - that&apos;s the default
         position. Foreign entities registered to do business in the U.S. must
         also file.
       </p>
@@ -93,7 +93,7 @@ export default function BoiFiling2026Guide() {
       </ul>
       <p>
         If you are a small operating LLC, holding company, real-estate LLC, or
-        single-member LLC — you are almost certainly not exempt and you do
+        single-member LLC - you are almost certainly not exempt and you do
         have to file.
       </p>
 
@@ -118,8 +118,8 @@ export default function BoiFiling2026Guide() {
         </li>
       </ul>
       <p>
-        Any change to beneficial-ownership information — new owner, name
-        change, address change for a beneficial owner, new driver license — must
+        Any change to beneficial-ownership information - new owner, name
+        change, address change for a beneficial owner, new driver license - must
         be reported within <strong>30 days</strong> of the change.
       </p>
       <p>
@@ -152,7 +152,7 @@ export default function BoiFiling2026Guide() {
       </p>
       <ul>
         <li>Owns or controls at least <strong>25%</strong> of the ownership interests of the reporting company; OR</li>
-        <li>Exercises <strong>substantial control</strong> over the reporting company — senior officers, anyone with authority to appoint or remove officers/directors, anyone with significant decision-making authority over the business.</li>
+        <li>Exercises <strong>substantial control</strong> over the reporting company - senior officers, anyone with authority to appoint or remove officers/directors, anyone with significant decision-making authority over the business.</li>
       </ul>
       <p>For each beneficial owner:</p>
       <ul>
@@ -161,7 +161,7 @@ export default function BoiFiling2026Guide() {
         <li>Current residential address</li>
         <li>
           A unique identifying number from a non-expired U.S. driver license,
-          U.S. state or tribal ID, or passport — plus a clear image of that
+          U.S. state or tribal ID, or passport - plus a clear image of that
           document
         </li>
       </ul>
@@ -210,7 +210,7 @@ export default function BoiFiling2026Guide() {
       </p>
       <p>
         If you would rather not deal with the encryption, the ID upload, the
-        30-day update obligation, and the storage of sensitive PII —{' '}
+        30-day update obligation, and the storage of sensitive PII - {' '}
         <a href="/boi-reporting">LaunchForma offers managed BOI filing for $49</a>.
         We prepare, review, submit, and track changes for 12 months.
       </p>
@@ -224,7 +224,7 @@ export default function BoiFiling2026Guide() {
       <h3>Does my SSN have to be in the report?</h3>
       <p>
         No. The ID requirement is satisfied by your U.S. driver license, state
-        ID, or passport — not your SSN. You only provide the entity&apos;s EIN
+        ID, or passport - not your SSN. You only provide the entity&apos;s EIN
         (the SSN would come up only if you used your SSN as the entity&apos;s
         tax ID, which is unusual for an LLC).
       </p>

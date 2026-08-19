@@ -61,7 +61,7 @@ export function validateRegisteredAgentAddress(
   if (isPoBox(addr.street1) || (addr.street2 && isPoBox(addr.street2))) {
     return {
       valid: false,
-      error: `P.O. Box addresses are not allowed for registered agents — ${rule.name} law requires a physical street address.`,
+      error: `P.O. Box addresses are not allowed for registered agents - ${rule.name} law requires a physical street address.`,
     };
   }
   if (isPrivateMailbox(addr.street1) || (addr.street2 && isPrivateMailbox(addr.street2))) {
@@ -109,7 +109,7 @@ function escapeRegExp(s: string): string {
 export interface BusinessNameAssessment {
   /**
    * True when the name passes hard validation (length, suffix, distinguishable
-   * word, no blocked words). It can still need manual review — see
+   * word, no blocked words). It can still need manual review - see
    * {@link requiresManualReview}.
    */
   valid: boolean;
@@ -264,7 +264,7 @@ export function assessBusinessName(
   }
 
   // State-specific manual-review patterns (Wyoming "A" / special-character
-  // rules). These do not invalidate the name — they simply route the filing
+  // rules). These do not invalidate the name - they simply route the filing
   // to paper / admin review.
   for (const pattern of rule.nameRules.manualReviewPatterns ?? []) {
     if (pattern.test(trimmed)) {

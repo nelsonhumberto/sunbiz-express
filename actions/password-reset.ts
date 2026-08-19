@@ -32,7 +32,7 @@ export async function requestPasswordReset(
 
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // Always return ok to prevent email enumeration — don't reveal whether the
+  // Always return ok to prevent email enumeration - don't reveal whether the
   // account exists.
   if (!user) return { ok: true };
 

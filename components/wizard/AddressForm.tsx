@@ -79,7 +79,7 @@ interface AddressFormProps {
   showInCareOf?: boolean;
   /** Lock the state field to a specific USPS code (e.g. registered agents). */
   lockedStateCode?: string;
-  /** Back-compat alias — `floridaOnly` is equivalent to `lockedStateCode="FL"`. */
+  /** Back-compat alias - `floridaOnly` is equivalent to `lockedStateCode="FL"`. */
   floridaOnly?: boolean;
   /** Default USPS code when value.state is empty (defaults to filing state). */
   defaultStateCode?: string;

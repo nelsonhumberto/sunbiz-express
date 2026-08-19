@@ -13,14 +13,14 @@ import { formatCurrency } from '@/lib/utils';
 import { CTABanner } from '@/components/marketing/CTABanner';
 
 export const metadata: Metadata = {
-  title: 'States We Serve — LLC & Corporation Formation',
+  title: 'States We Serve - LLC & Corporation Formation',
   description:
     'LaunchForma files LLCs and Corporations in Florida, Wyoming, and Delaware today, with more states rolling out. Compare timing, state fees, and what is included by state.',
   alternates: { canonical: '/states' },
   openGraph: {
-    title: 'States We Serve — LaunchForma',
+    title: 'States We Serve - LaunchForma',
     description:
-      'Form a business in Florida, Wyoming, or Delaware — same all-in pricing, free Year-1 Registered Agent, transparent state fees.',
+      'Form a business in Florida, Wyoming, or Delaware - same all-in pricing, free Year-1 Registered Agent, transparent state fees.',
     type: 'website',
   },
 };
@@ -44,7 +44,7 @@ export default async function StatesIndexPage() {
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             We file LLCs and Corporations in Florida, Wyoming, and Delaware today.
-            Other US states are rolling out next — pick yours to join the waitlist.
+            Other US states are rolling out next - pick yours to join the waitlist.
           </p>
         </div>
       </section>
@@ -115,7 +115,7 @@ export default async function StatesIndexPage() {
             Rolling out next
           </h2>
           <p className="text-sm text-ink-muted mb-6">
-            Pick your state to join the early-access list — we&apos;ll email you
+            Pick your state to join the early-access list - we&apos;ll email you
             the moment filings open.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">

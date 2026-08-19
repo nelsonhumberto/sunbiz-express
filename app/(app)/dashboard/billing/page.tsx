@@ -132,7 +132,7 @@ export default async function BillingPage() {
                         href={`/dashboard/filings/${svc.filingId}`}
                         className="font-medium hover:text-primary"
                       >
-                        {svc.filing.businessName ?? '—'}
+                        {svc.filing.businessName ?? '-'}
                       </Link>
                     </span>
                     <span className="text-right whitespace-nowrap">
@@ -184,7 +184,7 @@ export default async function BillingPage() {
                       href={`/dashboard/filings/${payment.filingId}`}
                       className="font-medium text-ink hover:text-primary truncate"
                     >
-                      {payment.filing.businessName ?? '—'}
+                      {payment.filing.businessName ?? '-'}
                     </Link>
                     <p className="text-xs text-ink-subtle">
                       {payment.cardBrand && payment.cardLast4 ? (

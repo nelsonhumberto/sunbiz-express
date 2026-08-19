@@ -12,13 +12,13 @@ interface TestimonialsProps {
 
 const TESTIMONIALS_EN = [
   {
-    quote: "I'd used other online formation services twice and dreaded it both times. LaunchForma felt like ordering a sandwich — pick what you want, pay once, done.",
+    quote: "I'd used other online formation services twice and dreaded it both times. LaunchForma felt like ordering a sandwich - pick what you want, pay once, done.",
     name: 'Mariana C.',
     role: 'Founder · Coral Gables Realty Group',
     avatar: 'MC',
   },
   {
-    quote: 'The annual report reminders alone are worth it. Last year I almost missed the May 1st deadline — that $400 late fee would have stung.',
+    quote: 'The annual report reminders alone are worth it. Last year I almost missed the May 1st deadline - that $400 late fee would have stung.',
     name: 'James T.',
     role: 'Solopreneur · Tampa, FL',
     avatar: 'JT',
@@ -36,13 +36,13 @@ const TESTIMONIALS_EN = [
     avatar: 'DK',
   },
   {
-    quote: "The transparency hit different. One package price, Florida filing fee already included — no surprise checkout fees like every competitor I'd used.",
+    quote: "The transparency hit different. One package price, Florida filing fee already included - no surprise checkout fees like every competitor I'd used.",
     name: 'Priya R.',
     role: 'Independent Consultant · Orlando',
     avatar: 'PR',
   },
   {
-    quote: 'I formed three LLCs in one weekend for a real-estate syndication. The dashboard kept everything organized — could not have done that with paper forms.',
+    quote: 'I formed three LLCs in one weekend for a real-estate syndication. The dashboard kept everything organized - could not have done that with paper forms.',
     name: 'Marcus B.',
     role: 'Real Estate Investor · Naples',
     avatar: 'MB',
@@ -51,13 +51,13 @@ const TESTIMONIALS_EN = [
 
 const TESTIMONIALS_ES = [
   {
-    quote: 'Usé otros servicios en línea dos veces y temí ambas. LaunchForma se sintió como ordenar un sándwich — eliges lo que quieres, pagas una vez, listo.',
+    quote: 'Usé otros servicios en línea dos veces y temí ambas. LaunchForma se sintió como ordenar un sándwich - eliges lo que quieres, pagas una vez, listo.',
     name: 'Mariana C.',
     role: 'Fundadora · Coral Gables Realty Group',
     avatar: 'MC',
   },
   {
-    quote: 'Los recordatorios del reporte anual valen el precio solos. El año pasado casi perdí el límite del 1 de mayo — esos $400 de multa habrían dolido.',
+    quote: 'Los recordatorios del reporte anual valen el precio solos. El año pasado casi perdí el límite del 1 de mayo - esos $400 de multa habrían dolido.',
     name: 'James T.',
     role: 'Solopreneur · Tampa, FL',
     avatar: 'JT',
@@ -75,13 +75,13 @@ const TESTIMONIALS_ES = [
     avatar: 'DK',
   },
   {
-    quote: 'La transparencia hizo la diferencia. Un precio de plan, tarifa de Florida ya incluida — sin sorpresas al pagar como otros competidores.',
+    quote: 'La transparencia hizo la diferencia. Un precio de plan, tarifa de Florida ya incluida - sin sorpresas al pagar como otros competidores.',
     name: 'Priya R.',
     role: 'Consultora Independiente · Orlando',
     avatar: 'PR',
   },
   {
-    quote: 'Formé tres LLCs en un fin de semana para un sindicato inmobiliario. El panel mantuvo todo organizado — imposible con formularios de papel.',
+    quote: 'Formé tres LLCs en un fin de semana para un sindicato inmobiliario. El panel mantuvo todo organizado - imposible con formularios de papel.',
     name: 'Marcus B.',
     role: 'Inversionista Inmobiliario · Naples',
     avatar: 'MB',
@@ -90,12 +90,12 @@ const TESTIMONIALS_ES = [
 
 // State-specific testimonial bundles. Audit (May 2026) flagged that the
 // WY/DE landing pages were running Florida testimonials with FL place
-// names (Coral Gables, Tampa, Naples) — confusing for non-FL visitors.
+// names (Coral Gables, Tampa, Naples) - confusing for non-FL visitors.
 // Each active state now has its own small set; FL keeps the original
 // long-form roster.
 const TESTIMONIALS_WY_EN: typeof TESTIMONIALS_EN = [
   {
-    quote: "I picked Wyoming because of the privacy and asset-protection statutes. LaunchForma made the filing painless — included the registered agent, no upsell games.",
+    quote: "I picked Wyoming because of the privacy and asset-protection statutes. LaunchForma made the filing painless - included the registered agent, no upsell games.",
     name: 'Jordan H.',
     role: 'Solo founder · Sheridan, WY',
     avatar: 'JH',
@@ -107,7 +107,7 @@ const TESTIMONIALS_WY_EN: typeof TESTIMONIALS_EN = [
     avatar: 'PR',
   },
   {
-    quote: "Three weeks of standard processing was disclosed up front and we got the option to expedite. Refreshing — most providers hide the timeline until after you pay.",
+    quote: "Three weeks of standard processing was disclosed up front and we got the option to expedite. Refreshing - most providers hide the timeline until after you pay.",
     name: 'Marcus B.',
     role: 'Operator · Cheyenne, WY',
     avatar: 'MB',
@@ -116,7 +116,7 @@ const TESTIMONIALS_WY_EN: typeof TESTIMONIALS_EN = [
 
 const TESTIMONIALS_WY_ES: typeof TESTIMONIALS_ES = [
   {
-    quote: 'Elegí Wyoming por la privacidad y la protección de activos. LaunchForma hizo el trámite simple — agente registrado incluido, sin trucos de venta.',
+    quote: 'Elegí Wyoming por la privacidad y la protección de activos. LaunchForma hizo el trámite simple - agente registrado incluido, sin trucos de venta.',
     name: 'Jordan H.',
     role: 'Fundador · Sheridan, WY',
     avatar: 'JH',
@@ -128,7 +128,7 @@ const TESTIMONIALS_WY_ES: typeof TESTIMONIALS_ES = [
     avatar: 'PR',
   },
   {
-    quote: 'Tres semanas de procesamiento estándar fueron declaradas desde el inicio y nos dieron la opción de acelerar. Refrescante — la mayoría oculta el tiempo hasta después de pagar.',
+    quote: 'Tres semanas de procesamiento estándar fueron declaradas desde el inicio y nos dieron la opción de acelerar. Refrescante - la mayoría oculta el tiempo hasta después de pagar.',
     name: 'Marcus B.',
     role: 'Operador · Cheyenne, WY',
     avatar: 'MB',
@@ -149,7 +149,7 @@ const TESTIMONIALS_DE_EN: typeof TESTIMONIALS_EN = [
     avatar: 'DK',
   },
   {
-    quote: "Operating Agreement was Delaware-tailored — chargeback protection, manager-managed structure, everything our counsel wanted to see. Bank opened the account without one comment.",
+    quote: "Operating Agreement was Delaware-tailored - chargeback protection, manager-managed structure, everything our counsel wanted to see. Bank opened the account without one comment.",
     name: 'Mariana C.',
     role: 'Founder · Dover, DE',
     avatar: 'MC',
@@ -170,7 +170,7 @@ const TESTIMONIALS_DE_ES: typeof TESTIMONIALS_ES = [
     avatar: 'DK',
   },
   {
-    quote: 'El Operating Agreement venía adaptado a Delaware — exactamente lo que nuestro abogado quería ver. El banco abrió la cuenta sin un solo comentario.',
+    quote: 'El Operating Agreement venía adaptado a Delaware - exactamente lo que nuestro abogado quería ver. El banco abrió la cuenta sin un solo comentario.',
     name: 'Mariana C.',
     role: 'Fundadora · Dover, DE',
     avatar: 'MC',
@@ -206,7 +206,7 @@ export function Testimonials({ state = FLORIDA }: TestimonialsProps = {}) {
   const subhead =
     state.code === 'FL'
       ? t('subhead')
-      : `Real ${state.name} owners — small operators, holding companies, and venture-backed founders alike.`;
+      : `Real ${state.name} owners - small operators, holding companies, and venture-backed founders alike.`;
 
   return (
     <section data-marketing-state={state.code} className="py-20 md:py-28 bg-white border-y border-border">

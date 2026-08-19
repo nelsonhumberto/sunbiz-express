@@ -4,14 +4,14 @@ import { ArrowRight } from 'lucide-react';
 import { JsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 
 export const metadata: Metadata = {
-  title: 'Guides — LLC, Corporation & Compliance Resources',
+  title: 'Guides - LLC, Corporation & Compliance Resources',
   description:
     'Plain-English guides to forming and running a business: operating agreements, Wyoming vs. Delaware, and the 2026 FinCEN BOI report.',
   alternates: { canonical: '/guides' },
   openGraph: {
     title: 'LaunchForma Guides',
     description:
-      'Plain-English guides to forming and running a business — operating agreements, Wyoming vs. Delaware, and BOI filing.',
+      'Plain-English guides to forming and running a business - operating agreements, Wyoming vs. Delaware, and BOI filing.',
     type: 'website',
   },
 };
@@ -21,21 +21,21 @@ const GUIDES = [
     slug: 'florida-llc-operating-agreement',
     title: 'Florida LLC Operating Agreement: Why You Need One',
     description:
-      'What an operating agreement does, why Florida banks ask for it, and what to include — even for a single-member LLC.',
+      'What an operating agreement does, why Florida banks ask for it, and what to include - even for a single-member LLC.',
     readingMinutes: 9,
   },
   {
     slug: 'wyoming-llc-vs-delaware-corp',
     title: 'Wyoming LLC vs. Delaware Corporation',
     description:
-      'Privacy, taxes, fees, and investor expectations compared — so you pick the right home state for your entity.',
+      'Privacy, taxes, fees, and investor expectations compared - so you pick the right home state for your entity.',
     readingMinutes: 10,
   },
   {
     slug: 'boi-filing-2026',
     title: 'BOI Filing 2026: What Every LLC and Corporation Must Know',
     description:
-      'The FinCEN Beneficial Ownership Information report under the Corporate Transparency Act — deadlines, exemptions, and penalties.',
+      'The FinCEN Beneficial Ownership Information report under the Corporate Transparency Act - deadlines, exemptions, and penalties.',
     readingMinutes: 11,
   },
 ];
@@ -67,7 +67,7 @@ export default function GuidesHubPage() {
         <div className="max-w-3xl">
           <h1 className="font-display text-4xl md:text-5xl font-medium text-ink">Guides</h1>
           <p className="mt-4 text-lg text-ink-muted">
-            Plain-English answers to the questions founders actually ask — written by the
+            Plain-English answers to the questions founders actually ask - written by the
             LaunchForma compliance team.
           </p>
         </div>

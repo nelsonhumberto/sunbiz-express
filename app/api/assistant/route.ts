@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Per-IP throttle — keeps cost + abuse bounded.
+  // Per-IP throttle - keeps cost + abuse bounded.
   const limit = rateLimit(`assistant:${clientIp()}`, 30, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(

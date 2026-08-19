@@ -22,7 +22,7 @@ export function ResendEmailButton({ notificationId }: { notificationId: string }
             if (res.status === 'SENT') {
               toast.success('Email resent successfully');
             } else {
-              toast.error(res.errorMessage ?? 'Delivery failed — check SMTP credentials');
+              toast.error(res.errorMessage ?? 'Delivery failed - check SMTP credentials');
             }
           } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Could not resend');

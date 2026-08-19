@@ -8,7 +8,7 @@
  *   - EIN entitlement gate + AES-256-GCM encryption round-trip.
  *   - FAQ content present for each active state, in EN and ES.
  *
- * Pure-logic only — no DB, no network. Run with:
+ * Pure-logic only - no DB, no network. Run with:
  *   npx tsx --env-file=.env scripts/three-state-smoke.ts
  */
 
@@ -85,7 +85,7 @@ function checkTrue(label: string, condition: boolean) {
     console.log(`  ✓ ${label}`);
   } else {
     fail++;
-    console.log(`  ✗ ${label} — assertion was false`);
+    console.log(`  ✗ ${label} - assertion was false`);
   }
 }
 
@@ -95,7 +95,7 @@ function includes(label: string, haystack: string, needle: string) {
     console.log(`  ✓ ${label}`);
   } else {
     fail++;
-    console.log(`  ✗ ${label} — "${needle}" not found`);
+    console.log(`  ✗ ${label} - "${needle}" not found`);
   }
 }
 
@@ -197,7 +197,7 @@ checkTrue(
 );
 
 console.log('\n--- Add-ons: federal stays flat, state-fee items vary ---');
-// Federal services (EIN, OA, domain) — same price in every state.
+// Federal services (EIN, OA, domain) - same price in every state.
 for (const state of ACTIVE_FORMATION_STATES) {
   check(
     `EIN price in ${state} (federal)`,
@@ -210,7 +210,7 @@ for (const state of ACTIVE_FORMATION_STATES) {
     8_900,
   );
 }
-// State-fee add-ons — vary by state and entity (margin component is constant).
+// State-fee add-ons - vary by state and entity (margin component is constant).
 check('cert_status FL LLC à la carte', addOnPriceCents('cert_status', 'LLC', 'FL'), 3_900);
 check('cert_status WY LLC à la carte', addOnPriceCents('cert_status', 'LLC', 'WY'), 5_900);
 check('cert_status DE LLC à la carte', addOnPriceCents('cert_status', 'LLC', 'DE'), 8_400);
@@ -344,7 +344,7 @@ console.log('\n--- Processing-speed options ---');
 
 console.log('\n--- Registered Agent address validation ---');
 check(
-  'FL RA must be FL — rejects WY address',
+  'FL RA must be FL - rejects WY address',
   validateRegisteredAgentAddress(
     { street1: '30 N Gould St', city: 'Sheridan', state: 'WY', zip: '82801' },
     'FL',
@@ -352,7 +352,7 @@ check(
   false,
 );
 check(
-  'WY RA must be WY — accepts WY address',
+  'WY RA must be WY - accepts WY address',
   validateRegisteredAgentAddress(
     { street1: '30 N Gould St', city: 'Sheridan', state: 'WY', zip: '82801' },
     'WY',
@@ -377,7 +377,7 @@ console.log('\n--- Effective date rules ---');
   const wyYesterday = isValidEffectiveDate(yesterday, 'WY');
   // WY allows minDaysBack=0, so yesterday is invalid
   check('WY rejects yesterday (no backdating)', wyYesterday.valid, false);
-  // FL allows minDaysBack=5 business days; yesterday is fine if not weekend/Mon edge case — accept either valid or sane error
+  // FL allows minDaysBack=5 business days; yesterday is fine if not weekend/Mon edge case - accept either valid or sane error
   const flYesterday = isValidEffectiveDate(yesterday, 'FL');
   checkTrue('FL effective date for yesterday is valid OR has reasonable error', flYesterday.valid || !!flYesterday.error);
   const futureFar = new Date(today);
@@ -519,14 +519,14 @@ for (const state of ACTIVE_FORMATION_STATES) {
 console.log('\n--- Delaware LLC member disclosure ---');
 {
   const baseDe = sampleFiling('DE', 'LLC') as Parameters<typeof generateArticlesOfOrganization>[0];
-  // Default (opt-out) — Article IV must NOT show the member table.
+  // Default (opt-out) - Article IV must NOT show the member table.
   const noDisclose = generateArticlesOfOrganization({
     ...baseDe,
     optionalDetails: { includeMembersOnArticles: false },
   } as Parameters<typeof generateArticlesOfOrganization>[0]);
   // The Article IV body should not include the AMBR row (which renders "AMBR"
   // as a table cell). The incorporator block at the bottom always prints
-  // "Jane Doe" as the signer — that's expected.
+  // "Jane Doe" as the signer - that's expected.
   checkTrue(
     'DE LLC default omits member-table AMBR row',
     !noDisclose.includes('<td>AMBR</td>'),
@@ -536,7 +536,7 @@ console.log('\n--- Delaware LLC member disclosure ---');
     noDisclose,
     'intentionally omitted',
   );
-  // Opt-in — Certificate prints member row as before.
+  // Opt-in - Certificate prints member row as before.
   const disclosed = generateArticlesOfOrganization({
     ...baseDe,
     optionalDetails: { includeMembersOnArticles: true },
@@ -569,7 +569,7 @@ console.log('\n--- Business-entity owner rendering ---');
   includes(
     'Entity-owner row prints jurisdiction',
     withBusinessOwner,
-    'Entity owner — Delaware',
+    'Entity owner - Delaware',
   );
   includes('Entity-owner row prints signer', withBusinessOwner, 'Jane Doe, Manager');
 }

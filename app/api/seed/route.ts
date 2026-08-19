@@ -2,7 +2,7 @@
 //   curl -X POST "http://localhost:3000/api/seed" -H "Authorization: Bearer YOUR_SEED_SECRET"
 //
 // Requires SEED_SECRET. Disabled in production unless ALLOW_SEED=true.
-// Idempotent — checks if already seeded. Demo credentials live in this source.
+// Idempotent - checks if already seeded. Demo credentials live in this source.
 
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  // Never allow demo seeding in production — these are known-credential accounts.
+  // Never allow demo seeding in production - these are known-credential accounts.
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED !== 'true') {
     return NextResponse.json({ error: 'Disabled in production.' }, { status: 403 });
   }
@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
       additionalServices: ADD_ONS.length,
       sampleFiling: sampleFiling.id,
     },
-    // Credentials intentionally NOT echoed — they're documented in the seed
+    // Credentials intentionally NOT echoed - they're documented in the seed
     // script source for local/dev use only.
   });
 }

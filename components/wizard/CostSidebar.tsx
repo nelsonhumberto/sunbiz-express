@@ -177,7 +177,7 @@ function CostRow({
 
 /**
  * Translates a `CostBreakdownLine` label into the user's locale. The line
- * itself stays English (server actions and PDFs reuse it verbatim) — we just
+ * itself stays English (server actions and PDFs reuse it verbatim) - we just
  * pick the matching i18n key when rendering for the customer.
  */
 export function localizedLineLabel(
@@ -188,7 +188,7 @@ export function localizedLineLabel(
 ): string {
   if (line.category === 'package' && line.tierSlug) {
     // line.label already contains the state-aware label from computeCost
-    // (e.g. "Bank-Ready Filing — Wyoming LLC"), so use it directly.
+    // (e.g. "Bank-Ready Filing - Wyoming LLC"), so use it directly.
     return line.label;
   }
   if (line.category === 'addon' && line.addOnSlug) {

@@ -49,7 +49,7 @@ export type CaptureLeadResult =
 export async function captureMarketingLead(
   input: z.input<typeof LeadInput>,
 ): Promise<CaptureLeadResult> {
-  // Drop honeypot submissions silently — bots see a 200, real users do not
+  // Drop honeypot submissions silently - bots see a 200, real users do not
   // hit this branch because the field is `display: none` and unlabelled.
   if (input.website && input.website.trim().length > 0) {
     return { ok: true };

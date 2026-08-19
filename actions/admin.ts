@@ -278,7 +278,7 @@ export async function rejectFiling(filingId: string, reason: string) {
 /**
  * Toggle admin archive on a filing. Archived filings stay in the DB (never
  * deleted) but are excluded from analytics and hidden from the default
- * admin filings list — use for auditors, internal tests, and junk drafts.
+ * admin filings list - use for auditors, internal tests, and junk drafts.
  */
 export async function toggleAdminArchiveFiling(filingId: string) {
   const session = await requireAdmin();

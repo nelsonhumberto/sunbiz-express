@@ -95,7 +95,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
       redirect: false,
     });
   } catch (err) {
-    // ignore — will redirect to sign-in
+    // ignore - will redirect to sign-in
   }
   redirect('/dashboard');
 }

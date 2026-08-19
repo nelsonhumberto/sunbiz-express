@@ -41,7 +41,7 @@ export default function WizardError({
           </h1>
           <p className="text-sm text-ink-muted leading-relaxed">
             We logged the error and the LaunchForma team will pick it up.
-            Your draft is saved — try again, or head back to your
+            Your draft is saved - try again, or head back to your
             dashboard to resume from the last completed step.
           </p>
         </div>

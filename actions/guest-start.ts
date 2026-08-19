@@ -58,7 +58,7 @@ export interface StartGuestResult {
  * redirects into the wizard.
  *
  * If an email already belongs to a normal ACTIVE user, we redirect to
- * /sign-in instead of silently merging — that prevents account-takeover.
+ * /sign-in instead of silently merging - that prevents account-takeover.
  */
 export async function startGuestFiling(
   _prev: StartGuestResult,
@@ -90,7 +90,7 @@ export async function startGuestFiling(
     return { error: t('errorStateUnavailable') };
   }
 
-  // Authed users skip guest entirely — go straight to filing creation.
+  // Authed users skip guest entirely - go straight to filing creation.
   const session = await auth();
   if (session?.user?.id) {
     const filing = await prisma.filing.create({
@@ -213,7 +213,7 @@ export interface ClaimResult {
  * Convert the current GUEST user into an ACTIVE account. Generates a random
  * password, sets it on the user, emails them the credentials, clears the
  * guest token, and keeps them in the wizard. The user can change the email
- * (e.g. they signed up with a typo) — if changed we re-check for collisions.
+ * (e.g. they signed up with a typo) - if changed we re-check for collisions.
  */
 export async function claimGuestAccount(
   _prev: ClaimResult,
@@ -257,7 +257,7 @@ export async function claimGuestAccount(
   });
 
   // Send credentials via the regular email pipeline. The user can sign in
-  // immediately or keep filing as is — both paths work because the wizard
+  // immediately or keep filing as is - both paths work because the wizard
   // already has a draft attached to this user.
   let emailDelivered = true;
   try {
@@ -273,7 +273,7 @@ export async function claimGuestAccount(
     });
     emailDelivered = result.status === 'SENT';
   } catch (err) {
-    // Never block the conversion on email delivery — but don't claim success
+    // Never block the conversion on email delivery - but don't claim success
     // we can't verify. Log it and tell the user honestly.
     emailDelivered = false;
     logger.error(
@@ -283,14 +283,14 @@ export async function claimGuestAccount(
     );
   }
 
-  // Clear guest cookie — they now have a real account they can sign in with.
+  // Clear guest cookie - they now have a real account they can sign in with.
   cookies().delete(GUEST_COOKIE);
 
   return {
     ok: true,
     message: emailDelivered
       ? `Account created. Sign-in details have been emailed to ${newEmail}.`
-      : `Account created for ${newEmail}. We couldn't send the email just now — use "Forgot password" on the sign-in page to set your password.`,
+      : `Account created for ${newEmail}. We couldn't send the email just now - use "Forgot password" on the sign-in page to set your password.`,
   };
 }
 

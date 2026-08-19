@@ -12,7 +12,7 @@
 //   2. SUNBIZ_SCRAPER_PROXY set → scrape via CF-bypass proxy (filing-time use)
 //   3. Otherwise               → direct scrape (will hit Cloudflare; clear error)
 //
-// All failure modes return a typed `SunbizError` — never a silent empty list.
+// All failure modes return a typed `SunbizError` - never a silent empty list.
 
 import * as cheerio from 'cheerio';
 import { readFileSync } from 'fs';
@@ -417,7 +417,7 @@ function parseScrapeResults(html: string, limit: number): SunbizEntity[] {
 }
 
 /**
- * Lower-level scrape — exposed for the Phase-2 live ground-truth check at
+ * Lower-level scrape - exposed for the Phase-2 live ground-truth check at
  * filing time. Routes through `SUNBIZ_SCRAPER_PROXY` if set, otherwise hits
  * the live site directly (which will usually fail with a Cloudflare error
  * from a serverless host).
@@ -511,7 +511,7 @@ export async function searchSunbiz(
  *
  * Comparison uses `normalizeDistinguishableName()` from `lib/florida.ts`,
  * which strips entity suffixes, articles ("the"/"a"/"an"), `and`/`&`,
- * punctuation/symbols, and singular/plural/possessive forms — matching the
+ * punctuation/symbols, and singular/plural/possessive forms - matching the
  * Division's published rules.
  *
  * To improve recall we run multiple search terms (the raw query and its
@@ -553,7 +553,7 @@ export async function checkNameAvailability(
     try {
       res = await searchSunbiz(term, opts);
     } catch (err) {
-      // If any term fails, propagate — caller maps to user-facing error.
+      // If any term fails, propagate - caller maps to user-facing error.
       throw err;
     }
     mergedSource = mergedSource ?? res.source;
@@ -595,7 +595,7 @@ export async function checkNameAvailability(
       available: false,
       status: 'exact_conflict',
       message:
-        'A Florida entity with this name is already on the record. Florida requires names "distinguishable upon the record" — try a more distinct name.',
+        'A Florida entity with this name is already on the record. Florida requires names "distinguishable upon the record" - try a more distinct name.',
       conflicts: hardConflicts.slice(0, 5),
       suggestions: generateSuggestions(trimmed, entityType),
       source: mergedSource,
@@ -608,7 +608,7 @@ export async function checkNameAvailability(
       available: false,
       status: 'similar_conflict',
       message:
-        'We found similar Florida filings (some are inactive or cross-references and may still be held). Florida requires names "distinguishable upon the record" — try a more distinct variation.',
+        'We found similar Florida filings (some are inactive or cross-references and may still be held). Florida requires names "distinguishable upon the record" - try a more distinct variation.',
       conflicts: softConflicts.slice(0, 5),
       suggestions: generateSuggestions(trimmed, entityType),
       source: mergedSource,
@@ -890,7 +890,7 @@ async function findViaSunbizOrgNameScrape(
 export interface FetchFloridaEntityOptions {
   signal?: AbortSignal;
   /**
-   * Legal name as shown on Sunbiz.org — enables fallback name search when
+   * Legal name as shown on Sunbiz.org - enables fallback name search when
    * Sunbiz Daily has no row for the document number alone.
    */
   legalNameHint?: string;
@@ -1018,7 +1018,7 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
       throw new SunbizError(
         'not_found',
         err.message +
-          ' If your company is older, paste the **legal entity name** (as on Sunbiz) into the optional field and look up again — we will match by name and confirm the document number.',
+          ' If your company is older, paste the **legal entity name** (as on Sunbiz) into the optional field and look up again - we will match by name and confirm the document number.',
       );
     }
   }

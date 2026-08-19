@@ -76,7 +76,7 @@ export async function getGuestUser(): Promise<{
 }
 
 /**
- * Return the actor currently driving the wizard — either an authenticated
+ * Return the actor currently driving the wizard - either an authenticated
  * NextAuth user OR a guest identified by signed cookie token. Used by the
  * wizard layout, page, and server actions to gate access without forcing a
  * sign-in for first-time visitors.

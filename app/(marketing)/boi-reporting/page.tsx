@@ -13,14 +13,14 @@ import { CTABanner } from '@/components/marketing/CTABanner';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
 export const metadata: Metadata = {
-  title: 'BOI Filing 2026 — FinCEN Beneficial Ownership Reporting',
+  title: 'BOI Filing 2026 - FinCEN Beneficial Ownership Reporting',
   description:
-    "Most LLCs and Corporations must file a Beneficial Ownership Information (BOI) report with FinCEN. LaunchForma's $49 managed BOI filing handles preparation, review, and submission — encrypted in transit and at rest.",
+    "Most LLCs and Corporations must file a Beneficial Ownership Information (BOI) report with FinCEN. LaunchForma's $49 managed BOI filing handles preparation, review, and submission - encrypted in transit and at rest.",
   alternates: { canonical: '/boi-reporting' },
   openGraph: {
-    title: 'BOI Filing for LLCs and Corporations — $49 Managed',
+    title: 'BOI Filing for LLCs and Corporations - $49 Managed',
     description:
-      'Stay compliant with the Corporate Transparency Act. LaunchForma prepares and submits your FinCEN BOI report for $49 — encrypted, auditable, and on time.',
+      'Stay compliant with the Corporate Transparency Act. LaunchForma prepares and submits your FinCEN BOI report for $49 - encrypted, auditable, and on time.',
     type: 'website',
   },
 };
@@ -28,19 +28,19 @@ export const metadata: Metadata = {
 const BOI_FAQ = [
   {
     q: 'What is a BOI report?',
-    a: 'A Beneficial Ownership Information (BOI) report identifies the individuals who ultimately own or control a U.S. business entity. FinCEN — a bureau of the U.S. Treasury — collects these reports under the Corporate Transparency Act (CTA) to combat money laundering, tax evasion, and other illicit finance.',
+    a: 'A Beneficial Ownership Information (BOI) report identifies the individuals who ultimately own or control a U.S. business entity. FinCEN - a bureau of the U.S. Treasury - collects these reports under the Corporate Transparency Act (CTA) to combat money laundering, tax evasion, and other illicit finance.',
   },
   {
     q: 'Who has to file?',
-    a: 'Most domestic LLCs, Corporations, and similar entities formed in the U.S. (and many foreign entities registered to do business in the U.S.) must file. There are 23 statutory exemptions — including large operating companies (>$5M revenue + >20 employees + physical U.S. office), publicly traded companies, banks, registered investment advisers, and certain regulated entities. We screen for exemptions before filing.',
+    a: 'Most domestic LLCs, Corporations, and similar entities formed in the U.S. (and many foreign entities registered to do business in the U.S.) must file. There are 23 statutory exemptions - including large operating companies (>$5M revenue + >20 employees + physical U.S. office), publicly traded companies, banks, registered investment advisers, and certain regulated entities. We screen for exemptions before filing.',
   },
   {
     q: 'When is the deadline?',
-    a: 'Entities created or registered on or after January 1, 2025 must file within 30 days of formation. Entities created in 2024 had until January 13, 2025. Entities created before January 1, 2024 originally had until January 1, 2025. Any change to beneficial-ownership information (new owner, address change for a beneficial owner) must be reported within 30 days. Enforcement status has shifted multiple times — we keep our process current with the latest FinCEN guidance.',
+    a: 'Entities created or registered on or after January 1, 2025 must file within 30 days of formation. Entities created in 2024 had until January 13, 2025. Entities created before January 1, 2024 originally had until January 1, 2025. Any change to beneficial-ownership information (new owner, address change for a beneficial owner) must be reported within 30 days. Enforcement status has shifted multiple times - we keep our process current with the latest FinCEN guidance.',
   },
   {
     q: 'What information has to be reported?',
-    a: 'For each beneficial owner (anyone owning ≥25% of the entity or exercising substantial control) and for each company applicant (only for entities formed on or after Jan 1, 2024): full legal name, date of birth, current residential address, and an identifying number from a non-expired U.S. driver license, state ID, or U.S./foreign passport — plus a clear image of that document.',
+    a: 'For each beneficial owner (anyone owning ≥25% of the entity or exercising substantial control) and for each company applicant (only for entities formed on or after Jan 1, 2024): full legal name, date of birth, current residential address, and an identifying number from a non-expired U.S. driver license, state ID, or U.S./foreign passport - plus a clear image of that document.',
   },
   {
     q: 'How does LaunchForma handle BOI?',
@@ -48,7 +48,7 @@ const BOI_FAQ = [
   },
   {
     q: 'What are the penalties for not filing?',
-    a: 'Failing to file or knowingly providing false information can carry civil penalties of $500/day (adjusted for inflation) and criminal penalties up to $10,000 and/or 2 years imprisonment under the CTA. We strongly recommend filing on time even if you believe you might be exempt — exemption status can change as your company grows.',
+    a: 'Failing to file or knowingly providing false information can carry civil penalties of $500/day (adjusted for inflation) and criminal penalties up to $10,000 and/or 2 years imprisonment under the CTA. We strongly recommend filing on time even if you believe you might be exempt - exemption status can change as your company grows.',
   },
   {
     q: 'Is my data secure?',
@@ -56,7 +56,7 @@ const BOI_FAQ = [
   },
   {
     q: 'Can I file it myself?',
-    a: "Yes — FinCEN's BOIR portal accepts direct filings free of charge. We charge $49 because the process involves uploading IDs, classifying owners correctly, and tracking the 30-day update obligation indefinitely. If you'd rather DIY, fincen.gov/boi is the official portal.",
+    a: "Yes - FinCEN's BOIR portal accepts direct filings free of charge. We charge $49 because the process involves uploading IDs, classifying owners correctly, and tracking the 30-day update obligation indefinitely. If you'd rather DIY, fincen.gov/boi is the official portal.",
   },
 ];
 
@@ -70,16 +70,16 @@ export default function BoiReportingPage() {
         <div className="container max-w-3xl text-center">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary bg-primary/5 border border-primary/15 px-3 py-1 rounded-full">
             <ShieldAlert className="h-3.5 w-3.5" />
-            BOI Filing — Corporate Transparency Act
+            BOI Filing - Corporate Transparency Act
           </span>
           <h1 className="mt-4 font-display text-5xl md:text-6xl font-medium tracking-tight">
-            Stay FinCEN-compliant —{' '}
+            Stay FinCEN-compliant - {' '}
             <span className="italic text-primary">for $49.</span>
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             Most U.S. LLCs and Corporations must file a Beneficial Ownership
             Information report with FinCEN. LaunchForma prepares, reviews, and
-            submits yours — encrypted in transit and at rest, with the FinCEN
+            submits yours - encrypted in transit and at rest, with the FinCEN
             tracking ID delivered straight to your dashboard.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
@@ -87,7 +87,7 @@ export default function BoiReportingPage() {
               href="/start"
               className="inline-flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-md font-semibold hover:bg-primary-hover transition-colors"
             >
-              Add BOI filing — $49
+              Add BOI filing - $49
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
@@ -175,7 +175,7 @@ export default function BoiReportingPage() {
               Frequently asked
             </span>
             <h2 className="mt-2 font-display text-3xl md:text-4xl font-medium tracking-tight">
-              BOI filing — answered.
+              BOI filing - answered.
             </h2>
           </div>
           <div className="space-y-4">
@@ -212,7 +212,7 @@ export default function BoiReportingPage() {
             <p className="text-xs text-ink-subtle leading-relaxed">
               LaunchForma is not a law firm and this page is not legal advice.
               Exemption status and enforcement deadlines have been actively
-              litigated — confirm current rules at{' '}
+              litigated - confirm current rules at{' '}
               <a
                 href="https://www.fincen.gov/boi"
                 target="_blank"

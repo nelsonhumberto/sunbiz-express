@@ -4,13 +4,13 @@
  * produced by lib/pdf.ts and pdf-lib to lay out Letter pages.
  *
  * Article sections (`section.article`) and signature blocks are measured and
- * kept together when they fit on a single page — preventing mid-article cuts.
+ * kept together when they fit on a single page - preventing mid-article cuts.
  */
 
 import { load, type CheerioAPI } from 'cheerio';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 
-/** Cheerio DOM node (tag). Kept loose — cheerio's public types vary by version. */
+/** Cheerio DOM node (tag). Kept loose - cheerio's public types vary by version. */
 type DomNode = {
   type?: string;
   name?: string;
@@ -133,7 +133,7 @@ function walk($: CheerioAPI, el: DomNode, blocks: Block[]) {
       $(tr)
         .children('td, th')
         .each((___, cell) => {
-          // <br/> becomes nothing in .text() — insert separators so
+          // <br/> becomes nothing in .text() - insert separators so
           // "St<br/>Suite" doesn't render as "StSuite".
           const $cell = $(cell).clone();
           $cell.find('br').replaceWith(', ');
@@ -239,7 +239,7 @@ function measureBlock(block: Block, fonts: Fonts): number {
     const colW = CONTENT_WIDTH / colCount;
     let h = 4;
     for (const row of block.rows) {
-      const cellLines = row.map((cell) => wrapLines(cell || '—', fonts.regular, 10, colW - 10));
+      const cellLines = row.map((cell) => wrapLines(cell || '-', fonts.regular, 10, colW - 10));
       h += Math.max(...cellLines.map((l) => l.length), 1) * 13 + 8 + 2;
     }
     return h + 8;
@@ -433,11 +433,11 @@ export async function htmlDocumentToPdf(html: string, title = 'Document'): Promi
       const colW = CONTENT_WIDTH / colCount;
       y -= 4;
       for (const row of block.rows) {
-        const cellLines = row.map((cell) => wrapLines(cell || '—', font, 10, colW - 10));
+        const cellLines = row.map((cell) => wrapLines(cell || '-', font, 10, colW - 10));
         const rowHeight = Math.max(...cellLines.map((l) => l.length), 1) * 13 + 8;
         ensureSpace(rowHeight + 2);
         for (let i = 0; i < colCount; i++) {
-          const lines = cellLines[i] ?? ['—'];
+          const lines = cellLines[i] ?? ['-'];
           let cy = y - 12;
           for (const line of lines) {
             page.drawText(line, {

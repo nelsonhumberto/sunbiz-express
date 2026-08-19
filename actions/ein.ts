@@ -118,7 +118,7 @@ async function saveEinResponsiblePartyImpl(
   ) {
     return {
       ok: false,
-      error: 'EIN is not included in this package — add it from Step 10 first.',
+      error: 'EIN is not included in this package - add it from Step 10 first.',
     };
   }
 
@@ -128,7 +128,7 @@ async function saveEinResponsiblePartyImpl(
   });
 
   // Build the encrypted payload server-side. Plaintext PII never leaves
-  // this scope — only ciphertext + last-4 hits Postgres.
+  // this scope - only ciphertext + last-4 hits Postgres.
   const baseFields = {
     filingId: filing.id,
     responsiblePartyType: data.responsiblePartyType,
@@ -206,7 +206,7 @@ async function saveEinResponsiblePartyImpl(
 
 /**
  * Public summary for the wizard payment gate. Does NOT include any
- * encrypted data — only labels and last-4s safe for client display.
+ * encrypted data - only labels and last-4s safe for client display.
  */
 export async function getEinSummary(
   filingId: string,
@@ -261,7 +261,7 @@ export async function adminRevealEinSecret(
   const ein = await prisma.einApplication.findUnique({ where: { filingId } });
   if (!ein) return { ok: false, error: 'No EIN application' };
 
-  // Audit every decryption (admin + filing + timestamp — never the plaintext).
+  // Audit every decryption (admin + filing + timestamp - never the plaintext).
   // The marketing copy promises this; it must actually happen.
   try {
     await prisma.adminAction.create({

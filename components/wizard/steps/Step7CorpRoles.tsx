@@ -35,7 +35,7 @@ interface CorpRole {
   state?: string;
   zip?: string;
   /** Email is kept in-memory for downstream autofill (EIN panel etc.).
-   *  Not persisted to ManagerMember today — adding the column would
+   *  Not persisted to ManagerMember today - adding the column would
    *  require a Prisma migration we intentionally avoid in this step. */
   email?: string;
 }
@@ -72,7 +72,7 @@ function corpTitleLabelKey(t: CorpTitle): string {
  * the three universally-recognized roles (President, Treasurer,
  * Secretary). We hard-code those role slots, autofill the first director
  * from the account name, and let the customer "use existing person"
- * chips to clone any already-entered party into another slot — most
+ * chips to clone any already-entered party into another slot - most
  * small business owners hold all four titles themselves.
  */
 export function Step7CorpRoles({
@@ -456,7 +456,7 @@ export function Step7CorpRoles({
 
   return (
     <div className="space-y-5">
-      {/* Title help — corp-specific officer/director glossary. */}
+      {/* Title help - corp-specific officer/director glossary. */}
       <div className="rounded-lg border border-border bg-muted/30 p-4">
         <button
           type="button"

@@ -65,7 +65,7 @@ export async function processCheckout(input: {
   if (!filing || filing.userId !== actor.id) return { error: 'Filing not found.' };
   if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
 
-  // Retarget campaigns may arrive after the draft was created — backfill
+  // Retarget campaigns may arrive after the draft was created - backfill
   // attribution from the current lf_utm cookie before we finalize payment.
   await ensureFilingTouchUtm(filing.id);
   await ensureUserFirstTouchUtm(actor.id);
@@ -122,7 +122,7 @@ export async function processCheckout(input: {
   let stripeIntentId: string;
 
   if (isTesterBypass) {
-    // Synthetic payment — no Stripe call
+    // Synthetic payment - no Stripe call
     stripeIntentId = `TESTER_${Date.now()}`;
     cardLast4 = '4242';
     cardBrand = 'Visa';

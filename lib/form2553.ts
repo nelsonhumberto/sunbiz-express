@@ -12,7 +12,7 @@ import { PDFDocument } from 'pdf-lib';
  *   0 name+address · 1 consent signature · 2 consent date · 3 shares/% ·
  *   4 date(s) acquired · 5 SSN/EIN · 6 tax-year-end.
  *
- * The corporation EIN and the wet signatures are intentionally left blank — the
+ * The corporation EIN and the wet signatures are intentionally left blank - the
  * officer/shareholders sign and the EIN is added before filing with the IRS.
  */
 
@@ -25,7 +25,7 @@ export interface Form2553Shareholder {
   address?: string;
   shares?: string; // "1,000" or "100%"
   datesAcquired?: string;
-  /** Full SSN/EIN (decrypted) — required by the IRS form. */
+  /** Full SSN/EIN (decrypted) - required by the IRS form. */
   taxId?: string;
   taxYearEnd?: string; // "12/31"
 }
@@ -61,7 +61,7 @@ export async function generateForm2553Pdf(args: Form2553PdfArgs): Promise<Uint8A
     try {
       form.getTextField(name).setText(value);
     } catch {
-      /* field absent in this revision — skip */
+      /* field absent in this revision - skip */
     }
   };
   const check = (name: string) => {
@@ -72,11 +72,11 @@ export async function generateForm2553Pdf(args: Form2553PdfArgs): Promise<Uint8A
     }
   };
 
-  // ── Page 1 — Part I Election Information ──────────────────────────────
+  // ── Page 1 - Part I Election Information ──────────────────────────────
   setText(`${NA}f1_01[0]`, args.businessName);
   setText(`${NA}f1_02[0]`, args.street);
   setText(`${NA}f1_03[0]`, args.cityStateZip);
-  // f1_04 = A (EIN) — left blank intentionally.
+  // f1_04 = A (EIN) - left blank intentionally.
   setText(`${P1}f1_05[0]`, args.dateIncorporated); // B Date incorporated
   setText(`${P1}f1_06[0]`, args.stateOfIncorporation); // C State of incorporation
   setText(`${P1}f1_07[0]`, args.effectiveDate); // E Election effective date
@@ -84,11 +84,11 @@ export async function generateForm2553Pdf(args: Form2553PdfArgs): Promise<Uint8A
   setText(`${P1}f1_10[0]`, // H Name and title of officer
     [args.officerName, args.officerTitle].filter(Boolean).join(', '));
   setText(`${P1}f1_11[0]`, args.officerPhone); // H Telephone
-  setText(`${P1}f1_21[0]`, args.signDate); // Sign Here — Date
+  setText(`${P1}f1_21[0]`, args.signDate); // Sign Here - Date
 
-  // ── Page 2 — continued header + Part I item J shareholder table ───────
+  // ── Page 2 - continued header + Part I item J shareholder table ───────
   setText(`${P2}f2_01[0]`, args.businessName); // Name (continued)
-  // f2_02 = EIN (continued) — blank.
+  // f2_02 = EIN (continued) - blank.
 
   args.shareholders.slice(0, 7).forEach((sh, i) => {
     const row = i + 1;

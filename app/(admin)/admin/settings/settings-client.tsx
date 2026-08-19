@@ -165,10 +165,10 @@ export function SettingsClient({ states }: { states: StateRow[] }) {
   return (
     <div className="container max-w-5xl py-10 space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-medium tracking-tight">Settings — State fees</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">Settings - State fees</h1>
         <p className="mt-1 text-ink-muted">
           Update government filing fees per state. Changes take effect immediately for new filings.
-          Note: these fees are also hardcoded in <code className="text-xs bg-muted px-1 rounded">lib/formation-states.ts</code> — keep both in sync.
+          Note: these fees are also hardcoded in <code className="text-xs bg-muted px-1 rounded">lib/formation-states.ts</code> - keep both in sync.
         </p>
       </div>
 

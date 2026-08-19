@@ -42,7 +42,7 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
 
   return (
     <>
-      {/* Mobile top bar — the sidebar is hidden < md, so without this the
+      {/* Mobile top bar - the sidebar is hidden < md, so without this the
           dashboard sub-pages are unreachable on phones. Horizontally scrollable
           so every destination is one tap away. */}
       <div className="md:hidden sticky top-0 z-40 border-b border-border bg-white">

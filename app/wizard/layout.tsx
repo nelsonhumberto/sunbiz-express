@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Wizard layout — admits both authenticated users AND guests holding a valid
+ * Wizard layout - admits both authenticated users AND guests holding a valid
  * `LF_GUEST_TOKEN` cookie. Anyone else is bounced to /sign-in.
  *
  * The dashboard chrome is intentionally omitted because guests don't have a

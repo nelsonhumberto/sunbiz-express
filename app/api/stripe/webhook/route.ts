@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 const BACKSTOP_GRACE_MS = 3 * 60 * 1000;
 
 /**
- * Stripe webhook — reliability backstop for "paid but not submitted".
+ * Stripe webhook - reliability backstop for "paid but not submitted".
  *
  * Normally the wizard calls `processCheckout` right after the card confirms,
  * which records the Payment and submits the filing. But if the customer's
@@ -26,7 +26,7 @@ const BACKSTOP_GRACE_MS = 3 * 60 * 1000;
  * yet the filing never submits. Stripe re-delivers `payment_intent.succeeded`
  * here so we can reconcile: record the Payment and finalize the submission.
  *
- * Idempotent — keyed on the PaymentIntent id (unique on Payment), so it's
+ * Idempotent - keyed on the PaymentIntent id (unique on Payment), so it's
  * safe whether processCheckout already ran or not.
  */
 export async function POST(request: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (event.type === 'payment_intent.succeeded') {
       const outcome = await reconcilePaidFiling(event.data.object as Stripe.PaymentIntent);
       if (outcome === 'defer') {
-        // Too soon — let the client checkout finish. Non-2xx makes Stripe
+        // Too soon - let the client checkout finish. Non-2xx makes Stripe
         // redeliver later; by then processCheckout has either completed
         // (webhook no-ops) or genuinely failed (webhook finalizes).
         return NextResponse.json({ deferred: true }, { status: 425 });
@@ -87,7 +87,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
 
   const filing = await prisma.filing.findUnique({ where: { id: filingId } });
   if (!filing) return 'noop';
-  // Only reconcile drafts — submitted/approved filings are already finalized.
+  // Only reconcile drafts - submitted/approved filings are already finalized.
   if (filing.status !== 'DRAFT') return 'noop';
 
   // Backstop grace: if the charge just happened, defer to the client checkout
@@ -109,7 +109,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
       cardBrand = brand ? brand.charAt(0).toUpperCase() + brand.slice(1) : null;
     }
   } catch {
-    /* non-fatal — record the payment without card details */
+    /* non-fatal - record the payment without card details */
   }
 
   logger.warn(
@@ -174,7 +174,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   const readiness = await assertFilingReadyForSubmission(filing.id);
   if (!readiness.ok) {
     logger.error(
-      'webhook: paid filing is incomplete — recorded payment, skipped submission',
+      'webhook: paid filing is incomplete - recorded payment, skipped submission',
       { area: 'stripe', entityId: filing.id, tag: 'webhook-incomplete' },
       readiness.error,
     );
@@ -187,7 +187,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   // Guest conversion: the client checkout normally turns a guest into a real
   // account (and signs them in). Since the backstop ran instead, convert the
   // guest here and email credentials so the buyer can sign in and access their
-  // filing — otherwise they're locked out of the account-only dashboard.
+  // filing - otherwise they're locked out of the account-only dashboard.
   try {
     const owner = await prisma.user.findUnique({
       where: { id: filing.userId },

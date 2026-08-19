@@ -42,7 +42,7 @@ export interface FilingForDoc {
     state?: string | null;
     zip?: string | null;
     ownershipPercentage?: number | null;
-    /** "individual" (default) or "business" — printed differently on Articles. */
+    /** "individual" (default) or "business" - printed differently on Articles. */
     ownerType?: string | null;
     /** Business-owner legal name (when ownerType = "business"). */
     businessLegalName?: string | null;
@@ -131,7 +131,7 @@ function docShell(title: string, body: string) {
  * has been accepted. Until then we render a clearly non-binding "submitted,
  * awaiting approval" badge instead of a fake stamp.
  *
- * Only shown on customer-facing downloads — admin file-packages never include it.
+ * Only shown on customer-facing downloads - admin file-packages never include it.
  */
 export function filingStatusBadgeHtml(filing: FilingForDoc): string {
   const rule = ruleFor(filing);
@@ -157,7 +157,7 @@ export function filingStatusBadgeHtml(filing: FilingForDoc): string {
 /**
  * Renders the registered agent acceptance signature block. When the customer
  * picked LaunchForma as their Registered Agent, the agent (us) signs by an
- * internal authorized officer — the customer never types it. Otherwise we
+ * internal authorized officer - the customer never types it. Otherwise we
  * print the externally-typed signature.
  */
 /**
@@ -169,7 +169,7 @@ export function filingStatusBadgeHtml(filing: FilingForDoc): string {
 /**
  * Collapse people who hold more than one role into a single row. In a small
  * corporation the same human is usually Director, President, Treasurer and
- * Secretary all at once — the wizard stores those as four ManagerMember rows.
+ * Secretary all at once - the wizard stores those as four ManagerMember rows.
  * For the executed documents we list each distinct person once and merge their
  * titles, so we never "generate another person" for a role the same individual
  * already fills. People are matched by name + address (case-insensitive).
@@ -217,7 +217,7 @@ function dedupePeopleByIdentity(
 function renderMemberRow(m: FilingForDoc['managersMembers'][number]): string {
   const isBusiness = m.ownerType === 'business' && !!m.businessLegalName;
   const nameCell = isBusiness
-    ? `${escapeHtml(m.businessLegalName ?? m.name)}<br/><span class="legend">Entity owner — ${escapeHtml(m.businessJurisdiction ?? '—')}${
+    ? `${escapeHtml(m.businessLegalName ?? m.name)}<br/><span class="legend">Entity owner - ${escapeHtml(m.businessJurisdiction ?? '-')}${
         m.signerName ? ` · by ${escapeHtml(m.signerName)}` : ''
       }</span>`
     : escapeHtml(m.name);
@@ -274,14 +274,14 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
       : filing.mailingAddress;
   const opt = filing.optionalDetails;
 
-  // Article IV — optional under s. 605.0201 / CR2E047, but banks and DFS
+  // Article IV - optional under s. 605.0201 / CR2E047, but banks and DFS
   // typically require managers / authorized representatives on the public record.
   // Heading follows current Florida DOS language ("Managers and Authorized
   // Representatives"), not the colloquial "Authorized Persons."
   const managementLegend =
     rule.code === 'FL'
-      ? 'Title abbreviations — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member (management).'
-      : 'Title abbreviations — MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member · OFFICER: Officer.';
+      ? 'Title abbreviations - MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member (management).'
+      : 'Title abbreviations - MGR: Manager · MGRM: Managing Member · AMBR: Authorized Member · OFFICER: Officer.';
   const deWithholdsMembers = rule.code === 'DE' && opt?.includeMembersOnArticles !== true;
   const managementBlock = deWithholdsMembers
     ? `<p><em>Initial member information is intentionally omitted from this Certificate of Formation, as permitted under ${escapeHtml(rule.statuteReferences.llc)}. Member records are maintained at the Limited Liability Company's principal office.</em></p>`
@@ -294,17 +294,17 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
       : `<p><em>None designated at formation. Optional under ${escapeHtml(rule.statuteReferences.llc)}; financial institutions often require this information on the public record.</em></p>`;
 
   const otherProvisions = opt?.businessPurpose
-    ? `<section class="article"><h3>Article VI — Additional Provisions</h3><p>${escapeHtml(opt.businessPurpose)}</p></section>`
+    ? `<section class="article"><h3>Article VI - Additional Provisions</h3><p>${escapeHtml(opt.businessPurpose)}</p></section>`
     : '';
 
   const wyExtras =
     rule.code === 'WY'
       ? `
         <section class="article">
-          <h3>Article VII — Organizer Email &amp; Electronic Service of Process</h3>
+          <h3>Article VII - Organizer Email &amp; Electronic Service of Process</h3>
           <table>
             <tr><td class="label">Organizer Email</td><td>${escapeHtml(opt?.organizerEmail ?? '')}</td></tr>
-            <tr><td class="label">Electronic Service Consent</td><td>${opt?.electronicServiceConsent ? 'YES — Organizer consents to electronic service of process by the Wyoming Secretary of State.' : 'NO — Organizer has not consented.'}</td></tr>
+            <tr><td class="label">Electronic Service Consent</td><td>${opt?.electronicServiceConsent ? 'YES - Organizer consents to electronic service of process by the Wyoming Secretary of State.' : 'NO - Organizer has not consented.'}</td></tr>
           </table>
         </section>
       `
@@ -316,13 +316,13 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
     <p class="preamble">The undersigned, acting as an authorized representative under ${escapeHtml(rule.statuteReferences.llc)}, hereby forms a limited liability company and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>
 
     <section class="article">
-      <h3>Article I — Name of Limited Liability Company</h3>
+      <h3>Article I - Name of Limited Liability Company</h3>
       <p>The name of the limited liability company is:</p>
       <p class="entity-name">${escapeHtml(filing.businessName)}</p>
     </section>
 
     <section class="article">
-      <h3>Article II — Principal Office and Mailing Address</h3>
+      <h3>Article II - Principal Office and Mailing Address</h3>
       <table>
         <tr>
           <td class="label">Principal Office Address</td>
@@ -336,7 +336,7 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
     </section>
 
     <section class="article">
-      <h3>Article III — Registered Agent and Registered Office</h3>
+      <h3>Article III - Registered Agent and Registered Office</h3>
       <p>The limited liability company cannot serve as its own registered agent. The name and ${escapeHtml(rule.name)} street address of the initial registered agent are:</p>
       <table>
         <tr><td class="label">Registered Agent</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
@@ -347,13 +347,13 @@ export function generateArticlesOfOrganization(filing: FilingForDoc): string {
     </section>
 
     <section class="article">
-      <h3>Article IV — Managers and Authorized Representatives</h3>
+      <h3>Article IV - Managers and Authorized Representatives</h3>
       <p>The name and address of each person authorized to manage and control the Limited Liability Company:</p>
       ${managementBlock}
     </section>
 
     <section class="article">
-      <h3>Article V — Effective Date</h3>
+      <h3>Article V - Effective Date</h3>
       <p>${
         opt?.effectiveDate
           ? formatDateLong(new Date(opt.effectiveDate))
@@ -394,7 +394,7 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
       : filing.mailingAddress;
   const opt = filing.optionalDetails;
 
-  // Article V — Initial officers/directors. Optional under most state
+  // Article V - Initial officers/directors. Optional under most state
   // statutes; we render whatever the customer entered as initial
   // directors/officers, collapsing one person holding several titles into a
   // single row (Director/President/Treasurer/Secretary is usually one human).
@@ -407,14 +407,14 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
           <tr><td class="label">Title</td><td class="label">Name</td><td class="label">Address</td></tr>
           ${officers}
         </table>
-        <p class="legend">Title key — P: President · VP: Vice President · S: Secretary · T: Treasurer · D: Director.</p>`
+        <p class="legend">Title key - P: President · VP: Vice President · S: Secretary · T: Treasurer · D: Director.</p>`
       : `<p><em>None listed at filing. (Optional under ${escapeHtml(rule.statuteReferences.corp)}.)</em></p>`;
 
   const purpose = opt?.businessPurpose
     ? escapeHtml(opt.businessPurpose)
     : `The general purpose for which this corporation is organized is to engage in any lawful act or activity for which corporations may be organized under ${escapeHtml(rule.statuteReferences.corp)}.`;
 
-  // Capital stock — Delaware requires both authorized share count AND par
+  // Capital stock - Delaware requires both authorized share count AND par
   // value (or explicit "no par value"). Other states only require the count.
   const authorizedShares = opt?.authorizedShares ?? (rule.code === 'DE' ? 1500 : 1000);
   const parValueClause =
@@ -432,12 +432,12 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
     <p class="preamble">The undersigned, acting as incorporator under ${escapeHtml(rule.statuteReferences.corp)}, hereby forms a corporation and submits this ${escapeHtml(docTitle)} for filing with the ${escapeHtml(rule.filingMailingAddress.label)}.</p>
 
     <section class="article">
-      <h3>Article I — Corporate Name</h3>
+      <h3>Article I - Corporate Name</h3>
       <p class="entity-name">${escapeHtml(filing.businessName)}</p>
     </section>
 
     <section class="article">
-      <h3>Article II — Principal Office and Mailing Address</h3>
+      <h3>Article II - Principal Office and Mailing Address</h3>
       <table>
         <tr><td class="label">Principal Office</td><td>${addressLines(principal)}</td></tr>
         <tr><td class="label">Mailing Address</td><td>${addressLines(mailing)}</td></tr>
@@ -445,22 +445,22 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
     </section>
 
     <section class="article">
-      <h3>Article III — Purpose</h3>
+      <h3>Article III - Purpose</h3>
       <p>${purpose}</p>
     </section>
 
     <section class="article">
-      <h3>Article IV — Authorized Shares</h3>
+      <h3>Article IV - Authorized Shares</h3>
       <p>The corporation is authorized to issue <strong>${authorizedShares}</strong> shares of common stock, all of one class.${parValueClause}</p>
     </section>
 
     <section class="article">
-      <h3>Article V — Initial Officers and Directors</h3>
+      <h3>Article V - Initial Officers and Directors</h3>
       ${officersBlock}
     </section>
 
     <section class="article">
-      <h3>Article VI — Registered Agent and Registered Office</h3>
+      <h3>Article VI - Registered Agent and Registered Office</h3>
       <p>The corporation cannot serve as its own registered agent. The name and ${escapeHtml(rule.name)} street address of the initial registered agent are:</p>
       <table>
         <tr><td class="label">Registered Agent</td><td>${escapeHtml(ra?.name ?? '')}</td></tr>
@@ -471,7 +471,7 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
     </section>
 
     <section class="article">
-      <h3>Article VII — Effective Date</h3>
+      <h3>Article VII - Effective Date</h3>
       <p>${
         opt?.effectiveDate
           ? formatDateLong(new Date(opt.effectiveDate))
@@ -480,12 +480,12 @@ export function generateArticlesOfIncorporation(filing: FilingForDoc): string {
     </section>
 
     <section class="article">
-      <h3>Article VIII — Incorporator</h3>
+      <h3>Article VIII - Incorporator</h3>
       <p>The name and address of the incorporator is: <strong>${escapeHtml(filing.incorporatorSignature ?? '')}</strong>${principal ? `, ${escapeHtml([principal.street1, principal.city, principal.state, principal.zip].filter(Boolean).join(', '))}` : ''}.</p>
     </section>
 
     <div class="signature-block">
-      <p><strong>Required signature — Incorporator:</strong></p>
+      <p><strong>Required signature - Incorporator:</strong></p>
       <div class="signature-line">
         <span>
           <span class="signature-name">${escapeHtml(filing.incorporatorSignature ?? '')}</span>
@@ -518,7 +518,7 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
     managementType === 'manager-managed' ? 'manager-managed' : 'member-managed';
 
   // Compute ownership rows. If a single member with no recorded percentage,
-  // assume 100%. Otherwise display the saved percentage (or "—" if missing).
+  // assume 100%. Otherwise display the saved percentage (or "-" if missing).
   const ownershipRows = filing.managersMembers
     .map((m) => {
       let pct: string;
@@ -527,7 +527,7 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
       } else if (!isMulti) {
         pct = '100%';
       } else {
-        pct = '—';
+        pct = '-';
       }
       return `<tr><td>${escapeHtml(m.name)}</td><td>${pct}</td></tr>`;
     })
@@ -593,7 +593,7 @@ export function generateOperatingAgreement(filing: FilingForDoc): string {
 
 // ─── Cover Letter (admin-only, for state submission) ──────────────────────
 //
-// Mirrors the cover sheet on form CR2E047. NEVER surfaced to the customer —
+// Mirrors the cover sheet on form CR2E047. NEVER surfaced to the customer - 
 // it contains our internal handling info and the fee-checkbox section that
 // Florida requires alongside the Articles. Generated at submit time and
 // stored on the filing for the admin to print and mail.
@@ -615,7 +615,7 @@ export function generateCoverLetter(args: {
 }): string {
   const rule = ruleFor(args.filing);
   const docTitle = formationDocumentLabel(rule, args.filing.entityType);
-  const subjectLine = `${docTitle} — ${args.filing.businessName}`;
+  const subjectLine = `${docTitle} - ${args.filing.businessName}`;
   const baseFee = stateFilingFeeCents(rule, args.filing.entityType);
   const certStatusFee = certificateOfStatusFeeCents(rule, args.filing.entityType);
   const certCopyFee = certifiedCopyFeeCents(rule, args.filing.entityType);
@@ -648,7 +648,7 @@ export function generateCoverLetter(args: {
       <tr><td class="label">Firm / Company</td><td>${escapeHtml(args.filing.businessName)}</td></tr>
       <tr><td class="label">Address</td><td>${addressLines(args.filing.principalAddress)}</td></tr>
       <tr><td class="label">E-mail (annual report notification)</td><td>${escapeHtml(args.contactEmail)}</td></tr>
-      <tr><td class="label">Daytime Telephone</td><td>${escapeHtml(args.contactPhone ?? '—')}</td></tr>
+      <tr><td class="label">Daytime Telephone</td><td>${escapeHtml(args.contactPhone ?? '-')}</td></tr>
     </table>
 
     <p>Enclosed is a check (or filing-fee allotment) for the following amount:</p>
@@ -665,7 +665,7 @@ export function generateCoverLetter(args: {
 
     ${
       args.processingOption && args.processingOption.feeCents > 0
-        ? `<p><strong>Processing service requested:</strong> ${escapeHtml(args.processingOption.label)} — ${escapeHtml(args.processingOption.estimate)} · expedite fee ${formatCurrency(args.processingOption.feeCents, { showZero: true })} included in remittance.</p>`
+        ? `<p><strong>Processing service requested:</strong> ${escapeHtml(args.processingOption.label)} - ${escapeHtml(args.processingOption.estimate)} · expedite fee ${formatCurrency(args.processingOption.feeCents, { showZero: true })} included in remittance.</p>`
         : ''
     }
 
@@ -676,7 +676,7 @@ export function generateCoverLetter(args: {
       ${mailingAddressLines}
     </p>
 
-    <p class="footer-note">INTERNAL — LaunchForma. This cover letter accompanies the ${escapeHtml(docTitle)} to the ${escapeHtml(rule.filingMailingAddress.label)} and is not part of the customer's deliverable set.</p>
+    <p class="footer-note">INTERNAL - LaunchForma. This cover letter accompanies the ${escapeHtml(docTitle)} to the ${escapeHtml(rule.filingMailingAddress.label)} and is not part of the customer's deliverable set.</p>
   `;
   return docShell(rule.documentLabels.coverLetter, html);
 }
@@ -749,14 +749,14 @@ function addressLines(addr: AddressInput | { street1?: string; street2?: string;
 }
 
 function addressBlock(addr: AddressInput | string | null | undefined): string {
-  if (!addr) return '<p>—</p>';
+  if (!addr) return '<p> - </p>';
   if (typeof addr === 'string') return `<p>${escapeHtml(addr)}</p>`;
   return `<p>${addressLines(addr)}</p>`;
 }
 
 // ─── Encode to base64 for storage ─────────────────────────────────────────
 
-// ─── IRS Form 2553 — S-Corporation election (prepared mail-in form) ───────
+// ─── IRS Form 2553 - S-Corporation election (prepared mail-in form) ───────
 
 export interface Form2553Owner {
   name: string;
@@ -764,7 +764,7 @@ export interface Form2553Owner {
   /** "500 shares" (corp) or "50%" (LLC). */
   ownership?: string;
   taxIdType?: string | null; // SSN | ITIN | EIN
-  /** Last 4 only — full Tax IDs are never embedded in the stored document. */
+  /** Last 4 only - full Tax IDs are never embedded in the stored document. */
   taxIdLast4?: string | null;
   taxYearEnd?: string | null;
   consent?: boolean | null;
@@ -799,29 +799,29 @@ export function generateForm2553(args: Form2553Args): string {
   const maskTaxId = (o: Form2553Owner) =>
     o.taxIdLast4
       ? `${o.taxIdType === 'EIN' ? '••-•••' : '•••-••'}-${escapeHtml(o.taxIdLast4)}`
-      : '—';
+      : '-';
 
   const rows = args.owners
     .map(
       (o) => `<tr>
         <td>${escapeHtml(o.name)}${o.address ? `<br/><span class="legend">${escapeHtml(o.address)}</span>` : ''}</td>
-        <td>${escapeHtml(o.ownership ?? '—')}</td>
+        <td>${escapeHtml(o.ownership ?? '-')}</td>
         <td>${escapeHtml(o.taxIdType ?? 'SSN')} ${maskTaxId(o)}</td>
         <td>${escapeHtml(o.taxYearEnd ?? '12/31')}</td>
-        <td style="text-align:center">${o.consent ? '✓' : '—'}</td>
+        <td style="text-align:center">${o.consent ? '✓' : '-'}</td>
       </tr>`,
     )
     .join('');
 
   const body = `
     <div class="pending-badge">
-      <strong>PREPARED — NOT YET FILED</strong>
+      <strong>PREPARED - NOT YET FILED</strong>
       <div>Sign and submit to the IRS per the instructions below. LaunchForma prepares this form; the election is made when the IRS receives it.</div>
     </div>
     <h1>Form 2553</h1>
     <h2>Election by a Small Business Corporation (S-Corporation)</h2>
 
-    <h3>Part I — Election Information</h3>
+    <h3>Part I - Election Information</h3>
     <table>
       <tr><td class="label">Name</td><td>${escapeHtml(args.businessName)}</td></tr>
       <tr><td class="label">Entity</td><td>${escapeHtml(entityLabel)}</td></tr>
@@ -833,7 +833,7 @@ export function generateForm2553(args: Form2553Args): string {
       <tr><td class="label">Selected tax year</td><td>Calendar year ending December 31 (unless noted per owner below)</td></tr>
     </table>
 
-    <h3>Part I — ${ownerLabel} Consent Statement</h3>
+    <h3>Part I - ${ownerLabel} Consent Statement</h3>
     <p class="legend">Each ${ownerLabel.toLowerCase()} consents to the S-Corporation election. Tax IDs are masked here for security; enter the full number on the signed copy before mailing.</p>
     <table>
       <tr>
@@ -858,7 +858,7 @@ export function generateForm2553(args: Form2553Args): string {
       LaunchForma is not a law firm or accounting firm and does not provide tax advice. This prepared form reflects the information you entered. Confirm eligibility (≤100 eligible shareholders, one class of stock, eligible owners) with a CPA before filing.
     </div>
   `;
-  return docShell('IRS Form 2553 — S-Corporation Election', body);
+  return docShell('IRS Form 2553 - S-Corporation Election', body);
 }
 
 export function encodeDocument(html: string): string {

@@ -380,7 +380,7 @@ export function Step7Members({
         </div>
       )}
 
-      {/* Title help — collapsible explanation of AMBR / MGR / MGRM / officer
+      {/* Title help - collapsible explanation of AMBR / MGR / MGRM / officer
           codes, mirroring the wording on Florida CR2E047 / 607 forms. */}
       <div className="rounded-lg border border-border bg-muted/30 p-4">
         <button
@@ -707,7 +707,7 @@ export function Step7Members({
 
       {/*
         Delaware LLC member-disclosure preference. Delaware does not require
-        members to be listed on the Certificate of Formation — most founders
+        members to be listed on the Certificate of Formation - most founders
         leave them off for privacy. We default to "do not include" and let
         the customer opt in if they prefer the public disclosure.
       */}
@@ -721,7 +721,7 @@ export function Step7Members({
             )}
             <div>
               <p className="font-semibold text-ink">
-                Delaware Certificate — initial member disclosure
+                Delaware Certificate - initial member disclosure
               </p>
               <p className="text-xs text-ink-muted mt-0.5">
                 Delaware lets you choose whether to list initial member names and addresses on the

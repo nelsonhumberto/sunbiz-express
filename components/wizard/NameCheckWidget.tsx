@@ -83,7 +83,7 @@ export function NameCheckWidget({
   const [baseName, setBaseName] = useState(initialSplit.base);
   const [suffix, setSuffix] = useState<string>(initialSplit.suffix);
 
-  // If the user toggles entity type elsewhere (rare — Step 1) we may end up
+  // If the user toggles entity type elsewhere (rare - Step 1) we may end up
   // with a suffix that no longer belongs to this entity type. Snap back to
   // the first valid option in that case.
   useEffect(() => {
@@ -100,7 +100,7 @@ export function NameCheckWidget({
 
   const trimmedBase = baseName.trim();
   // When the base is empty we emit an empty combined name. That keeps the
-  // parent's `name.trim().length >= 2` gate honest — a bare suffix like
+  // parent's `name.trim().length >= 2` gate honest - a bare suffix like
   // "LLC" should never count as a valid business name.
   const combinedName = trimmedBase ? joinEntityName(baseName, suffix) : '';
 
@@ -114,7 +114,7 @@ export function NameCheckWidget({
 
   // Assess the combined name against the state-specific rules (manual-review
   // patterns, restricted-word groups, subjective-review notes). This runs
-  // client-side and is independent of the live name search — even Florida
+  // client-side and is independent of the live name search - even Florida
   // names need this to surface restricted-word warnings.
   const assessment: BusinessNameAssessment | null = useMemo(() => {
     if (!combinedName || trimmedBase.length < 2) return null;
@@ -144,7 +144,7 @@ export function NameCheckWidget({
     if (!stateRule.hasLiveNameSearch) {
       const baseMessage =
         stateRule.code === 'WY'
-          ? `We'll verify availability with the Wyoming Secretary of State at submission. We strongly recommend running the WyoBiz "Contains" search yourself first — see the link below.`
+          ? `We'll verify availability with the Wyoming Secretary of State at submission. We strongly recommend running the WyoBiz "Contains" search yourself first - see the link below.`
           : `We'll verify availability with ${stateRule.name} at submission. Names that conflict with an existing ${stateRule.name} entity will be rejected; we'll contact you to choose an alternative.`;
       setResult({
         query: combinedName,
@@ -177,7 +177,7 @@ export function NameCheckWidget({
         const res = await fetch(url);
         if (!res.ok) {
           // Server signalled an error. We deliberately do NOT block the
-          // wizard's Continue button — server-side validation will still
+          // wizard's Continue button - server-side validation will still
           // run on submit. Just clear the local availability badge.
           if (id === fetchIdRef.current) setResult(null);
           return;
@@ -197,13 +197,13 @@ export function NameCheckWidget({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // onChange is intentionally excluded — it's expected to be stable from
+    // onChange is intentionally excluded - it's expected to be stable from
     // the parent's perspective and we only want the effect to fire when the
     // typed name, entity type, or formation state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [combinedName, entityType, formationState, assessment]);
 
-  // Localized status banner — see previous version for rationale.
+  // Localized status banner - see previous version for rationale.
   const statusMessage = (() => {
     if (!result) return '';
     if (result.available) return t('nameStatusAvailable');
@@ -267,7 +267,7 @@ export function NameCheckWidget({
           <p className="text-xs text-ink-subtle">
             {t('namePreviewLabel')}{' '}
             <span className="font-medium text-ink">
-              {combinedName.trim() || '—'}
+              {combinedName.trim() || '-'}
             </span>
           </p>
           <div>

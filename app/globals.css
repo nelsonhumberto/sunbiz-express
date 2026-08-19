@@ -22,7 +22,7 @@
     color: #0F1F1C;
   }
 
-  /* Visible focus rings — WCAG 2.4.7 (Focus Visible). Increased opacity
+  /* Visible focus rings - WCAG 2.4.7 (Focus Visible). Increased opacity
      and offset (May 2026 a11y audit) so keyboard users always see where
      focus is, including against the warm-cream surface background. */
   *:focus-visible {

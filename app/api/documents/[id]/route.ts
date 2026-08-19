@@ -190,7 +190,7 @@ export async function GET(
     });
   }
 
-  // Receipt / OA / Form 2553 stored as HTML — convert on the fly.
+  // Receipt / OA / Form 2553 stored as HTML - convert on the fly.
   if (isHtmlMime(doc.mimeType) || rawBytes.subarray(0, 15).toString('utf-8').includes('<')) {
     try {
       const html = decodeDocument(doc.base64);
@@ -211,7 +211,7 @@ export async function GET(
     }
   }
 
-  // Unknown binary — still force download rather than inline HTML.
+  // Unknown binary - still force download rather than inline HTML.
   const safeExt = isPdfMime(doc.mimeType) ? 'pdf' : 'bin';
   return new NextResponse(rawBytes, {
     headers: {

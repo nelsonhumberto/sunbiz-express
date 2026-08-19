@@ -53,12 +53,12 @@ export async function checkNameAvailability(
   for (const entity of ENTITIES) {
     const eNorm = stripSuffix(entity.name);
     if (eNorm === normalized) {
-      // Exact-stripped match — definitive conflict regardless of suffix
+      // Exact-stripped match - definitive conflict regardless of suffix
       if (entity.status === 'Active' || entity.status === 'INACT' || entity.status === 'NAME HS') {
         exact.push(entity);
       }
     } else if (eNorm.includes(normalized) || normalized.includes(eNorm)) {
-      // Substring match — likely "not distinguishable on the record"
+      // Substring match - likely "not distinguishable on the record"
       if (entity.status === 'Active') {
         similar.push(entity);
       }
@@ -92,7 +92,7 @@ export async function checkNameAvailability(
       query,
       available: false,
       status: 'similar_conflict',
-      message: `Florida requires names "distinguishable on the record." We found similar active entities — try a more distinct name.`,
+      message: `Florida requires names "distinguishable on the record." We found similar active entities - try a more distinct name.`,
       conflicts: similar.slice(0, 5),
       suggestions: generateSuggestions(query, entityType),
     };

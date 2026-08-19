@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 /**
  * Slim, understated "we are not the government" disclosure.
  *
- * Presentational only — the caller passes the already-translated string so this
+ * Presentational only - the caller passes the already-translated string so this
  * works in both server components (getTranslations) and client components
  * (useTranslations). Placed on ad landing pages and the guest/wizard funnel to
  * satisfy Google Ads' "Government documents and services" policy, which expects

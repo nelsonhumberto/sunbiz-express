@@ -32,7 +32,7 @@ export function AdminUploadForm({
     }
     setFilename(file.name);
 
-    // Read as base64 — small documents only, keeps the demo storage in DB.
+    // Read as base64 - small documents only, keeps the demo storage in DB.
     const buf = await file.arrayBuffer();
     let binary = '';
     const bytes = new Uint8Array(buf);

@@ -21,7 +21,7 @@ async function requireAdmin() {
  * flagged that the tester flag had no audit trail.
  *
  * `filingId` is optional because most user mutations are not tied to a
- * specific filing. We still store the row — the `description` field
+ * specific filing. We still store the row - the `description` field
  * carries the human-readable summary.
  */
 async function writeAdminAudit(args: {
@@ -129,7 +129,7 @@ export async function toggleTester(userId: string, isTester: boolean) {
   await prisma.user.update({ where: { id: userId }, data: { isTester } });
   // Tester flags bypass live Stripe charges, so toggles are
   // security-sensitive. The May 2026 audit explicitly flagged that the
-  // toggle had no audit trail — this row is the audit trail.
+  // toggle had no audit trail - this row is the audit trail.
   await writeAdminAudit({
     adminUserId: admin.id,
     actionType: 'USER_TESTER_FLAG_CHANGE',
@@ -146,7 +146,7 @@ export async function deleteUser(userId: string) {
     where: { id: userId },
     select: { email: true, role: true },
   });
-  // Cascade is set on all related models in the schema — a single delete
+  // Cascade is set on all related models in the schema - a single delete
   // removes filings, payments, documents, emails, and reset tokens.
   await prisma.user.delete({ where: { id: userId } });
   await writeAdminAudit({

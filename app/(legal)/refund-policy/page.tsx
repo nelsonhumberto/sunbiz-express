@@ -17,12 +17,12 @@ export default function RefundPolicyPage() {
       <h1>Refund Policy</h1>
 
       <p>
-        LaunchForma believes business formation should be transparent end-to-end —
+        LaunchForma believes business formation should be transparent end-to-end - 
         including refunds. This policy explains exactly what is refundable, when,
         and what isn&apos;t.
       </p>
 
-      <h2>1. Service fees — 14-day refund window</h2>
+      <h2>1. Service fees - 14-day refund window</h2>
       <p>
         LaunchForma&apos;s <strong>service fee</strong> (the portion you pay us
         on top of the state filing fee) is fully refundable for 14 days after
@@ -30,7 +30,7 @@ export default function RefundPolicyPage() {
         to the Secretary of State.
       </p>
       <ul>
-        <li>No questions asked — email us and we&apos;ll process the refund.</li>
+        <li>No questions asked - email us and we&apos;ll process the refund.</li>
         <li>
           Once we submit your filing to the state, the service portion is no longer
           refundable because the work has been performed and the documents have
@@ -38,31 +38,31 @@ export default function RefundPolicyPage() {
         </li>
       </ul>
 
-      <h2>2. State filing fees — non-refundable once accepted</h2>
+      <h2>2. State filing fees - non-refundable once accepted</h2>
       <p>
         State filing fees are paid directly to the Secretary of State (Florida
         Department of State, Wyoming Secretary of State, or Delaware Division of
         Corporations). Once the state has accepted your filing,{' '}
         <strong>those fees are non-refundable</strong> per the state statute. This
-        is true with every formation provider — the money has left our hands and
+        is true with every formation provider - the money has left our hands and
         is in the state&apos;s account.
       </p>
       <p>
         If the state{' '}
-        <em>rejects</em> your filing (uncommon — typically a name conflict we
+        <em>rejects</em> your filing (uncommon - typically a name conflict we
         catch first), we will resubmit at no additional charge or refund the full
         amount, your choice.
       </p>
 
-      <h2>3. Recurring services — cancel any time</h2>
+      <h2>3. Recurring services - cancel any time</h2>
       <p>
-        Recurring services — Registered Agent, Compliance Alerts Plus, Managed
-        Annual Report, .com domain — can be cancelled any time before the next
+        Recurring services - Registered Agent, Compliance Alerts Plus, Managed
+        Annual Report, .com domain - can be cancelled any time before the next
         billing cycle:
       </p>
       <ul>
         <li>
-          Cancellations take effect at the end of the current paid period — you
+          Cancellations take effect at the end of the current paid period - you
           keep service through the date you already paid for.
         </li>
         <li>
@@ -76,7 +76,7 @@ export default function RefundPolicyPage() {
         </li>
       </ul>
 
-      <h2>4. Add-ons — refundable until delivered</h2>
+      <h2>4. Add-ons - refundable until delivered</h2>
       <p>
         Add-on services (EIN acquisition, Operating Agreement drafting, Certificate
         of Status, Certified Copy, S-Corp election) are refundable up until we
@@ -96,7 +96,7 @@ export default function RefundPolicyPage() {
 
       <h2>6. Disputes</h2>
       <p>
-        We&apos;d much rather you email us than your credit card company — we&apos;ll
+        We&apos;d much rather you email us than your credit card company - we&apos;ll
         almost always make it right. The full legal framework lives in our{' '}
         <Link href="/terms#refunds">Terms of Service, Section 6</Link>.
       </p>

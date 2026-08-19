@@ -41,7 +41,7 @@ function setLocaleCookie(res: NextResponse, locale: Locale) {
  * Canonical hosts that the app should serve from. Any other production
  * host (e.g. the legacy `sunbiz-express.vercel.app` preview URL the May
  * 2026 audit flagged) is 301'd to the canonical apex. Set via
- * `LF_CANONICAL_HOSTS` — a comma-separated list of host names without
+ * `LF_CANONICAL_HOSTS` - a comma-separated list of host names without
  * protocol. Leaving it empty disables host redirection (useful for
  * local dev / Vercel preview deploys).
  */
@@ -82,11 +82,11 @@ export function middleware(request: NextRequest) {
 
   // Capture locale *first* so any later short-circuit return paths still
   // carry the locale cookie. Priority:
-  //   1. Explicit `?lang=es|en` (wins — for ads and language toggle)
+  //   1. Explicit `?lang=es|en` (wins - for ads and language toggle)
   //   2. `utm_campaign` prefix `es-` / `en-` (so `es-fl-llc` lands in Spanish
   //      even if the marketer forgot `lang=es`)
   // We both:
-  //   a. mutate request.cookies — so this request's server components
+  //   a. mutate request.cookies - so this request's server components
   //      pick up the new value via i18n/request.ts; and
   //   b. set the cookie on the outbound response so the browser persists
   //      it for subsequent requests (offer → /start → wizard).

@@ -8,7 +8,7 @@ import type { AddOnSlug, TierSlug } from './pricing';
 import { tierBundledAddOns } from './pricing';
 
 /**
- * True when the filing is purchasing EIN — either as part of its tier or as
+ * True when the filing is purchasing EIN - either as part of its tier or as
  * a standalone add-on. Drives the "EIN responsible party" panel on payment.
  */
 export function filingIncludesEin(args: {
@@ -31,8 +31,8 @@ export type EinStatus =
 export const EIN_STATUS_LABEL: Record<EinStatus, string> = {
   not_needed: 'Not in package',
   needs_info: 'Awaiting customer info',
-  ready_online: 'Ready — IRS online filing',
-  manual_foreign: 'Manual processing — foreign applicant',
+  ready_online: 'Ready - IRS online filing',
+  manual_foreign: 'Manual processing - foreign applicant',
   submitted: 'Submitted to IRS',
   delivered: 'EIN delivered',
 };
@@ -57,7 +57,7 @@ export function lastFourDigits(value: string): string {
 /**
  * Decide which IRS pathway applies based on responsible-party origin. US
  * applicants with an SSN/ITIN can use the IRS online EIN Assistant
- * (straight-through). Foreign applicants without one cannot — the IRS
+ * (straight-through). Foreign applicants without one cannot - the IRS
  * requires a phone, fax, or mail Form SS-4 (manual). See
  * https://www.irs.gov/instructions/iss4.
  */

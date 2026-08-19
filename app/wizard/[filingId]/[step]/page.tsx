@@ -65,7 +65,7 @@ export default async function WizardStepPage({ params }: PageProps) {
   }
 
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's
-  // missing core data — they'd otherwise only discover it when the charge is
+  // missing core data - they'd otherwise only discover it when the charge is
   // rejected. Send them to the earliest incomplete step instead. (EIN is
   // collected on step 10 / as a payment fallback, so it's not gated here.)
   if (stepNum === 11) {
@@ -135,8 +135,8 @@ export default async function WizardStepPage({ params }: PageProps) {
   let defaultEmail: string | undefined;
   let defaultName: string | undefined;
 
-  // The EIN responsible-party panel now lives on the add-ons step (10) — the
-  // last screen before payment — so the SSN/ITIN is collected before checkout.
+  // The EIN responsible-party panel now lives on the add-ons step (10) - the
+  // last screen before payment - so the SSN/ITIN is collected before checkout.
   // The payment step (11) keeps it only as a fallback when it wasn't completed.
   if (stepNum === 10 || stepNum === 11) {
     defaultEmail = actorEmail;

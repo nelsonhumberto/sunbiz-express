@@ -321,11 +321,11 @@ export function GuestAnnualReportForm() {
         onCancel={() => { setRaName(draftRaName); setRaAddr(draftRaAddr); setEditRa(false); }}>
         {editRa
           ? <div className="space-y-2"><Input placeholder="Agent name" value={raName} onChange={(e) => setRaName(e.target.value)} /><AddressForm value={raAddr} onChange={setRaAddr} label="Agent address" /></div>
-          : <div className="text-sm text-ink-muted"><p>Agent: <strong className="text-ink">{raName || '—'}</strong></p><p className="mt-1">{raAddr.street1 && `${raAddr.street1}, ${raAddr.city}, ${raAddr.state} ${raAddr.zip}`}</p></div>}
+          : <div className="text-sm text-ink-muted"><p>Agent: <strong className="text-ink">{raName || '-'}</strong></p><p className="mt-1">{raAddr.street1 && `${raAddr.street1}, ${raAddr.city}, ${raAddr.state} ${raAddr.zip}`}</p></div>}
 
         <div className="mt-4 rounded-lg border border-border p-4 space-y-3">
           <div className="text-xs text-ink-muted bg-primary/5 rounded-md p-3 leading-relaxed">
-            <p className="font-medium text-ink mb-1">You&apos;re already here — why not let us take this burden off your busy plate?</p>
+            <p className="font-medium text-ink mb-1">You&apos;re already here - why not let us take this burden off your busy plate?</p>
             <p>For just <strong>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}/year</strong>, our Registered Agent Service ensures you:</p>
             <ul className="list-disc list-inside mt-1 space-y-0.5">
               <li>Never miss a notice from the state</li>
@@ -357,7 +357,7 @@ export function GuestAnnualReportForm() {
         onCancel={() => { setPrincipal(draftPrincipal); setEditPrincipal(false); }}>
         {editPrincipal
           ? <AddressForm value={principal} onChange={setPrincipal} label="Physical address" />
-          : <div className="text-sm text-ink-muted"><p>{principal.street1 || '—'}</p>{principal.city && <p>{principal.city}, {principal.state} {principal.zip}</p>}</div>}
+          : <div className="text-sm text-ink-muted"><p>{principal.street1 || '-'}</p>{principal.city && <p>{principal.city}, {principal.state} {principal.zip}</p>}</div>}
       </SectionCard>
 
       {/* Mailing Address */}
@@ -367,7 +367,7 @@ export function GuestAnnualReportForm() {
         onCancel={() => { setMailing(draftMailing); setEditMailing(false); }}>
         {editMailing
           ? <AddressForm value={mailing} onChange={setMailing} label="Mailing address" />
-          : <div className="text-sm text-ink-muted"><p>{mailing.street1 || '—'}</p>{mailing.city && <p>{mailing.city}, {mailing.state} {mailing.zip}</p>}</div>}
+          : <div className="text-sm text-ink-muted"><p>{mailing.street1 || '-'}</p>{mailing.city && <p>{mailing.city}, {mailing.state} {mailing.zip}</p>}</div>}
       </SectionCard>
 
       {/* Officers */}
@@ -431,7 +431,7 @@ export function GuestAnnualReportForm() {
             <select value={signingOfficer} onChange={(e) => setSigningOfficer(e.target.value)}
               className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-background appearance-none pr-8">
               <option value="">Select officer from the list below</option>
-              {officers.map((o, i) => <option key={i} value={o.name}>{o.name} — {o.title}</option>)}
+              {officers.map((o, i) => <option key={i} value={o.name}>{o.name} - {o.title}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-ink-subtle pointer-events-none" />
           </div>
@@ -476,7 +476,7 @@ export function GuestAnnualReportForm() {
             </p>
           </label>
           <Button type="button" className="w-full" size="lg" disabled={submitPending} onClick={onSubmit}>
-            {submitPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : `Submit & Pay — ${formatCurrency(totalCents)}`}
+            {submitPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : `Submit & Pay - ${formatCurrency(totalCents)}`}
           </Button>
         </CardContent>
       </Card>

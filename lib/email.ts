@@ -1,5 +1,5 @@
 /**
- * Email service — uses Resend when RESEND_API_KEY is set, otherwise logs
+ * Email service - uses Resend when RESEND_API_KEY is set, otherwise logs
  * to console (development / test). Records every send in EmailNotification.
  *
  * Google Workspace setup:
@@ -67,7 +67,7 @@ interface EmailContext {
   raRenewalPriceCents?: number;
   /** The upcoming renewal date. */
   raRenewalDate?: Date;
-  /** Last 4 of the card we'd charge (auto-renew) — for reassurance. */
+  /** Last 4 of the card we'd charge (auto-renew) - for reassurance. */
   raCardLast4?: string;
   /** Deep link to the RA renewal page for this filing. */
   raRenewUrl?: string;
@@ -111,7 +111,7 @@ function raRenewalEmail(
       subject:
         daysOut === 7
           ? `Your Registered Agent for ${business} renews in 7 days`
-          : `Registered Agent auto-renewal for ${business} — ${daysOut} days`,
+          : `Registered Agent auto-renewal for ${business} - ${daysOut} days`,
       body: html`
         <h1>Your Registered Agent renews automatically ${when}</h1>
         <p>No action needed. We'll renew Registered Agent service for <strong>${business}</strong> ${when} and charge <strong>${price}</strong>${cardPhrase}, keeping your in-state address active and your home address off the public record.</p>
@@ -123,7 +123,7 @@ function raRenewalEmail(
 
   const urgency =
     daysOut === 7
-      ? `<p>This is your final reminder. Renew now to avoid a lapse in coverage — a missed legal notice can lead to a default judgment or administrative dissolution.</p>`
+      ? `<p>This is your final reminder. Renew now to avoid a lapse in coverage - a missed legal notice can lead to a default judgment or administrative dissolution.</p>`
       : `<p>Your free Year-1 Registered Agent service for <strong>${business}</strong> is approaching its anniversary${dateStr ? ` on ${dateStr}` : ''}.</p>`;
   return {
     subject:
@@ -131,7 +131,7 @@ function raRenewalEmail(
         ? `Final reminder: renew your Registered Agent for ${business}`
         : `Your Registered Agent for ${business} renews in ${daysOut} days`,
     body: html`
-      <h1>Registered Agent renewal ${dateStr ? `— ${dateStr}` : `in ${daysOut} days`}</h1>
+      <h1>Registered Agent renewal ${dateStr ? ` - ${dateStr}` : `in ${daysOut} days`}</h1>
       ${urgency}
       <p>Renew for <strong>${price}/year</strong> to keep your in-state address active and your home address off the public record. Cancel anytime.</p>
       <a class="cta" href="${renewUrl}">Renew now</a>
@@ -149,18 +149,18 @@ const TEMPLATES: Record<
       : 'Welcome to LaunchForma',
     body: tempPassword
       ? html`
-          <h1>Welcome, ${firstName ?? 'there'} — your account is ready</h1>
+          <h1>Welcome, ${firstName ?? 'there'} - your account is ready</h1>
           <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
           <div class="panel mono">
             <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
             <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
           </div>
           <a class="cta" href="${siteUrl}/sign-in">Sign in to my dashboard</a>
-          <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> — a real person will help.</p>
+          <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> - a real person will help.</p>
         `
       : html`
           <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
-          <p>You're moments away from forming your business. When you're ready, your dashboard is waiting — no busywork, one clear price.</p>
+          <p>You're moments away from forming your business. When you're ready, your dashboard is waiting - no busywork, one clear price.</p>
           <a class="cta" href="${siteUrl}/dashboard">Go to dashboard</a>
           <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
         `,
@@ -169,12 +169,12 @@ const TEMPLATES: Record<
     subject: `Your filing for ${businessName ?? 'your business'} is started`,
     body: html`
       <h1>Filing started</h1>
-      <p>Hi ${firstName ?? 'there'} — we've saved your progress. Pick up exactly where you left off.</p>
+      <p>Hi ${firstName ?? 'there'} - we've saved your progress. Pick up exactly where you left off.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
   ABANDONED_24H: ({ firstName, businessName, resumeUrl }) => ({
-    subject: `Continue forming ${businessName ?? 'your business'} — pick up where you left off`,
+    subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
       <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the state the same business day.</p>
@@ -186,7 +186,7 @@ const TEMPLATES: Record<
     subject: `Your business name isn't reserved until you file`,
     body: html`
       <h1>Your name isn't locked in yet</h1>
-      <p>${firstName ?? 'Hi'} — states only reserve a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
+      <p>${firstName ?? 'Hi'} - states only reserve a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Finish my filing</a>
       <p class="muted">We'll prepare and submit your Articles to the state the same business day you complete checkout.</p>
     `,
@@ -195,7 +195,7 @@ const TEMPLATES: Record<
     subject: `Need a hand finishing ${businessName ?? 'your business'}?`,
     body: html`
       <h1>Stuck on a step?</h1>
-      <p>${firstName ?? 'Hi'} — your draft is still saved. If something is unclear, reply to this email and a specialist will walk you through the rest. No charge.</p>
+      <p>${firstName ?? 'Hi'} - your draft is still saved. If something is unclear, reply to this email and a specialist will walk you through the rest. No charge.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
@@ -205,8 +205,8 @@ const TEMPLATES: Record<
   RA_RENEWED: ({ firstName, businessName, totalCents, dueDate }) => ({
     subject: `Registered Agent renewed for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Registered Agent renewed — thank you</h1>
-      <p>${firstName ?? 'Hi'} — we've renewed Registered Agent service for <strong>${businessName ?? 'your business'}</strong>${
+      <h1>Registered Agent renewed - thank you</h1>
+      <p>${firstName ?? 'Hi'} - we've renewed Registered Agent service for <strong>${businessName ?? 'your business'}</strong>${
         totalCents != null ? ` and charged <strong>${formatCurrency(totalCents)}</strong>` : ''
       }. Your in-state address stays active and your home address stays off the public record.</p>
       ${dueDate ? `<p class="muted">Your next renewal date is ${formatDateLong(dueDate)}.</p>` : ''}
@@ -216,7 +216,7 @@ const TEMPLATES: Record<
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Payment received — thank you</h1>
+      <h1>Payment received - thank you</h1>
       <p>We charged <strong>${totalCents != null ? formatCurrency(totalCents) : 'your card'}</strong> for <strong>${businessName ?? 'your business'}</strong>. Your filing is being prepared and submitted to the state now.</p>
       <a class="cta" href="${siteUrl}/dashboard">View filing status</a>
       <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
@@ -226,24 +226,24 @@ const TEMPLATES: Record<
     subject: `${businessName ?? 'Your business'} has been submitted to the state`,
     body: html`
       <h1>Your filing is with the state</h1>
-      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved — usually within 1–2 business days.</p>
+      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved - usually within 1–2 business days.</p>
       <table class="meta">
-        <tr><td>Reference #</td><td><code>${trackingNumber ?? '—'}</code></td></tr>
-        <tr><td>PIN</td><td><code>${pin ?? '—'}</code></td></tr>
+        <tr><td>Reference #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
+        <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
       </table>
-      <p class="muted">Your reference # and PIN identify this filing in your LaunchForma dashboard (and on support requests). Status updates live in your dashboard — there isn't a separate public tracking page.</p>
+      <p class="muted">Your reference # and PIN identify this filing in your LaunchForma dashboard (and on support requests). Status updates live in your dashboard - there isn't a separate public tracking page.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">View filing status</a>
     `,
   }),
   FILING_APPROVED: ({ businessName, filingNumber }) => ({
     subject: `${businessName ?? 'Your business'} is officially formed`,
     body: html`
-      <h1>You're official — congrats!</h1>
+      <h1>You're official - congrats!</h1>
       <p>The state has approved <strong>${businessName ?? 'your business'}</strong>. Your formation documents are ready to download.</p>
       <table class="meta">
-        <tr><td>Filing #</td><td><code>${filingNumber ?? '—'}</code></td></tr>
+        <tr><td>Filing #</td><td><code>${filingNumber ?? '-'}</code></td></tr>
       </table>
-      <p>Next up: open a business bank account, confirm your EIN, and keep your annual report deadline on the calendar — we'll remind you.</p>
+      <p>Next up: open a business bank account, confirm your EIN, and keep your annual report deadline on the calendar - we'll remind you.</p>
       <a class="cta" href="${siteUrl}/dashboard">Download documents</a>
     `,
   }),
@@ -253,15 +253,15 @@ const TEMPLATES: Record<
       <h1>State requested changes</h1>
       <p>The state has requested changes to your filing.</p>
       <blockquote>${rejectionReason ?? 'See dashboard for details.'}</blockquote>
-      <p>We'll handle the resubmission — no extra state fee.</p>
+      <p>We'll handle the resubmission - no extra state fee.</p>
       <a class="cta" href="${siteUrl}/dashboard">View details</a>
     `,
   }),
   ANNUAL_REPORT_60: ({ businessName, dueDate }) => ({
     subject: `${businessName ?? 'Your business'}'s annual report is due ${dueDate ? formatDateLong(dueDate) : 'soon'}`,
     body: html`
-      <h1>Annual report — 60 day reminder</h1>
-      <p>Filing on time avoids non-waivable late fees. Have us file it for you in one click — your data is already on file.</p>
+      <h1>Annual report - 60 day reminder</h1>
+      <p>Filing on time avoids non-waivable late fees. Have us file it for you in one click - your data is already on file.</p>
       <a class="cta" href="${siteUrl}/dashboard">File annual report</a>
     `,
   }),
@@ -269,7 +269,7 @@ const TEMPLATES: Record<
     subject: `${businessName ?? 'Your business'} annual report due in 30 days`,
     body: html`
       <h1>30 days until your annual report</h1>
-      <p>Have us file it for you in one click — your data is already on file.</p>
+      <p>Have us file it for you in one click - your data is already on file.</p>
       <a class="cta" href="${siteUrl}/dashboard">File annual report</a>
     `,
   }),
@@ -285,7 +285,7 @@ const TEMPLATES: Record<
     subject: `Compliance update for ${businessName ?? 'your business'}`,
     body: html`
       <h1>Compliance alert</h1>
-      <p>We noticed something that needs your attention — sign in to review.</p>
+      <p>We noticed something that needs your attention - sign in to review.</p>
       <a class="cta" href="${siteUrl}/dashboard">Review now</a>
     `,
   }),
@@ -293,9 +293,9 @@ const TEMPLATES: Record<
     subject: 'Reset your LaunchForma password',
     body: html`
       <h1>Password reset request</h1>
-      <p>Hi ${firstName ?? 'there'} — we received a request to reset the password for your LaunchForma account.</p>
+      <p>Hi ${firstName ?? 'there'} - we received a request to reset the password for your LaunchForma account.</p>
       <a class="cta" href="${resetUrl ?? '#'}">Reset my password</a>
-      <p class="muted">This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your password won't change.</p>
+      <p class="muted">This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email - your password won't change.</p>
     `,
   }),
 };
@@ -382,7 +382,7 @@ function wrap(inner: string) {
 </html>`;
 }
 
-// ─── Public helper — render a template without sending ────────────────────────
+// ─── Public helper - render a template without sending ────────────────────────
 
 export function renderTemplate(
   type: NotificationType,
@@ -463,7 +463,7 @@ export async function sendEmail(args: SendEmailArgs) {
   const { subject, body } = tpl(args.context ?? {});
 
   // Persist to DB first so the admin Outbox always has a record. We start in
-  // QUEUED and only flip to SENT once delivery actually succeeds — this keeps
+  // QUEUED and only flip to SENT once delivery actually succeeds - this keeps
   // the Outbox honest (the previous version marked everything SENT up front,
   // which hid every delivery failure, including silent "no provider" drops).
   const record = await prisma.emailNotification.create({

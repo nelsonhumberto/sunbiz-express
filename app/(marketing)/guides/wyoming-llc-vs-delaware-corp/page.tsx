@@ -6,10 +6,10 @@ const PUBLISHED = '2026-05-27';
 export const metadata: Metadata = {
   title: 'Wyoming LLC vs Delaware Corp: Which State Should You Choose?',
   description:
-    'A founder-friendly comparison of forming a Wyoming LLC versus a Delaware C-Corp — taxes, privacy, annual cost, investor expectations, and when each makes sense.',
+    'A founder-friendly comparison of forming a Wyoming LLC versus a Delaware C-Corp - taxes, privacy, annual cost, investor expectations, and when each makes sense.',
   alternates: { canonical: '/guides/wyoming-llc-vs-delaware-corp' },
   openGraph: {
-    title: 'Wyoming LLC vs Delaware Corp — Which Should You Choose?',
+    title: 'Wyoming LLC vs Delaware Corp - Which Should You Choose?',
     description:
       'Side-by-side comparison: privacy, asset protection, taxes, annual costs, and investor expectations.',
     type: 'article',
@@ -46,7 +46,7 @@ export default function WyomingVsDelawareGuide() {
           U.S. acquirer</em>. Investors expect Delaware. Period.
         </li>
         <li>
-          The two are <em>not</em> apples-to-apples — they are different entity
+          The two are <em>not</em> apples-to-apples - they are different entity
           types in different states, optimized for different outcomes. Pick the
           outcome first, then the form follows.
         </li>
@@ -67,7 +67,7 @@ export default function WyomingVsDelawareGuide() {
       <ul>
         <li>State filing fee: $109 minimum (Certificate of Incorporation with up to 1,500 authorized shares, no par value).</li>
         <li>
-          Annual Report + Franchise Tax: <strong>$225 minimum/year</strong> for small companies under the Authorized Shares method — and the franchise tax can rise sharply if you authorize a lot of shares without setting par value carefully.
+          Annual Report + Franchise Tax: <strong>$225 minimum/year</strong> for small companies under the Authorized Shares method - and the franchise tax can rise sharply if you authorize a lot of shares without setting par value carefully.
         </li>
         <li>Registered agent (required, must have DE physical address): $0 first year with LaunchForma, $149/year on renewal.</li>
       </ul>
@@ -83,7 +83,7 @@ export default function WyomingVsDelawareGuide() {
       <p>
         Wyoming does not publicly list LLC members or managers on the Articles
         of Organization. Delaware does not require initial LLC member names on
-        the Certificate of Formation either — and for Corporations, only the
+        the Certificate of Formation either - and for Corporations, only the
         incorporator&apos;s name is public on formation.
       </p>
       <p>
@@ -96,7 +96,7 @@ export default function WyomingVsDelawareGuide() {
       <h2>3. Asset protection</h2>
       <p>
         Wyoming has the strongest single-member-LLC charging-order protection
-        in the country — a creditor of an LLC member can attach distributions
+        in the country - a creditor of an LLC member can attach distributions
         but cannot force a sale of the membership interest. Delaware LLC law
         also offers charging-order protection, but Wyoming&apos;s case law is
         considered more debtor-friendly for single-member LLCs.
@@ -106,7 +106,7 @@ export default function WyomingVsDelawareGuide() {
       <p>
         <strong>Wyoming</strong> has no state income tax on businesses, no
         franchise tax, and no gross receipts tax. As an LLC, you are
-        pass-through taxed by default — profits flow to your federal return.
+        pass-through taxed by default - profits flow to your federal return.
       </p>
       <p>
         <strong>Delaware</strong> has no state sales tax, and Delaware does not
@@ -176,8 +176,8 @@ export default function WyomingVsDelawareGuide() {
 
       <p className="not-prose text-xs text-ink-subtle mt-8">
         LaunchForma is not a law firm and this guide is not legal or tax
-        advice. For complex situations — multiple founders with different
-        interests, professional licensing, securities offerings — talk to a
+        advice. For complex situations - multiple founders with different
+        interests, professional licensing, securities offerings - talk to a
         CPA or attorney before filing.
       </p>
     </GuideLayout>

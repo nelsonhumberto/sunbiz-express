@@ -102,7 +102,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
             <p className="font-semibold">This filing will be processed manually.</p>
             <p className="text-xs text-ink-muted">
               Your chosen name triggers a state rule that requires our team or the Secretary of
-              State to file it on paper. The filing is still going through — it just won't run on
+              State to file it on paper. The filing is still going through - it just won't run on
               the standard online queue, so expect additional processing time.
             </p>
           </div>
@@ -131,14 +131,14 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         </ul>
       </div>
 
-      {/* Approval guarantee — calms anxiety about state rejection. */}
+      {/* Approval guarantee - calms anxiety about state rejection. */}
       <div className="rounded-lg border border-success/30 bg-success-subtle/40 p-4 text-sm text-ink leading-relaxed flex items-start gap-3">
         <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold mb-0.5">Our name approval guarantee</p>
           <p className="text-xs text-ink-muted">
             If the {stateName} Department of State pushes back on this name for any reason, we work
-            with you on revisions and resubmissions until your filing is approved — at no additional
+            with you on revisions and resubmissions until your filing is approved - at no additional
             cost.
           </p>
         </div>

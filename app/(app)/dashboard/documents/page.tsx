@@ -46,7 +46,7 @@ export default async function DocumentsPage() {
   // Hide Operating Agreements for filings that did not pay for one.
   // (Legacy filings created before the entitlement check existed may still
   // have an OPERATING_AGREEMENT row; this filter gates them from view.)
-  // Always hide the COVER_LETTER — it's an admin-only document used to
+  // Always hide the COVER_LETTER - it's an admin-only document used to
   // accompany the Articles to the state.
   const visibleFilings = filings.map((filing) => {
     const addOnSlugs = filing.filingAdditionalServices.map(

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description:
-    'LaunchForma Terms of Service — service description, refund policy, limitation of liability, and third-party integrations. We are not a law firm.',
+    'LaunchForma Terms of Service - service description, refund policy, limitation of liability, and third-party integrations. We are not a law firm.',
   alternates: { canonical: '/terms' },
 };
 
@@ -70,7 +70,7 @@ export default function TermsPage() {
       <h2>7. Account Termination</h2>
       <p>
         We may suspend or terminate accounts engaged in fraud, abuse, or violation of these
-        terms. You may delete your account at any time by emailing support — we will retain
+        terms. You may delete your account at any time by emailing support - we will retain
         records as required by Florida law (typically 7 years).
       </p>
 

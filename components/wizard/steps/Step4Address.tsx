@@ -44,7 +44,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   const valid = principalRequired ? !!filledOut : true;
 
   // Foreign-registration callout: shown when the principal address is in
-  // a state different from the formation state. We do NOT block submission —
+  // a state different from the formation state. We do NOT block submission - 
   // many owners legitimately operate out-of-state and use a registered
   // agent inside the formation state. We just inform them.
   const principalState = (address.state || filingState).toUpperCase();

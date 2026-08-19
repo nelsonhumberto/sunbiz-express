@@ -104,7 +104,7 @@ export function Step12Payment({
   // Default the auto-renew mandate to on, with the full terms shown inline so
   // it's affirmative, informed consent (not a hidden pre-check).
   const [autoRenewRa, setAutoRenewRa] = useState(true);
-  // First renewal charge date — one year out. Computed once so SSR and the
+  // First renewal charge date - one year out. Computed once so SSR and the
   // client render the same string (no hydration mismatch).
   const [firstRenewalDate] = useState(() => {
     const d = new Date();
@@ -190,7 +190,7 @@ export function Step12Payment({
 
   return (
     <div className="space-y-5">
-      {/* Order Summary — single all-in package + selected add-ons. */}
+      {/* Order Summary - single all-in package + selected add-ons. */}
       <div className="rounded-lg border border-border bg-white p-5">
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
         <div className="space-y-2.5">
@@ -245,7 +245,7 @@ export function Step12Payment({
               <span className="flex items-center gap-1.5">
                 <Tag className="h-3.5 w-3.5" />
                 <strong>{appliedCoupon.code}</strong> applied
-                {appliedCoupon.description && <span className="text-xs opacity-70">— {appliedCoupon.description}</span>}
+                {appliedCoupon.description && <span className="text-xs opacity-70"> - {appliedCoupon.description}</span>}
               </span>
               <button type="button" onClick={removeCoupon} className="hover:opacity-70">
                 <X className="h-4 w-4" />
@@ -293,7 +293,7 @@ export function Step12Payment({
         />
       )}
 
-      {/* What happens after payment — calms anxiety, keeps customer oriented. */}
+      {/* What happens after payment - calms anxiety, keeps customer oriented. */}
       <div className="rounded-lg border border-border bg-paper-soft p-5">
         <h3 className="font-semibold text-ink mb-3 flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -321,11 +321,11 @@ export function Step12Payment({
         <div className="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-5 space-y-3">
           <div className="flex items-center gap-2 text-amber-700 font-semibold">
             <FlaskConical className="h-5 w-5" />
-            Test Mode — no real charge will be made
+            Test Mode - no real charge will be made
           </div>
           <p className="text-sm text-amber-700 leading-snug">
             Your account is flagged as a tester. Click <strong>Pay</strong> to simulate a successful
-            payment and run the full workflow — document generation, emails, and filing submission —
+            payment and run the full workflow - document generation, emails, and filing submission - 
             without charging any card.
           </p>
           <div className="rounded-md border border-amber-300 bg-white px-4 py-3 text-sm font-mono text-ink-muted flex items-center gap-2">
@@ -362,7 +362,7 @@ export function Step12Payment({
         </div>
       )}
 
-      {/* Registered Agent auto-renew mandate — affirmative, informed consent
+      {/* Registered Agent auto-renew mandate - affirmative, informed consent
           with the amount, date, cadence, and cancel path shown inline. Only
           when the customer chose our RA and there's a real charge to renew. */}
       {usesOurRa && !isTester && (

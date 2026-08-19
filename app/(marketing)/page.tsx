@@ -38,7 +38,7 @@ export async function generateMetadata({
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
     const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
-    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf — same-day filing, free Year-1 Registered Agent, EIN application, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
+    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, EIN application, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
     // for the same content.

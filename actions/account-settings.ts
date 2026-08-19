@@ -116,7 +116,7 @@ export async function changePassword(
   });
   if (!user) return { error: 'Account not found.' };
 
-  // OWASP A07 — verify the current password before allowing a rotation.
+  // OWASP A07 - verify the current password before allowing a rotation.
   // This blocks the "stolen-session writes new password" attack vector.
   const ok = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
   if (!ok) {

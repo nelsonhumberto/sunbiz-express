@@ -116,7 +116,7 @@ const BY_NAME: Record<string, MarketingState> = Object.fromEntries(
 );
 
 /**
- * Resolve a marketing state from a free-form input — typically `?state=GA`,
+ * Resolve a marketing state from a free-form input - typically `?state=GA`,
  * `?state=Georgia`, `?state=georgia`, or a route slug. Returns Florida if the
  * input is empty or unrecognised so the marketing site never breaks on
  * unexpected query strings.

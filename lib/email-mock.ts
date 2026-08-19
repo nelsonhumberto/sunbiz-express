@@ -43,7 +43,7 @@ const TEMPLATES: Record<
     subject: 'Welcome to LaunchForma ☀️',
     body: html`
       <h1>Welcome, ${firstName ?? 'there'}!</h1>
-      <p>You're moments away from forming your Florida business. We've cleared the runway — when you're ready, your dashboard is waiting.</p>
+      <p>You're moments away from forming your Florida business. We've cleared the runway - when you're ready, your dashboard is waiting.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Go to Dashboard</a>
       <p class="muted">Need a hand? Reply to this email and a real person will help.</p>
     `,
@@ -52,11 +52,11 @@ const TEMPLATES: Record<
     subject: `Your filing for ${businessName ?? 'your business'} is started`,
     body: html`
       <h1>Filing started</h1>
-      <p>Hi ${firstName ?? 'there'} — we've saved your progress. Pick up exactly where you left off.</p>
+      <p>Hi ${firstName ?? 'there'} - we've saved your progress. Pick up exactly where you left off.</p>
     `,
   }),
   ABANDONED_24H: ({ firstName, businessName }) => ({
-    subject: `Continue forming ${businessName ?? 'your business'} — pick up where you left off`,
+    subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
       <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the Florida Department of State the same business day.</p>
@@ -68,7 +68,7 @@ const TEMPLATES: Record<
     subject: `Florida won't reserve "${businessName ?? 'your business'}" until you file`,
     body: html`
       <h1>Your name isn't locked in yet</h1>
-      <p>${firstName ?? 'Hi'} — Florida only reserves a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
+      <p>${firstName ?? 'Hi'} - Florida only reserves a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Finish my filing</a>
       <p class="muted">We'll prepare and submit your Articles to the Florida Department of State the same business day you complete checkout.</p>
     `,
@@ -77,15 +77,15 @@ const TEMPLATES: Record<
     subject: `Need a hand finishing ${businessName ?? 'your business'}?`,
     body: html`
       <h1>Stuck on a step?</h1>
-      <p>${firstName ?? 'Hi'} — your draft is still saved. If something is unclear, reply to this email and a Florida specialist will walk you through the rest. No charge.</p>
+      <p>${firstName ?? 'Hi'} - your draft is still saved. If something is unclear, reply to this email and a Florida specialist will walk you through the rest. No charge.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Resume Filing</a>
     `,
   }),
   RA_RENEWAL_60: ({ businessName }) => ({
     subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
     body: html`
-      <h1>Heads up — RA renewal in 60 days</h1>
-      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year — well below LegalZoom's $249/year — and keeps your home address off the public Florida record.</p>
+      <h1>Heads up - RA renewal in 60 days</h1>
+      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year - well below LegalZoom's $249/year - and keeps your home address off the public Florida record.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Manage Registered Agent</a>
     `,
   }),
@@ -116,8 +116,8 @@ const TEMPLATES: Record<
       <h1>Filing submitted</h1>
       <p>The state typically processes filings in 1-2 business days. We'll email you the moment your formation is approved.</p>
       <table>
-        <tr><td>Tracking #</td><td><code>${trackingNumber ?? '—'}</code></td></tr>
-        <tr><td>PIN</td><td><code>${pin ?? '—'}</code></td></tr>
+        <tr><td>Tracking #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
+        <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
       </table>
     `,
   }),
@@ -127,7 +127,7 @@ const TEMPLATES: Record<
       <h1>Approved!</h1>
       <p>Florida has approved your formation. Documents are ready to download from your dashboard.</p>
       <table>
-        <tr><td>Sunbiz Filing #</td><td><code>${filingNumber ?? '—'}</code></td></tr>
+        <tr><td>Sunbiz Filing #</td><td><code>${filingNumber ?? '-'}</code></td></tr>
       </table>
       <p>Next steps: open a business bank account, file Form SS-4 for your EIN (if not already), and review your operating agreement.</p>
     `,
@@ -138,13 +138,13 @@ const TEMPLATES: Record<
       <h1>State requested changes</h1>
       <p>The Florida Department of State has requested changes to your filing.</p>
       <blockquote>${rejectionReason ?? 'See dashboard for details.'}</blockquote>
-      <p>We'll handle the resubmission — no extra state fee.</p>
+      <p>We'll handle the resubmission - no extra state fee.</p>
     `,
   }),
   ANNUAL_REPORT_60: ({ businessName, dueDate }) => ({
     subject: `${businessName ?? 'Your business'}'s annual report is due ${dueDate ? formatDateLong(dueDate) : 'soon'}`,
     body: html`
-      <h1>Annual report — 60 day reminder</h1>
+      <h1>Annual report - 60 day reminder</h1>
       <p>Florida requires annual reports between January 1 and May 1. Filing on time avoids the $400 non-waivable late fee.</p>
     `,
   }),
@@ -152,7 +152,7 @@ const TEMPLATES: Record<
     subject: `${businessName ?? 'Your business'} annual report due in 30 days`,
     body: html`
       <h1>30 days until your annual report</h1>
-      <p>Have us file it for you in one click — your data is already on file.</p>
+      <p>Have us file it for you in one click - your data is already on file.</p>
     `,
   }),
   ANNUAL_REPORT_FINAL: ({ businessName, daysUntilDue }) => ({
@@ -166,7 +166,7 @@ const TEMPLATES: Record<
     subject: `Compliance update for ${businessName ?? 'your business'}`,
     body: html`
       <h1>Compliance alert</h1>
-      <p>We noticed something that needs your attention — sign in to review.</p>
+      <p>We noticed something that needs your attention - sign in to review.</p>
     `,
   }),
 };

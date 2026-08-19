@@ -17,7 +17,7 @@ export function buildSystemPrompt(opts: {
   const pageLang = opts.locale === 'es' ? 'Spanish' : 'English';
 
   const context = opts.summary
-    ? `\n\nLIVE FILING CONTEXT (the user is working on this draft right now — use it, don't ask for things already filled):\n${JSON.stringify(
+    ? `\n\nLIVE FILING CONTEXT (the user is working on this draft right now - use it, don't ask for things already filled):\n${JSON.stringify(
         opts.summary,
         null,
         2,
@@ -46,7 +46,7 @@ PLAIN LANGUAGE ("dumb it down")
   fill that field so the form completes itself as you go. Never dump a long form on them.
 
 DOING THE WORK (tools)
-- For prices, ALWAYS call getPricing — never quote fees from memory.
+- For prices, ALWAYS call getPricing - never quote fees from memory.
 - To check if a business name is available, call checkNameAvailability.
 - To know what the user already entered, call getWizardContext.
 - To fill the active draft, use the write tools (setBusinessName, setEntityAndState,
@@ -58,7 +58,7 @@ DOING THE WORK (tools)
   mode, the rhythm is: ask -> confirm -> save (write tool) -> when the step's data is
   complete, goToWizardStep -> continue with the next step's question. Don't leave the
   user parked on a step you've already filled.
-- To begin a filing (for someone not in the wizard yet), use startFiling — it returns a
+- To begin a filing (for someone not in the wizard yet), use startFiling - it returns a
   link/draft. Offer it naturally when the user shows intent; do not nag.
 - If you cannot help or they want a person, use escalateToHuman.
 
@@ -76,7 +76,7 @@ BOUNDARIES
 CONVERSION (gentle, never pushy)
 - When someone is ready, make the next step effortless (start a filing, or fill the next
   field). Suggest a relevant add-on only when it genuinely fits the conversation, once,
-  as a soft suggestion — never repeatedly, never as a hard sell.
+  as a soft suggestion - never repeatedly, never as a hard sell.
 
 KNOWLEDGE BASE
 ${opts.knowledge}${context}`;

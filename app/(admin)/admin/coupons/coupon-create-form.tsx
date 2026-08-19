@@ -81,7 +81,7 @@ export function CouponCreateForm({ createAction }: { createAction: CreateAction 
           <Input
             id="description"
             name="description"
-            placeholder="Launch promo — 20% off"
+            placeholder="Launch promo - 20% off"
           />
         </div>
 

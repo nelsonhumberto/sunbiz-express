@@ -36,7 +36,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: DISALLOW,
       },
-      // Same access for named AI crawlers — public content is open, private
+      // Same access for named AI crawlers - public content is open, private
       // app surfaces stay blocked.
       {
         userAgent: AI_CRAWLERS,

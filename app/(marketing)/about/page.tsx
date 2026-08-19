@@ -3,12 +3,12 @@ import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
 
 export const metadata: Metadata = {
-  title: 'About LaunchForma — Transparent Business Formation',
+  title: 'About LaunchForma - Transparent Business Formation',
   description:
     'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About LaunchForma — Modern, Transparent Business Formation',
+    title: 'About LaunchForma - Modern, Transparent Business Formation',
     description:
       'Why we built LaunchForma: a clean, honest alternative to legal-tech upsell traps. All-in pricing, no data sales.',
     type: 'website',
@@ -38,12 +38,12 @@ export default function AboutPage() {
           <ValueCard
             icon={<Target className="h-5 w-5" />}
             title="Mission"
-            body="To make business formation in Florida fast, transparent, and accessible to anyone with a dream — not just lawyers and accountants."
+            body="To make business formation in Florida fast, transparent, and accessible to anyone with a dream - not just lawyers and accountants."
           />
           <ValueCard
             icon={<Eye className="h-5 w-5" />}
             title="Vision"
-            body="A world where starting a legitimate business is so simple you can do it on your lunch break — and where compliance never sneaks up on you."
+            body="A world where starting a legitimate business is so simple you can do it on your lunch break - and where compliance never sneaks up on you."
           />
           <ValueCard
             icon={<Heart className="h-5 w-5" />}
@@ -67,7 +67,7 @@ export default function AboutPage() {
             </p>
             <p>
               Meanwhile, Florida's official Sunbiz portal looks like it was last updated when
-              Netscape was a thing. The state filing fee is $125 — a fact that's deliberately buried
+              Netscape was a thing. The state filing fee is $125 - a fact that's deliberately buried
               under three pages of optional services on every competitor's website.
             </p>
             <p>
@@ -81,7 +81,7 @@ export default function AboutPage() {
               fees stacked on top.
             </p>
             <p>
-              Most importantly — we don't sell your data. Your name, address, and SSN aren't being
+              Most importantly - we don't sell your data. Your name, address, and SSN aren't being
               monetized through "marketing partners." When you pay our service fee, that's it.
             </p>
           </div>

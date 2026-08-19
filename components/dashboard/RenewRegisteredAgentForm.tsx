@@ -118,7 +118,7 @@ export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
                   className="accent-primary"
                 />
                 <span>
-                  {t('raRenewUseSavedCard')} —{' '}
+                  {t('raRenewUseSavedCard')} - {' '}
                   <span className="font-medium">
                     {props.savedCard!.brand} •••• {props.savedCard!.last4}
                   </span>

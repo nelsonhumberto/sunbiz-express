@@ -125,7 +125,7 @@ export function StateWaitlistForm({
         </div>
       )}
 
-      {/* Honeypot — hidden from real users via aria + style. */}
+      {/* Honeypot - hidden from real users via aria + style. */}
       <label className="sr-only" aria-hidden="true">
         <input
           type="text"

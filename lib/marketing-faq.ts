@@ -22,8 +22,8 @@ export interface MarketingFaqItem {
 const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
-    q: 'Is LaunchForma a government agency — and can I file myself?',
-    a: "No. LaunchForma is a private, independent filing service. We are not a government agency and are not affiliated with, endorsed by, or acting on behalf of the Florida Department of State, the IRS, or any government body. You can file yourself directly with the state at sunbiz.org, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee is charged for the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit to Florida on your behalf.",
+    q: 'Is LaunchForma a government agency - and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service. We are not a government agency and are not affiliated with, endorsed by, or acting on behalf of the Florida Department of State, the IRS, or any government body. You can file yourself directly with the state at sunbiz.org, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee is charged for the convenience of preparing and filing everything correctly for you - plus support and your free Year-1 Registered Agent - and is in addition to the state's filing fee, which we remit to Florida on your behalf.",
   },
   {
     id: 'florida-llc',
@@ -32,15 +32,15 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What is included in the package price?',
-    a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and same-business-day submission, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf — there are no separate state fees added at checkout.",
+    a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and same-business-day submission, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf - there are no separate state fees added at checkout.",
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $150/year — well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
+    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $150/year - well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
   },
   {
     q: "What's a Registered Agent and do I need one?",
-    a: "Florida law requires every LLC and Corporation to designate a Registered Agent — a person or company with a physical Florida address who can receive legal documents on the entity's behalf. P.O. Boxes don't qualify. Using our service keeps your home address off the public record.",
+    a: "Florida law requires every LLC and Corporation to designate a Registered Agent - a person or company with a physical Florida address who can receive legal documents on the entity's behalf. P.O. Boxes don't qualify. Using our service keeps your home address off the public record.",
   },
   {
     id: 'annual-report',
@@ -49,21 +49,21 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Can I form an LLC if I live outside Florida?',
-    a: 'Yes — Florida does not require members or managers to reside in Florida. You only need a Florida Registered Agent (we provide one for free Year 1) and a Florida physical address for that agent.',
+    a: 'Yes - Florida does not require members or managers to reside in Florida. You only need a Florida Registered Agent (we provide one for free Year 1) and a Florida physical address for that agent.',
   },
   {
     id: 'ein',
-    q: 'What about the EIN — do I need one?',
-    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Popular and Premium packages include EIN application and filing; you can add it as a $79 upgrade on Essential. The IRS issues EINs for free — our fee covers preparing and filing your Form SS-4 for you.",
+    q: 'What about the EIN - do I need one?',
+    a: "An EIN (Employer Identification Number) is your business's federal tax ID. You'll need one to open a business bank account, hire employees, or file taxes as an LLC or Corporation. Our Popular and Premium packages include EIN application and filing; you can add it as a $79 upgrade on Essential. The IRS issues EINs for free - our fee covers preparing and filing your Form SS-4 for you.",
   },
   {
     id: 'boi',
     q: 'Do I need to file a BOI (Beneficial Ownership Information) report?',
-    a: "Most LLCs and Corporations formed in the U.S. must file a Beneficial Ownership Information (BOI) report with FinCEN under the Corporate Transparency Act. Entities formed in 2025 or later have 30 days from formation to file; entities formed earlier had a one-time deadline that has now passed for most. There are exemptions (large operating companies, regulated entities, certain nonprofits). LaunchForma offers a managed BOI filing for $49 — see our /boi-reporting page for details and current FinCEN enforcement status.",
+    a: "Most LLCs and Corporations formed in the U.S. must file a Beneficial Ownership Information (BOI) report with FinCEN under the Corporate Transparency Act. Entities formed in 2025 or later have 30 days from formation to file; entities formed earlier had a one-time deadline that has now passed for most. There are exemptions (large operating companies, regulated entities, certain nonprofits). LaunchForma offers a managed BOI filing for $49 - see our /boi-reporting page for details and current FinCEN enforcement status.",
   },
   {
     q: 'What if my name is taken?',
-    a: "We check availability against the Sunbiz database in real time. If your first choice isn't distinguishable on the record, we'll suggest alternatives — and you can keep iterating until you find one that works.",
+    a: "We check availability against the Sunbiz database in real time. If your first choice isn't distinguishable on the record, we'll suggest alternatives - and you can keep iterating until you find one that works.",
   },
   {
     q: 'Are you a law firm?',
@@ -79,7 +79,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
     q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
-    a: 'No. LaunchForma es un servicio privado e independiente de gestión de trámites. No somos una agencia gubernamental ni estamos afiliados, respaldados o actuando en nombre del Departamento de Estado de Florida, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el estado en sunbiz.org y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa de presentación del estado, que remitimos a Florida en tu nombre.',
+    a: 'No. LaunchForma es un servicio privado e independiente de gestión de trámites. No somos una agencia gubernamental ni estamos afiliados, respaldados o actuando en nombre del Departamento de Estado de Florida, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el estado en sunbiz.org y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti - además del soporte y tu Agente Registrado gratis el primer año - y es adicional a la tarifa de presentación del estado, que remitimos a Florida en tu nombre.',
   },
   {
     id: 'florida-llc',
@@ -88,15 +88,15 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Qué incluye el precio del plan?',
-    a: 'Cada plan incluye la tarifa de presentación requerida del Departamento de Estado de Florida ($125 para LLC, $70 para Corporación), nuestra preparación y envío el mismo día hábil, tu Agente Registrado del primer año, y la entrega digital de tus documentos presentados. Pagamos la tarifa estatal a Florida en tu nombre — no se agregan tarifas estatales aparte al pagar.',
+    a: 'Cada plan incluye la tarifa de presentación requerida del Departamento de Estado de Florida ($125 para LLC, $70 para Corporación), nuestra preparación y envío el mismo día hábil, tu Agente Registrado del primer año, y la entrega digital de tus documentos presentados. Pagamos la tarifa estatal a Florida en tu nombre - no se agregan tarifas estatales aparte al pagar.',
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $150/año — muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $150/año - muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
-    a: 'La ley de Florida requiere que cada LLC y Corporación designe un Agente Registrado — una persona o empresa con dirección física en Florida que pueda recibir documentos legales en nombre de la entidad. Los Apartados Postales no califican. Usar nuestro servicio mantiene tu dirección personal fuera del registro público.',
+    a: 'La ley de Florida requiere que cada LLC y Corporación designe un Agente Registrado - una persona o empresa con dirección física en Florida que pueda recibir documentos legales en nombre de la entidad. Los Apartados Postales no califican. Usar nuestro servicio mantiene tu dirección personal fuera del registro público.',
   },
   {
     id: 'annual-report',
@@ -105,21 +105,21 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Puedo formar una LLC si vivo fuera de Florida?',
-    a: 'Sí — Florida no requiere que los miembros o gerentes residan en Florida. Solo necesitas un Agente Registrado en Florida (te damos uno gratis el primer año) y una dirección física en Florida para ese agente.',
+    a: 'Sí - Florida no requiere que los miembros o gerentes residan en Florida. Solo necesitas un Agente Registrado en Florida (te damos uno gratis el primer año) y una dirección física en Florida para ese agente.',
   },
   {
     id: 'ein',
-    q: '¿Qué pasa con el EIN — lo necesito?',
-    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Popular y Premium incluyen la solicitud y presentación del EIN; puedes agregarlo por $79 en el plan Esencial. El IRS emite los EIN de forma gratuita — nuestra tarifa cubre la preparación y presentación de tu Formulario SS-4.',
+    q: '¿Qué pasa con el EIN - lo necesito?',
+    a: 'Un EIN (Employer Identification Number) es la identificación fiscal federal de tu empresa. Lo necesitarás para abrir una cuenta bancaria empresarial, contratar empleados o declarar impuestos como LLC o Corporación. Nuestros planes Popular y Premium incluyen la solicitud y presentación del EIN; puedes agregarlo por $79 en el plan Esencial. El IRS emite los EIN de forma gratuita - nuestra tarifa cubre la preparación y presentación de tu Formulario SS-4.',
   },
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI (Beneficial Ownership Information)?',
-    a: 'La mayoría de LLCs y Corporaciones formadas en EE.UU. deben presentar un reporte BOI ante FinCEN bajo la Corporate Transparency Act. Las entidades formadas desde 2025 tienen 30 días desde la formación para presentarlo. Existen exenciones (grandes empresas operativas, entidades reguladas, ciertas organizaciones sin fines de lucro). LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting para detalles y el estado actual de cumplimiento de FinCEN.',
+    a: 'La mayoría de LLCs y Corporaciones formadas en EE.UU. deben presentar un reporte BOI ante FinCEN bajo la Corporate Transparency Act. Las entidades formadas desde 2025 tienen 30 días desde la formación para presentarlo. Existen exenciones (grandes empresas operativas, entidades reguladas, ciertas organizaciones sin fines de lucro). LaunchForma ofrece presentación gestionada del BOI por $49 - visita /boi-reporting para detalles y el estado actual de cumplimiento de FinCEN.',
   },
   {
     q: '¿Y si mi nombre está tomado?',
-    a: 'Verificamos la disponibilidad contra la base de datos de Sunbiz en tiempo real. Si tu primera elección no es distinguible en el registro, sugerimos alternativas — y puedes seguir iterando hasta encontrar uno que funcione.',
+    a: 'Verificamos la disponibilidad contra la base de datos de Sunbiz en tiempo real. Si tu primera elección no es distinguible en el registro, sugerimos alternativas - y puedes seguir iterando hasta encontrar uno que funcione.',
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
@@ -136,12 +136,12 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
 const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
-    q: 'Is LaunchForma a government agency — and can I file myself?',
-    a: "No. LaunchForma is a private, independent filing service — not a government agency, and not affiliated with or endorsed by the Wyoming Secretary of State, the IRS, or any government body. You can file yourself directly with the Wyoming Secretary of State, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit on your behalf.",
+    q: 'Is LaunchForma a government agency - and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service - not a government agency, and not affiliated with or endorsed by the Wyoming Secretary of State, the IRS, or any government body. You can file yourself directly with the Wyoming Secretary of State, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you - plus support and your free Year-1 Registered Agent - and is in addition to the state's filing fee, which we remit on your behalf.",
   },
   {
     q: 'How long does it take to form a Wyoming LLC or Corporation?',
-    a: 'About 15 minutes inside our wizard. We submit to the Wyoming Secretary of State the same business day. Standard Wyoming processing currently runs about 3 weeks. We offer an expedited option at checkout for an additional Wyoming state fee — final amount is confirmed at submission.',
+    a: 'About 15 minutes inside our wizard. We submit to the Wyoming Secretary of State the same business day. Standard Wyoming processing currently runs about 3 weeks. We offer an expedited option at checkout for an additional Wyoming state fee - final amount is confirmed at submission.',
   },
   {
     q: 'Are there any name restrictions in Wyoming I should know about?',
@@ -149,7 +149,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What is the Wyoming filing fee?',
-    a: 'Wyoming charges a flat $100 filing fee for both LLC Articles of Organization and Corporation Articles of Incorporation. That fee is included in every LaunchForma package — no surprise charges at checkout.',
+    a: 'Wyoming charges a flat $100 filing fee for both LLC Articles of Organization and Corporation Articles of Incorporation. That fee is included in every LaunchForma package - no surprise charges at checkout.',
   },
   {
     q: 'Why do people choose Wyoming for an LLC?',
@@ -165,11 +165,11 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I have to live in Wyoming to form a Wyoming LLC?',
-    a: 'No. Wyoming does not require members or managers to live in the state — only your registered agent must have a Wyoming physical address (we supply one).',
+    a: 'No. Wyoming does not require members or managers to live in the state - only your registered agent must have a Wyoming physical address (we supply one).',
   },
   {
-    q: 'What about the EIN — do I need one?',
-    a: 'You will need an EIN to open a business bank account, hire employees, or file federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we can complete the IRS EIN online application within one business day. Foreign owners without an SSN/ITIN cannot use the IRS online tool — we file Form SS-4 by phone or fax on your behalf, which takes longer (and may require an identity verification step).',
+    q: 'What about the EIN - do I need one?',
+    a: 'You will need an EIN to open a business bank account, hire employees, or file federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we can complete the IRS EIN online application within one business day. Foreign owners without an SSN/ITIN cannot use the IRS online tool - we file Form SS-4 by phone or fax on your behalf, which takes longer (and may require an identity verification step).',
   },
   {
     q: 'Does Wyoming require an Operating Agreement?',
@@ -178,15 +178,15 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: 'Do I need to file a BOI report with FinCEN for my Wyoming entity?',
-    a: 'Yes — Wyoming entities are still subject to the federal Corporate Transparency Act. Most newly formed LLCs and Corporations must report Beneficial Ownership Information to FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 — see /boi-reporting for details.',
+    a: 'Yes - Wyoming entities are still subject to the federal Corporate Transparency Act. Most newly formed LLCs and Corporations must report Beneficial Ownership Information to FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 - see /boi-reporting for details.',
   },
   {
     q: 'Can a business or trust own my Wyoming LLC?',
     a: 'Yes. Wyoming permits another business entity (LLC, Corporation, trust) to be a member, manager, organizer, or owner. Inside our wizard you can mark each owner as either an Individual or a Business / Entity and provide the legal entity name plus state of formation. The owner entity will be printed on the Articles when applicable.',
   },
   {
-    q: 'I formed in Wyoming but plan to operate in another state — what do I need to do?',
-    a: "Forming in Wyoming doesn't authorize you to do business in another state. If you'll have an office, employees, or significant operations elsewhere, that state will usually require a separate \"foreign qualification\" (sometimes called \"Certificate of Authority\" or \"Statement of Foreign Registration\"). Each state has its own form, fee, and ongoing registered-agent requirement. We're rolling out foreign-qualification help as a separate product — flag your interest inside the wizard and we'll follow up.",
+    q: 'I formed in Wyoming but plan to operate in another state - what do I need to do?',
+    a: "Forming in Wyoming doesn't authorize you to do business in another state. If you'll have an office, employees, or significant operations elsewhere, that state will usually require a separate \"foreign qualification\" (sometimes called \"Certificate of Authority\" or \"Statement of Foreign Registration\"). Each state has its own form, fee, and ongoing registered-agent requirement. We're rolling out foreign-qualification help as a separate product - flag your interest inside the wizard and we'll follow up.",
   },
   {
     q: 'Are you a law firm?',
@@ -202,11 +202,11 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
     q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
-    a: 'No. LaunchForma es un servicio privado e independiente — no es una agencia gubernamental ni está afiliado o respaldado por el Secretario de Estado de Wyoming, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el Secretario de Estado de Wyoming y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa del estado, que remitimos en tu nombre.',
+    a: 'No. LaunchForma es un servicio privado e independiente - no es una agencia gubernamental ni está afiliado o respaldado por el Secretario de Estado de Wyoming, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con el Secretario de Estado de Wyoming y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti - además del soporte y tu Agente Registrado gratis el primer año - y es adicional a la tarifa del estado, que remitimos en tu nombre.',
   },
   {
     q: '¿Cuánto tarda formar una LLC o Corporación en Wyoming?',
-    a: 'Aproximadamente 15 minutos en nuestro asistente. Enviamos al Secretario de Estado de Wyoming el mismo día hábil. El procesamiento estándar de Wyoming tarda alrededor de 3 semanas. Ofrecemos una opción acelerada al pagar por una tarifa adicional del estado — el monto final se confirma al enviarlo.',
+    a: 'Aproximadamente 15 minutos en nuestro asistente. Enviamos al Secretario de Estado de Wyoming el mismo día hábil. El procesamiento estándar de Wyoming tarda alrededor de 3 semanas. Ofrecemos una opción acelerada al pagar por una tarifa adicional del estado - el monto final se confirma al enviarlo.',
   },
   {
     q: '¿Hay restricciones de nombre que deba conocer en Wyoming?',
@@ -214,7 +214,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Cuál es la tarifa de presentación en Wyoming?',
-    a: 'Wyoming cobra una tarifa fija de $100 tanto para Articles of Organization de LLC como Articles of Incorporation de Corporación. Esa tarifa está incluida en cada plan de LaunchForma — sin cargos sorpresa al pagar.',
+    a: 'Wyoming cobra una tarifa fija de $100 tanto para Articles of Organization de LLC como Articles of Incorporation de Corporación. Esa tarifa está incluida en cada plan de LaunchForma - sin cargos sorpresa al pagar.',
   },
   {
     q: '¿Por qué elegir Wyoming para una LLC?',
@@ -230,11 +230,11 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Tengo que vivir en Wyoming para formar una LLC de Wyoming?',
-    a: 'No. Wyoming no requiere que los miembros o gerentes vivan en el estado — solo tu Agente Registrado debe tener dirección física en Wyoming (te damos uno).',
+    a: 'No. Wyoming no requiere que los miembros o gerentes vivan en el estado - solo tu Agente Registrado debe tener dirección física en Wyoming (te damos uno).',
   },
   {
-    q: '¿Y el EIN — lo necesito?',
-    a: 'Necesitarás un EIN para abrir cuenta bancaria empresarial, contratar empleados o declarar impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Si tienes SSN o ITIN podemos completar la solicitud en línea del IRS en un día hábil. Propietarios extranjeros sin SSN/ITIN no pueden usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax en tu nombre, lo que tarda más (y puede requerir un paso de verificación de identidad).',
+    q: '¿Y el EIN - lo necesito?',
+    a: 'Necesitarás un EIN para abrir cuenta bancaria empresarial, contratar empleados o declarar impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Si tienes SSN o ITIN podemos completar la solicitud en línea del IRS en un día hábil. Propietarios extranjeros sin SSN/ITIN no pueden usar la herramienta en línea del IRS - presentamos el Formulario SS-4 por teléfono o fax en tu nombre, lo que tarda más (y puede requerir un paso de verificación de identidad).',
   },
   {
     q: '¿Wyoming requiere un Operating Agreement?',
@@ -243,15 +243,15 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Wyoming?',
-    a: 'Sí — las entidades de Wyoming siguen sujetas a la Corporate Transparency Act federal. La mayoría de LLCs y Corporaciones recién formadas deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting.',
+    a: 'Sí - las entidades de Wyoming siguen sujetas a la Corporate Transparency Act federal. La mayoría de LLCs y Corporaciones recién formadas deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 - visita /boi-reporting.',
   },
   {
     q: '¿Una empresa o fideicomiso puede ser dueño de mi LLC de Wyoming?',
     a: 'Sí. Wyoming permite que otra entidad (LLC, Corporación, fideicomiso) sea miembro, gerente, organizador o propietario. Dentro del asistente puedes marcar cada propietario como Individual o Empresa / Entidad y proporcionar el nombre legal y el estado de formación. La entidad propietaria se imprimirá en los Articles cuando corresponda.',
   },
   {
-    q: 'Formé en Wyoming pero planeo operar en otro estado — ¿qué necesito hacer?',
-    a: 'Formar en Wyoming no te autoriza a hacer negocios en otro estado. Si tendrás oficina, empleados u operaciones significativas en otro estado, ese estado normalmente exige un trámite de "foreign qualification" (también llamado "Certificate of Authority" o registro como entidad extranjera). Cada estado tiene su propio formulario, tarifa y agente registrado. Estamos lanzando ayuda con foreign qualification como producto separado — marca tu interés en el asistente y te contactaremos.',
+    q: 'Formé en Wyoming pero planeo operar en otro estado - ¿qué necesito hacer?',
+    a: 'Formar en Wyoming no te autoriza a hacer negocios en otro estado. Si tendrás oficina, empleados u operaciones significativas en otro estado, ese estado normalmente exige un trámite de "foreign qualification" (también llamado "Certificate of Authority" o registro como entidad extranjera). Cada estado tiene su propio formulario, tarifa y agente registrado. Estamos lanzando ayuda con foreign qualification como producto separado - marca tu interés en el asistente y te contactaremos.',
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
@@ -268,20 +268,20 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
 const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
-    q: 'Is LaunchForma a government agency — and can I file myself?',
-    a: "No. LaunchForma is a private, independent filing service — not a government agency, and not affiliated with or endorsed by the Delaware Division of Corporations, the IRS, or any government body. You can file yourself directly with the Delaware Division of Corporations, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you — plus support and your free Year-1 Registered Agent — and is in addition to the state's filing fee, which we remit on your behalf.",
+    q: 'Is LaunchForma a government agency - and can I file myself?',
+    a: "No. LaunchForma is a private, independent filing service - not a government agency, and not affiliated with or endorsed by the Delaware Division of Corporations, the IRS, or any government body. You can file yourself directly with the Delaware Division of Corporations, and apply for an EIN directly with the IRS at irs.gov (the IRS issues EINs for free). Our fee covers the convenience of preparing and filing everything correctly for you - plus support and your free Year-1 Registered Agent - and is in addition to the state's filing fee, which we remit on your behalf.",
   },
   {
     q: 'How long does it take to form a Delaware LLC or Corporation?',
-    a: 'About 15 minutes inside our wizard. Standard Delaware processing currently takes about 6 weeks (the Division of Corporations is backlogged). Delaware also offers an 8-business-day expedited service for an additional $50 state fee — you can choose either at checkout.',
+    a: 'About 15 minutes inside our wizard. Standard Delaware processing currently takes about 6 weeks (the Division of Corporations is backlogged). Delaware also offers an 8-business-day expedited service for an additional $50 state fee - you can choose either at checkout.',
   },
   {
     q: 'Can I keep my LLC member info off the public Certificate of Formation?',
-    a: 'Yes — Delaware does NOT require initial LLC member names or addresses on the Certificate of Formation. We default to keeping members private and let you opt in to public disclosure inside the wizard. Most founders pick Delaware specifically for this privacy.',
+    a: 'Yes - Delaware does NOT require initial LLC member names or addresses on the Certificate of Formation. We default to keeping members private and let you opt in to public disclosure inside the wizard. Most founders pick Delaware specifically for this privacy.',
   },
   {
     q: 'What are the Delaware filing fees?',
-    a: 'Delaware charges $110 for an LLC Certificate of Formation and a $109 minimum for a Corporation Certificate of Incorporation (assuming up to 1,500 authorized shares with no par value). Higher share counts can change the corporate fee — we will flag any structure that triggers an upcharge.',
+    a: 'Delaware charges $110 for an LLC Certificate of Formation and a $109 minimum for a Corporation Certificate of Incorporation (assuming up to 1,500 authorized shares with no par value). Higher share counts can change the corporate fee - we will flag any structure that triggers an upcharge.',
   },
   {
     q: 'Why do people choose Delaware?',
@@ -293,15 +293,15 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'When are Delaware annual taxes due?',
-    a: 'Delaware LLCs do not file an annual report — they pay a flat $300 Annual Tax due June 1 each year. Delaware corporations file an Annual Report and pay Franchise Tax due March 1 each year (minimum tax + report is $225 for small companies, but it can rise sharply with authorized shares). We will alert you to the optimal calculation method as your business grows.',
+    a: 'Delaware LLCs do not file an annual report - they pay a flat $300 Annual Tax due June 1 each year. Delaware corporations file an Annual Report and pay Franchise Tax due March 1 each year (minimum tax + report is $225 for small companies, but it can rise sharply with authorized shares). We will alert you to the optimal calculation method as your business grows.',
   },
   {
     q: 'Do I have to live in Delaware to form a Delaware company?',
-    a: 'No. Delaware does not require members, managers, officers, or directors to live in the state — only your registered agent needs a Delaware physical address (we provide one).',
+    a: 'No. Delaware does not require members, managers, officers, or directors to live in the state - only your registered agent needs a Delaware physical address (we provide one).',
   },
   {
-    q: 'What about the EIN — do I need one?',
-    a: 'Yes — for a business bank account, hiring, or federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we file the IRS online EIN application within one business day. If you are a foreign founder without an SSN/ITIN, you cannot use the IRS online tool — we will file Form SS-4 by phone or fax for you (this takes longer and may require identity verification).',
+    q: 'What about the EIN - do I need one?',
+    a: 'Yes - for a business bank account, hiring, or federal taxes. Standard and Concierge packages include EIN application and filing. The IRS issues EINs at no cost; our fee covers preparing and filing the application for you. If you have a U.S. SSN or ITIN we file the IRS online EIN application within one business day. If you are a foreign founder without an SSN/ITIN, you cannot use the IRS online tool - we will file Form SS-4 by phone or fax for you (this takes longer and may require identity verification).',
   },
   {
     q: 'Does Delaware require an Operating Agreement (LLC) or Bylaws (Corp)?',
@@ -310,19 +310,19 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: 'Do I need to file a BOI report with FinCEN for my Delaware entity?',
-    a: 'Yes — Delaware LLCs and Corporations are subject to the federal Corporate Transparency Act. Most entities formed in 2025 or later must file Beneficial Ownership Information with FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 — see /boi-reporting for details and current FinCEN enforcement status.',
+    a: 'Yes - Delaware LLCs and Corporations are subject to the federal Corporate Transparency Act. Most entities formed in 2025 or later must file Beneficial Ownership Information with FinCEN within 30 days of formation. LaunchForma offers managed BOI filing for $49 - see /boi-reporting for details and current FinCEN enforcement status.',
   },
   {
     q: 'Can a business or holding company own my Delaware LLC?',
     a: "Yes. Delaware permits another business entity (LLC, Corporation, trust) to be a member, manager, organizer, or owner. Inside our wizard you can mark each owner as either an Individual or a Business / Entity and provide the legal entity name plus state of formation. The owner entity will be reflected on the appropriate filing record.",
   },
   {
-    q: 'I formed in Delaware but plan to operate in another state — what do I need to do?',
-    a: "Forming in Delaware doesn't authorize you to do business in another state. If you'll have an office, employees, or significant operations elsewhere, that state will usually require a separate \"foreign qualification\" filing (sometimes called \"Certificate of Authority\" or \"Statement of Foreign Registration\"). Each state has its own form, fee, and ongoing registered-agent requirement. We're rolling out foreign-qualification help as a separate product — flag your interest inside the wizard and we'll follow up.",
+    q: 'I formed in Delaware but plan to operate in another state - what do I need to do?',
+    a: "Forming in Delaware doesn't authorize you to do business in another state. If you'll have an office, employees, or significant operations elsewhere, that state will usually require a separate \"foreign qualification\" filing (sometimes called \"Certificate of Authority\" or \"Statement of Foreign Registration\"). Each state has its own form, fee, and ongoing registered-agent requirement. We're rolling out foreign-qualification help as a separate product - flag your interest inside the wizard and we'll follow up.",
   },
   {
     q: "Can the Delaware Division of Corporations refuse my entity name?",
-    a: "Yes. Delaware can refuse names for subjective reasons that we cannot fully pre-clear from outside the agency — for example names suggesting deception, public-safety issues, abusive patterns, or excessive length. We will surface a notice in the wizard reminding you that final name approval rests with the Division. If your name is refused we will work with you to pick a near-equivalent.",
+    a: "Yes. Delaware can refuse names for subjective reasons that we cannot fully pre-clear from outside the agency - for example names suggesting deception, public-safety issues, abusive patterns, or excessive length. We will surface a notice in the wizard reminding you that final name approval rests with the Division. If your name is refused we will work with you to pick a near-equivalent.",
   },
   {
     q: 'Are you a law firm?',
@@ -338,19 +338,19 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   {
     id: 'not-affiliated',
     q: '¿Es LaunchForma una agencia gubernamental? ¿Puedo hacerlo yo mismo?',
-    a: 'No. LaunchForma es un servicio privado e independiente — no es una agencia gubernamental ni está afiliado o respaldado por la División de Corporaciones de Delaware, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con la División de Corporaciones de Delaware y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti —además del soporte y tu Agente Registrado gratis el primer año— y es adicional a la tarifa del estado, que remitimos en tu nombre.',
+    a: 'No. LaunchForma es un servicio privado e independiente - no es una agencia gubernamental ni está afiliado o respaldado por la División de Corporaciones de Delaware, el IRS ni ningún organismo gubernamental. Puedes hacerlo tú mismo directamente con la División de Corporaciones de Delaware y solicitar un EIN directamente con el IRS en irs.gov (el IRS emite los EIN de forma gratuita). Nuestra tarifa cubre la conveniencia de preparar y presentar todo correctamente por ti - además del soporte y tu Agente Registrado gratis el primer año - y es adicional a la tarifa del estado, que remitimos en tu nombre.',
   },
   {
     q: '¿Cuánto tarda formar una LLC o Corporación en Delaware?',
-    a: 'Aproximadamente 15 minutos en nuestro asistente. El procesamiento estándar de Delaware actualmente tarda alrededor de 6 semanas (la División de Corporaciones tiene retrasos). Delaware también ofrece servicio acelerado de 8 días hábiles por una tarifa adicional de $50 — puedes elegir cualquiera de los dos al pagar.',
+    a: 'Aproximadamente 15 minutos en nuestro asistente. El procesamiento estándar de Delaware actualmente tarda alrededor de 6 semanas (la División de Corporaciones tiene retrasos). Delaware también ofrece servicio acelerado de 8 días hábiles por una tarifa adicional de $50 - puedes elegir cualquiera de los dos al pagar.',
   },
   {
     q: '¿Puedo mantener la información de los miembros de mi LLC fuera del Certificate of Formation público?',
-    a: 'Sí — Delaware NO requiere los nombres ni direcciones de los miembros iniciales en el Certificate of Formation. Por defecto mantenemos la información privada y te permitimos optar por divulgarla en el asistente. Muchos fundadores eligen Delaware específicamente por esta privacidad.',
+    a: 'Sí - Delaware NO requiere los nombres ni direcciones de los miembros iniciales en el Certificate of Formation. Por defecto mantenemos la información privada y te permitimos optar por divulgarla en el asistente. Muchos fundadores eligen Delaware específicamente por esta privacidad.',
   },
   {
     q: '¿Cuáles son las tarifas de presentación en Delaware?',
-    a: 'Delaware cobra $110 por un Certificate of Formation de LLC y un mínimo de $109 por un Certificate of Incorporation de Corporación (asumiendo hasta 1,500 acciones autorizadas sin valor nominal). Un mayor número de acciones puede cambiar la tarifa — te avisaremos.',
+    a: 'Delaware cobra $110 por un Certificate of Formation de LLC y un mínimo de $109 por un Certificate of Incorporation de Corporación (asumiendo hasta 1,500 acciones autorizadas sin valor nominal). Un mayor número de acciones puede cambiar la tarifa - te avisaremos.',
   },
   {
     q: '¿Por qué elegir Delaware?',
@@ -362,15 +362,15 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Cuándo se deben pagar los impuestos anuales de Delaware?',
-    a: 'Las LLCs de Delaware no presentan reporte anual — pagan un Annual Tax fijo de $300 con vencimiento el 1 de junio cada año. Las Corporaciones presentan Annual Report y pagan Franchise Tax con vencimiento el 1 de marzo (mínimo $225 para empresas pequeñas).',
+    a: 'Las LLCs de Delaware no presentan reporte anual - pagan un Annual Tax fijo de $300 con vencimiento el 1 de junio cada año. Las Corporaciones presentan Annual Report y pagan Franchise Tax con vencimiento el 1 de marzo (mínimo $225 para empresas pequeñas).',
   },
   {
     q: '¿Tengo que vivir en Delaware?',
-    a: 'No. Delaware no requiere que miembros, gerentes, oficiales o directores vivan en el estado — solo el Agente Registrado debe tener dirección física en Delaware (te damos uno).',
+    a: 'No. Delaware no requiere que miembros, gerentes, oficiales o directores vivan en el estado - solo el Agente Registrado debe tener dirección física en Delaware (te damos uno).',
   },
   {
-    q: '¿Y el EIN — lo necesito?',
-    a: 'Sí — para cuenta bancaria, contratación o impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Con SSN o ITIN podemos hacer la solicitud en línea del IRS en un día hábil. Sin SSN/ITIN no puedes usar la herramienta en línea del IRS — presentamos el Formulario SS-4 por teléfono o fax (toma más tiempo y puede requerir verificación de identidad).',
+    q: '¿Y el EIN - lo necesito?',
+    a: 'Sí - para cuenta bancaria, contratación o impuestos federales. Los planes Bank-Ready y Concierge incluyen la solicitud y presentación del EIN. El IRS emite los EIN de forma gratuita; nuestra tarifa cubre la preparación y presentación. Con SSN o ITIN podemos hacer la solicitud en línea del IRS en un día hábil. Sin SSN/ITIN no puedes usar la herramienta en línea del IRS - presentamos el Formulario SS-4 por teléfono o fax (toma más tiempo y puede requerir verificación de identidad).',
   },
   {
     q: '¿Delaware requiere Operating Agreement o Bylaws?',
@@ -379,19 +379,19 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Delaware?',
-    a: 'Sí — las LLCs y Corporaciones de Delaware están sujetas a la Corporate Transparency Act federal. La mayoría de entidades formadas desde 2025 deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 — visita /boi-reporting.',
+    a: 'Sí - las LLCs y Corporaciones de Delaware están sujetas a la Corporate Transparency Act federal. La mayoría de entidades formadas desde 2025 deben reportar Beneficial Ownership Information a FinCEN dentro de 30 días desde la formación. LaunchForma ofrece presentación gestionada del BOI por $49 - visita /boi-reporting.',
   },
   {
     q: '¿Una empresa o holding puede ser dueño de mi LLC de Delaware?',
     a: 'Sí. Delaware permite que otra entidad (LLC, Corporación, fideicomiso) sea miembro, gerente, organizador o propietario. Dentro del asistente puedes marcar cada propietario como Individual o Empresa / Entidad y proporcionar el nombre legal y el estado de formación. La entidad propietaria se reflejará en el registro correspondiente.',
   },
   {
-    q: 'Formé en Delaware pero planeo operar en otro estado — ¿qué necesito hacer?',
-    a: 'Formar en Delaware no te autoriza a hacer negocios en otro estado. Si tendrás oficina, empleados u operaciones significativas en otro estado, ese estado normalmente exige un trámite de "foreign qualification" (también llamado "Certificate of Authority" o registro como entidad extranjera). Cada estado tiene su propio formulario, tarifa y agente registrado. Estamos lanzando ayuda con foreign qualification como producto separado — marca tu interés en el asistente y te contactaremos.',
+    q: 'Formé en Delaware pero planeo operar en otro estado - ¿qué necesito hacer?',
+    a: 'Formar en Delaware no te autoriza a hacer negocios en otro estado. Si tendrás oficina, empleados u operaciones significativas en otro estado, ese estado normalmente exige un trámite de "foreign qualification" (también llamado "Certificate of Authority" o registro como entidad extranjera). Cada estado tiene su propio formulario, tarifa y agente registrado. Estamos lanzando ayuda con foreign qualification como producto separado - marca tu interés en el asistente y te contactaremos.',
   },
   {
     q: '¿Puede la División de Corporaciones de Delaware rechazar mi nombre?',
-    a: 'Sí. Delaware puede rechazar nombres por razones subjetivas que no podemos pre-aprobar desde fuera de la agencia — por ejemplo nombres que sugieran engaño, problemas de seguridad pública, patrones abusivos o excesiva longitud. Mostraremos un aviso en el asistente recordándote que la aprobación final del nombre la decide la División. Si rechazan tu nombre te ayudamos a elegir uno equivalente.',
+    a: 'Sí. Delaware puede rechazar nombres por razones subjetivas que no podemos pre-aprobar desde fuera de la agencia - por ejemplo nombres que sugieran engaño, problemas de seguridad pública, patrones abusivos o excesiva longitud. Mostraremos un aviso en el asistente recordándote que la aprobación final del nombre la decide la División. Si rechazan tu nombre te ayudamos a elegir uno equivalente.',
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
@@ -408,7 +408,7 @@ function buildComingSoonFaqEn(state: MarketingState): MarketingFaqItem[] {
   return [
     {
       q: `Is LaunchForma available in ${name} yet?`,
-      a: `Not yet. We launched in Florida and we're rolling out new states based on demand. Joining the ${name} early-access list is the fastest way to see it sooner — every signup helps us prioritize.`,
+      a: `Not yet. We launched in Florida and we're rolling out new states based on demand. Joining the ${name} early-access list is the fastest way to see it sooner - every signup helps us prioritize.`,
     },
     {
       q: `When will ${name} formations open?`,
@@ -416,11 +416,11 @@ function buildComingSoonFaqEn(state: MarketingState): MarketingFaqItem[] {
     },
     {
       q: `Can I form a Florida company even if I live in ${name}?`,
-      a: 'Yes. Florida does not require members or managers to live in the state — you only need a Florida registered agent, which we provide free for the first year. A Florida LLC can be a strong choice for asset protection or for owners who already do business there.',
+      a: 'Yes. Florida does not require members or managers to live in the state - you only need a Florida registered agent, which we provide free for the first year. A Florida LLC can be a strong choice for asset protection or for owners who already do business there.',
     },
     {
       q: `Will ${name} pricing match Florida pricing?`,
-      a: `It will be in the same range, but state filing fees vary, so the all-in package price for ${name} may differ. We'll publish the exact ${name} pricing before opening early access — no surprises at checkout.`,
+      a: `It will be in the same range, but state filing fees vary, so the all-in package price for ${name} may differ. We'll publish the exact ${name} pricing before opening early access - no surprises at checkout.`,
     },
     {
       q: 'How do you protect my email?',
@@ -442,11 +442,11 @@ function buildComingSoonFaqEs(state: MarketingState): MarketingFaqItem[] {
     },
     {
       q: `¿Puedo formar una empresa en Florida aunque viva en ${name}?`,
-      a: 'Sí. Florida no exige que los miembros o gerentes residan en el estado — solo necesitas un Agente Registrado en Florida, que nosotros te damos gratis el primer año. Una LLC de Florida puede ser una buena opción si buscas protección de activos o ya operas allí.',
+      a: 'Sí. Florida no exige que los miembros o gerentes residan en el estado - solo necesitas un Agente Registrado en Florida, que nosotros te damos gratis el primer año. Una LLC de Florida puede ser una buena opción si buscas protección de activos o ya operas allí.',
     },
     {
       q: `¿Los precios de ${name} serán iguales a los de Florida?`,
-      a: `Estarán en el mismo rango, pero las tarifas estatales varían, así que el precio todo-incluido para ${name} puede ser distinto. Publicaremos el precio exacto de ${name} antes de abrir el acceso anticipado — sin sorpresas al pagar.`,
+      a: `Estarán en el mismo rango, pero las tarifas estatales varían, así que el precio todo-incluido para ${name} puede ser distinto. Publicaremos el precio exacto de ${name} antes de abrir el acceso anticipado - sin sorpresas al pagar.`,
     },
     {
       q: '¿Cómo protegen mi correo?',

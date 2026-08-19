@@ -2,13 +2,13 @@
 //
 // Customer-facing pricing model: the customer ALWAYS sees a single all-in
 // number per tier, but that number is now state-aware. Each tier carries a
-// {@link TierDef.serviceMarginCents} (LaunchForma's labor charge — the same
+// {@link TierDef.serviceMarginCents} (LaunchForma's labor charge - the same
 // across states) and bundles in the actual government fees for the chosen
 // state and entity type. Wyoming has lower formation fees than Florida, so
 // the customer sees a lower headline price; Delaware has higher certificate
 // fees, so packages that bundle certificates (Standard / Premium) cost more
 // in DE than in FL. EIN, Operating Agreement, domain, and the other federal
-// or service-only items stay flat — they have no state-fee component.
+// or service-only items stay flat - they have no state-fee component.
 //
 // Internally, every transaction still splits into:
 //
@@ -33,7 +33,7 @@ export type EntityType = 'LLC' | 'CORP';
 
 /**
  * State-fee add-ons that a tier bundles in. These drive the per-state
- * package price — Standard and Premium include a Certificate of Status and
+ * package price - Standard and Premium include a Certificate of Status and
  * Certified Copy, both of which cost different amounts in different states.
  */
 const TIER_BUNDLED_STATE_FEE_ADDONS: Record<
@@ -59,7 +59,7 @@ export interface TierDef {
    */
   serviceMarginCents: number;
   /**
-   * @deprecated — use {@link tierPackagePriceCents}. This is the Florida LLC
+   * @deprecated - use {@link tierPackagePriceCents}. This is the Florida LLC
    * reference price, computed at module load time. Kept for callers (DB
    * seeds, snapshot writes) that haven't been state-aware-ified yet.
    */
@@ -97,7 +97,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     slug: 'STANDARD',
     name: 'Popular',
     bestFor: 'Best for opening a bank account',
-    description: 'Everything banks ask for at account opening — handled.',
+    description: 'Everything banks ask for at account opening - handled.',
     // May 2026 repricing (audit-driven).
     // FL LLC reference: $119 service + $125 + $5 + $30 = $279.
     // FL CORP: $119 + $70 + $8.75 + $8.75 = $206.50.
@@ -129,7 +129,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     description: 'Bank-Ready plus year-round compliance, banking, and branding.',
     // May 2026 repricing (audit-driven). $289 + $125 + $5 + $30 = $449 FL LLC.
     serviceMarginCents: 28_900,
-    // Top tier carries a "Premium" badge — the audit moved the "Best Value"
+    // Top tier carries a "Premium" badge - the audit moved the "Best Value"
     // anchor to the middle (STANDARD) tier so the recommended-tier
     // psychology lines up with the margin-maximising package.
     ribbon: 'Premium',
@@ -161,7 +161,7 @@ export function tierPackagePriceCents(
 }
 
 /**
- * Sum of government fees a tier bundles in for a (state, entity) pair —
+ * Sum of government fees a tier bundles in for a (state, entity) pair - 
  * formation filing fee plus any bundled certificate fees. Drives both the
  * customer-facing tier price and the package's government-remittance line.
  */
@@ -204,7 +204,7 @@ export const TIER_BY_SLUG: Record<TierSlug, TierDef> = TIERS.reduce(
   {} as Record<TierSlug, TierDef>,
 );
 
-/** Linking an existing entity is free — revenue comes from annual report renewals. */
+/** Linking an existing entity is free - revenue comes from annual report renewals. */
 export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 
 /**
@@ -222,7 +222,7 @@ export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
 export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
 
 /**
- * Canonical Registered Agent renewal price — the single source of truth for
+ * Canonical Registered Agent renewal price - the single source of truth for
  * what we charge to keep RA service active for another year. Every quote,
  * email, and charge derives from this. The price a customer actually pays is
  * snapshotted onto {@link RegisteredAgentService.renewalPriceCents} at signup
@@ -252,13 +252,13 @@ export interface AddOnDef {
   description: string;
   /**
    * LaunchForma service component (cents). For non-state-fee add-ons (EIN,
-   * Operating Agreement, domain, etc.) this IS the customer price — federal
+   * Operating Agreement, domain, etc.) this IS the customer price - federal
    * services don't depend on state. For state-fee add-ons (cert_status,
    * cert_copy) the customer pays this PLUS the per-state government fee.
    */
   serviceMarginCents: number;
   /**
-   * @deprecated — Florida-LLC reference price. For non-state-fee add-ons
+   * @deprecated - Florida-LLC reference price. For non-state-fee add-ons
    * this equals {@link serviceMarginCents}; for state-fee add-ons it's the
    * historical FL LLC price. Use {@link addOnPriceCents} with state + entity
    * for an accurate quote.
@@ -290,7 +290,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'ein',
     name: 'EIN Application & Filing',
     description:
-      'We prepare and file IRS Form SS-4 for you — federal Tax ID delivered within 1 business day. The IRS issues EINs at no cost; our fee covers the preparation and filing service. Required to open a business bank account.',
+      'We prepare and file IRS Form SS-4 for you - federal Tax ID delivered within 1 business day. The IRS issues EINs at no cost; our fee covers the preparation and filing service. Required to open a business bank account.',
     serviceMarginCents: 7_900,
     category: 'formation',
     iconKey: 'Hash',
@@ -299,7 +299,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'operating_agreement_single',
     name: 'Operating Agreement (Single-Member)',
     description:
-      'State-tailored agreement defining ownership, governance, and succession — required by most banks at account opening.',
+      'State-tailored agreement defining ownership, governance, and succession - required by most banks at account opening.',
     serviceMarginCents: 8_900,
     category: 'formation',
     iconKey: 'FileText',
@@ -349,7 +349,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'annual_report_managed',
     name: 'Managed Annual Report',
     description:
-      'We file your annual report on time — every year. Avoid non-waivable late penalties automatically.',
+      'We file your annual report on time - every year. Avoid non-waivable late penalties automatically.',
     serviceMarginCents: 14_900,
     recurring: 'annually',
     category: 'compliance',
@@ -368,7 +368,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'compliance_alerts',
     name: 'Compliance Alerts Plus',
     description:
-      'Year-round deadline tracking — annual reports, license renewals, BOI reports, sales-tax filings.',
+      'Year-round deadline tracking - annual reports, license renewals, BOI reports, sales-tax filings.',
     serviceMarginCents: 9_900,
     recurring: 'annually',
     category: 'compliance',
@@ -450,7 +450,7 @@ export function addOnPriceCents(
 /**
  * Government remittance for an add-on (the slice of the price we forward
  * to the Secretary of State). Used for cover-letter math and revenue
- * reporting — never shown to customers. Falls back to Florida fees when no
+ * reporting - never shown to customers. Falls back to Florida fees when no
  * state is provided.
  */
 export function addOnGovernmentRemittanceCents(
@@ -507,7 +507,7 @@ export interface CostBreakdownLine {
   detail?: string;
   /** Customer-facing amount on this line. */
   cents: number;
-  /** UI category — packages and add-ons render side-by-side. */
+  /** UI category - packages and add-ons render side-by-side. */
   category: 'package' | 'addon' | 'processing';
   /** Recurring marker for add-ons sold as annual subscriptions. */
   recurring?: 'annually' | 'monthly';
@@ -528,13 +528,13 @@ export interface CostBreakdown {
   addOnsCents: number;
   /** Customer total. */
   totalCents: number;
-  /** Internal — total amount remitted to the state (filing + cert + processing). */
+  /** Internal - total amount remitted to the state (filing + cert + processing). */
   governmentRemittanceCents: number;
-  /** Internal — LaunchForma revenue retained from this filing. */
+  /** Internal - LaunchForma revenue retained from this filing. */
   incServicesRevenueCents: number;
-  /** Internal — package margin only (totalCents minus state pass-through on the package). */
+  /** Internal - package margin only (totalCents minus state pass-through on the package). */
   packageMarginCents: number;
-  /** Internal — net add-on revenue (add-ons total minus their state pass-through). */
+  /** Internal - net add-on revenue (add-ons total minus their state pass-through). */
   addOnsRevenueCents: number;
 
   // ── Legacy aliases (keep callers compiling). ──
@@ -569,7 +569,7 @@ export function computeCost(input: {
   );
   const packageMargin = packageCents - packageRemittance;
 
-  const packageLabel = `${tier.name} — ${stateRule.name} ${input.entityType === 'LLC' ? 'LLC' : 'Corporation'}`;
+  const packageLabel = `${tier.name} - ${stateRule.name} ${input.entityType === 'LLC' ? 'LLC' : 'Corporation'}`;
   lines.push({
     key: `package:${tier.slug}`,
     label: packageLabel,
@@ -603,7 +603,7 @@ export function computeCost(input: {
   }
 
   // Customer-selected processing speed. If the option is the state's default
-  // (typically "standard" / $0) we don't add a line — keeps the breakdown
+  // (typically "standard" / $0) we don't add a line - keeps the breakdown
   // tidy. Non-default options are billed as a pass-through state expedite
   // fee on top of the package.
   const processing = resolveProcessingOption(stateCode, input.processingOptionId);
@@ -614,7 +614,7 @@ export function computeCost(input: {
     processingCents = processing.feeCents;
     processingRemittance = processing.feeCents; // 100% pass-through.
     const provisional = processing.feeIsProvisional
-      ? ' (provisional — confirmed at submission)'
+      ? ' (provisional - confirmed at submission)'
       : '';
     lines.push({
       key: `processing:${processing.id}`,
@@ -668,7 +668,7 @@ function isBundledIntoTier(slug: AddOnSlug, tier: TierSlug): boolean {
   // BOI is bundled into Popular (STANDARD) and Premium per the May 2026
   // repricing. Essential customers can still purchase it a la carte.
   if (slug === 'boi_filing' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
-  // S-Corp election is now included in the Premium tier (audit fix —
+  // S-Corp election is now included in the Premium tier (audit fix - 
   // surfaces it as an explicit perk to justify the price gap).
   if (slug === 's_corp_election' && tier === 'PREMIUM') return true;
   return false;

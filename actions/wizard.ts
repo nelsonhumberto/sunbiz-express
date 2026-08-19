@@ -84,7 +84,7 @@ async function persistManagementType(
 
 async function getFilingForUser(filingId: string) {
   const session = await auth();
-  // Resolve the actor — authenticated NextAuth user OR a GUEST identified by
+  // Resolve the actor - authenticated NextAuth user OR a GUEST identified by
   // the signed cookie. Guests are first-class participants in the wizard.
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
   if (!actor) redirect('/sign-in');
@@ -197,7 +197,7 @@ export async function syncSCorpElectionAddOn(
     where: { filingId, serviceId: svc.id },
   });
 
-  // Premium bundles the election — never bill it as a line item.
+  // Premium bundles the election - never bill it as a line item.
   const shouldHave = elected && tier !== 'PREMIUM';
 
   if (shouldHave && !existing) {
@@ -480,7 +480,7 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
   }
 
   // Corporation rules:
-  //   • A business entity cannot itself be a director/officer of a corp —
+  //   • A business entity cannot itself be a director/officer of a corp - 
   //     directors and officers must be natural persons. (Florida 607.0843
   //     and IRS Form SS-4 guidance.)
   //   • Florida 607.08401 requires the corp to have officers described in
@@ -493,7 +493,7 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
       if (m.ownerType === 'business') {
         return {
           ok: false,
-          error: 'Corporations cannot list a business entity as a director or officer — only individuals.',
+          error: 'Corporations cannot list a business entity as a director or officer - only individuals.',
         };
       }
     }
@@ -552,7 +552,7 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
     for (const m of members) m.ownershipPercentage = undefined;
   }
 
-  // Validate business owners — if ownerType="business" we need a legal name
+  // Validate business owners - if ownerType="business" we need a legal name
   // and jurisdiction. Individual owners just need name + (optional) address.
   for (const m of members) {
     if (m.ownerType === 'business') {
@@ -644,7 +644,7 @@ const ShareholderSchema = z.object({
   zip: z.string().optional(),
   email: z.string().optional(),
   shares: z.number().int().min(0).optional(),
-  /** Tax ID type — only collected when S-corp election is in the package. */
+  /** Tax ID type - only collected when S-corp election is in the package. */
   taxIdType: z.enum(['SSN', 'EIN']).optional(),
   /** Plain-text 9-digit Tax ID (encrypted before persistence). */
   taxId: z.string().optional(),
@@ -682,7 +682,7 @@ const Step9Schema = z.object({
   parValueCents: z.number().int().min(0).optional(),
   /** Corporation share / shareholder allocation. */
   shareStructure: ShareStructureSchema.optional(),
-  /** LLC S-corp member election data (Form 2553) — LLC filings only. */
+  /** LLC S-corp member election data (Form 2553) - LLC filings only. */
   memberTaxInfo: z.array(MemberTaxInfoSchema).optional(),
   professionalPurpose: z.string().optional(),
   businessPurpose: z.string().optional(),
@@ -720,7 +720,7 @@ export async function saveStep9(
     if (!v.valid) return { ok: false, error: v.error };
   }
 
-  // Resolve whether S-corp election applies once — both the corp share table
+  // Resolve whether S-corp election applies once - both the corp share table
   // and the LLC member branch below need it.
   const addOnSlugs = await getFilingAddOnSlugs(filing.id);
   const sCorpElected =
@@ -879,7 +879,7 @@ export async function saveStep9(
       completedSteps: markStepComplete(filing.completedSteps, 8),
     },
   });
-  // Processing option affects pricing — recompute so the customer sees the
+  // Processing option affects pricing - recompute so the customer sees the
   // new total in the cost sidebar before reaching payment.
   await recomputeCost(filing.id);
   return { ok: true };

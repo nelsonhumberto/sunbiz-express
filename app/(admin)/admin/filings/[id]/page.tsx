@@ -117,7 +117,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   );
 
   // Which add-on document slots could exist for this filing (so admin can
-  // upload even if no placeholder row got created — e.g. legacy filings).
+  // upload even if no placeholder row got created - e.g. legacy filings).
   const expectableUploadTypes: ('CERT_STATUS' | 'CERT_COPY' | 'EIN_LETTER')[] = [
     'CERT_STATUS',
     'CERT_COPY',
@@ -132,7 +132,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   const sunbizCover = filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE');
   const sunbizCoverReady = Boolean(sunbizCover?.base64);
 
-  // COVER_LETTER is an internal draft helper — not shown for download here.
+  // COVER_LETTER is an internal draft helper - not shown for download here.
   // SUNBIZ_COVER_PAGE is listed separately as Missing / Available.
   const listDocuments = filing.documents.filter(
     (d) =>
@@ -219,7 +219,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
           </p>
           <p className="text-xs text-ink-subtle">
             {t('submittedShort', {
-              date: filing.submittedAt ? formatDate(filing.submittedAt) : '—',
+              date: filing.submittedAt ? formatDate(filing.submittedAt) : '-',
             })}
           </p>
         </div>
@@ -252,8 +252,8 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <p className="font-semibold">{t('approvedHeadline')}</p>
                 <p className="text-sm text-ink-muted">
                   {t('approvedDetail', {
-                    number: filing.sunbizFilingNumber ?? '—',
-                    date: filing.sunbizApprovedAt ? formatDateLong(filing.sunbizApprovedAt) : '—',
+                    number: filing.sunbizFilingNumber ?? '-',
+                    date: filing.sunbizApprovedAt ? formatDateLong(filing.sunbizApprovedAt) : '-',
                   })}
                 </p>
               </div>
@@ -262,7 +262,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
         </Card>
       )}
 
-      {/* Filing operations panel — chosen processing speed, foreign-state
+      {/* Filing operations panel - chosen processing speed, foreign-state
           interest, etc. Surfaces operational signals to the admin team so
           paper-routed or expedited filings can be queued correctly. */}
       {(() => {
@@ -312,27 +312,27 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
         );
       })()}
 
-      {/* EIN admin queue panel — surfaces sensitive data status without
+      {/* EIN admin queue panel - surfaces sensitive data status without
           ever displaying the encrypted SSN/passport. Admins use the
           adminRevealEinSecret server action to decrypt on demand. */}
       {filing.einApplication && (
         <Card className="border-primary/15">
           <CardContent className="p-6 space-y-2">
             <h3 className="font-semibold text-sm uppercase tracking-wider text-ink-subtle">
-              EIN application — {filing.einApplication.status.replace('_', ' ')}
+              EIN application - {filing.einApplication.status.replace('_', ' ')}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
               <p>
                 <span className="text-ink-subtle">Pathway:</span>{' '}
                 <strong>
                   {filing.einApplication.responsiblePartyType === 'foreign'
-                    ? 'Foreign — manual SS-4 (phone/fax)'
-                    : 'US — IRS online EIN Assistant'}
+                    ? 'Foreign - manual SS-4 (phone/fax)'
+                    : 'US - IRS online EIN Assistant'}
                 </strong>
               </p>
               <p>
                 <span className="text-ink-subtle">Responsible party:</span>{' '}
-                <strong>{filing.einApplication.legalName ?? '—'}</strong>
+                <strong>{filing.einApplication.legalName ?? '-'}</strong>
               </p>
               {filing.einApplication.responsiblePartyType === 'us' ? (
                 <p>
@@ -343,15 +343,15 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <p>
                   <span className="text-ink-subtle">Passport:</span>{' '}
                   <span className="font-mono">
-                    ●●●●{filing.einApplication.passportLast4 ?? '----'} ({filing.einApplication.passportCountry ?? '—'})
+                    ●●●●{filing.einApplication.passportLast4 ?? '----'} ({filing.einApplication.passportCountry ?? '-'})
                   </span>
                 </p>
               )}
               <p>
-                <span className="text-ink-subtle">Email:</span> {filing.einApplication.email ?? '—'}
+                <span className="text-ink-subtle">Email:</span> {filing.einApplication.email ?? '-'}
               </p>
               <p>
-                <span className="text-ink-subtle">Phone:</span> {filing.einApplication.phone ?? '—'}
+                <span className="text-ink-subtle">Phone:</span> {filing.einApplication.phone ?? '-'}
               </p>
               {filing.einApplication.einNumberLast4 && (
                 <p>
@@ -361,7 +361,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               )}
             </div>
             <p className="text-xs text-ink-subtle">
-              Decrypt SSN / passport via the secure admin reveal action — never copy plaintext into notes or email.
+              Decrypt SSN / passport via the secure admin reveal action - never copy plaintext into notes or email.
             </p>
           </CardContent>
         </Card>
@@ -377,7 +377,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 {t('documents')} ({listDocuments.length + 1})
               </h3>
               <ul className="divide-y divide-border -mx-2">
-                {/* Sunbiz cover — Missing until uploaded; then downloadable */}
+                {/* Sunbiz cover - Missing until uploaded; then downloadable */}
                 {sunbizCoverReady && sunbizCover ? (
                   <li>
                     <a
@@ -613,7 +613,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                         <p className="font-medium truncate">{m.name}</p>
                         {m.ownerType === 'business' && (
                           <p className="text-[11px] text-ink-subtle">
-                            Entity owner · {m.businessJurisdiction ?? '—'}
+                            Entity owner · {m.businessJurisdiction ?? '-'}
                             {m.signerName ? ` · by ${m.signerName}` : ''}
                           </p>
                         )}

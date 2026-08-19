@@ -5,7 +5,7 @@ import { UtmBuilder } from './builder';
 // it never appears in search or the sitemap. Share the bare URL with the
 // marketing team: https://launchforma.com/tools/utm-builder
 export const metadata: Metadata = {
-  title: 'UTM Link Builder — Internal',
+  title: 'UTM Link Builder - Internal',
   robots: { index: false, follow: false },
 };
 

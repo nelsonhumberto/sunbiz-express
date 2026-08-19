@@ -7,7 +7,7 @@ import { telnyxPublicKeyConfigured, verifyTelnyxSignature } from '@/lib/telnyx';
 export const dynamic = 'force-dynamic';
 
 /**
- * Telnyx fax webhook — receives inbound faxes and outbound status updates.
+ * Telnyx fax webhook - receives inbound faxes and outbound status updates.
  *
  * Inbound faxes are stored in the FaxMessage tray (media fetched + persisted
  * so it survives Telnyx's time-limited URL). Outbound status events update the
@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
  * a configured key we fail closed so forged faxes can't be injected.
  */
 export async function POST(request: NextRequest) {
-  // Read the raw body once — signature verification needs the exact bytes.
+  // Read the raw body once - signature verification needs the exact bytes.
   const rawBody = await request.text();
 
   const verified = verifyTelnyxSignature({
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
     }
-    // No public key configured — allow webhook but log a warning.
+    // No public key configured - allow webhook but log a warning.
     logger.warn('telnyx fax webhook unverified (set TELNYX_PUBLIC_KEY to enable verification)', {
       area: 'fax',
       tag: 'webhook-verify',

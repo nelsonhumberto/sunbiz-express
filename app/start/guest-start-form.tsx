@@ -97,7 +97,7 @@ export function GuestStartForm({
             {defaultBusinessName && (
               <input type="hidden" name="businessName" value={defaultBusinessName} />
             )}
-            {/* Radix Select is not a native form control — mirror values into hidden inputs. */}
+            {/* Radix Select is not a native form control - mirror values into hidden inputs. */}
             <input type="hidden" name="entityType" value={entity} />
             <input type="hidden" name="state" value={filingState} />
             {state.error && (

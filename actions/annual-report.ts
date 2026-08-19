@@ -56,7 +56,7 @@ const SubmitSchema = z.object({
   paymentIntentId: z.string().min(1),
 });
 
-// Guest schema — no auth required
+// Guest schema - no auth required
 const GuestSubmitSchema = SubmitSchema.omit({ filingId: true, annualReportId: true }).extend({
   documentNumber: z.string().min(1),
   guestEmail: z.string().email(),
@@ -65,7 +65,7 @@ const GuestSubmitSchema = SubmitSchema.omit({ filingId: true, annualReportId: tr
   reportYear: z.number().int(),
 });
 
-/** Resolve the real DB user record — tries by id first, then falls back to email. */
+/** Resolve the real DB user record - tries by id first, then falls back to email. */
 async function resolveUserId(
   sessionId: string,
   sessionEmail: string | null | undefined,
@@ -89,7 +89,7 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
 
   const userId = await resolveUserId(session.user.id, session.user.email);
   if (!userId) {
-    return { ok: false as const, error: 'Account not found — please sign out and back in.' };
+    return { ok: false as const, error: 'Account not found - please sign out and back in.' };
   }
 
   const filing = await prisma.filing.findUnique({
@@ -261,7 +261,7 @@ export interface EntitySearchHit {
 
 /**
  * Search Florida active entities by company name.
- * Returns up to 10 ACTIVE results — used by the guest annual report form
+ * Returns up to 10 ACTIVE results - used by the guest annual report form
  * so visitors who don't know their document number can find their company.
  */
 export async function searchEntitiesByName(
@@ -316,7 +316,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // The guest annual report flow is FL-only (Sunbiz lookup) — non-FL guests
+  // The guest annual report flow is FL-only (Sunbiz lookup) - non-FL guests
   // can't reach this code path because there is no equivalent state lookup.
   // Use the FL formation registry entry so the math always matches the
   // authenticated path.
@@ -335,7 +335,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   try {
     // Find or create a guest user account by email. SECURITY: if the email
     // already belongs to a real (non-guest) account, we must NOT attach a paid,
-    // APPROVED filing to it from an unauthenticated request — that would let an
+    // APPROVED filing to it from an unauthenticated request - that would let an
     // attacker plant records in a victim's dashboard. Require sign-in instead.
     const session = await auth();
     let user = await prisma.user.findUnique({ where: { email } });

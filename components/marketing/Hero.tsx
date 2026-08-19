@@ -71,7 +71,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
           <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
             {state.code === 'FL'
               ? t('subhead')
-              : `We prepare and file your LLC or Corporation with the State of ${state.name} on your behalf — without the upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
+              : `We prepare and file your LLC or Corporation with the State of ${state.name} on your behalf - without the upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -106,7 +106,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             </span>
           </div>
 
-          {/* Multi-state callout — replaces the old geo-redirect.
+          {/* Multi-state callout - replaces the old geo-redirect.
               Lets non-FL visitors immediately discover WY/DE without
               hunting through the state switcher. */}
           <p className="mt-5 text-xs text-ink-subtle">

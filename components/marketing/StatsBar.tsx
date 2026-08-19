@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 export function StatsBar() {
   const t = useTranslations('stats');
 
-  // Only claims we can actually stand behind — no unverifiable review counts or
+  // Only claims we can actually stand behind - no unverifiable review counts or
   // star ratings (those need third-party proof before we display them).
   const STATS = [
     { number: 'Same day', label: t('stateApproval') },

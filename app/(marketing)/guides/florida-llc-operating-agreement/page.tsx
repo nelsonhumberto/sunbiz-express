@@ -6,12 +6,12 @@ const PUBLISHED = '2026-05-27';
 export const metadata: Metadata = {
   title: 'Florida LLC Operating Agreement: What It Is & Why You Need One',
   description:
-    'A clear, no-fluff explainer of the Florida LLC Operating Agreement — what banks actually look for, the clauses that matter, and the difference between single-member and multi-member versions.',
+    'A clear, no-fluff explainer of the Florida LLC Operating Agreement - what banks actually look for, the clauses that matter, and the difference between single-member and multi-member versions.',
   alternates: { canonical: '/guides/florida-llc-operating-agreement' },
   openGraph: {
-    title: 'Florida LLC Operating Agreement — What It Is & Why You Need One',
+    title: 'Florida LLC Operating Agreement - What It Is & Why You Need One',
     description:
-      'Florida does not require an Operating Agreement on file — but every bank and every lender expects one. Here is what to include.',
+      'Florida does not require an Operating Agreement on file - but every bank and every lender expects one. Here is what to include.',
     type: 'article',
     publishedTime: PUBLISHED,
   },
@@ -28,7 +28,7 @@ export default function FloridaOperatingAgreementGuide() {
       cta={{
         headline: 'Need an Operating Agreement?',
         subhead:
-          "Our Popular tier includes a custom Florida-tailored Operating Agreement — single- or multi-member — formatted for what banks actually look for.",
+          "Our Popular tier includes a custom Florida-tailored Operating Agreement - single- or multi-member - formatted for what banks actually look for.",
         href: '/pricing',
         label: 'See pricing',
       }}
@@ -45,14 +45,14 @@ export default function FloridaOperatingAgreementGuide() {
         Florida Statutes Chapter 605 (the Florida Revised Limited Liability
         Company Act) describes a default set of rules that apply if you don&apos;t
         have an Operating Agreement. Those defaults are rarely what you
-        actually want — they assume equal management, equal profit allocation,
+        actually want - they assume equal management, equal profit allocation,
         and unanimous consent for most actions. Your Operating Agreement
         overrides those defaults.
       </p>
 
       <h2>Is one required in Florida?</h2>
       <p>
-        <strong>No — and yes.</strong> Florida law does not require you to file
+        <strong>No - and yes.</strong> Florida law does not require you to file
         an Operating Agreement with the Department of State. The Articles of
         Organization you file at formation are public; the Operating Agreement
         is private and lives in your internal records.
@@ -71,8 +71,8 @@ export default function FloridaOperatingAgreementGuide() {
 
       <h2>Single-member vs multi-member</h2>
       <p>
-        Single-member LLCs need a leaner Operating Agreement — typically
-        4&ndash;8 pages — covering ownership, sole-member authority,
+        Single-member LLCs need a leaner Operating Agreement - typically
+        4&ndash;8 pages - covering ownership, sole-member authority,
         succession, and tax election. Multi-member LLCs need a richer
         document: profit allocation, capital calls, voting thresholds, member
         transfer restrictions, drag-along / tag-along rights for buyouts, and
@@ -184,7 +184,7 @@ export default function FloridaOperatingAgreementGuide() {
       <h2>How LaunchForma handles it</h2>
       <p>
         Our Popular and Premium packages include a custom
-        Florida-tailored Operating Agreement — single- or multi-member,
+        Florida-tailored Operating Agreement - single- or multi-member,
         depending on the owners you list in the wizard. We pre-fill ownership
         percentages, capital contributions, management structure, and
         signature blocks, and we format it the way Florida banks (BB&amp;T /

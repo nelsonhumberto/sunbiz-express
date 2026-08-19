@@ -7,22 +7,22 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 // Recovery + retention scheduler.
 //
 // Run on a daily cron (Vercel Cron, GitHub Actions, etc). The route is
-// idempotent — it inspects the EmailNotification table to make sure the same
+// idempotent - it inspects the EmailNotification table to make sure the same
 // (filing, type) combination is never sent twice. That keeps the implementation
 // safe to retry and easy to test by curling locally.
 //
 // What it sends:
 //
-//   1. Abandoned-draft recovery — 24h, 72h, and 7d after the last update on a
+//   1. Abandoned-draft recovery - 24h, 72h, and 7d after the last update on a
 //      DRAFT filing. We pick the strongest single message in each window so a
 //      customer who's been gone 5 days only gets the 24h reminder once, then
 //      the 72h "name not reserved" nudge, then the 7d "need help?" message.
-//   2. Registered-agent renewal — 60 / 30 / 7 days before the active RA's
+//   2. Registered-agent renewal - 60 / 30 / 7 days before the active RA's
 //      renewalDate. The first-year service is included with every package, so
 //      the renewal cascade introduces the paid renewal upsell at the moment
 //      it's most relevant.
 //
-// Annual report reminders are handled separately — those rely on the
+// Annual report reminders are handled separately - those rely on the
 // AnnualReport table and are emitted from the existing compliance flow.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';

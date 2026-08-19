@@ -299,7 +299,7 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
           value: fullName,
           note: isLlc
             ? undefined
-            : 'A corporation also needs President, Treasurer, and Secretary — guide them to the people step to finish.',
+            : 'A corporation also needs President, Treasurer, and Secretary - guide them to the people step to finish.',
         };
       },
     }),

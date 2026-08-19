@@ -237,7 +237,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
 
 /**
  * Inline "not sure which to pick?" guidance. The May 2026 SEO/UX audit
- * flagged that LaunchForma had no in-flow decision support — competitors
+ * flagged that LaunchForma had no in-flow decision support - competitors
  * (ZenBusiness, Northwest) embed a comparison card here. This collapsible
  * card surfaces the most common reasons to pick one entity over the
  * other without forcing the visitor to bounce out to a guide page.

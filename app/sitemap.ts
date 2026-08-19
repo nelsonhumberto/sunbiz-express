@@ -16,7 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/states`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/boi-reporting`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/guides`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    // Cornerstone SEO guide pages — built in the May 2026 audit fix.
+    // Cornerstone SEO guide pages - built in the May 2026 audit fix.
     {
       url: `${BASE_URL}/guides/wyoming-llc-vs-delaware-corp`,
       lastModified: now,
@@ -35,7 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
-    // Legal pages — indexable, important for E-E-A-T signals.
+    // Legal pages - indexable, important for E-E-A-T signals.
     { url: `${BASE_URL}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },

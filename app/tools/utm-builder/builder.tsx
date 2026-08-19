@@ -38,21 +38,21 @@ const CHANNELS: Record<string, ChannelPreset> = {
     source: 'instagram',
     medium: 'paid-social',
     dynamic: 'utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}',
-    note: 'Same Ads Manager as Facebook — only utm_source differs (split by placement or duplicate the campaign).',
+    note: 'Same Ads Manager as Facebook - only utm_source differs (split by placement or duplicate the campaign).',
   },
   tiktok: {
     label: 'TikTok',
     source: 'tiktok',
     medium: 'paid-social',
     dynamic: 'utm_campaign=__CAMPAIGN_NAME__&utm_content=__AID_NAME__',
-    note: 'TikTok supports macro tokens in the tracking URL — check current macro names in Ads Manager.',
+    note: 'TikTok supports macro tokens in the tracking URL - check current macro names in Ads Manager.',
   },
   youtube: {
     label: 'YouTube',
     source: 'youtube',
     medium: 'video',
     dynamic: 'utm_content={creative}',
-    note: 'Managed through Google Ads — set via Final URL suffix like Search.',
+    note: 'Managed through Google Ads - set via Final URL suffix like Search.',
   },
   email: {
     label: 'Email',
@@ -71,10 +71,10 @@ const CHANNELS: Record<string, ChannelPreset> = {
 };
 
 const LANDING_PAGES = [
-  { value: '/start', label: '/start — straight into guest intake (recommended for paid)' },
-  { value: '/offer', label: '/offer — pitch + packages landing' },
-  { value: '/', label: '/ — homepage' },
-  { value: '/pricing', label: '/pricing — package comparison' },
+  { value: '/start', label: '/start - straight into guest intake (recommended for paid)' },
+  { value: '/offer', label: '/offer - pitch + packages landing' },
+  { value: '/', label: '/ - homepage' },
+  { value: '/pricing', label: '/pricing - package comparison' },
 ];
 
 const STATES = [
@@ -205,7 +205,7 @@ export function UtmBuilder() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      /* clipboard blocked — user can select the text */
+      /* clipboard blocked - user can select the text */
     }
   };
 

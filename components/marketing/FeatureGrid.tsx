@@ -42,7 +42,7 @@ function featureCopyFor(state: MarketingState) {
   // differs and is surfaced via state-specific marketing timing.
   const filed1DayBody = `We submit to the ${agency} the same day you complete checkout. ${rule.marketingTiming.badgeFallback}.`;
 
-  // Name pre-check varies by state — only FL has the live Sunbiz API.
+  // Name pre-check varies by state - only FL has the live Sunbiz API.
   const liveCheckBody =
     state.code === 'FL'
       ? "Real-time check against the Sunbiz database. We tell you if it's distinguishable on the record before you commit."
@@ -52,7 +52,7 @@ function featureCopyFor(state: MarketingState) {
           ? 'We surface Delaware Division of Corporations naming conventions, restricted-word reviews, and known subjective-rejection patterns so you do not get bounced at filing.'
           : `We check the ${stateName} business registry before you commit so you do not get bounced at filing.`;
 
-  const freeRABody = `We maintain a ${stateName} physical address for service of process — keeping your home address private and your entity in good standing.`;
+  const freeRABody = `We maintain a ${stateName} physical address for service of process - keeping your home address private and your entity in good standing.`;
 
   // Annual-report copy needs to reference the right deadline & penalty
   // (or absence of one). The audit explicitly flagged that WY/DE pages
@@ -61,12 +61,12 @@ function featureCopyFor(state: MarketingState) {
     state.code === 'FL'
       ? "Annual report reminders before the May 1 deadline. Optional managed filing means you'll never pay the $400 late fee."
       : state.code === 'WY'
-        ? "Wyoming annual reports are due on the first of your anniversary month each year ($60 minimum License Tax). We remind you well in advance — and we can file for you."
+        ? "Wyoming annual reports are due on the first of your anniversary month each year ($60 minimum License Tax). We remind you well in advance - and we can file for you."
         : state.code === 'DE'
-          ? "Delaware LLCs pay a $300 Annual Tax by June 1; Corporations file Annual Report + Franchise Tax by March 1. Miss them and the state charges $200 + 1.5%/month. We remind you — and can file for you."
-          : `Annual compliance reminders well before the ${stateName} deadline — and optional managed filing so you never pay a late penalty.`;
+          ? "Delaware LLCs pay a $300 Annual Tax by June 1; Corporations file Annual Report + Franchise Tax by March 1. Miss them and the state charges $200 + 1.5%/month. We remind you - and can file for you."
+          : `Annual compliance reminders well before the ${stateName} deadline - and optional managed filing so you never pay a late penalty.`;
 
-  const transparentBody = `One clear price per package — ${stateName} filing fee already included. No hidden subscriptions. No surprise checkout fees.`;
+  const transparentBody = `One clear price per package - ${stateName} filing fee already included. No hidden subscriptions. No surprise checkout fees.`;
 
   return {
     filed1DayBody,
@@ -82,7 +82,7 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   const copy = featureCopyFor(state);
 
   // The headline title for "filed in 1 day" only matches Florida's actual
-  // turnaround. WY and DE state queues are weeks long — surface that
+  // turnaround. WY and DE state queues are weeks long - surface that
   // honestly instead of overclaiming.
   const filed1DayTitle =
     state.code === 'FL'
@@ -101,7 +101,7 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   const subhead =
     state.code === 'FL'
       ? t('subhead')
-      : `Everything you need to form, fund, and run a ${state.name} business — without the legal-tech overwhelm.`;
+      : `Everything you need to form, fund, and run a ${state.name} business - without the legal-tech overwhelm.`;
 
   return (
     <section

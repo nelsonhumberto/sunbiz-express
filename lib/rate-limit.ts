@@ -6,8 +6,8 @@ import { headers } from 'next/headers';
  * Lightweight fixed-window rate limiter.
  *
  * Best-effort, in-memory (per serverless instance). It is NOT a distributed
- * limiter — under heavy horizontal scale a determined attacker could get a few
- * extra attempts per instance — but it raises the cost of credential stuffing,
+ * limiter - under heavy horizontal scale a determined attacker could get a few
+ * extra attempts per instance - but it raises the cost of credential stuffing,
  * coupon brute-force, name-check scraping, and email bombing from "free" to
  * "annoying", with zero infra. Swap the store for Upstash/Redis later if
  * stricter guarantees are needed (the public API stays the same).

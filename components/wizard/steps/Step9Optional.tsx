@@ -50,7 +50,7 @@ interface ShareholderUi {
   zip?: string;
   email?: string;
   shares: number;
-  /** S-corp election fields — collected only when election is in package. */
+  /** S-corp election fields - collected only when election is in package. */
   taxIdType?: 'SSN' | 'EIN';
   /** Plaintext during the wizard session; encrypted server-side. */
   taxId?: string;
@@ -132,7 +132,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const [authorizedShares, setAuthorizedShares] = useState<number | ''>(
     stored?.authorizedShares ?? (isCorp ? 1500 : '')
   );
-  // Default par value to $0.01 per share — the conventional low par value most
+  // Default par value to $0.01 per share - the conventional low par value most
   // small corporations use (and what Delaware franchise-tax math expects).
   const [parValueCents, setParValueCents] = useState<number | ''>(stored?.parValueCents ?? 1);
   const [issuedShares, setIssuedShares] = useState<number | ''>(
@@ -150,7 +150,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         email: s.email ?? '',
         shares: s.shares ?? 0,
         taxIdType: (s.taxIdType as 'SSN' | 'EIN') ?? 'SSN',
-        // We never load encrypted Tax IDs back into the form — only the
+        // We never load encrypted Tax IDs back into the form - only the
         // last-4 mask is shown so the customer can confirm what's on file.
         taxId: '',
         taxYearEnd: s.taxYearEnd ?? '12/31',
@@ -214,7 +214,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const [electronicServiceConsent, setElectronicServiceConsent] = useState(
     stored?.electronicServiceConsent ?? false,
   );
-  // Processing speed selection — defaults to the state's default option
+  // Processing speed selection - defaults to the state's default option
   // (typically "standard" / no extra fee). Only renders if the state offers
   // more than one option.
   const defaultOption = useMemo(() => defaultProcessingOption(stateRule), [stateRule]);
@@ -446,7 +446,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                 <>
                   <br />
                   <strong>Tip:</strong> If forming Oct 1 – Dec 31, set the effective date to January 1
-                  of next year — you'll skip a full year of annual reports.
+                  of next year - you'll skip a full year of annual reports.
                 </>
               )}
             </p>
@@ -743,7 +743,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                         />
                       </div>
 
-                      {/* S-corp election fields — only when election is in the package. */}
+                      {/* S-corp election fields - only when election is in the package. */}
                       {sCorpElected && (
                         <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3">
                           <div className="flex items-start gap-2">
@@ -827,7 +827,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           </div>
         )}
 
-        {/* LLC electing S-corp — collect each member's Form 2553 data. Corps
+        {/* LLC electing S-corp - collect each member's Form 2553 data. Corps
             handle this inline in the share table above; LLCs have members
             rather than a share allocation, so we key it to the member list. */}
         {llcSCorpActive && (
@@ -973,7 +973,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
 
       {/*
         Processing speed selector. Hidden when the state only offers a single
-        speed (e.g. Florida same-day default) — no need to make customers
+        speed (e.g. Florida same-day default) - no need to make customers
         click through a single-choice form.
       */}
       {stateRule.processingOptions.length > 1 && (
@@ -983,7 +983,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
             <div>
               <p className="font-semibold text-ink">{stateRule.name} processing speed</p>
               <p className="text-xs text-ink-muted mt-0.5">
-                State expedite fees are forwarded to {stateRule.name} — we do not mark them up.
+                State expedite fees are forwarded to {stateRule.name} - we do not mark them up.
               </p>
             </div>
           </div>
@@ -1019,7 +1019,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           </div>
           {stateRule.processingOptions.some((o) => o.feeIsProvisional && o.feeCents > 0) && (
             <p className="text-[11px] text-ink-subtle italic">
-              * Provisional state fee — confirmed at submission. We will reach out before charging
+              * Provisional state fee - confirmed at submission. We will reach out before charging
               if the actual amount differs.
             </p>
           )}
@@ -1028,7 +1028,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
 
       {/*
         Foreign-registration interest capture. Forming in WY/DE doesn't grant
-        the right to operate in another state — that requires a separate
+        the right to operate in another state - that requires a separate
         "foreign qualification" filing with the operating state. We gather
         interest now and follow up post-formation once the dedicated product
         is live.

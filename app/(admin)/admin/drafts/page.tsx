@@ -55,7 +55,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
             Drafts &amp; abandoned filings
           </h1>
           <p className="mt-1 text-ink-muted">
-            Every customer who started a filing — including those who removed
+            Every customer who started a filing - including those who removed
             it from their own dashboard. Used for retention outreach and
             funnel analysis.
           </p>
@@ -82,8 +82,8 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
           label="Top drop-off step"
           value={
             topStuckSteps[0]
-              ? `${displayStepNumber(topStuckSteps[0][0]) ?? '—'} · ${topStuckSteps[0][1]} draft${topStuckSteps[0][1] === 1 ? '' : 's'}`
-              : '—'
+              ? `${displayStepNumber(topStuckSteps[0][0]) ?? '-'} · ${topStuckSteps[0][1]} draft${topStuckSteps[0][1] === 1 ? '' : 's'}`
+              : '-'
           }
         />
       </div>

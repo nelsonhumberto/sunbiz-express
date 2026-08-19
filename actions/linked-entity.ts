@@ -102,7 +102,7 @@ function formationDate(d: FloridaEntityDetail): Date {
   return Number.isNaN(dt.getTime()) ? new Date() : dt;
 }
 
-/** Resolve the real DB user record — tries by id first, then falls back to email. */
+/** Resolve the real DB user record - tries by id first, then falls back to email. */
 async function resolveUser(
   sessionId: string,
   sessionEmail: string | null | undefined,
@@ -185,7 +185,7 @@ export async function confirmLinkedEntity(input: z.infer<typeof ConfirmSchema>) 
   const entityType = inferEntityType(detail);
   const user = await resolveUser(session.user.id, session.user.email);
   if (!user) {
-    return { ok: false as const, error: 'Account not found — please sign out and back in.' };
+    return { ok: false as const, error: 'Account not found - please sign out and back in.' };
   }
 
   const principal = principalJson(detail);
@@ -291,7 +291,7 @@ export async function manualConfirmLinkedEntity(input: z.infer<typeof ManualConf
   const docNorm = normalizeFloridaDocumentNumber(data.documentNumber);
   const user = await resolveUser(session.user.id, session.user.email);
   if (!user) {
-    return { ok: false as const, error: 'Account not found — please sign out and back in.' };
+    return { ok: false as const, error: 'Account not found - please sign out and back in.' };
   }
 
   const nextAr = computeNextAnnualReport(new Date());

@@ -8,12 +8,12 @@ import { CheckCircle2, X } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'File Your Florida Annual Report | LaunchForma',
   description:
-    'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee — cheaper than LegalZoom or FilingServices.com.',
+    'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee - cheaper than LegalZoom or FilingServices.com.',
   alternates: { canonical: '/file-annual-report' },
   openGraph: {
     title: 'File Your Florida Annual Report | LaunchForma',
     description:
-      'Avoid the $400 non-waivable late penalty. We file directly with the Florida Division of Corporations — no account required.',
+      'Avoid the $400 non-waivable late penalty. We file directly with the Florida Division of Corporations - no account required.',
     type: 'website',
   },
 };
@@ -59,7 +59,7 @@ export default function FileAnnualReportPage() {
         </h1>
         <p className="text-lg text-ink-muted max-w-xl mx-auto">
           Avoid the <strong>$400 non-waivable late penalty</strong>. We file directly with the
-          Florida Division of Corporations — no account required.
+          Florida Division of Corporations - no account required.
         </p>
         <div className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-full text-sm font-semibold">
           LLC: {formatCurrency(LLC_TOTAL)} all-in &nbsp;·&nbsp; Corp: {formatCurrency(CORP_TOTAL)} all-in

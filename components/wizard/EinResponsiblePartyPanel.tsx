@@ -56,7 +56,7 @@ const TAXID_FORMAT_HINT: Record<TaxIdType, string> = {
 
 /**
  * Format a 9-digit string into the display layout for the chosen tax id
- * kind. The underlying state is always plain digits — formatting is
+ * kind. The underlying state is always plain digits - formatting is
  * applied only for display so we can re-render correctly when the user
  * switches type.
  */

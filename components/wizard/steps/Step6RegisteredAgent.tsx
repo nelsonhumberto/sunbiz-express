@@ -87,7 +87,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
     ? internalConsent
     : externalValid && externalSignature.trim().length >= 2;
 
-  // Click handler for the secondary "own agent" panel — open confirmation
+  // Click handler for the secondary "own agent" panel - open confirmation
   // dialog first time, then allow toggle once hardships are acknowledged.
   const onClickOwnAgent = () => {
     if (!hardshipsAccepted) {
@@ -148,7 +148,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-6">
-      {/* Toggle — primary big card vs smaller secondary */}
+      {/* Toggle - primary big card vs smaller secondary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Primary, recommended option (2/3 width on desktop) */}
         <button
@@ -204,7 +204,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             </div>
           </div>
           <p className="mt-2 text-[11px] text-ink-subtle italic">
-            Most owners don&apos;t — review the responsibilities first.
+            Most owners don&apos;t - review the responsibilities first.
           </p>
         </button>
       </div>

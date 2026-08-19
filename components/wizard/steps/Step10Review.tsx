@@ -118,7 +118,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       ? t('managerManaged')
       : opt?.managementType === 'member-managed'
         ? t('memberManaged')
-        : '—';
+        : '-';
 
   return (
     <div className="space-y-5">
@@ -142,7 +142,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
               : `${stateRule.name} Corporation`
           }
         />
-        <Row label={t('businessNameLabel')} value={filing.businessName ?? '—'} mono />
+        <Row label={t('businessNameLabel')} value={filing.businessName ?? '-'} mono />
         <Row label={t('serviceTier')} value={filing.serviceTier} />
         {filing.taxElection === 'S_CORP' && (
           <Row label={t('taxElectionLabel')} value={t('taxElectionSCorp')} />
@@ -162,7 +162,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
           label={t('providerLabel')}
           value={ra?.useOurService ? t('providerInternal') : t('providerExternal')}
         />
-        <Row label={t('nameLabel')} value={ra?.name ?? '—'} />
+        <Row label={t('nameLabel')} value={ra?.name ?? '-'} />
         <Row label={t('addressLabel')} value={fmtAddr(ra ?? null)} />
       </ReviewSection>
 
@@ -195,7 +195,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       </ReviewSection>
 
       <ReviewSection title={t('correspondenceEmail')} stepHref={null} editLabel={tCommon('edit')}>
-        <Row label={t('emailAccountLabel')} value={correspondence?.email ?? '—'} mono />
+        <Row label={t('emailAccountLabel')} value={correspondence?.email ?? '-'} mono />
         <p className="text-xs text-ink-muted">
           {t.rich('accountSettingsBlurb', {
             link: (chunks) => (
@@ -365,7 +365,7 @@ function fmtAddr(
     | null
     | undefined,
 ) {
-  if (!a || !a.street1) return '—';
+  if (!a || !a.street1) return '-';
   const lines = [a.street1, a.street2, `${a.city ?? ''}, ${a.state ?? ''} ${a.zip ?? ''}`.trim()]
     .filter(Boolean)
     .join(', ');

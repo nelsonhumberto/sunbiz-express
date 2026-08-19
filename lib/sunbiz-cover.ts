@@ -122,7 +122,7 @@ function partBytes(part: MhtmlPart): Buffer | null {
       return null;
     }
   }
-  // Any image/* content type — try base64 decode regardless of encoding header
+  // Any image/* content type - try base64 decode regardless of encoding header
   if (part.contentType.toLowerCase().includes('image/')) {
     try {
       const buf = Buffer.from(stripped, 'base64');
@@ -265,7 +265,7 @@ export function extractHtmlFromUpload(raw: string, filename: string): {
   return { html: raw };
 }
 
-/** Light cleanup — keep layout/CSS/images; strip secrets + extension widgets. */
+/** Light cleanup - keep layout/CSS/images; strip secrets + extension widgets. */
 export function sanitizeSunbizCoverHtml(html: string): string {
   let out = html;
   out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
@@ -317,7 +317,7 @@ export function embedBarcodeInHtml(html: string, barcodeJpeg?: Buffer): string {
       replaced = true;
     }
   }
-  // Pattern 5: any img with a broken/relative src (non-http, non-data) — likely the barcode
+  // Pattern 5: any img with a broken/relative src (non-http, non-data) - likely the barcode
   if (!replaced) {
     const p5 = /(<img[^>]+src=["'])(?!data:|https?:\/\/)[^"']+(["'][^>]*>)/i;
     if (p5.test(result)) {
@@ -561,7 +561,7 @@ export async function sunbizCoverHtmlToPdf(
       if (isPngBuffer(barcode)) {
         img = await pdf.embedPng(barcode);
       } else if (isGifBuffer(barcode)) {
-        // pdf-lib doesn't support GIF natively — convert GIF header check only
+        // pdf-lib doesn't support GIF natively - convert GIF header check only
         // Try as PNG first (some servers mislabel), fall back to JPG
         try { img = await pdf.embedPng(barcode); } catch { img = await pdf.embedJpg(barcode); }
       } else {

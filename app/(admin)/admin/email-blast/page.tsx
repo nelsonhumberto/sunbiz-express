@@ -11,15 +11,15 @@ import type { NotificationType } from '@/lib/email';
 
 const EMAIL_TYPES: { value: NotificationType; label: string; desc: string }[] = [
   { value: 'WELCOME',             label: 'Welcome',              desc: 'Sent on sign-up' },
-  { value: 'ABANDONED_24H',       label: 'Abandoned — 24h',      desc: 'Draft not completed after 24h' },
-  { value: 'ABANDONED_72H',       label: 'Abandoned — 72h',      desc: 'Name reservation urgency' },
-  { value: 'ABANDONED_7D',        label: 'Abandoned — 7 days',   desc: 'Offer to help manually' },
-  { value: 'RA_RENEWAL_60',       label: 'RA Renewal — 60d',     desc: 'Registered agent approaching renewal' },
-  { value: 'RA_RENEWAL_30',       label: 'RA Renewal — 30d',     desc: 'Registered agent renewal reminder' },
-  { value: 'RA_RENEWAL_7',        label: 'RA Renewal — 7d',      desc: 'Final registered agent notice' },
-  { value: 'ANNUAL_REPORT_60',    label: 'Annual Report — 60d',  desc: 'Annual report due in 60 days' },
-  { value: 'ANNUAL_REPORT_30',    label: 'Annual Report — 30d',  desc: 'Annual report due in 30 days' },
-  { value: 'ANNUAL_REPORT_FINAL', label: 'Annual Report — Final', desc: 'Last warning before late fee' },
+  { value: 'ABANDONED_24H',       label: 'Abandoned - 24h',      desc: 'Draft not completed after 24h' },
+  { value: 'ABANDONED_72H',       label: 'Abandoned - 72h',      desc: 'Name reservation urgency' },
+  { value: 'ABANDONED_7D',        label: 'Abandoned - 7 days',   desc: 'Offer to help manually' },
+  { value: 'RA_RENEWAL_60',       label: 'RA Renewal - 60d',     desc: 'Registered agent approaching renewal' },
+  { value: 'RA_RENEWAL_30',       label: 'RA Renewal - 30d',     desc: 'Registered agent renewal reminder' },
+  { value: 'RA_RENEWAL_7',        label: 'RA Renewal - 7d',      desc: 'Final registered agent notice' },
+  { value: 'ANNUAL_REPORT_60',    label: 'Annual Report - 60d',  desc: 'Annual report due in 60 days' },
+  { value: 'ANNUAL_REPORT_30',    label: 'Annual Report - 30d',  desc: 'Annual report due in 30 days' },
+  { value: 'ANNUAL_REPORT_FINAL', label: 'Annual Report - Final', desc: 'Last warning before late fee' },
   { value: 'COMPLIANCE_ALERT',    label: 'Compliance Alert',     desc: 'Generic compliance notice' },
 ];
 
@@ -197,7 +197,7 @@ function TemplateBlast() {
         <CardContent className="p-0">
           <div className="border-b border-border px-4 py-3 flex items-center gap-2">
             <Eye className="h-4 w-4 text-ink-muted" />
-            <span className="text-sm font-medium">Preview — {selected?.label}</span>
+            <span className="text-sm font-medium">Preview - {selected?.label}</span>
           </div>
           <div className="bg-muted/20 min-h-[500px] flex items-start justify-center p-4">
             {previewLoading ? (
@@ -292,7 +292,7 @@ function CustomEmail() {
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
                 required
-                placeholder="Write your message here. Plain text — line breaks are preserved."
+                placeholder="Write your message here. Plain text - line breaks are preserved."
                 className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
               />
               <p className="text-xs text-ink-muted">Plain text. Line breaks are preserved. No HTML needed.</p>

@@ -114,8 +114,6 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           </Link>
           .
         </p>
-
-        <GovDisclosure text={tDisc('notAffiliatedShort')} className="mt-4 max-w-md" />
       </main>
 
       <footer className="container py-6 text-center">

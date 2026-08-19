@@ -119,10 +119,10 @@ const DISTINGUISH_SUFFIX_TOKENS: readonly string[][] = [
   ['PA'],
 ];
 
-// Articles (definite/indefinite) — not distinguishing per the FL FAQ.
+// Articles (definite/indefinite) - not distinguishing per the FL FAQ.
 const NON_DISTINGUISHING_ARTICLES = new Set(['THE', 'A', 'AN']);
 
-// "and" / "&" treated as non-distinguishing — we drop the connector entirely.
+// "and" / "&" treated as non-distinguishing - we drop the connector entirely.
 const NON_DISTINGUISHING_CONNECTORS = new Set(['AND']);
 
 export function normalizeBusinessName(name: string): string {
@@ -303,7 +303,7 @@ export function normalizeDistinguishableName(name: string): string {
     }
   }
 
-  // Drop articles and connectors (anywhere — leading "THE", trailing "AND" left
+  // Drop articles and connectors (anywhere - leading "THE", trailing "AND" left
   // over from "Cheese AND" after dropping the right-hand suffix, etc.).
   tokens = tokens.filter(
     (t) => !NON_DISTINGUISHING_ARTICLES.has(t) && !NON_DISTINGUISHING_CONNECTORS.has(t),
@@ -407,7 +407,7 @@ export function validateRegisteredAgentAddress(addr: AddressInput): {
   if (isPoBox(addr.street1) || (addr.street2 && isPoBox(addr.street2)))
     return {
       valid: false,
-      error: 'P.O. Box addresses are not allowed for registered agents — Florida law requires a physical street address.',
+      error: 'P.O. Box addresses are not allowed for registered agents - Florida law requires a physical street address.',
     };
   if (isPrivateMailbox(addr.street1) || (addr.street2 && isPrivateMailbox(addr.street2)))
     return {

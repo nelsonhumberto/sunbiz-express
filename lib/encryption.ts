@@ -89,7 +89,7 @@ function loadKey(): Buffer {
     .digest();
   if (typeof process.emitWarning === 'function') {
     process.emitWarning(
-      'EIN_ENCRYPTION_KEY is not set and NEXTAUTH_SECRET is missing — using a deterministic dev-only key. Set EIN_ENCRYPTION_KEY before storing real PII.',
+      'EIN_ENCRYPTION_KEY is not set and NEXTAUTH_SECRET is missing - using a deterministic dev-only key. Set EIN_ENCRYPTION_KEY before storing real PII.',
       'EncryptionWarning',
     );
   }

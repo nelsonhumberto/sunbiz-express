@@ -91,15 +91,15 @@ check('FL LLC cert_copy', addOnPriceCents('cert_copy', 'LLC'), 5_900);
 check('FL CORP cert_copy', addOnPriceCents('cert_copy', 'CORP'), 3_775); // 2900 service + 875 FL CORP fee
 check('WY LLC cert_copy', addOnPriceCents('cert_copy', 'LLC', 'WY'), 5_900);
 check('DE LLC cert_copy', addOnPriceCents('cert_copy', 'LLC', 'DE'), 7_900); // 2900 + 5000
-check('FL LLC ein (federal — flat)', addOnPriceCents('ein', 'LLC'), 7_900);
-check('FL CORP ein (federal — flat)', addOnPriceCents('ein', 'CORP'), 7_900);
-check('WY LLC ein (federal — flat)', addOnPriceCents('ein', 'LLC', 'WY'), 7_900);
-check('DE CORP ein (federal — flat)', addOnPriceCents('ein', 'CORP', 'DE'), 7_900);
+check('FL LLC ein (federal - flat)', addOnPriceCents('ein', 'LLC'), 7_900);
+check('FL CORP ein (federal - flat)', addOnPriceCents('ein', 'CORP'), 7_900);
+check('WY LLC ein (federal - flat)', addOnPriceCents('ein', 'LLC', 'WY'), 7_900);
+check('DE CORP ein (federal - flat)', addOnPriceCents('ein', 'CORP', 'DE'), 7_900);
 
 console.log('\n--- Cost scenarios (all-in package pricing) ---');
 {
   // Essential ("BASIC") package is $149 all-in (May 2026 audit reprice).
-  // Florida's $125 LLC fee is bundled — customer never sees it as a
+  // Florida's $125 LLC fee is bundled - customer never sees it as a
   // separate line.
   const llcBasicNoOA = computeCost({
     entityType: 'LLC',
@@ -163,7 +163,7 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
   );
 }
 {
-  // Government remittance never includes LaunchForma margin — even on add-ons
+  // Government remittance never includes LaunchForma margin - even on add-ons
   // that pass through a state fee, the customer-facing price is higher.
   const llcCertCopy = computeCost({
     entityType: 'LLC',
@@ -248,7 +248,7 @@ console.log('\n--- Effective date / business days ---');
 
 console.log('\n--- Articles ordering & FILED stamp gating ---');
 
-// Minimal fixture — just enough to exercise the article ordering, FILED-stamp
+// Minimal fixture - just enough to exercise the article ordering, FILED-stamp
 // gating, and RA "use us" auto-signature paths.
 const baseFiling = {
   id: 'filing_smoke_1',
@@ -314,7 +314,7 @@ const baseFiling = {
   );
   check(
     'LLC Article IV uses Managers and Authorized Representatives heading',
-    /Article IV — Managers and Authorized Representatives/.test(html),
+    /Article IV - Managers and Authorized Representatives/.test(html),
     true,
   );
   check(
@@ -324,7 +324,7 @@ const baseFiling = {
   );
   check(
     'LLC Articles do not use colloquial Authorized Persons heading',
-    !/Article IV — Authorized Persons/.test(html),
+    !/Article IV - Authorized Persons/.test(html),
     true,
   );
 }
@@ -455,5 +455,5 @@ console.log('\n--- Cover-letter customer/admin gating ---');
   );
 }
 
-console.log(`\n${fail === 0 ? '✓ ALL PASSED' : '✗ FAILURES'} — ${pass} passed, ${fail} failed`);
+console.log(`\n${fail === 0 ? '✓ ALL PASSED' : '✗ FAILURES'} - ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

@@ -64,7 +64,7 @@ export async function GET(
   const issued = shareStructure?.issuedShares ?? 0;
   const effectiveDate = typeof opt?.effectiveDate === 'string' ? (opt.effectiveDate as string) : undefined;
 
-  // Officer who signs Part I — prefer the President, else first director/owner.
+  // Officer who signs Part I - prefer the President, else first director/owner.
   const president = filing.managersMembers.find((m) => m.title === 'PRESIDENT');
   const officer = president ?? filing.managersMembers[0];
 

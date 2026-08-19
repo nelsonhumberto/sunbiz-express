@@ -10,12 +10,12 @@ import { getStripe } from '@/lib/stripe';
  * Agent renewals, Compliance Alerts, .com domain) without LaunchForma
  * having to build that UI ourselves.
  *
- * If the user doesn't yet have a Stripe customer record (rare — they
+ * If the user doesn't yet have a Stripe customer record (rare - they
  * haven't checked out yet) we 404 instead of silently creating a blank
  * one. The dashboard billing page surfaces this condition with a clear
  * empty state.
  *
- * OWASP A01 — the session is auth-scoped to the calling user; we never
+ * OWASP A01 - the session is auth-scoped to the calling user; we never
  * accept a customer id from the request body.
  */
 export async function POST(): Promise<Response> {

@@ -91,7 +91,7 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
         ) : (
           <div className="space-y-4 text-sm">
             <p className="text-ink-muted leading-relaxed">
-              Hi {firstName || 'there'} — you&apos;re continuing as a guest. Creating a free
+              Hi {firstName || 'there'} - you&apos;re continuing as a guest. Creating a free
               account gets you:
             </p>
             <ul className="space-y-2">
@@ -102,7 +102,7 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
                 Email confirmations, document downloads, and compliance reminders.
               </Benefit>
               <Benefit icon={<KeyRound className="h-4 w-4 text-primary" />}>
-                Secure access — we&apos;ll email you a temporary password you can change anytime.
+                Secure access - we&apos;ll email you a temporary password you can change anytime.
               </Benefit>
             </ul>
 

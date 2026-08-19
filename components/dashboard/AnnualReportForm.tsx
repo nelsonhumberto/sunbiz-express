@@ -213,7 +213,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
           <div>
             <p className="font-display text-lg font-semibold">{props.companyName}</p>
             <div className="flex gap-4 mt-1 text-sm text-white/80">
-              <span>State ID: <span className="font-mono">{props.documentNumber ?? '—'}</span></span>
+              <span>State ID: <span className="font-mono">{props.documentNumber ?? '-'}</span></span>
               <span>Entity Type: {props.entityType === 'LLC' ? 'FLAL (LLC)' : 'Corp'}</span>
             </div>
           </div>
@@ -246,11 +246,11 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
               <p>{raAddr.city}, {raAddr.state} {raAddr.zip}</p>
             </div>}
 
-        {/* RA upsell — only when we are NOT already their agent */}
+        {/* RA upsell - only when we are NOT already their agent */}
         {!props.raIsOurs && (
           <div className="mt-4 rounded-lg border border-border p-4 space-y-3">
             <div className="text-xs text-ink-muted bg-primary/5 rounded-md p-3 leading-relaxed">
-              <p className="font-medium text-ink mb-1">You&apos;re already here — why not let us take this burden off your busy plate?</p>
+              <p className="font-medium text-ink mb-1">You&apos;re already here - why not let us take this burden off your busy plate?</p>
               <p>For just <strong>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}/year</strong>, our Registered Agent Service ensures you:</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5">
                 <li>Never miss a notice from the state</li>
@@ -378,13 +378,13 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
       <Card className={!signingOfficer ? 'border-primary/40 ring-1 ring-primary/20' : ''}>
         <CardContent className="p-5 space-y-2">
           <h3 className="text-sm font-semibold text-ink">Select an Officer to Sign the Annual Report</h3>
-          <p className="text-xs text-ink-muted">Required — the person submitting must be authorized to sign.</p>
+          <p className="text-xs text-ink-muted">Required - the person submitting must be authorized to sign.</p>
           <div className="relative">
             <select value={signingOfficer} onChange={(e) => setSigningOfficer(e.target.value)}
               className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-background appearance-none pr-8">
               <option value="">Select officer from the list below</option>
               {officers.map((o, i) => (
-                <option key={o.id ?? i} value={o.name}>{o.name} — {o.title}</option>
+                <option key={o.id ?? i} value={o.name}>{o.name} - {o.title}</option>
               ))}
             </select>
             <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-ink-subtle pointer-events-none" />
@@ -428,7 +428,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
               <label className="flex items-center gap-2 cursor-pointer text-sm">
                 <input type="radio" checked={useSavedCard} onChange={() => setUseSavedCard(true)} className="accent-primary" />
                 <CreditCard className="h-4 w-4 text-ink-subtle" />
-                Use saved card — {props.savedCard!.brand} ····{props.savedCard!.last4}
+                Use saved card - {props.savedCard!.brand} ····{props.savedCard!.last4}
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-sm">
                 <input type="radio" checked={!useSavedCard} onChange={() => setUseSavedCard(false)} className="accent-primary" />
@@ -437,7 +437,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
             </div>
           )}
 
-          {/* Stripe card element — hidden for saved card, shown for new card */}
+          {/* Stripe card element - hidden for saved card, shown for new card */}
           {!useSavedCard && (
             <div className="space-y-3">
               <div className="space-y-1.5">
@@ -476,7 +476,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
               disabled={!canSubmit || pending} onClick={onSubmit}>
               {pending
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</>
-                : `Checkout — ${formatCurrency(totalCents)}`}
+                : `Checkout - ${formatCurrency(totalCents)}`}
             </Button>
           </div>
         </CardContent>

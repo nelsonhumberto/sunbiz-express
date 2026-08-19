@@ -14,7 +14,7 @@ import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
  * Resolve the marketing state currently in effect on the client.
  *
  * Resolution order matches the rest of the app:
- *   1. `?state=` query parameter (highest priority — campaign links).
+ *   1. `?state=` query parameter (highest priority - campaign links).
  *   2. URL path: `/states/<slug>` extracts the slug.
  *   3. `preferred_state` cookie set by the StateSwitcher.
  *   4. Default Florida.

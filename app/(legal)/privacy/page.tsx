@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'LaunchForma Privacy Policy — what we collect, why, who we share it with (no marketing partners, ever), and how to exercise your GDPR / CCPA rights.',
+    'LaunchForma Privacy Policy - what we collect, why, who we share it with (no marketing partners, ever), and how to exercise your GDPR / CCPA rights.',
   alternates: { canonical: '/privacy' },
 };
 
@@ -38,23 +38,23 @@ export default function PrivacyPage() {
       <p>Only those required to deliver the service:</p>
       <ul>
         <li>
-          <strong>Florida Department of State</strong> — to file your formation documents
+          <strong>Florida Department of State</strong> - to file your formation documents
         </li>
         <li>
-          <strong>Stripe</strong> — to process payments (PCI-DSS Level 1 certified)
+          <strong>Stripe</strong> - to process payments (PCI-DSS Level 1 certified)
         </li>
         <li>
-          <strong>SendGrid</strong> — to send transactional emails
+          <strong>SendGrid</strong> - to send transactional emails
         </li>
         <li>
-          <strong>Namecheap</strong> — only if you purchase a domain
+          <strong>Namecheap</strong> - only if you purchase a domain
         </li>
       </ul>
 
       <h2>5. How we secure data</h2>
       <p>
         TLS 1.2+ in transit. AES-256 at rest. Role-based access control. Audit logging. Regular
-        third-party security reviews. Passwords are hashed with bcrypt — we never see your
+        third-party security reviews. Passwords are hashed with bcrypt - we never see your
         plaintext password.
       </p>
 

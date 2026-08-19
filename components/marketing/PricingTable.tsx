@@ -217,7 +217,7 @@ export function PricingTable({
         <div className="mt-6 flex items-center justify-center gap-2 text-sm text-ink-muted">
           <ShieldCheck className="h-4 w-4 text-success shrink-0" />
           <span>
-            14-day money-back guarantee on LaunchForma&apos;s service fee — no questions asked.
+            14-day money-back guarantee on LaunchForma&apos;s service fee - no questions asked.
           </span>
         </div>
       </div>

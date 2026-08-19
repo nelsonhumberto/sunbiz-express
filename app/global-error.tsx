@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 /**
  * Last-resort error boundary that Next.js renders if the root layout
  * itself throws. We log the error to our central logger (which today
- * goes to `console.error` with a stable prefix — easy to grep in
+ * goes to `console.error` with a stable prefix - easy to grep in
  * Vercel logs and easy to forward to Sentry later) and show a clean
  * recovery UI instead of the default blank page.
  *

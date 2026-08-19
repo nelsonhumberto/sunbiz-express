@@ -25,8 +25,8 @@ export function ArchiveFilingButton({
       disabled={pending}
       title={
         archived
-          ? 'Restore — counts in analytics again'
-          : 'Archive — hide from analytics (test/auditor)'
+          ? 'Restore - counts in analytics again'
+          : 'Archive - hide from analytics (test/auditor)'
       }
       className={
         archived
@@ -39,8 +39,8 @@ export function ArchiveFilingButton({
             const res = await toggleAdminArchiveFiling(filingId);
             toast.success(
               res.archived
-                ? 'Archived — excluded from analytics'
-                : 'Restored — counts in analytics again',
+                ? 'Archived - excluded from analytics'
+                : 'Restored - counts in analytics again',
             );
           } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Could not update filing');

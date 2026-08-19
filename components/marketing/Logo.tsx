@@ -7,7 +7,7 @@ interface LogoProps {
   size?: 'sm' | 'default' | 'lg';
   href?: string;
   asLink?: boolean;
-  /** dark — white wordmark for dark/navy backgrounds */
+  /** dark - white wordmark for dark/navy backgrounds */
   variant?: 'light' | 'dark';
 }
 

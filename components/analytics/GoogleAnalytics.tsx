@@ -7,6 +7,10 @@ import { usePathname, useSearchParams } from 'next/navigation';
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 
+// Pages whose URL carries a secret token. GA records full URLs (query string
+// included), so it is not loaded on them at all.
+const UNTRACKED_PATHS = new Set(['/reset-password']);
+
 /**
  * Loads Google Analytics 4 (gtag.js) sitewide and configures SPA pageview
  * tracking. Also configures the Google Ads tag on the same gtag instance
@@ -18,12 +22,13 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const untracked = UNTRACKED_PATHS.has(pathname);
 
   // Manual SPA pageviews. We init gtag with send_page_view:false below so the
   // initial load isn't double-counted; this effect fires the page_view on
   // every client-side navigation (and once on mount).
   useEffect(() => {
-    if (!GA_MEASUREMENT_ID) return;
+    if (!GA_MEASUREMENT_ID || untracked) return;
     if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
 
     let url = pathname;
@@ -33,9 +38,9 @@ export function GoogleAnalytics() {
       page_path: url,
       page_location: window.location.origin + url,
     });
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, untracked]);
 
-  if (!GA_MEASUREMENT_ID) return null;
+  if (!GA_MEASUREMENT_ID || untracked) return null;
 
   return (
     <>

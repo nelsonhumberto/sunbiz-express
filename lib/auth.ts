@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from './db';
+import { consumeLoginLink } from './login-link';
 
 declare module 'next-auth' {
   interface Session {
@@ -31,6 +32,25 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         if (!user) return null;
         const valid = await bcrypt.compare(String(credentials.password), user.passwordHash);
         if (!valid) return null;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() },
+        });
+        return {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          role: user.role,
+        };
+      },
+    }),
+    Credentials({
+      id: 'login-link',
+      name: 'Login link',
+      credentials: { token: { type: 'text' } },
+      authorize: async (credentials) => {
+        const user = await consumeLoginLink(String(credentials?.token ?? ''));
+        if (!user) return null;
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLogin: new Date() },

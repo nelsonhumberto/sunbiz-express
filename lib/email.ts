@@ -69,6 +69,8 @@ interface EmailContext {
   stepsCompleted?: number;
   /** True when the draft is parked on the payment step. */
   readyForCheckout?: boolean;
+  /** Set when resumeUrl is a one-time sign-in link; its lifetime in days. */
+  linkExpiresInDays?: number;
   // ── Registered Agent renewal reminders ──
   /** Whether the customer enrolled in automatic renewal at checkout. */
   raAutoRenew?: boolean;
@@ -216,6 +218,7 @@ const TEMPLATES: Record<
     stepsCompleted,
     readyForCheckout,
     resumeUrl,
+    linkExpiresInDays,
   }) => {
     const rawCompany = businessName?.trim();
     const company = escapeHtml(rawCompany || 'Your new company');
@@ -242,7 +245,11 @@ const TEMPLATES: Record<
         </table>
         <p>The time is now. Finish creating your new company today and we'll prepare and submit your filing to the state the same business day.</p>
         <a class="cta" href="${escapeHtml(resumeUrl ?? `${siteUrl}/dashboard`)}">Finish creating my company</a>
-        <p class="muted">Everything is saved exactly as you left it. Questions? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+        <p class="muted">${
+          linkExpiresInDays
+            ? `This button signs you in automatically, no password needed. For your security it works once and expires in ${linkExpiresInDays} days. `
+            : ''
+        }Everything is saved exactly as you left it. Questions? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
       `,
     };
   },

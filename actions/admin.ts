@@ -11,6 +11,7 @@ import {
 } from '@/lib/pdf';
 import { safeParseJson } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
+import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { TOTAL_DISPLAYED_STEPS, TOTAL_STEPS } from '@/lib/wizard-constants';
 
@@ -418,7 +419,7 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
       state: true,
       currentStep: true,
       completedSteps: true,
-      user: { select: { firstName: true, email: true, accountStatus: true, guestToken: true } },
+      user: { select: { firstName: true, email: true, role: true, accountStatus: true, guestToken: true } },
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
     },
   });
@@ -445,10 +446,14 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
   const step = filing.currentStep && filing.currentStep >= 1 ? filing.currentStep : 2;
-  const resumeUrl =
-    filing.user.accountStatus === 'GUEST' && filing.user.guestToken
-      ? `${siteUrl}/resume?f=${filing.id}&t=${filing.user.guestToken}`
-      : `${siteUrl}/sign-in?next=${encodeURIComponent(`/wizard/${filing.id}/${step}`)}`;
+  const wizardPath = `/wizard/${filing.id}/${step}`;
+  const isGuest = filing.user.accountStatus === 'GUEST' && Boolean(filing.user.guestToken);
+  const oneClick = filing.user.accountStatus === 'ACTIVE' && filing.user.role !== 'ADMIN';
+  const resumeUrl = isGuest
+    ? `${siteUrl}/resume?f=${filing.id}&t=${filing.user.guestToken}`
+    : oneClick
+      ? await createLoginLink(filing.userId, wizardPath)
+      : `${siteUrl}/sign-in?next=${encodeURIComponent(wizardPath)}`;
   const completed = safeParseJson<number[]>(filing.completedSteps, []);
 
   const result = await sendEmail({
@@ -464,6 +469,7 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
       stepsCompleted: Math.min(completed.length, TOTAL_DISPLAYED_STEPS),
       readyForCheckout: step === TOTAL_STEPS,
       resumeUrl,
+      linkExpiresInDays: oneClick ? LOGIN_LINK_TTL_DAYS : undefined,
     },
   });
 

@@ -52,6 +52,7 @@ model User {
   notifications      EmailNotification[]
   analyticsEvents    AnalyticsEvent[]
   passwordResetTokens PasswordResetToken[]
+  loginLinkTokens    LoginLinkToken[]
   stripeCustomerId   String? @unique
 
   // First-touch ad attribution (set once at guest/sign-up from lf_utm cookie).
@@ -536,6 +537,21 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([token])
+}
+
+// One-time sign-in links emailed to account holders (draft re-engagement).
+// Only the SHA-256 of the token is stored, so a database read can't be replayed.
+model LoginLinkToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  nextPath  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // Discount / promo codes managed from /admin/coupons

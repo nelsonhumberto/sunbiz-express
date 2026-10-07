@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { AuthError } from 'next-auth';
 import { userUtmCreateFields } from '@/lib/utm-attribution';
 import { checkActionRateLimit } from '@/lib/rate-limit';
+import { safeRedirectPath } from '@/lib/utils';
 
 const SignUpSchema = z
   .object({
@@ -134,9 +135,7 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
   // Redirect admins straight to the admin panel. Honor an optional `next`
   // param (e.g. when we sent the user to /sign-in mid-checkout) so they
   // land back where they were trying to go. Restrict to same-origin paths.
-  const rawNext = String(formData.get('next') ?? '').trim();
-  const safeNext =
-    rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
+  const safeNext = safeRedirectPath(String(formData.get('next') ?? ''));
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email.toLowerCase() },
     select: { role: true },

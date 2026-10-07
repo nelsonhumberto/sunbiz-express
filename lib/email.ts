@@ -15,6 +15,7 @@
 import { prisma } from './db';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
+import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export type NotificationType =
   | 'ABANDONED_24H'
   | 'ABANDONED_72H'
   | 'ABANDONED_7D'
+  | 'DRAFT_REENGAGE'
   | 'RA_RENEWAL_60'
   | 'RA_RENEWAL_30'
   | 'RA_RENEWAL_7'
@@ -60,6 +62,13 @@ interface EmailContext {
    * the abandoned-draft recovery emails so the CTA isn't a dead-end.
    */
   resumeUrl?: string;
+  // ── Manual draft re-engagement ──
+  /** State name shown next to the entity type (e.g. "Florida"). */
+  stateName?: string;
+  /** Customer-facing steps completed, out of TOTAL_DISPLAYED_STEPS. */
+  stepsCompleted?: number;
+  /** True when the draft is parked on the payment step. */
+  readyForCheckout?: boolean;
   // ── Registered Agent renewal reminders ──
   /** Whether the customer enrolled in automatic renewal at checkout. */
   raAutoRenew?: boolean;
@@ -199,6 +208,44 @@ const TEMPLATES: Record<
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
+  DRAFT_REENGAGE: ({
+    firstName,
+    businessName,
+    entityType,
+    stateName,
+    stepsCompleted,
+    readyForCheckout,
+    resumeUrl,
+  }) => {
+    const rawCompany = businessName?.trim();
+    const company = escapeHtml(rawCompany || 'Your new company');
+    const entityLabel = entityType === 'CORP' ? 'Corporation' : 'LLC';
+    const typeLabel = stateName ? `${escapeHtml(stateName)} ${entityLabel}` : entityLabel;
+    const done = Math.min(stepsCompleted ?? 0, TOTAL_DISPLAYED_STEPS);
+    return {
+      subject: `${rawCompany ? `Your company ${rawCompany}` : 'Your new company'} is waiting for you`.replace(/[\r\n]+/g, ' '),
+      body: html`
+        <h1>${company} is waiting for you</h1>
+        <p>Hi ${escapeHtml(firstName?.trim() || 'there')}, new adventures await. ${
+          readyForCheckout
+            ? "You've already done the hard part: every detail of your new company is filled in and saved. All that's left is checkout."
+            : `Your progress is saved, with ${done} of ${TOTAL_DISPLAYED_STEPS} steps done. Pick up right where you left off.`
+        }</p>
+        <table class="meta">
+          <tr><td>Company</td><td>${company}</td></tr>
+          <tr><td>Type</td><td>${typeLabel}</td></tr>
+          <tr><td>Progress</td><td>${
+            readyForCheckout
+              ? `${TOTAL_DISPLAYED_STEPS} of ${TOTAL_DISPLAYED_STEPS} steps · ready for checkout`
+              : `${done} of ${TOTAL_DISPLAYED_STEPS} steps complete`
+          }</td></tr>
+        </table>
+        <p>The time is now. Finish creating your new company today and we'll prepare and submit your filing to the state the same business day.</p>
+        <a class="cta" href="${escapeHtml(resumeUrl ?? `${siteUrl}/dashboard`)}">Finish creating my company</a>
+        <p class="muted">Everything is saved exactly as you left it. Questions? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> and a real person will help.</p>
+      `,
+    };
+  },
   RA_RENEWAL_60: (ctx) => raRenewalEmail(60, ctx),
   RA_RENEWAL_30: (ctx) => raRenewalEmail(30, ctx),
   RA_RENEWAL_7: (ctx) => raRenewalEmail(7, ctx),
@@ -301,6 +348,15 @@ const TEMPLATES: Record<
 };
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 function html(strings: TemplateStringsArray, ...vars: unknown[]) {
   let result = '';

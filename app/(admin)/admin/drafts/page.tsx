@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { ReengageDraftButton } from '@/components/admin/ReengageDraftButton';
 import { formatRelative, safeParseJson } from '@/lib/utils';
 import {
   STEP_NAMES,
@@ -30,6 +31,12 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
     include: {
       user: { select: { firstName: true, lastName: true, email: true } },
       payments: { select: { id: true, status: true } },
+      notifications: {
+        where: { notificationType: 'DRAFT_REENGAGE', status: 'SENT' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { sentAt: true },
+      },
     },
   });
 
@@ -144,7 +151,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
                 <Th>Progress</Th>
                 <Th>Started</Th>
                 <Th>Last activity</Th>
-                <Th className="text-right">Open</Th>
+                <Th className="text-right">Actions</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -172,6 +179,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
                   const paid = filing.payments.some(
                     (p) => p.status === 'SUCCEEDED',
                   );
+                  const lastReengagedAt = filing.notifications[0]?.sentAt;
 
                   return (
                     <tr
@@ -241,9 +249,23 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
                         {formatRelative(filing.updatedAt)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/admin/filings/${filing.id}`}>Open</Link>
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {!paid && (
+                            <ReengageDraftButton
+                              filingId={filing.id}
+                              customerEmail={filing.user.email}
+                              businessName={filing.businessName}
+                            />
+                          )}
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/filings/${filing.id}`}>Open</Link>
+                          </Button>
+                        </div>
+                        {lastReengagedAt && (
+                          <p className="mt-1 text-[11px] text-ink-subtle">
+                            Re-engaged {formatRelative(lastReengagedAt)}
+                          </p>
+                        )}
                       </td>
                     </tr>
                   );

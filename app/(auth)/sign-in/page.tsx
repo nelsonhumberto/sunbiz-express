@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { CheckCircle2, MailCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
+import { safeRedirectPath } from '@/lib/utils';
 import { SignInForm } from './sign-in-form';
 
 export const metadata = { title: 'Sign in' };
@@ -12,9 +13,10 @@ export default async function SignInPage({
 }: {
   searchParams: { reset?: string; claimed?: string; email?: string; next?: string };
 }) {
+  const nextPath = safeRedirectPath(searchParams.next);
   const session = await auth();
   if (session?.user) {
-    redirect(searchParams.next || '/dashboard');
+    redirect(nextPath ?? '/dashboard');
   }
   const t = await getTranslations('auth');
 
@@ -55,7 +57,7 @@ export default async function SignInPage({
         </p>
       </div>
 
-      <SignInForm defaultEmail={claimedEmail} nextHref={searchParams.next ?? ''} />
+      <SignInForm defaultEmail={claimedEmail} nextHref={nextPath ?? ''} />
     </div>
   );
 }

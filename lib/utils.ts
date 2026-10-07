@@ -53,6 +53,18 @@ export function formatRelative(date: Date | string) {
   return formatDate(d);
 }
 
+/**
+ * Same-origin path for post-sign-in redirects, or null. Browsers strip tabs
+ * and newlines from URLs, so "/\t/evil.com" would become "//evil.com"; any
+ * whitespace, control character, or backslash is rejected for that reason.
+ */
+export function safeRedirectPath(raw: string | null | undefined): string | null {
+  const value = (raw ?? '').trim();
+  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  if (/[\\\s\u0000-\u001f\u007f]/.test(value)) return null;
+  return value;
+}
+
 export function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
   try {

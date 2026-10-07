@@ -10,6 +10,9 @@ import {
   encodeDocument,
 } from '@/lib/pdf';
 import { safeParseJson } from '@/lib/utils';
+import { getFormationState } from '@/lib/formation-states';
+import { checkActionRateLimit } from '@/lib/rate-limit';
+import { TOTAL_DISPLAYED_STEPS, TOTAL_STEPS } from '@/lib/wizard-constants';
 
 async function requireAdmin() {
   const session = await auth();
@@ -383,4 +386,99 @@ export async function resendEmailNotification(notificationId: string) {
   revalidatePath('/admin/outbox');
   revalidatePath('/admin');
   return { status: result.status, errorMessage: result.errorMessage ?? null };
+}
+
+export interface ReengageResult {
+  ok: boolean;
+  message: string;
+}
+
+const REENGAGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Admin-triggered re-engagement email for an unpaid draft. The CTA lands the
+ * customer on their last wizard step: guests through the tokenized /resume
+ * link, account holders through sign-in with a same-origin `next` path.
+ * Limited to one send per draft per 24 hours.
+ */
+export async function sendDraftReengagementEmail(filingId: string): Promise<ReengageResult> {
+  const session = await requireAdmin();
+  const limited = checkActionRateLimit('admin-reengage', 30, 60_000, session.user!.id);
+  if (limited) return { ok: false, message: limited };
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      adminArchivedAt: true,
+      businessName: true,
+      entityType: true,
+      state: true,
+      currentStep: true,
+      completedSteps: true,
+      user: { select: { firstName: true, email: true, accountStatus: true, guestToken: true } },
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
+  });
+  if (!filing) return { ok: false, message: 'Draft not found.' };
+  if (filing.status !== 'DRAFT' || filing.payments.length > 0) {
+    return { ok: false, message: 'This filing is already paid or submitted.' };
+  }
+  if (filing.adminArchivedAt) return { ok: false, message: 'This draft is archived.' };
+
+  // QUEUED counts too: it exists from the moment a send starts, which closes
+  // the window for two near-simultaneous clicks.
+  const recent = await prisma.emailNotification.findFirst({
+    where: {
+      filingId: filing.id,
+      notificationType: 'DRAFT_REENGAGE',
+      status: { in: ['SENT', 'QUEUED'] },
+      createdAt: { gte: new Date(Date.now() - REENGAGE_COOLDOWN_MS) },
+    },
+    select: { id: true },
+  });
+  if (recent) {
+    return { ok: false, message: 'A re-engagement email already went out in the last 24 hours.' };
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+  const step = filing.currentStep && filing.currentStep >= 1 ? filing.currentStep : 2;
+  const resumeUrl =
+    filing.user.accountStatus === 'GUEST' && filing.user.guestToken
+      ? `${siteUrl}/resume?f=${filing.id}&t=${filing.user.guestToken}`
+      : `${siteUrl}/sign-in?next=${encodeURIComponent(`/wizard/${filing.id}/${step}`)}`;
+  const completed = safeParseJson<number[]>(filing.completedSteps, []);
+
+  const result = await sendEmail({
+    type: 'DRAFT_REENGAGE',
+    to: filing.user.email,
+    filingId: filing.id,
+    userId: filing.userId,
+    context: {
+      firstName: filing.user.firstName,
+      businessName: filing.businessName ?? undefined,
+      entityType: filing.entityType === 'CORP' ? 'CORP' : 'LLC',
+      stateName: getFormationState(filing.state).name,
+      stepsCompleted: Math.min(completed.length, TOTAL_DISPLAYED_STEPS),
+      readyForCheckout: step === TOTAL_STEPS,
+      resumeUrl,
+    },
+  });
+
+  await prisma.adminAction.create({
+    data: {
+      adminUserId: session.user!.id,
+      filingId: filing.id,
+      actionType: 'DRAFT_REENGAGE_EMAIL',
+      description: `Re-engagement email to ${filing.user.email}: ${result.status}`,
+    },
+  });
+
+  revalidatePath('/admin/drafts');
+  revalidatePath('/admin/outbox');
+  return result.status === 'SENT'
+    ? { ok: true, message: `Re-engagement email sent to ${filing.user.email}.` }
+    : { ok: false, message: result.errorMessage ?? 'Delivery failed. Check the email provider settings.' };
 }

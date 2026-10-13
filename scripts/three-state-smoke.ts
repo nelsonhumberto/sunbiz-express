@@ -49,6 +49,8 @@ import {
   generateReceipt,
 } from '../lib/pdf';
 import {
+  EIN_UNBUNDLED_AT,
+  canOrderEin,
   classifyEinPathway,
   filingIncludesEin,
   lastFourDigits,
@@ -221,15 +223,24 @@ console.log('\n--- computeCost reconciles per-state package + add-ons ---');
   const wy = computeCost({
     entityType: 'LLC',
     tier: 'BASIC',
-    addOnSlugs: ['ein'],
+    addOnSlugs: ['operating_agreement_single'],
     state: 'WY',
   });
-  // BASIC WY LLC ($124) + EIN ($79) = $203
-  check('WY BASIC + EIN total', wy.totalCents, 20_300);
-  // Government remittance is just the WY filing fee ($100). EIN is federal.
-  check('WY BASIC + EIN govt remittance', wy.governmentRemittanceCents, 10_000);
-  // LaunchForma revenue: $24 (BASIC margin) + $79 (EIN service) = $103
-  check('WY BASIC + EIN LF revenue', wy.incServicesRevenueCents, 10_300);
+  // BASIC WY LLC ($124) + Operating Agreement ($89) = $213
+  check('WY BASIC + OA total', wy.totalCents, 21_300);
+  // Government remittance is just the WY filing fee ($100). The OA is a service.
+  check('WY BASIC + OA govt remittance', wy.governmentRemittanceCents, 10_000);
+  // LaunchForma revenue: $24 (BASIC margin) + $89 (OA service) = $113
+  check('WY BASIC + OA LF revenue', wy.incServicesRevenueCents, 11_300);
+
+  // EIN (dashboard-only) and BOI (retired) are never billed in formation checkout.
+  const noEin = computeCost({
+    entityType: 'LLC',
+    tier: 'BASIC',
+    addOnSlugs: ['ein', 'boi_filing'],
+    state: 'WY',
+  });
+  check('WY BASIC + ein/boi rows → package price only', noEin.totalCents, 12_400);
 
   const de = computeCost({
     entityType: 'LLC',
@@ -403,10 +414,19 @@ console.log('\n--- Annual compliance lookup ---');
 }
 
 console.log('\n--- EIN entitlement + classification ---');
-check('STANDARD tier includes EIN', filingIncludesEin({ tier: 'STANDARD', addOnSlugs: [] }), true);
-check('PREMIUM tier includes EIN', filingIncludesEin({ tier: 'PREMIUM', addOnSlugs: [] }), true);
-check('BASIC tier without add-on does NOT include EIN', filingIncludesEin({ tier: 'BASIC', addOnSlugs: [] }), false);
-check('BASIC tier with EIN add-on includes EIN', filingIncludesEin({ tier: 'BASIC', addOnSlugs: ['ein'] }), true);
+{
+  const legacy = new Date(EIN_UNBUNDLED_AT.getTime() - 1);
+  const current = new Date(EIN_UNBUNDLED_AT.getTime() + 1);
+  check('Legacy STANDARD keeps bundled EIN', filingIncludesEin({ tier: 'STANDARD', addOnSlugs: [], createdAt: legacy }), true);
+  check('Legacy PREMIUM keeps bundled EIN', filingIncludesEin({ tier: 'PREMIUM', addOnSlugs: [], createdAt: legacy }), true);
+  check('New STANDARD does NOT include EIN', filingIncludesEin({ tier: 'STANDARD', addOnSlugs: [], createdAt: current }), false);
+  check('New PREMIUM does NOT include EIN', filingIncludesEin({ tier: 'PREMIUM', addOnSlugs: [], createdAt: current }), false);
+  check('BASIC without add-on does NOT include EIN', filingIncludesEin({ tier: 'BASIC', addOnSlugs: [], createdAt: legacy }), false);
+  check('Dashboard EIN purchase includes EIN', filingIncludesEin({ tier: 'BASIC', addOnSlugs: ['ein'], createdAt: current }), true);
+  check('EIN orderable once APPROVED', canOrderEin({ status: 'APPROVED', entitled: false }), true);
+  check('EIN not orderable before approval', canOrderEin({ status: 'SUBMITTED', entitled: false }), false);
+  check('EIN not orderable when already entitled', canOrderEin({ status: 'APPROVED', entitled: true }), false);
+}
 check('US + SSN → ready_online', classifyEinPathway({ responsiblePartyType: 'us', taxIdType: 'SSN' }), 'ready_online');
 check('US without taxIdType → manual_foreign', classifyEinPathway({ responsiblePartyType: 'us', taxIdType: null }), 'manual_foreign');
 check('Foreign → manual_foreign', classifyEinPathway({ responsiblePartyType: 'foreign' }), 'manual_foreign');

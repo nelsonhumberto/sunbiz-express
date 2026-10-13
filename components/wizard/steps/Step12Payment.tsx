@@ -34,28 +34,17 @@ import {
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import type { WizardFiling } from '../types';
-import { filingIncludesEin } from '@/lib/ein';
 import {
   getFormationState,
   isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
-import {
-  EinResponsiblePartyPanel,
-  type EinPanelInitialState,
-} from '../EinResponsiblePartyPanel';
 
 export function Step12Payment({
   filing,
-  einInitial,
-  defaultEmail,
-  defaultName,
   isTester = false,
 }: {
   filing: WizardFiling;
-  einInitial: EinPanelInitialState;
-  defaultEmail?: string;
-  defaultName?: string;
   isTester?: boolean;
 }) {
   const t = useTranslations('wizard');
@@ -86,12 +75,6 @@ export function Step12Payment({
     processingOptionId,
   });
   const tier = TIER_BY_SLUG[filing.serviceTier as TierSlug];
-
-  const einRequired = filingIncludesEin({
-    tier: filing.serviceTier as TierSlug,
-    addOnSlugs,
-  });
-  const [einComplete, setEinComplete] = useState(einInitial.collected);
 
   // Registered Agent auto-renew: only offer it when the customer chose our RA.
   const registeredAgent = safeParseJson<{ useOurService?: boolean } | null>(
@@ -145,10 +128,6 @@ export function Step12Payment({
   };
 
   const onPay = () => {
-    if (einRequired && !einComplete) {
-      toast.error(t('einRequiredBeforePayment'));
-      return;
-    }
     start(async () => {
       let paymentIntentId: string;
 
@@ -279,20 +258,6 @@ export function Step12Payment({
         </div>
       </div>
 
-      {/* The responsible party is normally collected on the add-ons step
-          (the screen before this one). This renders only as a fallback when
-          the customer reached payment without completing it (e.g. via "Skip
-          to payment" before that gate, or an older in-flight draft). */}
-      {einRequired && !einInitial.collected && (
-        <EinResponsiblePartyPanel
-          filingId={filing.id}
-          initial={einInitial}
-          defaultEmail={defaultEmail}
-          defaultName={defaultName}
-          onSaved={() => setEinComplete(true)}
-        />
-      )}
-
       {/* What happens after payment - calms anxiety, keeps customer oriented. */}
       <div className="rounded-lg border border-border bg-paper-soft p-5">
         <h3 className="font-semibold text-ink mb-3 flex items-center gap-2">
@@ -408,7 +373,6 @@ export function Step12Payment({
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
         pending={pending}
-        nextDisabled={!isTester && einRequired && !einComplete}
         nextLabel={t('pay', {
           amount: formatCurrency(finalTotal, { showZero: true }),
         })}

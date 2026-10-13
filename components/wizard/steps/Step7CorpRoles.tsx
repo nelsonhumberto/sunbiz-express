@@ -34,7 +34,7 @@ interface CorpRole {
   city?: string;
   state?: string;
   zip?: string;
-  /** Email is kept in-memory for downstream autofill (EIN panel etc.).
+  /** Email is kept in-memory for downstream autofill.
    *  Not persisted to ManagerMember today - adding the column would
    *  require a Prisma migration we intentionally avoid in this step. */
   email?: string;

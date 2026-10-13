@@ -29,12 +29,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
-    {
-      url: `${BASE_URL}/guides/boi-filing-2026`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
     // Legal pages - indexable, important for E-E-A-T signals.
     { url: `${BASE_URL}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE_URL}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },

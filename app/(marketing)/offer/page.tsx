@@ -5,7 +5,6 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { StatsBar } from '@/components/marketing/StatsBar';
 import { PricingTable } from '@/components/marketing/PricingTable';
-import { Testimonials } from '@/components/marketing/Testimonials';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
@@ -109,7 +108,6 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
         <PricingTable state={state} />
       </div>
 
-      <Testimonials state={state} />
       <FAQSection state={state} expandAll suppressJsonLd />
       <CTABanner state={state} />
     </>

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LaunchForma Guides',
     description:
-      'Plain-English guides to forming and running a business - operating agreements, Wyoming vs. Delaware, and BOI filing.',
+      'Plain-English guides to forming and running a business - operating agreements and Wyoming vs. Delaware.',
     type: 'website',
   },
 };
@@ -30,13 +30,6 @@ const GUIDES = [
     description:
       'Privacy, taxes, fees, and investor expectations compared - so you pick the right home state for your entity.',
     readingMinutes: 10,
-  },
-  {
-    slug: 'boi-filing-2026',
-    title: 'BOI Filing 2026: What Every LLC and Corporation Must Know',
-    description:
-      'The FinCEN Beneficial Ownership Information report under the Corporate Transparency Act - deadlines, exemptions, and penalties.',
-    readingMinutes: 11,
   },
 ];
 

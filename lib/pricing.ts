@@ -97,7 +97,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     slug: 'STANDARD',
     name: 'Popular',
     bestFor: 'Best for opening a bank account',
-    description: 'Everything banks ask for at account opening - handled.',
+    description: 'The formation documents banks ask for at account opening.',
     // May 2026 repricing (audit-driven).
     // FL LLC reference: $119 service + $125 + $5 + $30 = $279.
     // FL CORP: $119 + $70 + $8.75 + $8.75 = $206.50.
@@ -108,15 +108,9 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     ribbon: 'Most Popular',
     features: [
       { label: 'Everything in Filing Only', included: true },
-      { label: 'EIN Application & Filing (IRS Form SS-4)', included: true, highlight: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
-      {
-        label: 'Certificate of Status (state-issued)',
-        included: true,
-        highlight: true,
-      },
-      { label: 'Certified Copy of Articles', included: true, highlight: true },
-      { label: 'BOI filing (FinCEN)', included: true, highlight: true },
+      { label: 'Certificate of Status (state-issued)', included: true },
+      { label: 'Certified Copy of Articles', included: true },
       { label: 'Priority email support', included: true },
       { label: 'Free .com domain', included: false },
       { label: 'Annual Compliance Service', included: false },
@@ -136,10 +130,8 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     features: [
       { label: 'Everything in Bank-Ready Filing', included: true },
       { label: 'Compliance Alerts Plus (year 1)', included: true, highlight: true },
-      { label: 'BOI filing (FinCEN, included)', included: true, highlight: true },
       { label: 'S-Corp Election filing (Form 2553)', included: true, highlight: true },
       { label: 'Free .com domain (year 1)', included: true, highlight: true },
-      { label: 'Priority phone & email support', included: true },
       { label: 'Banking resolution template', included: true },
       { label: 'Business email setup', included: true },
       { label: 'Quarterly compliance check-ins', included: true },
@@ -271,6 +263,13 @@ export interface AddOnDef {
   highlight?: boolean;
   /** True if this add-on triggers a per-state government fee on top of the service margin. */
   hasStateFee?: boolean;
+  /**
+   * Where the add-on is sold. 'dashboard': only after formation, from the
+   * customer dashboard (Google Ads restricts advertising EIN services, so EIN
+   * never appears in the wizard or on public pages). 'retired': no longer
+   * sold, kept so historical orders still resolve. Default: 'wizard'.
+   */
+  availability?: 'wizard' | 'dashboard' | 'retired';
 }
 
 const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
@@ -290,10 +289,11 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'ein',
     name: 'EIN Application & Filing',
     description:
-      'We prepare and file IRS Form SS-4 for you - federal Tax ID delivered within 1 business day. The IRS issues EINs at no cost; our fee covers the preparation and filing service. Required to open a business bank account.',
+      'We prepare and file IRS Form SS-4 for your formed company and upload your EIN confirmation letter to your dashboard. The IRS issues EINs at no cost if you apply yourself at irs.gov; our fee covers the preparation and filing service.',
     serviceMarginCents: 7_900,
     category: 'formation',
     iconKey: 'Hash',
+    availability: 'dashboard',
   },
   {
     slug: 'operating_agreement_single',
@@ -368,25 +368,23 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'compliance_alerts',
     name: 'Compliance Alerts Plus',
     description:
-      'Year-round deadline tracking - annual reports, license renewals, BOI reports, sales-tax filings.',
+      'Year-round deadline tracking - annual reports, license renewals, and sales-tax filings.',
     serviceMarginCents: 9_900,
     recurring: 'annually',
     category: 'compliance',
     iconKey: 'BellRing',
   },
   {
-    // Added May 2026 alongside the BOI service launch. Flat $49 per
-    // filing covers preparation, internal compliance review, FinCEN
-    // submission, and a 12-month update-tracking window.
+    // Retired: FinCEN's August 2026 final rule exempts every U.S.-formed
+    // company from BOI reporting, so there is nothing to sell. Kept in the
+    // catalog only so historical orders still resolve.
     slug: 'boi_filing',
     name: 'BOI Filing (FinCEN)',
-    description:
-      'Beneficial Ownership Information report prepared and submitted to FinCEN per the Corporate Transparency Act. Encrypted intake, internal review, FinCEN tracking ID delivered to your dashboard.',
+    description: 'Beneficial Ownership Information report (retired service).',
     serviceMarginCents: 4_900,
     category: 'compliance',
     iconKey: 'Landmark',
-    badge: 'Required for most LLCs',
-    highlight: true,
+    availability: 'retired',
   },
 ];
 
@@ -412,6 +410,15 @@ export const ADD_ON_BY_SLUG: Record<AddOnSlug, AddOnDef> = ADD_ONS.reduce(
   (acc, a) => ({ ...acc, [a.slug]: a }),
   {} as Record<AddOnSlug, AddOnDef>,
 );
+
+/** True when the add-on is sold in the formation wizard and on public pages. */
+export function isWizardAddOn(slug: string): boolean {
+  const def = ADD_ON_BY_SLUG[slug as AddOnSlug];
+  return !!def && (def.availability ?? 'wizard') === 'wizard';
+}
+
+/** Add-ons offered in the formation wizard and listed on public pages. */
+export const WIZARD_ADD_ONS: AddOnDef[] = ADD_ONS.filter((a) => isWizardAddOn(a.slug));
 
 // ─── State filing fees & remittance helpers (internal accounting) ─────────
 
@@ -585,6 +592,8 @@ export function computeCost(input: {
     const addOn = ADD_ON_BY_SLUG[slug];
     if (!addOn) continue;
     if (slug === 'registered_agent') continue; // free year 1
+    // Dashboard-only and retired add-ons are never part of formation checkout.
+    if (!isWizardAddOn(slug)) continue;
     if (isBundledIntoTier(slug, input.tier)) continue;
 
     const cents = addOnPriceCents(slug, input.entityType, stateCode);
@@ -654,7 +663,6 @@ export function computeCost(input: {
  * declared in {@link TIERS}.
  */
 function isBundledIntoTier(slug: AddOnSlug, tier: TierSlug): boolean {
-  if (slug === 'ein' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
   if (
     (slug === 'operating_agreement_single' || slug === 'operating_agreement_multi') &&
     (tier === 'STANDARD' || tier === 'PREMIUM')
@@ -665,9 +673,6 @@ function isBundledIntoTier(slug: AddOnSlug, tier: TierSlug): boolean {
   if (slug === 'cert_status' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
   if (slug === 'domain_com' && tier === 'PREMIUM') return true;
   if (slug === 'compliance_alerts' && tier === 'PREMIUM') return true;
-  // BOI is bundled into Popular (STANDARD) and Premium per the May 2026
-  // repricing. Essential customers can still purchase it a la carte.
-  if (slug === 'boi_filing' && (tier === 'STANDARD' || tier === 'PREMIUM')) return true;
   // S-Corp election is now included in the Premium tier (audit fix - 
   // surfaces it as an explicit perk to justify the price gap).
   if (slug === 's_corp_election' && tier === 'PREMIUM') return true;
@@ -681,23 +686,14 @@ export function effectiveAddOns(tier: TierSlug, all: AddOnSlug[]): AddOnSlug[] {
 export function tierBundledAddOns(tier: TierSlug): AddOnSlug[] {
   if (tier === 'BASIC') return ['registered_agent'];
   if (tier === 'STANDARD')
-    return [
-      'registered_agent',
-      'ein',
-      'operating_agreement_single',
-      'cert_copy',
-      'cert_status',
-      'boi_filing',
-    ];
+    return ['registered_agent', 'operating_agreement_single', 'cert_copy', 'cert_status'];
   return [
     'registered_agent',
-    'ein',
     'operating_agreement_single',
     'cert_copy',
     'cert_status',
     'domain_com',
     'compliance_alerts',
-    'boi_filing',
     's_corp_election',
   ];
 }

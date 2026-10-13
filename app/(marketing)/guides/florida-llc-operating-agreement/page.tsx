@@ -89,8 +89,8 @@ export default function FloridaOperatingAgreementGuide() {
       <h3>1. Ownership and capital contribution</h3>
       <p>
         List each member, their ownership percentage, and what they contributed
-        to get it. This is what banks compare against the Form SS-4 you filed
-        for your EIN and what investors examine during due diligence.
+        to get it. This is what banks compare against your account-opening
+        paperwork and what investors examine during due diligence.
       </p>
       <h3>2. Management structure</h3>
       <p>
@@ -139,8 +139,8 @@ export default function FloridaOperatingAgreementGuide() {
         </li>
         <li>
           <strong>Ownership match.</strong> Percentages in the Operating
-          Agreement must match the EIN application and what you tell the bank
-          on account-opening forms.
+          Agreement must match your federal tax filings and what you tell the
+          bank on account-opening forms.
         </li>
         <li>
           <strong>Authorization language.</strong> The Operating Agreement

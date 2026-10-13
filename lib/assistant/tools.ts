@@ -338,7 +338,7 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
       description:
         'Surface ONE relevant add-on as a gentle suggestion (never pushy). Returns a label + link to pre-select it.',
       inputSchema: z.object({
-        addOnSlug: z.enum(['ein', 'boi_report', 's_corp_election', 'operating_agreement_multi', 'operating_agreement_single']),
+        addOnSlug: z.enum(['s_corp_election', 'operating_agreement_multi', 'operating_agreement_single']),
         reason: z.string().max(200),
       }),
       execute: async (args) => {

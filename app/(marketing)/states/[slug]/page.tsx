@@ -7,7 +7,6 @@ import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 import { HowItWorks } from '@/components/marketing/HowItWorks';
 import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
-import { Testimonials } from '@/components/marketing/Testimonials';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { AnnualReportSection } from '@/components/marketing/AnnualReportSection';
@@ -119,7 +118,6 @@ export default function StateLandingPage({
         <PricingTable state={state} />
         <ComparisonTable />
         <AnnualReportSection state={state} />
-        <Testimonials state={state} />
         <FAQSection state={state} />
         <CTABanner state={state} />
       </>

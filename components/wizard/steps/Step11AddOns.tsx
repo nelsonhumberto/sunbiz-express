@@ -25,7 +25,7 @@ import { saveStep11, upgradeTier } from '@/actions/wizard';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { Badge } from '@/components/ui/badge';
 import {
-  ADD_ONS,
+  WIZARD_ADD_ONS,
   addOnPriceCents,
   computeCost,
   preferredOperatingAgreementSlug,
@@ -35,7 +35,6 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
-import { filingIncludesEin } from '@/lib/ein';
 import { trackAddOnToggled } from '@/lib/analytics';
 import {
   addOnBadgeKey,
@@ -44,10 +43,6 @@ import {
 } from '@/lib/pricing-i18n';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { WizardFiling } from '../types';
-import {
-  EinResponsiblePartyPanel,
-  type EinPanelInitialState,
-} from '../EinResponsiblePartyPanel';
 
 const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
@@ -62,17 +57,7 @@ const ICONS: Record<string, LucideIcon> = {
   BellRing,
 };
 
-export function Step11AddOns({
-  filing,
-  einInitial,
-  defaultEmail,
-  defaultName,
-}: {
-  filing: WizardFiling;
-  einInitial?: EinPanelInitialState;
-  defaultEmail?: string;
-  defaultName?: string;
-}) {
+export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
   const tPricing = useTranslations('pricing');
@@ -100,14 +85,6 @@ export function Step11AddOns({
   initialSelected.add('registered_agent');
 
   const [selected, setSelected] = useState<Set<string>>(initialSelected);
-  // EIN responsible-party is now collected here (the step before payment) so
-  // checkout stays a clean final screen. Required whenever EIN is bundled in
-  // the tier or selected as an add-on.
-  const einRequired = filingIncludesEin({
-    tier,
-    addOnSlugs: Array.from(selected) as AddOnSlug[],
-  });
-  const [einComplete, setEinComplete] = useState(einInitial?.collected ?? false);
   const [pending, start] = useTransition();
   const [upgrading, startUpgrade] = useTransition();
   const router = useRouter();
@@ -194,10 +171,6 @@ export function Step11AddOns({
   };
 
   const onContinue = () => {
-    if (einRequired && !einComplete) {
-      toast.error(t('einRequiredBeforePayment'));
-      return;
-    }
     start(async () => {
       const res = await saveStep11({
         filingId: filing.id,
@@ -212,19 +185,10 @@ export function Step11AddOns({
   };
 
   // "Skip" persists the bundled-only selection (registered agent stays
-  // because it is mandatory) and jumps straight to payment. If EIN is bundled
-  // in the tier it stays required, so we still gate on the responsible party.
+  // because it is mandatory) and jumps straight to payment.
   const onSkip = () => {
     const baseline = new Set<string>(['registered_agent']);
     tierBundledAddOns(tier).forEach((slug) => baseline.add(slug));
-    const skipNeedsEin = filingIncludesEin({
-      tier,
-      addOnSlugs: Array.from(baseline) as AddOnSlug[],
-    });
-    if (skipNeedsEin && !einComplete) {
-      toast.error(t('einRequiredBeforePayment'));
-      return;
-    }
     start(async () => {
       const res = await saveStep11({
         filingId: filing.id,
@@ -243,9 +207,6 @@ export function Step11AddOns({
   // tier and aren't already selected. The banner intentionally caps at two
   // recommendations to avoid the LegalZoom-style upsell wall.
   const recommendations: Array<{ slug: AddOnSlug; reasonKey: string }> = [];
-  if (!bundled.has('ein') && !selected.has('ein')) {
-    recommendations.push({ slug: 'ein', reasonKey: 'addOnsBannerEinReason' });
-  }
   if (
     entityType === 'LLC' &&
     memberCount > 1 &&
@@ -267,7 +228,7 @@ export function Step11AddOns({
   //    sidebar / pricing banner; surfacing it as a "selectable" tile just
   //    confuses customers).
   //  - sort remaining items by category
-  const visible = ADD_ONS.filter((a) => {
+  const visible = WIZARD_ADD_ONS.filter((a) => {
     if (a.slug === 'registered_agent') return false;
     if (
       entityType === 'CORP' &&
@@ -328,7 +289,7 @@ export function Step11AddOns({
           <p className="text-sm text-ink-muted mt-1">{t('addOnsRecommendedBody')}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {trimmedRecommendations.map((rec) => {
-              const addon = ADD_ONS.find((a) => a.slug === rec.slug);
+              const addon = WIZARD_ADD_ONS.find((a) => a.slug === rec.slug);
               if (!addon) return null;
               return (
                 <button
@@ -436,16 +397,6 @@ export function Step11AddOns({
         })}
       </div>
 
-      {einRequired && (
-        <EinResponsiblePartyPanel
-          filingId={filing.id}
-          initial={einInitial ?? { collected: false }}
-          defaultEmail={defaultEmail}
-          defaultName={defaultName}
-          onSaved={() => setEinComplete(true)}
-        />
-      )}
-
       <div className="mt-10 pt-6 border-t border-border flex items-center justify-between gap-4">
         <Link
           href={`/wizard/${filing.id}/9`}
@@ -466,7 +417,7 @@ export function Step11AddOns({
           <button
             type="button"
             onClick={onContinue}
-            disabled={pending || (einRequired && !einComplete)}
+            disabled={pending}
             className={cn(
               'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
               'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',

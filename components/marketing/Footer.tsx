@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Logo } from './Logo';
-import { COPYRIGHT_YEAR } from '@/lib/constants';
+import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME, COPYRIGHT_YEAR } from '@/lib/constants';
 
 export function Footer() {
   const tFooter = useTranslations('footer');
@@ -32,9 +32,8 @@ export function Footer() {
     resources: [
       { label: tFooter('floridaLLCGuide'), href: '/guides/florida-llc-operating-agreement' },
       { label: tFooter('wyVsDeGuide'), href: '/guides/wyoming-llc-vs-delaware-corp' },
-      { label: tFooter('boiGuide'), href: '/guides/boi-filing-2026' },
+      { label: tFooter('boiGuide'), href: '/boi-reporting' },
       { label: tFooter('annualReportHelp'), href: '/file-annual-report' },
-      { label: tFooter('einLookup'), href: '/faq#ein' },
     ],
   };
 
@@ -58,7 +57,13 @@ export function Footer() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-white/10 flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-4">
-          <p className="text-xs text-white/30">{tFooter('copyright', { year: COPYRIGHT_YEAR })}</p>
+          <p className="text-xs text-white/30">
+            {tFooter('copyright', {
+              year: COPYRIGHT_YEAR,
+              company: BUSINESS_LEGAL_NAME,
+              address: BUSINESS_ADDRESS,
+            })}
+          </p>
           <div className="flex items-center gap-3 text-xs">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/20 text-accent">
               <svg className="h-3 w-3" viewBox="0 0 16 16" fill="currentColor">

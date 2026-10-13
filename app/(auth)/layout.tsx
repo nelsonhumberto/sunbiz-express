@@ -81,19 +81,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             )}
           </ul>
 
-          <div className="space-y-2 max-w-sm">
-            <div className="flex -space-x-2">
-              {['M', 'C', 'J', 'A'].map((c) => (
-                <div
-                  key={c}
-                  className="h-8 w-8 rounded-full bg-white/20 backdrop-blur border-2 border-primary flex items-center justify-center text-xs font-semibold"
-                >
-                  {c}
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-white/80">{t('sidePanelSocial')}</p>
-          </div>
+          <p className="text-sm text-white/80 max-w-sm">{t('sidePanelSocial')}</p>
         </div>
       </aside>
     </div>

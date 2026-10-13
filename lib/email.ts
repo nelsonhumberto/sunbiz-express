@@ -16,6 +16,7 @@ import { prisma } from './db';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
+import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export type NotificationType =
   | 'RA_RENEWAL_30'
   | 'RA_RENEWAL_7'
   | 'RA_RENEWED'
+  | 'EIN_ORDERED'
   | 'PAYMENT_CONFIRMATION'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
@@ -267,6 +269,19 @@ const TEMPLATES: Record<
       <a class="cta" href="${siteUrl}/dashboard/billing">View billing</a>
     `,
   }),
+  EIN_ORDERED: ({ firstName, businessName, totalCents, resumeUrl }) => {
+    const company = escapeHtml(businessName?.trim() || 'your company');
+    return {
+      subject: `EIN order received for ${businessName?.trim() || 'your company'}`.replace(/[\r\n]+/g, ' '),
+      body: html`
+        <h1>We received your EIN order</h1>
+        <p>Hi ${escapeHtml(firstName?.trim() || 'there')}, thank you. We charged <strong>${formatCurrency(totalCents ?? 0)}</strong> to prepare and file IRS Form SS-4 for <strong>${company}</strong>.</p>
+        <p>Next step: add the responsible-party details in your dashboard if you haven't yet. We file as soon as they're in and upload your EIN confirmation letter to your dashboard when the IRS issues it.</p>
+        <a class="cta" href="${escapeHtml(resumeUrl ?? `${siteUrl}/dashboard`)}">Open my EIN order</a>
+        <p class="muted">Questions? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+      `,
+    };
+  },
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`
@@ -297,7 +312,7 @@ const TEMPLATES: Record<
       <table class="meta">
         <tr><td>Filing #</td><td><code>${filingNumber ?? '-'}</code></td></tr>
       </table>
-      <p>Next up: open a business bank account, confirm your EIN, and keep your annual report deadline on the calendar - we'll remind you.</p>
+      <p>Next up: check your dashboard for next steps, open a business bank account, and keep your annual report deadline on the calendar - we'll remind you.</p>
       <a class="cta" href="${siteUrl}/dashboard">Download documents</a>
     `,
   }),
@@ -438,7 +453,7 @@ function wrap(inner: string) {
         Questions? <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
         · <a href="${siteUrl}/dashboard/settings" style="color:#667085;text-decoration:underline">Email preferences</a>
       </p>
-      <p>© ${new Date().getFullYear()} LaunchForma, Inc. · Not a law firm</p>
+      <p>© ${new Date().getFullYear()} ${BUSINESS_LEGAL_NAME} · ${BUSINESS_ADDRESS} · Not a law firm</p>
     </div>
   </div>
 </body>

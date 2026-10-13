@@ -27,13 +27,8 @@ export default function DisclaimerPage() {
         <a href="https://dos.fl.gov/sunbiz" target="_blank" rel="noopener noreferrer">
           sunbiz.org
         </a>
-        , and you can apply for an EIN directly with the IRS at{' '}
-        <a href="https://www.irs.gov" target="_blank" rel="noopener noreferrer">
-          irs.gov
-        </a>
-        , where the IRS issues EINs at no cost. Our fees are charged for the convenience of having
-        LaunchForma prepare and file the paperwork for you - not for the government documents
-        themselves. Where a package includes a state filing fee, that fee is set by the government
+        . Our fees are charged for the convenience of having LaunchForma prepare and file the
+        paperwork for you - not for the government documents themselves. Where a package includes a state filing fee, that fee is set by the government
         and remitted to the state on your behalf.
       </p>
 
@@ -89,9 +84,8 @@ export default function DisclaimerPage() {
 
       <h2>Tax advice</h2>
       <p>
-        LaunchForma does not provide tax advice. S-Corp election guidance, EIN application
-        assistance, and similar services are administrative - not tax-strategic. Consult a
-        licensed CPA for tax planning.
+        LaunchForma does not provide tax advice. S-Corp election filing and similar services are
+        administrative - not tax-strategic. Consult a licensed CPA for tax planning.
       </p>
 
       <h2>Questions?</h2>

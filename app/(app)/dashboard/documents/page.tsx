@@ -22,12 +22,13 @@ export default async function DocumentsPage() {
   const tWizard = await getTranslations('wizard');
   const tDetail = await getTranslations('filingDetail');
   const tDocs = await getTranslations('documentTypes');
+  const tEin = await getTranslations('einForm');
 
   const TYPE_LABEL: Record<string, string> = {
     ARTICLES_ORG: tDocs('ARTICLES_ORG'),
     ARTICLES_INC: tDocs('ARTICLES_INC'),
     OPERATING_AGREEMENT: tDocs('OPERATING_AGREEMENT'),
-    EIN_LETTER: tDocs('EIN_LETTER'),
+    EIN_LETTER: tEin('docEinLetter'),
     CERT_STATUS: tDocs('CERT_STATUS'),
     CERT_COPY: tDocs('CERT_COPY'),
     RECEIPT: tDocs('RECEIPT'),

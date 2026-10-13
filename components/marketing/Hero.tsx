@@ -206,7 +206,6 @@ function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
               />
               <SummaryRow label={t('previewRA')} amount={t('previewIncluded')} muted />
               <SummaryRow label={t('previewOA')} amount={t('previewIncluded')} muted />
-              <SummaryRow label={t('previewEIN')} amount={t('previewIncluded')} muted />
             </div>
             <div className="border-t border-border mt-4 pt-4 flex items-baseline justify-between">
               <span className="text-sm font-medium">{t('previewTotalToday')}</span>

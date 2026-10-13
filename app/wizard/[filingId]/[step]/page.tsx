@@ -66,8 +66,7 @@ export default async function WizardStepPage({ params }: PageProps) {
 
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's
   // missing core data - they'd otherwise only discover it when the charge is
-  // rejected. Send them to the earliest incomplete step instead. (EIN is
-  // collected on step 10 / as a payment fallback, so it's not gated here.)
+  // rejected. Send them to the earliest incomplete step instead.
   if (stepNum === 11) {
     const ra = safeParseJson<{ useOurService?: boolean; name?: string; street1?: string } | null>(
       filing.registeredAgent,
@@ -105,14 +104,13 @@ export default async function WizardStepPage({ params }: PageProps) {
     processingOptionId,
   };
 
-  // Identify the current actor (auth user OR guest). Used to gate the EIN
-  // tester bypass and to prefill the payment-step email/name fields.
+  // Identify the current actor (auth user OR guest). Used for the tester
+  // payment bypass and to prefill member name/email fields.
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
   const isGuest = actor?.kind === 'guest';
 
-  // Compute the actor's display name once for use across multiple steps
-  // (Step 7 first-member prefill, Step 11 EIN responsible-party prefill).
+  // Compute the actor's display name once (Step 7 first-member prefill).
   let actorDisplayName: string | undefined;
   let isTester = false;
   if (actor?.kind === 'user') {
@@ -128,42 +126,6 @@ export default async function WizardStepPage({ params }: PageProps) {
     actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
   }
   const actorEmail = actor?.email ?? undefined;
-
-  let einInitial: import('@/components/wizard/EinResponsiblePartyPanel').EinPanelInitialState = {
-    collected: false,
-  };
-  let defaultEmail: string | undefined;
-  let defaultName: string | undefined;
-
-  // The EIN responsible-party panel now lives on the add-ons step (10) - the
-  // last screen before payment - so the SSN/ITIN is collected before checkout.
-  // The payment step (11) keeps it only as a fallback when it wasn't completed.
-  if (stepNum === 10 || stepNum === 11) {
-    defaultEmail = actorEmail;
-    defaultName = actorDisplayName ?? filing.managersMembers[0]?.name ?? undefined;
-
-    const ein = await prisma.einApplication.findUnique({
-      where: { filingId: filing.id },
-    });
-    if (ein) {
-      einInitial = {
-        collected:
-          ein.status === 'ready_online' ||
-          ein.status === 'manual_foreign' ||
-          ein.status === 'submitted' ||
-          ein.status === 'delivered',
-        pathway: ein.responsiblePartyType as 'us' | 'foreign',
-        legalName: ein.legalName ?? undefined,
-        title: ein.title ?? undefined,
-        phone: ein.phone ?? undefined,
-        email: ein.email ?? undefined,
-        taxIdLast4: ein.taxIdLast4,
-        taxIdType: ein.taxIdType,
-        passportLast4: ein.passportLast4,
-        countryOfCitizenship: ein.countryOfCitizenship,
-      };
-    }
-  }
 
   return (
     <>
@@ -189,23 +151,8 @@ export default async function WizardStepPage({ params }: PageProps) {
         )}
         {stepNum === 8 && <Step9Optional filing={filing} />}
         {stepNum === 9 && <Step10Review filing={filing} />}
-        {stepNum === 10 && (
-          <Step11AddOns
-            filing={filing}
-            einInitial={einInitial}
-            defaultEmail={defaultEmail}
-            defaultName={defaultName}
-          />
-        )}
-        {stepNum === 11 && (
-          <Step12Payment
-            filing={filing}
-            einInitial={einInitial}
-            defaultEmail={defaultEmail}
-            defaultName={defaultName}
-            isTester={isTester}
-          />
-        )}
+        {stepNum === 10 && <Step11AddOns filing={filing} />}
+        {stepNum === 11 && <Step12Payment filing={filing} isTester={isTester} />}
       </WizardShell>
 
       {/* Guest-only popup: appears after Step 1 (entity choice) so we have

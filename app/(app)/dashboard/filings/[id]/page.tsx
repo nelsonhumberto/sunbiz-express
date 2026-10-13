@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import {
+  ADD_ON_BY_SLUG,
   filingHasOperatingAgreement,
   type AddOnSlug,
   type TierSlug,
@@ -33,7 +34,7 @@ import {
   isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
-import { filingIncludesEin } from '@/lib/ein';
+import { canOrderEin, filingIncludesEin } from '@/lib/ein';
 
 export const dynamic = 'force-dynamic';
 
@@ -261,11 +262,37 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
-      {/* EIN status card - only when the customer's package includes EIN. */}
-      {filingIncludesEin({
-        tier: filing.serviceTier as TierSlug,
-        addOnSlugs: filingAddOnSlugs,
-      }) && (() => {
+      {/* EIN: offered once the company is approved; status card once ordered. */}
+      {(() => {
+        const einEntitled = filingIncludesEin({
+          tier: filing.serviceTier as TierSlug,
+          addOnSlugs: filingAddOnSlugs,
+          createdAt: filing.createdAt,
+        });
+        if (canOrderEin({ status: filing.status, entitled: einEntitled })) {
+          return (
+            <Card className="border-primary/15">
+              <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Hash className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <h3 className="font-semibold text-ink">Get your EIN (federal tax ID)</h3>
+                  <p className="text-sm text-ink-muted">
+                    Most banks ask for an EIN to open a business account. We prepare and file IRS
+                    Form SS-4 for {filing.businessName ?? 'your company'} and upload your EIN
+                    confirmation letter here for {formatCurrency(ADD_ON_BY_SLUG.ein.serviceMarginCents)}.
+                    Prefer to do it yourself? The IRS issues EINs free at irs.gov.
+                  </p>
+                </div>
+                <Button asChild className="shrink-0">
+                  <Link href={`/dashboard/filings/${filing.id}/ein`}>Get my EIN</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        }
+        if (!einEntitled) return null;
         const ein = filing.einApplication;
         const status = ein?.status ?? 'needs_info';
         const headline =
@@ -287,12 +314,17 @@ export default async function FilingDetailPage({ params }: PageProps) {
                 ? "Your SS-4 is with the IRS. We'll upload your EIN confirmation letter (CP 575) to the dashboard as soon as it arrives."
                 : status === 'delivered'
                   ? 'Your EIN confirmation letter is available in the documents section.'
-                  : 'Open this filing\'s payment step to add your responsible-party details.';
+                  : 'Add the responsible-party details so we can file Form SS-4 for you.';
         return (
           <Card className="border-primary/15">
             <CardContent className="p-6 space-y-2">
               <h3 className="font-semibold text-ink">{headline}</h3>
               <p className="text-sm text-ink-muted">{body}</p>
+              {status === 'needs_info' && (
+                <Button asChild size="sm">
+                  <Link href={`/dashboard/filings/${filing.id}/ein`}>Add EIN details</Link>
+                </Button>
+              )}
               {ein?.responsiblePartyType === 'us' && ein.taxIdLast4 && (
                 <p className="text-xs text-ink-subtle">
                   Tax ID on file: ●●●-●●-{ein.taxIdLast4}
@@ -308,41 +340,20 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
-      {/* BOI / FinCEN reminder card. Anchor target for the checkout-success
-          `#boi` link the audit found pointing at a missing section. */}
-      <Card id="boi" className="border-accent/30 scroll-mt-24">
-        <CardContent className="p-6 space-y-3">
+      {/* BOI note. Anchor target for the checkout-success `#boi` link. */}
+      <Card id="boi" className="scroll-mt-24">
+        <CardContent className="p-6">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent/15 text-accent-700 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0">
               <Landmark className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-ink">
-                Beneficial Ownership Information (BOI) - FinCEN
-              </h3>
+              <h3 className="font-semibold text-ink">No BOI report needed</h3>
               <p className="mt-1 text-sm text-ink-muted leading-relaxed">
-                Most U.S. LLCs and Corporations formed on or after January 1,
-                2025 must file a BOI report with FinCEN within 30 days of
-                formation. Penalties for non-compliance are up to $500/day.
-                LaunchForma can prepare and submit the filing on your behalf
-                for $49 - encrypted intake, internal review, and 30-day
-                update tracking for the first 12 months.
+                FinCEN&apos;s final rule (August 2026) exempts companies formed in the United
+                States from beneficial ownership (BOI) reporting, so there is nothing to file for
+                this company.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  href="/boi-reporting"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  Add managed BOI filing ($49)
-                </Link>
-                <span className="text-ink-subtle text-sm">·</span>
-                <Link
-                  href="/guides/boi-filing-2026"
-                  className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-                >
-                  Read the 2026 BOI guide
-                </Link>
-              </div>
             </div>
           </div>
         </CardContent>

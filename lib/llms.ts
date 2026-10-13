@@ -20,7 +20,7 @@ const SUMMARY =
   'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida, Wyoming, and Delaware with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and same-business-day submission.';
 
 const ABOUT =
-  'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. Every package includes the required state filing fee, free Year-1 Registered Agent service, and digital delivery of filed documents. Optional add-ons include EIN acquisition, Operating Agreements, S-Corp election (IRS Form 2553), and Certificate of Status. The company also files Florida annual reports and BOI reports. LaunchForma is not a law firm and does not provide legal advice.';
+  'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. Every package includes the required state filing fee, free Year-1 Registered Agent service, and digital delivery of filed documents. Optional add-ons include Operating Agreements, S-Corp election (IRS Form 2553), managed annual reports, and compliance alerts. The company also files Florida annual reports. LaunchForma is not a law firm and does not provide legal advice.';
 
 interface LinkEntry {
   title: string;
@@ -31,11 +31,11 @@ interface LinkEntry {
 const CORE_PAGES: LinkEntry[] = [
   { title: 'Home', path: '/', note: 'Overview of LaunchForma formation services and pricing.' },
   { title: 'Pricing', path: '/pricing', note: 'All-in package pricing for LLC and Corporation formation; state fee included.' },
-  { title: 'Services', path: '/services', note: 'Add-on services: EIN, Operating Agreement, S-Corp election, Certificate of Status.' },
-  { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, EIN, annual reports, and timelines.' },
+  { title: 'Services', path: '/services', note: 'Add-on services: Operating Agreement, S-Corp election, managed annual reports, compliance alerts.' },
+  { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, annual reports, and timelines.' },
   { title: 'About', path: '/about', note: 'Company mission: transparent, all-in business formation.' },
   { title: 'File an Annual Report', path: '/file-annual-report', note: 'Florida annual report filing service and deadlines.' },
-  { title: 'BOI Reporting', path: '/boi-reporting', note: 'Beneficial Ownership Information (FinCEN) reporting overview.' },
+  { title: 'BOI Reporting', path: '/boi-reporting', note: 'BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting (August 2026 final rule).' },
   { title: 'States', path: '/states', note: 'States where LaunchForma files and coming-soon states.' },
   { title: 'Start a filing', path: '/start', note: 'Begin an LLC, Corporation, or S-Corp filing (no account required).' },
 ];
@@ -44,7 +44,6 @@ const GUIDES: LinkEntry[] = [
   { title: 'Guides index', path: '/guides', note: 'Long-form formation and compliance guides.' },
   { title: 'Wyoming LLC vs Delaware Corp', path: '/guides/wyoming-llc-vs-delaware-corp', note: 'Compare Wyoming LLC and Delaware C-Corp for privacy, taxes, and fundraising.' },
   { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'Why and how to create a Florida LLC operating agreement.' },
-  { title: 'BOI Filing 2026', path: '/guides/boi-filing-2026', note: 'Beneficial Ownership Information reporting requirements and deadlines.' },
 ];
 
 const LEGAL: LinkEntry[] = [

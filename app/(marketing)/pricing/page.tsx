@@ -36,7 +36,7 @@ export async function generateMetadata({
       : `${state.name} LLC & Corporation Formation Pricing - All-In Packages`;
   const description =
     state.code === 'FL'
-      ? 'Florida LLC and Corporation formation packages from $149 all-in. State filing fee included, free Year-1 Registered Agent, EIN, Operating Agreement, BOI filing - no surprise checkout fees.'
+      ? 'Florida LLC and Corporation formation packages from $149 all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.'
       : `${state.name} LLC and Corporation formation pricing with the ${state.name} filing fee included. Free Year-1 Registered Agent, transparent all-in pricing, no upsell tricks.`;
   return {
     title,

@@ -30,12 +30,12 @@ export async function generateMetadata({
       state.code === 'FL' ? '/faq' : `/faq?state=${state.code}`;
     const title =
       state.code === 'FL'
-        ? 'LLC & Corporation Formation FAQ - Pricing, Timing, Registered Agent, BOI'
+        ? 'LLC & Corporation Formation FAQ - Pricing, Timing, Registered Agent'
         : `${stateName} LLC & Corporation FAQ - Pricing, Timing, Compliance`;
     const description =
       state.code === 'FL'
-        ? 'Answers about LaunchForma packages, Florida filing timing, Registered Agent, EIN, annual reports, BOI/FinCEN, and refund policy.'
-        : `Answers about LaunchForma packages for ${stateName} - filing timing, Registered Agent, EIN, annual compliance, BOI/FinCEN, and refunds.`;
+        ? 'Answers about LaunchForma packages, Florida filing timing, Registered Agent, annual reports, and refund policy.'
+        : `Answers about LaunchForma packages for ${stateName} - filing timing, Registered Agent, annual compliance, and refunds.`;
     return {
       title,
       description,

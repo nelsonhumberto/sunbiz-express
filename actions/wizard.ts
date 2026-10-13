@@ -10,6 +10,7 @@ import { encryptString } from '@/lib/encryption';
 import {
   computeCost,
   filingHasOperatingAgreement,
+  isWizardAddOn,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -925,7 +926,7 @@ export async function saveStep11(input: { filingId: string; addOnSlugs: string[]
   const { filing } = await getFilingForUser(input.filingId);
 
   const services = await prisma.additionalService.findMany({
-    where: { serviceSlug: { in: input.addOnSlugs } },
+    where: { serviceSlug: { in: input.addOnSlugs.filter(isWizardAddOn) } },
   });
 
   await prisma.filingAdditionalService.deleteMany({ where: { filingId: filing.id } });

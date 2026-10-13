@@ -10,17 +10,17 @@ interface Row {
   values: (boolean | string)[];
 }
 
-const COMPETITORS = ['LaunchForma', 'Typical online filer', 'ZenBusiness', 'Bizee'];
+// Named-competitor columns were removed: specific claims about other brands'
+// prices and practices need substantiation we can't keep current.
+const COMPETITORS = ['LaunchForma', 'Typical online filer'];
 
 const ROWS: Row[] = [
-  { labelKey: 'feat_freeRA', values: [true, false, '$199/yr', true] },
-  { labelKey: 'feat_einIncluded', values: [true, '$99', true, '$199+ tier'] },
-  { labelKey: 'feat_sameDayPrep', values: [true, '$249 tier', true, true] },
-  { labelKey: 'feat_allInPricing', values: [true, false, false, false] },
-  { labelKey: 'feat_noSurpriseFees', values: [true, false, false, false] },
-  { labelKey: 'feat_oa', values: [true, '$99', true, true] },
-  { labelKey: 'feat_reminders', values: [true, '$99/yr', '$199/yr', '$99/yr'] },
-  { labelKey: 'feat_privacy', values: [true, false, false, true] },
+  { labelKey: 'feat_freeRA', values: [true, false] },
+  { labelKey: 'feat_sameDayPrep', values: [true, '$249 tier'] },
+  { labelKey: 'feat_allInPricing', values: [true, false] },
+  { labelKey: 'feat_noSurpriseFees', values: [true, false] },
+  { labelKey: 'feat_oa', values: [true, '$99'] },
+  { labelKey: 'feat_reminders', values: [true, '$99/yr'] },
 ];
 
 export function ComparisonTable() {

@@ -17,7 +17,6 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Same-business-day preparation and submission': 'feat_sameDayPrep',
   'Free Year-1 Registered Agent': 'feat_freeRA',
   'Email support': 'feat_emailSupport',
-  'EIN Acquisition (IRS Form SS-4)': 'feat_ein',
   'Operating Agreement (custom)': 'feat_oa',
   'Operating Agreement (add-on)': 'feat_oaAddOn',
   'Certified Copy of Articles': 'feat_certCopy',
@@ -35,12 +34,6 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Everything in Filing Only': 'feat_everythingBasic',
   'Everything in Basic Filing': 'feat_everythingBasic',
   'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
-  // BOI / S-Corp tier-included labels - added with the May 2026 pricing
-  // rollout. They keep their English-canonical label in lib/pricing.ts so
-  // server PDFs render plain text; the i18n keys live in messages/*.json
-  // for the customer-facing wizard + pricing UI.
-  'BOI filing (FinCEN)': 'feat_boi',
-  'BOI filing (FinCEN, included)': 'feat_boi',
   'S-Corp Election filing (Form 2553)': 'feat_scorpFiling',
 };
 

@@ -6,7 +6,6 @@ import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 import { HowItWorks } from '@/components/marketing/HowItWorks';
 import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
-import { Testimonials } from '@/components/marketing/Testimonials';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { AnnualReportSection } from '@/components/marketing/AnnualReportSection';
@@ -38,7 +37,7 @@ export async function generateMetadata({
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
     const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
-    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, EIN application, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
+    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
     // for the same content.
@@ -107,7 +106,6 @@ export default function HomePage({
       <PricingTable state={state} />
       <ComparisonTable />
       <AnnualReportSection state={state} />
-      <Testimonials state={state} />
       <FAQSection state={state} />
       <CTABanner state={state} />
     </>

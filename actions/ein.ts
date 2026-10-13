@@ -8,12 +8,16 @@ import { prisma } from '@/lib/db';
 import { getWizardActor } from '@/lib/guest';
 import { encryptString, decryptString } from '@/lib/encryption';
 import {
+  canOrderEin,
   classifyEinPathway,
   filingIncludesEin,
   lastFourDigits,
   looksLikeUsTaxId,
 } from '@/lib/ein';
-import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { ADD_ON_BY_SLUG, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { getStripe } from '@/lib/stripe';
+import { checkActionRateLimit } from '@/lib/rate-limit';
+import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 
 // We never accept SSN/ITIN values shorter than 9 digits. UI must surface the
@@ -114,11 +118,12 @@ async function saveEinResponsiblePartyImpl(
     !filingIncludesEin({
       tier: filing.serviceTier as TierSlug,
       addOnSlugs,
+      createdAt: filing.createdAt,
     })
   ) {
     return {
       ok: false,
-      error: 'EIN is not included in this package - add it from Step 10 first.',
+      error: 'Order your EIN from your company dashboard first.',
     };
   }
 
@@ -199,8 +204,8 @@ async function saveEinResponsiblePartyImpl(
     });
   }
 
-  revalidatePath(`/wizard/${filing.id}/11`);
   revalidatePath(`/dashboard/filings/${filing.id}`);
+  revalidatePath(`/dashboard/filings/${filing.id}/ein`);
   return { ok: true, status };
 }
 
@@ -230,6 +235,7 @@ export async function getEinSummary(
   const required = filingIncludesEin({
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
+    createdAt: filing.createdAt,
   });
   if (!required) return { complete: false, required: false };
   const ein = filing.einApplication;
@@ -246,6 +252,181 @@ export async function getEinSummary(
     passportLast4: ein.passportLast4,
     countryOfCitizenship: ein.countryOfCitizenship,
   };
+}
+
+const PurchaseEinSchema = z.object({
+  filingId: z.string().min(1),
+  // Real Stripe PaymentIntent confirmed on the client.
+  paymentIntentId: z.string().min(1),
+});
+
+/**
+ * Order the EIN add-on for a formed company from the dashboard. The browser
+ * confirms a PaymentIntent for the EIN price; this verifies it with Stripe
+ * before recording the order. Idempotent on the PaymentIntent id. A verified
+ * charge that can't be granted (already entitled, not yet approved) is
+ * refunded automatically.
+ */
+export async function purchaseEinAddOn(
+  input: z.infer<typeof PurchaseEinSchema>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const data = PurchaseEinSchema.parse(input);
+
+  const limited = checkActionRateLimit('ein-order', 10, 60 * 1000);
+  if (limited) return { ok: false, error: limited };
+
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: 'Sign in to continue.' };
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: data.filingId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      serviceTier: true,
+      createdAt: true,
+      businessName: true,
+      filingAdditionalServices: { select: { service: { select: { serviceSlug: true } } } },
+      user: { select: { id: true, email: true, firstName: true, stripeCustomerId: true } },
+    },
+  });
+  if (!filing || filing.userId !== session.user.id) {
+    return { ok: false, error: 'Company not found.' };
+  }
+
+  const revalidate = () => {
+    revalidatePath(`/dashboard/filings/${filing.id}`);
+    revalidatePath(`/dashboard/filings/${filing.id}/ein`);
+    revalidatePath('/dashboard/billing');
+  };
+
+  const already = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: data.paymentIntentId },
+    select: { id: true },
+  });
+  if (already) {
+    revalidate();
+    return { ok: true };
+  }
+
+  const priceCents = ADD_ON_BY_SLUG.ein.serviceMarginCents;
+  const stripe = getStripe();
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.retrieve(data.paymentIntentId, { expand: ['payment_method'] });
+  } catch {
+    return { ok: false, error: 'Could not verify payment. Please try again.' };
+  }
+  if (pi.status !== 'succeeded') {
+    return { ok: false, error: `Payment not completed (${pi.status}). Please try again.` };
+  }
+  // metadata.userId is set server-side when the PaymentIntent is created, so a
+  // PaymentIntent id belonging to someone else can't be replayed here.
+  const piCustomer = typeof pi.customer === 'string' ? pi.customer : pi.customer?.id ?? null;
+  if (
+    pi.metadata?.userId !== session.user.id ||
+    (filing.user.stripeCustomerId && piCustomer && piCustomer !== filing.user.stripeCustomerId)
+  ) {
+    return { ok: false, error: 'Payment could not be verified. Please contact support.' };
+  }
+  if (Math.abs(pi.amount - priceCents) > 1) {
+    logger.error(
+      'EIN order amount mismatch',
+      { area: 'stripe', entityId: filing.id, tag: 'ein-order' },
+      { piAmount: pi.amount, expected: priceCents },
+    );
+    return { ok: false, error: 'Payment amount mismatch. Please contact support.' };
+  }
+
+  const entitled = filingIncludesEin({
+    tier: filing.serviceTier as TierSlug,
+    addOnSlugs: filing.filingAdditionalServices.map((f) => f.service.serviceSlug as AddOnSlug),
+    createdAt: filing.createdAt,
+  });
+  if (!canOrderEin({ status: filing.status, entitled })) {
+    try {
+      await stripe.refunds.create({ payment_intent: pi.id });
+    } catch (err) {
+      logger.error('EIN order refund failed', { area: 'stripe', entityId: filing.id, tag: 'ein-order' }, err);
+      return { ok: false, error: 'This order could not be completed. Please contact support for a refund.' };
+    }
+    return {
+      ok: false,
+      error: entitled
+        ? 'Your EIN is already included, so we refunded this charge.'
+        : 'EIN can be ordered once your company is approved. We refunded this charge.',
+    };
+  }
+
+  const pm = pi.payment_method as import('stripe').Stripe.PaymentMethod | null;
+  const def = ADD_ON_BY_SLUG.ein;
+  try {
+    await prisma.$transaction(async (tx) => {
+      const service = await tx.additionalService.upsert({
+        where: { serviceSlug: 'ein' },
+        update: {},
+        create: {
+          serviceName: def.name,
+          serviceSlug: 'ein',
+          description: def.description,
+          iconKey: def.iconKey,
+          priceCents,
+          category: def.category,
+        },
+      });
+      await tx.payment.create({
+        data: {
+          filingId: filing.id,
+          userId: filing.user.id,
+          stripePaymentIntentId: pi.id,
+          stripePaymentMethodId: pm?.id ?? null,
+          amountCents: pi.amount,
+          status: 'SUCCEEDED',
+          einCents: priceCents,
+          cardLast4: pm?.card?.last4 ?? null,
+          cardBrand: pm?.card?.brand
+            ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1)
+            : null,
+          cardholderName: pm?.billing_details?.name ?? null,
+          completedAt: new Date(),
+        },
+      });
+      await tx.filingAdditionalService.create({
+        data: {
+          filingId: filing.id,
+          serviceId: service.id,
+          priceCents,
+          status: 'ACTIVE',
+          purchasedAt: new Date(),
+        },
+      });
+    });
+  } catch (err) {
+    logger.error('EIN order record failed', { area: 'ein', entityId: filing.id, tag: 'ein-order' }, err);
+    return { ok: false, error: 'Something went wrong recording your order. Please contact support.' };
+  }
+
+  try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+    await sendEmail({
+      type: 'EIN_ORDERED',
+      to: filing.user.email,
+      userId: filing.user.id,
+      filingId: filing.id,
+      context: {
+        firstName: filing.user.firstName,
+        businessName: filing.businessName ?? undefined,
+        totalCents: priceCents,
+        resumeUrl: `${siteUrl}/dashboard/filings/${filing.id}/ein`,
+      },
+    });
+  } catch (err) {
+    logger.error('EIN order receipt email failed', { area: 'email', entityId: filing.id }, err);
+  }
+
+  revalidate();
+  return { ok: true };
 }
 
 /**

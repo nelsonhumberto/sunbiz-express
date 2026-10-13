@@ -28,7 +28,7 @@ export default function WyomingVsDelawareGuide() {
       cta={{
         headline: 'Ready to file?',
         subhead:
-          'LaunchForma files Wyoming LLCs and Delaware Corporations with all-in pricing, free Year-1 Registered Agent, and BOI filing as a $49 add-on.',
+          'LaunchForma files Wyoming LLCs and Delaware Corporations with all-in pricing and a free Year-1 Registered Agent.',
         href: '/states',
         label: 'See state pricing',
       }}
@@ -149,12 +149,11 @@ export default function WyomingVsDelawareGuide() {
 
       <h2>7. BOI / FinCEN</h2>
       <p>
-        Both Wyoming and Delaware entities are subject to the federal Corporate
-        Transparency Act. Most LLCs and Corporations formed in 2025 or later
-        must file a{' '}
-        <a href="/boi-reporting">Beneficial Ownership Information</a> report
-        with FinCEN within 30 days of formation. State choice does not change
-        that.
+        State choice does not change your federal picture here: under
+        FinCEN&apos;s August 2026 final rule, companies formed in the United
+        States are exempt from{' '}
+        <a href="/boi-reporting">beneficial ownership (BOI) reporting</a>, so a
+        new Wyoming or Delaware entity has nothing to file with FinCEN.
       </p>
 
       <h2>So which one?</h2>

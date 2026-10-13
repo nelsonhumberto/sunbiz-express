@@ -2,21 +2,35 @@
 //
 // Centralises the rules that determine whether a filing needs to collect
 // IRS Form SS-4 responsible-party data, and what UI state to show. Used by
-// the wizard payment gate, the dashboard, and the admin queue.
+// the dashboard EIN page, document generation, and the admin queue.
 
 import type { AddOnSlug, TierSlug } from './pricing';
-import { tierBundledAddOns } from './pricing';
 
 /**
- * True when the filing is purchasing EIN - either as part of its tier or as
- * a standalone add-on. Drives the "EIN responsible party" panel on payment.
+ * EIN moved out of the formation packages into a post-formation dashboard
+ * add-on (Google Ads restricts advertising EIN services). Popular and Premium
+ * filings started before this moment were sold with EIN included and keep it.
+ */
+export const EIN_UNBUNDLED_AT = new Date('2026-10-13T23:00:00Z');
+
+/**
+ * True when the filing is entitled to an EIN: bought from the dashboard (or
+ * à la carte before the move), or bundled into a legacy Popular/Premium order.
  */
 export function filingIncludesEin(args: {
   tier: TierSlug;
   addOnSlugs: readonly AddOnSlug[];
+  createdAt: Date;
 }): boolean {
-  if (tierBundledAddOns(args.tier).includes('ein')) return true;
-  return args.addOnSlugs.includes('ein');
+  if (args.addOnSlugs.includes('ein')) return true;
+  return (
+    (args.tier === 'STANDARD' || args.tier === 'PREMIUM') && args.createdAt < EIN_UNBUNDLED_AT
+  );
+}
+
+/** EIN can be ordered from the dashboard once the company is formed. */
+export function canOrderEin(args: { status: string; entitled: boolean }): boolean {
+  return args.status === 'APPROVED' && !args.entitled;
 }
 
 /** EIN application lifecycle states. Mirrors `EinApplication.status`. */

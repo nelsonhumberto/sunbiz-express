@@ -97,9 +97,9 @@ interface EinPanelProps {
 }
 
 /**
- * Renders the EIN responsible-party form. Shown above the payment card
- * whenever the customer's package includes EIN. The form has two distinct
- * paths because the IRS treats them very differently:
+ * Renders the EIN responsible-party form on the dashboard EIN page (EIN is a
+ * post-formation add-on). The form has two distinct paths because the IRS
+ * treats them very differently:
  *
  *  - US (SSN/ITIN): straight-through online filing via the IRS EIN
  *    Assistant. We collect a 9-digit tax id, encrypt it, and only display
@@ -116,7 +116,7 @@ export function EinResponsiblePartyPanel({
   defaultName,
   onSaved,
 }: EinPanelProps) {
-  const t = useTranslations('wizard');
+  const t = useTranslations('einForm');
   const [pathway, setPathway] = useState<Pathway>(initial.pathway ?? 'us');
   const [legalName, setLegalName] = useState(initial.legalName ?? defaultName ?? '');
   const [title, setTitle] = useState(initial.title ?? '');

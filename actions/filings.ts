@@ -38,6 +38,7 @@ import {
 } from '@/lib/formation-states';
 import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 import { getWizardActor } from '@/lib/guest';
+import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
 
 export async function createFiling(input?: {
@@ -222,9 +223,9 @@ export async function submitFilingToState(
     filing.correspondenceContact,
     null,
   );
-  // Bundled add-ons (Standard/Premium tiers include cert_status, cert_copy,
-  // and ein) entitle the customer to those documents too - so we still want
-  // pending placeholders even if the customer didn't pick them à la carte.
+  // Bundled add-ons (Standard/Premium tiers include cert_status and cert_copy)
+  // entitle the customer to those documents too - so we still want pending
+  // placeholders even if the customer didn't pick them à la carte.
   const allEntitledAddOns: AddOnSlug[] = [
     ...new Set<AddOnSlug>([
       ...filingAddOnSlugs,
@@ -233,7 +234,11 @@ export async function submitFilingToState(
   ];
   const wantsCertStatus = allEntitledAddOns.includes('cert_status');
   const wantsCertCopy = allEntitledAddOns.includes('cert_copy');
-  const wantsEin = allEntitledAddOns.includes('ein');
+  const wantsEin = filingIncludesEin({
+    tier: filing.serviceTier as TierSlug,
+    addOnSlugs: filingAddOnSlugs,
+    createdAt: filing.createdAt,
+  });
   // The cover letter goes to the Florida Department of State alongside the
   // money order / check. It MUST reflect the actual amount we are remitting
   // to Florida - never the customer's all-in package price (which includes

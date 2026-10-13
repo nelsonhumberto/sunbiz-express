@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ADD_ONS } from '@/lib/pricing';
+import { WIZARD_ADD_ONS, type AddOnDef } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Add-On Services - EIN, Registered Agent, BOI, Compliance',
+  title: 'Add-On Services - Registered Agent, Operating Agreements, Compliance',
   description:
-    'A la carte business formation services: EIN acquisition, Registered Agent, Operating Agreement, Certificate of Status, Certified Copy, BOI filing, S-Corp election, and ongoing compliance - transparent pricing with no upsell tricks.',
+    'A la carte business formation services: Registered Agent, Operating Agreement, S-Corp election, managed annual reports, and compliance alerts - transparent pricing with no upsell tricks.',
   alternates: { canonical: '/services' },
   openGraph: {
     title: 'LaunchForma Services - Formation, Compliance, Branding',
@@ -37,18 +37,25 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck, Hash, FileText, Users, Globe, Award, FileCheck, CalendarCheck, Receipt, BellRing, Landmark,
 };
 
+// State-issued certificates are delivered inside formation packages but never
+// advertised as standalone purchases (Google Ads restricts promoting direct
+// acquisition of government documents).
+const LISTED_SERVICES = WIZARD_ADD_ONS.filter(
+  (a) => a.slug !== 'cert_status' && a.slug !== 'cert_copy',
+);
+
 export default function ServicesPage() {
   const byCategory = {
-    formation: ADD_ONS.filter((a) => a.category === 'formation'),
-    compliance: ADD_ONS.filter((a) => a.category === 'compliance'),
-    branding: ADD_ONS.filter((a) => a.category === 'branding'),
+    formation: LISTED_SERVICES.filter((a) => a.category === 'formation'),
+    compliance: LISTED_SERVICES.filter((a) => a.category === 'compliance'),
+    branding: LISTED_SERVICES.filter((a) => a.category === 'branding'),
   };
 
   return (
     <>
       <JsonLd
         data={servicesItemListJsonLd(
-          ADD_ONS.map((a) => ({
+          LISTED_SERVICES.map((a) => ({
             name: a.name,
             description: a.description,
             priceCents: a.priceCents,
@@ -72,7 +79,7 @@ export default function ServicesPage() {
       </section>
 
       <ServiceCategory id="formation" title="Formation" subtitle="Everything to get your business legally formed and bank-ready." services={byCategory.formation} />
-      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of every state - annual reports, BOI, and franchise tax handled before deadlines bite." services={byCategory.compliance} />
+      <ServiceCategory id="compliance" title="Compliance" subtitle="Stay on the right side of every state - annual reports and franchise tax handled before deadlines bite." services={byCategory.compliance} />
       <ServiceCategory id="branding" title="Branding" subtitle="Establish your online identity from day one." services={byCategory.branding} />
 
       <CTABanner />
@@ -89,7 +96,7 @@ function ServiceCategory({
   id: string;
   title: string;
   subtitle: string;
-  services: typeof ADD_ONS;
+  services: AddOnDef[];
 }) {
   return (
     <section id={id} className="py-12 md:py-16">

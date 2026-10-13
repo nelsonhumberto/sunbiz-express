@@ -78,8 +78,8 @@ export default function RefundPolicyPage() {
 
       <h2>4. Add-ons - refundable until delivered</h2>
       <p>
-        Add-on services (EIN acquisition, Operating Agreement drafting, Certificate
-        of Status, Certified Copy, S-Corp election) are refundable up until we
+        Add-on services (Operating Agreement drafting, S-Corp election, managed
+        annual reports, and other optional services) are refundable up until we
         begin work on them. Once delivered, they cannot be refunded because the
         work product is yours.
       </p>

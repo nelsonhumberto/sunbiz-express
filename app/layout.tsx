@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import { omitPrivateNamespaces } from '@/i18n/config';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     template: '%s · LaunchForma',
   },
   description:
-    'LaunchForma is a private filing service that prepares and files your Florida LLC or Corporation with the state on your behalf. Florida LLC filing, EIN application, free Year-1 Registered Agent, transparent all-in pricing. Not a government agency; no hidden fees.',
+    'LaunchForma is a private filing service that prepares and files your Florida LLC or Corporation with the state on your behalf. Free Year-1 Registered Agent, Operating Agreement options, and transparent all-in pricing. Not a government agency; no hidden fees.',
   keywords: [
     'LLC formation',
     'Corporation formation',
@@ -37,8 +38,6 @@ export const metadata: Metadata = {
     'Wyoming LLC',
     'Delaware LLC',
     'registered agent',
-    'EIN',
-    'Sunbiz',
     'incorporate online',
     'form an LLC',
     'LaunchForma',
@@ -46,7 +45,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'A private filing service that prepares and files your Florida LLC or Corporation with the state. EIN application, free registered agent, and transparent all-in pricing. Not a government agency. No hidden fees, ever.',
+      'A private filing service that prepares and files your Florida LLC or Corporation with the state. Free registered agent and transparent all-in pricing. Not a government agency. No hidden fees, ever.',
     type: 'website',
     locale: 'en_US',
     siteName: 'LaunchForma',
@@ -55,7 +54,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'Private Florida LLC formation & EIN application service. All-in pricing, free registered agent, same-day submission. Not a government agency.',
+      'Private Florida LLC formation service. All-in pricing, free registered agent, same-day submission. Not a government agency.',
   },
   robots: {
     index: true,
@@ -81,7 +80,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <PostHogProvider>
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <NextIntlClientProvider locale={locale} messages={omitPrivateNamespaces(messages)}>
             {children}
             <Toaster
               position="top-right"

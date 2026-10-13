@@ -10,7 +10,6 @@ import {
   Clock,
   ShieldCheck,
   Landmark,
-  AlertTriangle,
 } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -138,17 +137,6 @@ export default async function CheckoutSuccessPage({
             title={t('documentsReady')}
             body={t('documentsReadyBody')}
             timing={t('availableNow')}
-          />
-          {/* Federal compliance - almost every new entity owes BOI to FinCEN.
-              We keep the user on-site by linking to our internal BOI guide
-              instead of bouncing them to fincen.gov. */}
-          <NextStep
-            icon={<AlertTriangle className="h-5 w-5 text-warn" />}
-            title={t('boiTitle')}
-            body={t('boiBody')}
-            timing={t('boiTime')}
-            ctaLabel={t('boiCta')}
-            ctaHref={`/dashboard/filings/${filing.id}#boi`}
           />
           <NextStep
             icon={<Landmark className="h-5 w-5 text-primary" />}

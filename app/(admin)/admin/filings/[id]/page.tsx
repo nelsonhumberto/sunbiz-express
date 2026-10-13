@@ -39,6 +39,8 @@ import {
   filingUsesOurRa,
   resolveSunbizCoverEmail,
 } from '@/lib/sunbiz-cover';
+import { filingIncludesEin } from '@/lib/ein';
+import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,7 @@ interface PageProps {
 export default async function AdminFilingDetailPage({ params }: PageProps) {
   const t = await getTranslations('admin');
   const tDocs = await getTranslations('documentTypes');
+  const tEin = await getTranslations('einForm');
 
   const TYPE_LABEL: Record<string, string> = {
     ARTICLES_ORG: tDocs('ARTICLES_ORG'),
@@ -57,7 +60,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     COVER_LETTER: tDocs('COVER_LETTER_ADMIN'),
     SUNBIZ_COVER_PAGE: tDocs('SUNBIZ_COVER_PAGE'),
     FILE_PACKAGE: tDocs('FILE_PACKAGE'),
-    EIN_LETTER: tDocs('EIN_LETTER'),
+    EIN_LETTER: tEin('docEinLetter'),
     CERT_STATUS: tDocs('CERT_STATUS'),
     CERT_COPY: tDocs('CERT_COPY'),
     RECEIPT: tDocs('RECEIPT'),
@@ -311,6 +314,20 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
           </Card>
         );
       })()}
+
+      {!filing.einApplication &&
+        filingIncludesEin({
+          tier: filing.serviceTier as TierSlug,
+          addOnSlugs: filing.filingAdditionalServices.map((f) => f.service.serviceSlug as AddOnSlug),
+          createdAt: filing.createdAt,
+        }) && (
+          <Card className="border-warn/30">
+            <CardContent className="p-6 text-sm text-ink-muted">
+              <strong className="text-ink">EIN included</strong> - waiting for the customer to add
+              the responsible-party details from their dashboard.
+            </CardContent>
+          </Card>
+        )}
 
       {/* EIN admin queue panel - surfaces sensitive data status without
           ever displaying the encrypted SSN/passport. Admins use the

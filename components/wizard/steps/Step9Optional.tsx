@@ -771,7 +771,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="SSN">SSN</SelectItem>
-                                  <SelectItem value="EIN">EIN (trusts/estates)</SelectItem>
+                                  <SelectItem value="EIN">Trust or estate tax ID</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -873,7 +873,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="SSN">SSN</SelectItem>
-                          <SelectItem value="EIN">EIN (trusts/estates)</SelectItem>
+                          <SelectItem value="EIN">Trust or estate tax ID</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

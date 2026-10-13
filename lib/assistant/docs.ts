@@ -11,8 +11,8 @@ import 'server-only';
 export const COMPANY_FACTS = `
 About LaunchForma
 - LaunchForma is an online business-formation service. We prepare and file LLC and
-  Corporation formation paperwork with the state, and offer add-ons like EIN, BOI
-  (FinCEN beneficial-ownership) filing, operating agreements, and Registered Agent.
+  Corporation formation paperwork with the state, and offer add-ons like operating
+  agreements, S-Corp election, managed annual reports, and Registered Agent.
 - States we file in today: Florida, Wyoming, Delaware. Other states are "coming soon"
   (waitlist only) - do not promise filing for them.
 - We are NOT a law firm and do not give legal or tax advice. For legal/tax specifics,
@@ -21,17 +21,16 @@ About LaunchForma
 What's included
 - Every package includes the state filing fee, preparation + same-business-day
   submission, Year-1 Registered Agent, and digital delivery of filed documents.
-- Registered Agent renews at $119/year after year one; cancel anytime.
+- Registered Agent renews at $150/year after year one; cancel anytime.
 - 14-day satisfaction guarantee (see /refund-policy).
 
 Key concepts (explain in one plain-language sentence when asked)
 - Registered Agent: a person/company with a physical in-state address that receives
   legal mail for your business. Required by law. We can be yours, free year one.
-- EIN: your business's federal tax ID from the IRS - needed for a bank account,
-  employees, and taxes.
-- BOI report: a FinCEN filing under the Corporate Transparency Act naming who owns
-  the company. Most new entities must file within 30 days of formation. We offer a
-  managed BOI filing.
+- Federal tax ID: not part of our formation packages. If asked, say the IRS issues it
+  for free at irs.gov; do not offer to file it.
+- BOI report: companies formed in the U.S. are exempt from FinCEN beneficial-ownership
+  reporting (August 2026 final rule), so there is nothing to file. We do not sell it.
 - Operating Agreement (LLC) / Bylaws (Corp): the internal rulebook for the company;
   banks often ask for it.
 - S-Corp: a tax election (IRS Form 2553), not a separate entity - an LLC or Corp can
@@ -43,6 +42,6 @@ Support + handoff
 
 Useful pages
 - Pricing: /pricing · FAQ: /faq · Services: /services · BOI: /boi-reporting
-- Guides: /guides (operating agreement, Wyoming vs Delaware, BOI 2026)
+- Guides: /guides (operating agreement, Wyoming vs Delaware, BOI update 2026)
 - Start a filing: /start
 `.trim();

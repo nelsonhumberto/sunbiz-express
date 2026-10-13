@@ -2,8 +2,6 @@ import 'server-only';
 
 import { prisma } from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
-import { filingIncludesEin } from '@/lib/ein';
-import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 
 interface RegisteredAgentLike {
   useOurService?: boolean;
@@ -28,30 +26,11 @@ interface AddressLike {
 export async function assertFilingReadyForSubmission(
   filingId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const filing = await prisma.filing.findUnique({
-    where: { id: filingId },
-    include: {
-      filingAdditionalServices: { include: { service: true } },
-      einApplication: true,
-    },
-  });
+  const filing = await prisma.filing.findUnique({ where: { id: filingId } });
   if (!filing) return { ok: false, error: 'Filing not found.' };
 
-  // EIN gate: when the package includes an EIN, the responsible-party form
-  // must be complete before we submit (Form SS-4 needs that data).
-  const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug,
-  );
-  if (filingIncludesEin({ tier: filing.serviceTier as TierSlug, addOnSlugs })) {
-    const ein = filing.einApplication;
-    const completed =
-      !!ein &&
-      ['ready_online', 'manual_foreign', 'submitted', 'delivered'].includes(ein.status);
-    if (!completed) {
-      return { ok: false, error: 'EIN responsible-party details are required before checkout.' };
-    }
-  }
-
+  // EIN details are collected from the dashboard after formation, so they
+  // never gate checkout.
   const ra = safeParseJson<RegisteredAgentLike | null>(filing.registeredAgent, null);
   const principal = safeParseJson<AddressLike | null>(filing.principalAddress, null);
   const peopleCount = await prisma.managerMember.count({ where: { filingId: filing.id } });

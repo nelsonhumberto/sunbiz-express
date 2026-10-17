@@ -1,3 +1,5 @@
+import { BUSINESS_LEGAL_NAME } from '@/lib/constants';
+
 /**
  * Renders a JSON-LD structured data script tag. Server-safe (no client
  * hooks). Each schema type gets a typed factory function below.
@@ -19,6 +21,7 @@ export function organizationJsonLd() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'LaunchForma',
+    legalName: BUSINESS_LEGAL_NAME,
     url: BASE_URL,
     logo: `${BASE_URL}/images/logo-icon.png`,
     description:

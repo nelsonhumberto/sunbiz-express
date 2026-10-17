@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LOCALE_COOKIE, locales, type Locale } from '@/i18n/config';
+import { LOCALE_COOKIE, locales, stripSpanishPrefix, type Locale } from '@/i18n/config';
 import { UTM_COOKIE, UTM_MAX_AGE, UTM_PARAMS } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
@@ -14,6 +14,9 @@ const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
  *         current page render uses the new locale immediately. This is what
  *         lets Spanish-language Google Ads land on `?lang=es` URLs and have
  *         the very first paint already be in Spanish.
+ *       • `/es` and `/es/<path>` rewrite to the unprefixed route with the
+ *         Spanish locale, so ad URLs like `/es/business-services` render
+ *         instead of 404ing. `?lang=` still wins when both are present.
  *       • If `?state=XX` is an active formation state (FL/WY/DE), persist
  *         the choice in the `preferred_state` cookie so subsequent
  *         navigations (sign-up → dashboard → wizard) carry it forward
@@ -78,16 +81,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  let response: NextResponse | null = null;
-
-  // Capture locale *first* so any later short-circuit return paths still
-  // carry the locale cookie. Priority:
+  // Capture locale *first* so the server render sees it. Priority:
   //   1. Explicit `?lang=es|en` (wins - for ads and language toggle)
-  //   2. `utm_campaign` prefix `es-` / `en-` (so `es-fl-llc` lands in Spanish
+  //   2. Path prefix `/es` or `/es/<path>` (Spanish ad URLs)
+  //   3. `utm_campaign` prefix `es-` / `en-` (so `es-fl-llc` lands in Spanish
   //      even if the marketer forgot `lang=es`)
   // We both:
-  //   a. mutate request.cookies - so this request's server components
-  //      pick up the new value via i18n/request.ts; and
+  //   a. put the locale on the forwarded Cookie header so this request's
+  //      server components pick it up via i18n/request.ts; and
   //   b. set the cookie on the outbound response so the browser persists
   //      it for subsequent requests (offer → /start → wizard).
   let lockedLocale: Locale | null = null;
@@ -97,6 +98,8 @@ export function middleware(request: NextRequest) {
     if (locales.includes(normalized)) {
       lockedLocale = normalized;
     }
+  } else if (stripSpanishPrefix(pathname)) {
+    lockedLocale = 'es';
   } else {
     const campaign = (searchParams.get('utm_campaign') ?? '').toLowerCase();
     if (campaign.startsWith('es-') || campaign.startsWith('es_')) {
@@ -105,10 +108,31 @@ export function middleware(request: NextRequest) {
       lockedLocale = 'en';
     }
   }
+  const strippedPath = stripSpanishPrefix(pathname);
+  const appPath = strippedPath ?? pathname;
+  // Forward the path and the locale cookie into this render. `headers()` in
+  // the root layout reads `x-lf-pathname` so the ad landing page can omit the
+  // rest of the translation catalog.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-lf-pathname', appPath);
   if (lockedLocale) {
-    // Use NextResponse.next({ request }) further down so the mutated
-    // request cookies are forwarded to the server render.
-    request.cookies.set(LOCALE_COOKIE, lockedLocale);
+    const existing = request.headers.get('cookie') ?? '';
+    const parts = existing
+      .split(';')
+      .map((part) => part.trim())
+      .filter((part) => part && !part.startsWith(`${LOCALE_COOKIE}=`));
+    parts.push(`${LOCALE_COOKIE}=${lockedLocale}`);
+    requestHeaders.set('cookie', parts.join('; '));
+  }
+  const requestInit = { request: { headers: requestHeaders } };
+
+  let response: NextResponse;
+  if (strippedPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = strippedPath;
+    response = NextResponse.rewrite(url, requestInit);
+  } else {
+    response = NextResponse.next(requestInit);
   }
 
   // Capture full UTM attribution set into a single JSON cookie so it
@@ -121,7 +145,6 @@ export function middleware(request: NextRequest) {
       if (val) utmData[key] = val;
     }
     if (Object.keys(utmData).length > 0) {
-      if (!response) response = NextResponse.next({ request });
       response.cookies.set(UTM_COOKIE, JSON.stringify(utmData), {
         path: '/',
         sameSite: 'lax',
@@ -136,7 +159,6 @@ export function middleware(request: NextRequest) {
   if (stateParam) {
     const upper = stateParam.toUpperCase();
     if (ACTIVE_FORMATION_STATES.has(upper) && request.cookies.get('preferred_state')?.value !== upper) {
-      if (!response) response = NextResponse.next({ request });
       response.cookies.set('preferred_state', upper, {
         path: '/',
         sameSite: 'lax',
@@ -145,16 +167,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Apply the locale cookie to whichever response we end up returning.
   if (lockedLocale) {
-    if (!response) response = NextResponse.next({ request });
     setLocaleCookie(response, lockedLocale);
   }
 
   // No geo-redirect: every visitor lands on the homepage (or whatever path
   // they requested). State preference is honored via the StateSwitcher
   // dropdown + `preferred_state` cookie.
-  return response ?? NextResponse.next();
+  return response;
 }
 
 export const config = {

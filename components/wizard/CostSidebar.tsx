@@ -12,8 +12,9 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
-import type { StateCode } from '@/lib/formation-states';
+import { getFormationState, type StateCode } from '@/lib/formation-states';
 import { addOnNameKey, recurringKey } from '@/lib/pricing-i18n';
+import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency } from '@/lib/utils';
 
 interface CostSidebarProps {
@@ -50,9 +51,12 @@ export function CostSidebar({
     processingOptionId: processingOptionId ?? undefined,
   });
 
+  const stateCode: StateCode = state ?? 'FL';
+  const stateName = getFormationState(stateCode).name;
   const labelFor = (line: CostBreakdownLine) =>
     localizedLineLabel(line, entityType, t, tPricing);
   const detailFor = (line: CostBreakdownLine) =>
+    lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
     localizedLineDetail(line, t);
 
   return (
@@ -77,7 +81,7 @@ export function CostSidebar({
                 key={line.key}
                 label={labelFor(line)}
                 cents={line.cents}
-                sublabel={detailFor(line) ?? t('filingFeeIncludedNote')}
+                sublabel={detailFor(line) ?? undefined}
               />
             ))}
         </div>

@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
+import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
-import { omitPrivateNamespaces } from '@/i18n/config';
+import { messagesForPath } from '@/i18n/config';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -11,7 +12,6 @@ import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
-import { JsonLd, organizationJsonLd } from '@/components/seo/JsonLd';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -69,18 +69,16 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const pathname = headers().get('x-lf-pathname') ?? '';
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <head>
-        <JsonLd data={organizationJsonLd()} />
-      </head>
       <body
         className={cn(poppins.variable, 'font-sans')}
         suppressHydrationWarning
       >
         <PostHogProvider>
-          <NextIntlClientProvider locale={locale} messages={omitPrivateNamespaces(messages)}>
+          <NextIntlClientProvider locale={locale} messages={messagesForPath(pathname, messages)}>
             {children}
             <Toaster
               position="top-right"

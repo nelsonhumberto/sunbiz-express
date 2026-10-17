@@ -123,8 +123,8 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
                 <tfoot>
                   <tr className="bg-muted/30">
                     <td colSpan={2} className="px-5 py-2.5 text-xs text-ink-subtle">
-                      {state.name} fee: {formatCurrency(llcFee)} ({llcCompliance.label})
-                      {corpFee !== llcFee && ` · ${formatCurrency(corpFee)} (${corpCompliance.label})`}
+                      {state.name} fee: {formatCurrency(llcFee)} (LLC)
+                      {` · ${formatCurrency(corpFee)} (Corporation)`}
                       &nbsp;·&nbsp; Totals from {formatCurrency(OUR_FEE + llcFee)} all-in with LaunchForma
                     </td>
                   </tr>

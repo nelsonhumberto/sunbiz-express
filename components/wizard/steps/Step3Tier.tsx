@@ -7,8 +7,9 @@ import { Check, Minus, Sparkles } from 'lucide-react';
 import { saveStep3 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
-import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
+import { TIERS, tierPackagePriceCents, tierPriceParts, type EntityType, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
+import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { formatCurrency, cn } from '@/lib/utils';
 import { isActiveFormationState, type StateCode, getFormationState } from '@/lib/formation-states';
 import { trackTierSelected } from '@/lib/analytics';
@@ -25,10 +26,6 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
     : 'FL';
   const entityType = (filing.entityType as EntityType) || 'LLC';
   const formationState = getFormationState(stateCode);
-  const filingFeeCopy =
-    stateCode === 'FL'
-      ? t('filingFeeIncluded')
-      : `${formationState.name} filing fee included`;
 
   const onContinue = () => {
     start(async () => {
@@ -83,8 +80,12 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                     )}{' '}
                     <span className="text-xs font-normal text-ink-subtle">{t('allIn')}</span>
                   </p>
-                  <p className="text-[11px] font-medium text-primary mt-0.5">
-                    ✓ {filingFeeCopy}
+                  <p className="text-xs font-medium text-ink mt-1 leading-snug">
+                    {feeSplitLabel(
+                      t,
+                      tierPriceParts(tierDef.slug, entityType, stateCode),
+                      formationState.name,
+                    )}
                   </p>
                   <p className="text-[11px] text-ink-subtle mt-0.5">{bestFor}</p>
                 </div>

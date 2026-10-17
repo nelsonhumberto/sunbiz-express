@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
@@ -12,6 +13,7 @@ export default function TermsPage() {
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>
       <h1>Terms of Service</h1>
+      <LegalEntityIntro />
 
       <h2>1. Service Description</h2>
       <p>

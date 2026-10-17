@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
 
 export const metadata: Metadata = {
   title: 'Legal Disclaimer',
@@ -12,6 +13,7 @@ export default function DisclaimerPage() {
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>
       <h1>Legal Disclaimer</h1>
+      <LegalEntityIntro />
 
       <h2>Not a government agency</h2>
       <p>

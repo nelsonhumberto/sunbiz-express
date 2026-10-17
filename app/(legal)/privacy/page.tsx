@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -12,6 +13,7 @@ export default function PrivacyPage() {
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>
       <h1>Privacy Policy</h1>
+      <LegalEntityIntro />
 
       <h2>1. What we collect</h2>
       <p>

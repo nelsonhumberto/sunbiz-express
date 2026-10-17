@@ -95,6 +95,10 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         </Link>
       </header>
 
+      <div className="container max-w-3xl">
+        <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
+      </div>
+
       <main className="flex-1 container max-w-3xl py-10">
         <GuestStartForm
           defaultState={stateCode}
@@ -117,7 +121,6 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       </main>
 
       <footer className="container py-6 text-center">
-        <GovDisclosure text={tDisc('notAffiliated')} className="mb-3 max-w-2xl" />
         <p className="text-xs text-ink-subtle">© {COPYRIGHT_YEAR} LaunchForma</p>
       </footer>
     </div>

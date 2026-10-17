@@ -7,6 +7,7 @@ import { StatsBar } from '@/components/marketing/StatsBar';
 import { PricingTable } from '@/components/marketing/PricingTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
 
 interface OfferPageProps {
@@ -32,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function OfferPage({ searchParams }: OfferPageProps) {
   const t = await getTranslations('offer');
+  const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
   const state = resolveMarketingState(pickFirst(searchParams?.state));
   const tier = pickFirst(searchParams?.tier);
@@ -40,6 +42,14 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
 
   return (
     <>
+      <div className="container pt-6">
+        <GovDisclosure
+          variant="prominent"
+          text={tDisc('notAffiliated')}
+          className="max-w-3xl mx-auto"
+        />
+      </div>
+
       {/* ── Offer hero ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden pt-14 pb-12 md:pt-20 md:pb-16">
         <div className="absolute inset-0 mesh-bg" />

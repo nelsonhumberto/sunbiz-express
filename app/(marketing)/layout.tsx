@@ -3,6 +3,7 @@ import { NavBar } from '@/components/marketing/NavBar';
 import { Footer } from '@/components/marketing/Footer';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
+import { JsonLd, organizationJsonLd } from '@/components/seo/JsonLd';
 
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -11,6 +12,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
   return (
     <>
+      <JsonLd data={organizationJsonLd()} />
       <SkipLink />
       <NavBar isAuthed={isAuthed} isAdmin={isAdmin} />
       <main id="main-content" tabIndex={-1} className="focus:outline-none">

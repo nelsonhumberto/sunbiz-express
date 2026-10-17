@@ -5,8 +5,9 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
+import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
+import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState } from '@/lib/formation-states';
@@ -54,24 +55,17 @@ export function PricingTable({
 }: PricingTableProps) {
   const t = useTranslations('pricing');
   const formationState = getFormationState(state.code);
-  const llcStateFee = formatCurrency(formationState.fees.llcTotal);
-  const corpStateFee = formatCurrency(formationState.fees.corpTotal);
-  const footnoteCopy =
-    state.code === 'FL'
-      ? t('footnote')
-      : `Each package includes the required ${formationState.name} state filing fee (${llcStateFee} LLC / ${corpStateFee} Corporation). LaunchForma remits the state fee on your behalf.`;
-  const filingFeeCopy =
-    state.code === 'FL'
-      ? t('filingFeeIncluded')
-      : `${formationState.name} filing fee included`;
+  const footnoteCopy = t('footnote', { state: formationState.name });
   // Headline price shown on each card is the LLC price for the active state
   // (LLC is the most common formation). When the corp price differs by more
-  // than $1, surface it as a small subtitle so customers see both.
+  // than $1, surface the corporation split too.
   const tierPrice = (tierSlug: TierSlug) => {
+    const llcParts = tierPriceParts(tierSlug, 'LLC', formationState.code);
+    const corpParts = tierPriceParts(tierSlug, 'CORP', formationState.code);
     const llc = tierPackagePriceCents(tierSlug, 'LLC', formationState.code);
     const corp = tierPackagePriceCents(tierSlug, 'CORP', formationState.code);
     const corpDiffers = Math.abs(llc - corp) > 100;
-    return { llc, corp, corpDiffers };
+    return { llc, corp, corpDiffers, llcParts, corpParts };
   };
 
   return (
@@ -137,16 +131,21 @@ export function PricingTable({
                     </span>
                     <span className="text-ink-subtle text-sm">{t('allIn')}</span>
                   </div>
+                  <p className="mt-2 text-sm font-medium leading-snug text-ink">
+                    {feeSplitLabel(t, prices.llcParts, formationState.name)}
+                  </p>
                   {prices.corpDiffers && (
-                    <p className="mt-1 text-xs text-ink-subtle">
-                      {`Corporation: ${formatCurrency(prices.corp)}`}
+                    <p className="mt-1 text-xs leading-snug text-ink-muted">
+                      {t('feeSplitCorp', {
+                        service: formatCurrency(prices.corpParts.serviceCents),
+                        state: formationState.name,
+                        stateFee: formatCurrency(prices.corpParts.stateFeeCents),
+                        total: formatCurrency(prices.corp),
+                      })}
                     </p>
                   )}
                   <p className="mt-1.5 text-xs text-ink-subtle">
                     {t(`bestFor_${tier.slug}` as never)}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-primary">
-                    ✓ {filingFeeCopy}
                   </p>
 
                   <Button

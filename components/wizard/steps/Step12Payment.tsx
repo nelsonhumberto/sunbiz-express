@@ -32,6 +32,7 @@ import {
   TIER_BY_SLUG,
 } from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
+import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import type { WizardFiling } from '../types';
 import {
@@ -175,7 +176,9 @@ export function Step12Payment({
         <div className="space-y-2.5">
           {breakdown.lines.map((line) => {
             const label = localizedLineLabel(line, entityType, t, tPricing);
-            const detail = localizedLineDetail(line, t);
+            const detail =
+              lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
+              localizedLineDetail(line, t);
             return (
               <div key={line.key} className="flex items-baseline justify-between text-sm gap-3">
                 <div className="min-w-0">

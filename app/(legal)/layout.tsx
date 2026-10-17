@@ -2,11 +2,13 @@ import { auth } from '@/lib/auth';
 import { NavBar } from '@/components/marketing/NavBar';
 import { Footer } from '@/components/marketing/Footer';
 import { SkipLink } from '@/components/a11y/SkipLink';
+import { JsonLd, organizationJsonLd } from '@/components/seo/JsonLd';
 
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
     <>
+      <JsonLd data={organizationJsonLd()} />
       <SkipLink />
       <NavBar isAuthed={!!session?.user} isAdmin={session?.user?.role === 'ADMIN'} />
       <main

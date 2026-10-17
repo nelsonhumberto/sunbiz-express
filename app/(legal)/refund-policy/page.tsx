@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
 
 export const metadata: Metadata = {
   title: 'Refund Policy',
@@ -15,6 +16,7 @@ export default function RefundPolicyPage() {
         Effective April 25, 2026
       </p>
       <h1>Refund Policy</h1>
+      <LegalEntityIntro />
 
       <p>
         LaunchForma believes business formation should be transparent end-to-end - 

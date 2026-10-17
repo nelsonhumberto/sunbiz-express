@@ -411,6 +411,51 @@ export const ADD_ON_BY_SLUG: Record<AddOnSlug, AddOnDef> = ADD_ONS.reduce(
   {} as Record<AddOnSlug, AddOnDef>,
 );
 
+export interface PriceParts {
+  /** LaunchForma service fee, in cents. */
+  serviceCents: number;
+  /** Government fee bundled into this price, in cents. Zero for service-only items. */
+  stateFeeCents: number;
+  /** serviceCents + stateFeeCents. Must match the existing customer total. */
+  totalCents: number;
+}
+
+/**
+ * Itemized tier price. The total matches {@link tierPackagePriceCents};
+ * this only splits that total into the service fee and the state fee.
+ */
+export function tierPriceParts(
+  tier: TierSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): PriceParts {
+  const serviceCents = TIER_BY_SLUG[tier].serviceMarginCents;
+  const stateFeeCents = tierBundledStateFeeCents(tier, entityType, state);
+  return { serviceCents, stateFeeCents, totalCents: serviceCents + stateFeeCents };
+}
+
+/**
+ * Itemized add-on price. State-fee add-ons (certificate handling) split into
+ * service fee + state fee. Service-only add-ons return a zero state fee.
+ * The total matches {@link addOnPriceCents}.
+ */
+export function addOnPriceParts(
+  slug: AddOnSlug,
+  entityType: EntityType,
+  state: StateCode = 'FL',
+): PriceParts {
+  const def = ADD_ON_BY_SLUG[slug];
+  if (!def) return { serviceCents: 0, stateFeeCents: 0, totalCents: 0 };
+  const stateFeeCents = def.hasStateFee
+    ? addOnGovernmentRemittanceCents(slug, entityType, state)
+    : 0;
+  return {
+    serviceCents: def.serviceMarginCents,
+    stateFeeCents,
+    totalCents: def.serviceMarginCents + stateFeeCents,
+  };
+}
+
 /** True when the add-on is sold in the formation wizard and on public pages. */
 export function isWizardAddOn(slug: string): boolean {
   const def = ADD_ON_BY_SLUG[slug as AddOnSlug];

@@ -12,11 +12,26 @@ export const UTM_PARAMS = [
   'utm_content',
 ] as const;
 
+/** Click identifiers appended by ad platforms. Kept beside UTMs in `lf_utm`. */
+export const CLICK_ID_PARAMS = ['gclid', 'li_fat_id'] as const;
+
 export type UtmParam = (typeof UTM_PARAMS)[number];
-export type UtmData = Partial<Record<UtmParam, string>>;
+export type ClickIdParam = (typeof CLICK_ID_PARAMS)[number];
+export type AttributionParam = UtmParam | ClickIdParam;
+export type UtmData = Partial<Record<AttributionParam, string>>;
 
 export const UTM_COOKIE = 'lf_utm';
 export const UTM_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const UTM_VALUE_MAX = 128;
+/** `li_fat_id` is longer than a typical UTM value. */
+const CLICK_ID_MAX = 512;
+
+const ATTRIBUTION_PARAMS: readonly AttributionParam[] = [...UTM_PARAMS, ...CLICK_ID_PARAMS];
+
+function clipAttribution(key: AttributionParam, value: string): string {
+  const max = (CLICK_ID_PARAMS as readonly string[]).includes(key) ? CLICK_ID_MAX : UTM_VALUE_MAX;
+  return value.trim().slice(0, max);
+}
 
 export function parseUtmJson(raw: string | undefined | null): UtmData | null {
   if (!raw) return null;
@@ -24,9 +39,9 @@ export function parseUtmJson(raw: string | undefined | null): UtmData | null {
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== 'object') return null;
     const out: UtmData = {};
-    for (const key of UTM_PARAMS) {
+    for (const key of ATTRIBUTION_PARAMS) {
       const val = (parsed as Record<string, unknown>)[key];
-      if (typeof val === 'string' && val.trim()) out[key] = val.trim().slice(0, 128);
+      if (typeof val === 'string' && val.trim()) out[key] = clipAttribution(key, val);
     }
     return Object.keys(out).length > 0 ? out : null;
   } catch {
@@ -38,7 +53,7 @@ export function utmFromSearchParams(
   searchParams: Record<string, string | string[] | undefined> | URLSearchParams,
 ): UtmData | null {
   const out: UtmData = {};
-  const read = (key: UtmParam): string | null => {
+  const read = (key: AttributionParam): string | null => {
     if (searchParams instanceof URLSearchParams) {
       return searchParams.get(key);
     }
@@ -46,11 +61,31 @@ export function utmFromSearchParams(
     if (Array.isArray(val)) return val[0] ?? null;
     return val ?? null;
   };
-  for (const key of UTM_PARAMS) {
+  for (const key of ATTRIBUTION_PARAMS) {
     const val = read(key);
-    if (val?.trim()) out[key] = val.trim().slice(0, 128);
+    if (val?.trim()) out[key] = clipAttribution(key, val);
   }
   return Object.keys(out).length > 0 ? out : null;
+}
+
+/**
+ * Last-touch UTMs replace the previous utm_* keys. Click IDs overlay: a later
+ * URL without `gclid` / `li_fat_id` keeps the ones already stored, and a new
+ * click ID replaces only that key.
+ */
+export function mergeAttribution(existing: UtmData | null, incoming: UtmData): UtmData {
+  const next: UtmData = { ...(existing ?? {}) };
+  const hasUtm = UTM_PARAMS.some((key) => incoming[key]);
+  if (hasUtm) {
+    for (const key of UTM_PARAMS) delete next[key];
+    for (const key of UTM_PARAMS) {
+      if (incoming[key]) next[key] = incoming[key];
+    }
+  }
+  for (const key of CLICK_ID_PARAMS) {
+    if (incoming[key]) next[key] = incoming[key];
+  }
+  return next;
 }
 
 /** Serialize Next.js searchParams into a query string, preserving all keys. */
@@ -78,6 +113,8 @@ export function utmToPrismaFields(utm: UtmData | null | undefined) {
     utmCampaign: utm.utm_campaign ?? null,
     utmContent: utm.utm_content ?? null,
     utmTerm: utm.utm_term ?? null,
+    gclid: utm.gclid ?? null,
+    liFatId: utm.li_fat_id ?? null,
   };
 }
 
@@ -89,6 +126,8 @@ export function utmToAnalyticsProps(utm: UtmData | null | undefined) {
     utm_campaign: utm.utm_campaign,
     utm_content: utm.utm_content,
     utm_term: utm.utm_term,
+    gclid: utm.gclid,
+    li_fat_id: utm.li_fat_id,
   };
 }
 

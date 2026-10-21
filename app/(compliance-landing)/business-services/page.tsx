@@ -3,7 +3,10 @@ import Link from 'next/link';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
+import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
+import { RequestServiceButton } from '@/components/marketing/RequestServiceButton';
+import { ServiceInquiryForm } from '@/components/marketing/ServiceInquiryForm';
 import {
   BUSINESS_ADDRESS,
   BUSINESS_EMAIL,
@@ -14,6 +17,7 @@ import {
   ADD_ON_BY_SLUG,
   RA_RENEWAL_PRICE_CENTS,
 } from '@/lib/pricing';
+import type { ServiceInquiryOption } from '@/lib/service-inquiry';
 import { formatCurrency } from '@/lib/utils';
 
 // Paid-traffic page for services outside Google's "Government documents and
@@ -34,14 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-function mailHref(subject: string) {
-  return `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent(subject)}`;
-}
-
 export default async function BusinessServicesPage() {
   const t = await getTranslations('businessServices');
   const tDisc = await getTranslations('disclosure');
-  const tFooter = await getTranslations('footer');
 
   // Registered-agent year 1 is $0 only inside a formation package. This page
   // sells the service on its own, at the renewal price.
@@ -114,7 +113,7 @@ export default async function BusinessServicesPage() {
               price={t('serviceFeeYear', { price: agentPrice })}
               points={[t('agentPoint1'), t('agentPoint2'), t('agentPoint3')]}
               cta={t('request')}
-              href={mailHref(t('mailAgent'))}
+              service="registered_agent"
             />
             <ServiceCard
               icon={<BellRing className="h-5 w-5 text-primary" />}
@@ -123,7 +122,7 @@ export default async function BusinessServicesPage() {
               price={t('serviceFeeYear', { price: alertsPrice })}
               points={[t('alertsPoint1'), t('alertsPoint2'), t('alertsPoint3')]}
               cta={t('request')}
-              href={mailHref(t('mailAlerts'))}
+              service="compliance_alerts"
             />
           </div>
 
@@ -146,21 +145,34 @@ export default async function BusinessServicesPage() {
                 body={t('oaSingleBody')}
                 price={t('serviceFee', { price: singlePrice })}
                 cta={t('request')}
-                href={mailHref(t('mailDocs'))}
+                service="operating_agreement"
               />
               <DocOffer
                 title={t('oaMultiTitle')}
                 body={t('oaMultiBody')}
                 price={t('serviceFee', { price: multiPrice })}
                 cta={t('request')}
-                href={mailHref(t('mailDocs'))}
+                service="operating_agreement"
               />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 bg-white border-y border-border">
+      <section id="request" className="scroll-mt-20 py-16 bg-surface border-y border-border">
+        <div className="container max-w-xl">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            {t('formKicker')}
+          </span>
+          <h2 className="mt-3 font-display text-4xl font-medium tracking-tight">
+            {t('formHeadline')}
+          </h2>
+          <p className="mt-4 text-lg text-ink-muted leading-relaxed">{t('formBody')}</p>
+          <ServiceInquiryForm />
+        </div>
+      </section>
+
+      <section className="py-16 bg-white border-b border-border">
         <div className="container max-w-3xl">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
             {t('contactKicker')}
@@ -215,22 +227,7 @@ export default async function BusinessServicesPage() {
         </div>
       </section>
 
-      <footer className="bg-[#0D1B2A] text-white">
-        <div className="container py-10 flex flex-col gap-4">
-          <p className="text-sm text-white/80">
-            {BUSINESS_LEGAL_NAME}
-            <span className="text-white/40"> · </span>
-            {BUSINESS_ADDRESS}
-          </p>
-          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-            <Link className="text-white/70 hover:text-white" href="/terms">{tFooter('terms')}</Link>
-            <Link className="text-white/70 hover:text-white" href="/privacy">{tFooter('privacy')}</Link>
-            <Link className="text-white/70 hover:text-white" href="/refund-policy">{tFooter('refundPolicy')}</Link>
-            <Link className="text-white/70 hover:text-white" href="/disclaimer">{tFooter('disclaimer')}</Link>
-          </nav>
-          <p className="max-w-3xl text-sm leading-relaxed text-white/70">{tDisc('notAffiliatedServices')}</p>
-        </div>
-      </footer>
+      <ComplianceLandingFooter />
     </>
   );
 }
@@ -242,7 +239,7 @@ function ServiceCard({
   price,
   points,
   cta,
-  href,
+  service,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -250,7 +247,7 @@ function ServiceCard({
   price: string;
   points: string[];
   cta: string;
-  href: string;
+  service: ServiceInquiryOption;
 }) {
   return (
     <article className="rounded-2xl border border-border bg-white p-6 md:p-8 shadow-soft flex flex-col">
@@ -266,9 +263,7 @@ function ServiceCard({
           </li>
         ))}
       </ul>
-      <Button asChild className="mt-6 w-full">
-        <a href={href}>{cta}</a>
-      </Button>
+      <RequestServiceButton service={service} label={cta} className="mt-6 w-full" />
     </article>
   );
 }
@@ -278,22 +273,20 @@ function DocOffer({
   body,
   price,
   cta,
-  href,
+  service,
 }: {
   title: string;
   body: string;
   price: string;
   cta: string;
-  href: string;
+  service: ServiceInquiryOption;
 }) {
   return (
     <div className="rounded-xl border border-border p-5 flex flex-col">
       <h4 className="font-semibold text-ink">{title}</h4>
       <p className="mt-2 text-sm text-ink-muted leading-relaxed flex-1">{body}</p>
       <p className="mt-3 text-sm font-semibold text-ink">{price}</p>
-      <Button asChild variant="outline" className="mt-4">
-        <a href={href}>{cta}</a>
-      </Button>
+      <RequestServiceButton service={service} label={cta} variant="outline" className="mt-4" />
     </div>
   );
 }

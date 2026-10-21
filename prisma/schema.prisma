@@ -61,6 +61,8 @@ model User {
   utmCampaign String?
   utmContent  String?
   utmTerm     String?
+  gclid       String?
+  liFatId     String?
 }
 
 model Filing {
@@ -137,6 +139,8 @@ model Filing {
   utmCampaign              String?
   utmContent               String?
   utmTerm                  String?
+  gclid                    String?
+  liFatId                  String?
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
@@ -524,6 +528,29 @@ model MarketingLead {
 
   @@unique([email, state])
   @@index([state, createdAt])
+}
+
+// Request from the not-in-scope ad landing (/business-services). Separate
+// from MarketingLead, which is only the coming-soon-state waitlist.
+model ServiceInquiry {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  service     String   // registered_agent | operating_agreement | compliance_alerts | other
+  message     String?
+  locale      String   @default("en")
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  gclid       String?
+  liFatId     String?
+  createdAt   DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([service, createdAt])
 }
 
 // Password reset tokens — expire after 1 hour, single-use

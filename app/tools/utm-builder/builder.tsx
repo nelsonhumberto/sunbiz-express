@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { buildTrackedUrl, isBusinessServicesPath } from '@/lib/utm-links';
 
 interface ChannelPreset {
   label: string;
@@ -54,6 +55,20 @@ const CHANNELS: Record<string, ChannelPreset> = {
     dynamic: 'utm_content={creative}',
     note: 'Managed through Google Ads - set via Final URL suffix like Search.',
   },
+  linkedin: {
+    label: 'LinkedIn',
+    source: 'linkedin',
+    medium: 'paid-social',
+    dynamic: '(set the campaign name in the URL)',
+    note: 'LinkedIn appends li_fat_id on click. The site stores it with the other attribution fields. Use /business-services for registered-agent, document, and reminder campaigns.',
+  },
+  chatgpt: {
+    label: 'ChatGPT ads',
+    source: 'chatgpt',
+    medium: 'cpc',
+    dynamic: '(set per campaign)',
+    note: 'ChatGPT ads use source chatgpt and medium cpc. The OpenAI measurement pixel reads oppref on its own. Use /business-services for these campaigns.',
+  },
   email: {
     label: 'Email',
     source: 'email',
@@ -73,6 +88,8 @@ const CHANNELS: Record<string, ChannelPreset> = {
 const LANDING_PAGES = [
   { value: '/start', label: '/start - straight into guest intake (recommended for paid)' },
   { value: '/offer', label: '/offer - pitch + packages landing' },
+  { value: '/business-services', label: '/business-services - registered agent, documents, reminders' },
+  { value: '/es/business-services', label: '/es/business-services - same page in Spanish' },
   { value: '/', label: '/ - homepage' },
   { value: '/pricing', label: '/pricing - package comparison' },
 ];
@@ -94,8 +111,6 @@ const LANGS = [
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Spanish (lang=es)' },
 ];
-
-const ORIGIN = 'https://launchforma.com';
 
 const EXAMPLES: { use: string; url: string }[] = [
   {
@@ -122,31 +137,15 @@ const EXAMPLES: { use: string; url: string }[] = [
     use: 'Meta retarget · pricing',
     url: 'https://launchforma.com/pricing?utm_source=facebook&utm_medium=paid-social&utm_campaign=en-pricing&utm_content=carousel-01&utm_term=retarget-30d',
   },
+  {
+    use: 'LinkedIn · business services',
+    url: 'https://launchforma.com/business-services?utm_source=linkedin&utm_medium=paid-social&utm_campaign=en-business-services',
+  },
+  {
+    use: 'ChatGPT ads · business services (ES)',
+    url: 'https://launchforma.com/es/business-services?utm_source=chatgpt&utm_medium=cpc&utm_campaign=es-business-services',
+  },
 ];
-
-function buildUrl(opts: {
-  path: string;
-  state: string;
-  tier: string;
-  lang: string;
-  source: string;
-  medium: string;
-  campaign: string;
-  content: string;
-  term: string;
-}): string {
-  const params: string[] = [];
-  if (opts.lang === 'es') params.push('lang=es');
-  if (opts.state) params.push(`state=${opts.state}`);
-  const tierApplies = opts.path === '/offer' || opts.path === '/start';
-  if (opts.tier && tierApplies) params.push(`tier=${opts.tier}`);
-  params.push(`utm_source=${opts.source}`);
-  params.push(`utm_medium=${opts.medium}`);
-  if (opts.campaign) params.push(`utm_campaign=${opts.campaign.trim()}`);
-  if (opts.content) params.push(`utm_content=${opts.content.trim()}`);
-  if (opts.term) params.push(`utm_term=${opts.term.trim()}`);
-  return `${ORIGIN}${opts.path}${params.length ? `?${params.join('&')}` : ''}`;
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -185,7 +184,7 @@ export function UtmBuilder() {
   const preset = CHANNELS[channel] ?? CHANNELS.google_search;
   const url = useMemo(
     () =>
-      buildUrl({
+      buildTrackedUrl({
         path,
         state: stateCode,
         tier,
@@ -240,7 +239,15 @@ export function UtmBuilder() {
             </select>
           </Field>
           <Field label="Landing page">
-            <select className={inputCls} value={path} onChange={(e) => setPath(e.target.value)}>
+            <select
+              className={inputCls}
+              value={path}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPath(next);
+                if (next.startsWith('/es/') || next === '/es') setLang('es');
+              }}
+            >
               {LANDING_PAGES.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -322,6 +329,11 @@ export function UtmBuilder() {
           <code className="block rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink break-all">
             {url}
           </code>
+          {isBusinessServicesPath(path) ? (
+            <p className="text-xs text-ink-subtle">
+              State and package are left off this landing page. A path that already starts with /es does not also add lang=es.
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
@@ -388,7 +400,7 @@ export function UtmBuilder() {
           Tip: keep <code>utm_campaign</code> values lowercase and hyphenated (e.g.{' '}
           <code>es-fl-latinofounder</code>). Campaigns starting with <code>es-</code> or{' '}
           <code>en-</code> auto-set the site language (in addition to <code>?lang=</code>).
-          Prefer <code>/start</code> for paid ads so visitors land in the filing intake.
+          Prefer <code>/start</code> for formation campaigns. LinkedIn (<code>linkedin</code> / <code>paid-social</code>) and ChatGPT ads (<code>chatgpt</code> / <code>cpc</code>) for registered-agent, document, and reminder services should use <code>/business-services</code> or <code>/es/business-services</code>. Google appends <code>gclid</code> and LinkedIn appends <code>li_fat_id</code>; both are stored with the UTM cookie.
         </p>
       </section>
     </div>

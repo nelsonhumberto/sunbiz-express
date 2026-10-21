@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { Logo } from '@/components/marketing/Logo';
@@ -11,6 +12,10 @@ export default async function ComplianceLandingLayout({
 }) {
   const t = await getTranslations('businessServices');
   const locale = await getLocale();
+  const pathname = headers().get('x-lf-pathname') ?? '/business-services';
+  const base = pathname.startsWith('/business-services') ? pathname : '/business-services';
+  const enHref = `${base}?lang=en`;
+  const esHref = `/es${base}`;
 
   return (
     <>
@@ -20,7 +25,7 @@ export default async function ComplianceLandingLayout({
           <Logo href="/business-services" />
           <nav aria-label={t('languageNav')} className="flex items-center gap-1 text-sm font-medium">
             <Link
-              href="/business-services?lang=en"
+              href={enHref}
               hrefLang="en"
               aria-current={locale === 'en' ? 'true' : undefined}
               className={cn(
@@ -31,7 +36,7 @@ export default async function ComplianceLandingLayout({
               English
             </Link>
             <Link
-              href="/es/business-services"
+              href={esHref}
               hrefLang="es"
               aria-current={locale === 'es' ? 'true' : undefined}
               className={cn(

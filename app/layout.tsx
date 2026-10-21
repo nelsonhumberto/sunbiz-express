@@ -12,6 +12,8 @@ import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
+import { LinkedInInsight } from '@/components/analytics/LinkedInInsight';
+import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -93,6 +95,8 @@ export default async function RootLayout({
           <SpeedInsights />
           <Suspense fallback={null}>
             <GoogleAnalytics />
+            <LinkedInInsight />
+            <OpenAiPixel />
           </Suspense>
         </PostHogProvider>
       </body>

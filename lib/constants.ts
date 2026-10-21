@@ -20,3 +20,11 @@ export const BUSINESS_EMAIL = 'hello@launchforma.com';
  * do not substitute a placeholder number.
  */
 export const BUSINESS_PHONE = (process.env.NEXT_PUBLIC_BUSINESS_PHONE ?? '').trim();
+
+/**
+ * Inbox for business-services form requests. Defaults to the admin mailbox
+ * already used for Workspace routing. Override with INQUIRY_NOTIFY_EMAIL.
+ */
+export const INQUIRY_NOTIFY_EMAIL =
+  (process.env.INQUIRY_NOTIFY_EMAIL ?? 'admin@launchforma.com').trim() ||
+  'admin@launchforma.com';

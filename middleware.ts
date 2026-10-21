@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LOCALE_COOKIE, locales, stripSpanishPrefix, type Locale } from '@/i18n/config';
-import { UTM_COOKIE, UTM_MAX_AGE, UTM_PARAMS } from '@/lib/utm';
+import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
 
@@ -135,17 +135,16 @@ export function middleware(request: NextRequest) {
     response = NextResponse.next(requestInit);
   }
 
-  // Capture full UTM attribution set into a single JSON cookie so it
-  // survives page navigations and lands on the sign-up / wizard actions.
-  const hasUtm = UTM_PARAMS.some((p) => searchParams.has(p));
-  if (hasUtm) {
-    const utmData: Record<string, string> = {};
-    for (const key of UTM_PARAMS) {
-      const val = searchParams.get(key);
-      if (val) utmData[key] = val;
-    }
-    if (Object.keys(utmData).length > 0) {
-      response.cookies.set(UTM_COOKIE, JSON.stringify(utmData), {
+  // Capture UTMs plus click IDs (`gclid`, `li_fat_id`) into one JSON cookie so
+  // attribution survives page navigations and lands on sign-up / inquiries.
+  // A new UTM set replaces the previous utm_* keys (last touch). Click IDs
+  // overlay, so a later URL that omits them does not wipe the ones we have.
+  const incomingAttribution = utmFromSearchParams(searchParams);
+  if (incomingAttribution) {
+    const existing = parseUtmJson(request.cookies.get(UTM_COOKIE)?.value);
+    const merged = mergeAttribution(existing, incomingAttribution);
+    if (Object.keys(merged).length > 0) {
+      response.cookies.set(UTM_COOKIE, JSON.stringify(merged), {
         path: '/',
         sameSite: 'lax',
         maxAge: UTM_MAX_AGE,

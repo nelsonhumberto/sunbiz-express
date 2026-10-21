@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { identifyUser, trackPurchaseCompleted, trackGooglePurchase } from '@/lib/analytics';
+import { identifyUser, trackPurchaseCompleted, trackGooglePurchase, trackLinkedInConversion } from '@/lib/analytics';
 import { utmToAnalyticsProps } from '@/lib/utm';
 
 interface CheckoutConversionTrackerProps {
@@ -60,6 +60,8 @@ export function CheckoutConversionTracker({
 
     // GA4 + Google Ads conversion (no-op when gtag/env not configured).
     trackGooglePurchase({ transactionId: filingId, valueCents: totalCents });
+    // LinkedIn purchase conversion (no-op until the conversion ID is set).
+    trackLinkedInConversion('purchase');
   }, [userId, filingId, totalCents, state, entityType, tier, utm]);
 
   return null;

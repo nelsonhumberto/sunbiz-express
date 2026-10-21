@@ -40,7 +40,8 @@ export type NotificationType =
   | 'ANNUAL_REPORT_30'
   | 'ANNUAL_REPORT_FINAL'
   | 'COMPLIANCE_ALERT'
-  | 'PASSWORD_RESET';
+  | 'PASSWORD_RESET'
+  | 'SERVICE_INQUIRY';
 
 interface EmailContext {
   firstName?: string;
@@ -84,6 +85,20 @@ interface EmailContext {
   raCardLast4?: string;
   /** Deep link to the RA renewal page for this filing. */
   raRenewUrl?: string;
+  // ── Business-services inquiry (internal notify) ──
+  inquiryName?: string;
+  inquiryEmail?: string;
+  inquiryPhone?: string;
+  inquiryService?: string;
+  inquiryMessage?: string;
+  inquiryLocale?: string;
+  inquiryUtmSource?: string;
+  inquiryUtmMedium?: string;
+  inquiryUtmCampaign?: string;
+  inquiryUtmContent?: string;
+  inquiryUtmTerm?: string;
+  inquiryGclid?: string;
+  inquiryLiFatId?: string;
 }
 
 export interface SendEmailArgs {
@@ -367,6 +382,32 @@ const TEMPLATES: Record<
       <p class="muted">This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email - your password won't change.</p>
     `,
   }),
+  SERVICE_INQUIRY: (ctx) => {
+    const cell = (value?: string) => escapeHtml(value?.trim() || '—');
+    const message = ctx.inquiryMessage?.trim();
+    return {
+      subject: `Service request: ${(ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80)}`,
+      body: html`
+        <h1>New business-services request</h1>
+        <p>Someone asked for a service from the ad landing page. Reply to them directly.</p>
+        <table class="meta">
+          <tr><td>Name</td><td>${cell(ctx.inquiryName)}</td></tr>
+          <tr><td>Email</td><td>${cell(ctx.inquiryEmail)}</td></tr>
+          <tr><td>Phone</td><td>${cell(ctx.inquiryPhone)}</td></tr>
+          <tr><td>Service</td><td>${cell(ctx.inquiryService)}</td></tr>
+          <tr><td>Language</td><td>${cell(ctx.inquiryLocale)}</td></tr>
+          <tr><td>utm_source</td><td>${cell(ctx.inquiryUtmSource)}</td></tr>
+          <tr><td>utm_medium</td><td>${cell(ctx.inquiryUtmMedium)}</td></tr>
+          <tr><td>utm_campaign</td><td>${cell(ctx.inquiryUtmCampaign)}</td></tr>
+          <tr><td>utm_content</td><td>${cell(ctx.inquiryUtmContent)}</td></tr>
+          <tr><td>utm_term</td><td>${cell(ctx.inquiryUtmTerm)}</td></tr>
+          <tr><td>gclid</td><td>${cell(ctx.inquiryGclid)}</td></tr>
+          <tr><td>li_fat_id</td><td>${cell(ctx.inquiryLiFatId)}</td></tr>
+        </table>
+        ${message ? `<p><strong>Message</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>` : ''}
+      `,
+    };
+  },
 };
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────

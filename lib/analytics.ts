@@ -65,6 +65,20 @@ function gtag(): ((...args: unknown[]) => void) | null {
  * conversion. `send_to` targets the Ads conversion action so Ads counts it
  * even though the GA4 `purchase` event is also recorded.
  */
+function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
+  if (typeof window === 'undefined') return;
+  const start = Date.now();
+  const tick = () => {
+    if (ready()) {
+      run();
+      return;
+    }
+    if (Date.now() - start >= timeoutMs) return;
+    window.setTimeout(tick, 150);
+  };
+  tick();
+}
+
 export function trackGooglePurchase(input: {
   transactionId: string;
   valueCents: number;
@@ -94,6 +108,66 @@ export function trackGooglePurchase(input: {
       currency,
     });
   }
+}
+
+/** GA4 generate_lead, plus a Google Ads conversion when a lead label is set. */
+export function trackGoogleLead(input?: { service?: string }) {
+  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+  const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_LEAD;
+  whenReady(
+    () => typeof window.gtag === 'function',
+    () => {
+      window.gtag('event', 'generate_lead', input?.service ? { service: input.service } : {});
+      if (adsId && label) {
+        window.gtag('event', 'conversion', {
+          send_to: `${adsId}/${label}`,
+        });
+      }
+    },
+  );
+}
+
+/**
+ * LinkedIn conversion. No-op until the matching conversion ID env var is set.
+ * Retries briefly so the call lands after the Insight Tag stub is installed.
+ */
+export function trackLinkedInConversion(kind: 'purchase' | 'lead') {
+  const raw =
+    kind === 'purchase'
+      ? process.env.NEXT_PUBLIC_LINKEDIN_CONVERSION_ID_PURCHASE
+      : process.env.NEXT_PUBLIC_LINKEDIN_CONVERSION_ID_LEAD;
+  const id = Number(raw);
+  if (!raw || !Number.isFinite(id) || id <= 0) return;
+  whenReady(
+    () => typeof window.lintrk === 'function',
+    () => {
+      window.lintrk?.('track', { conversion_id: id });
+    },
+  );
+}
+
+/** OpenAI Ads `lead_created` on the business-services thank-you page. */
+export function trackOpenAiLead() {
+  whenReady(
+    () => typeof window.oaiq === 'function',
+    () => {
+      window.oaiq?.('measure', 'lead_created', { type: 'customer_action' });
+    },
+  );
+}
+
+/** SPA page view after the pixel's init call, which already measures the first view. */
+export function trackOpenAiPageView(path: string) {
+  const id = path.slice(0, 128) || 'page';
+  whenReady(
+    () => typeof window.oaiq === 'function',
+    () => {
+      window.oaiq?.('measure', 'page_viewed', {
+        type: 'contents',
+        contents: [{ id, name: id, content_type: 'page' }],
+      });
+    },
+  );
 }
 
 export function trackAddOnToggled(slug: string, action: 'added' | 'removed', tier: string, state: string) {

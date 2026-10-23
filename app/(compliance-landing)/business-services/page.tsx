@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { Button } from '@/components/ui/button';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
+import { BusinessServicesHeroCta } from '@/components/marketing/BusinessServicesHeroCta';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { RequestServiceButton } from '@/components/marketing/RequestServiceButton';
 import { ServiceInquiryForm } from '@/components/marketing/ServiceInquiryForm';
@@ -62,7 +61,7 @@ export default async function BusinessServicesPage() {
         </div>
       </div>
 
-      <section className="relative overflow-hidden pt-14 pb-12 md:pt-20 md:pb-16">
+      <section className="relative overflow-hidden pt-8 pb-10 md:pt-20 md:pb-16">
         <div className="absolute inset-0 mesh-bg" />
         <div className="aurora" />
         <div className="container relative max-w-3xl text-center">
@@ -76,6 +75,12 @@ export default async function BusinessServicesPage() {
           <p className="mt-4 text-lg text-ink-muted leading-relaxed max-w-xl mx-auto">
             {t('subhead')}
           </p>
+          <BusinessServicesHeroCta
+            primaryLabel={t('primaryCta')}
+            callLabel={BUSINESS_PHONE ? t('callCta', { phone: BUSINESS_PHONE }) : ''}
+            phone={BUSINESS_PHONE}
+          />
+          <p className="mt-3 text-sm text-ink-muted">{t('notALawFirm')}</p>
           <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink">
             {[t('pointAgent'), t('pointDocs'), t('pointAlerts')].map((point) => (
               <li key={point} className="inline-flex items-center gap-1.5">
@@ -84,12 +89,11 @@ export default async function BusinessServicesPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-8">
-            <Button asChild size="xl" className="text-base shadow-xl">
-              <Link href="#services">{t('seeServices')}</Link>
-            </Button>
-          </div>
-          <p className="mt-3 text-sm text-ink-muted">{t('notALawFirm')}</p>
+          <p className="mt-4">
+            <a href="#services" className="text-sm font-medium text-primary hover:underline">
+              {t('seeServices')}
+            </a>
+          </p>
         </div>
       </section>
 

@@ -4,6 +4,8 @@
  * calls are safe no-ops so the app never breaks without analytics configured.
  */
 
+import { definedAttributionProps } from '@/lib/utm';
+
 let posthog: typeof import('posthog-js').default | null = null;
 
 function ph() {
@@ -19,8 +21,24 @@ function ph() {
   return posthog;
 }
 
-export function trackEvent(event: string, properties?: Record<string, unknown>) {
-  ph()?.capture(event, properties);
+function attributionProps(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  return definedAttributionProps(window.location.search, document.cookie);
+}
+
+export function trackEvent(
+  event: string,
+  properties?: Record<string, unknown>,
+  options?: { sendInstantly?: boolean },
+) {
+  const explicit = properties
+    ? Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined))
+    : undefined;
+  ph()?.capture(
+    event,
+    { ...attributionProps(), ...explicit },
+    options?.sendInstantly ? { send_instantly: true } : undefined,
+  );
 }
 
 export function identifyUser(userId: string, traits?: Record<string, unknown>) {
@@ -153,6 +171,7 @@ export function trackOpenAiLead() {
     () => {
       window.oaiq?.('measure', 'lead_created', { type: 'customer_action' });
     },
+    10000,
   );
 }
 

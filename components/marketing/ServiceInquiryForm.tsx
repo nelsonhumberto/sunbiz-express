@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { submitServiceInquiry } from '@/actions/service-inquiry';
+import { identifyUser, trackEvent } from '@/lib/analytics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,6 +25,20 @@ export function ServiceInquiryForm() {
   const [service, setService] = useState<ServiceInquiryOption>('registered_agent');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<'invalid' | 'generic' | null>(null);
+  const formStarted = useRef(false);
+  const formLocale = locale === 'es' ? 'es' : 'en';
+
+  function onFormFocus(event: React.FocusEvent<HTMLFormElement>) {
+    if (formStarted.current) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.getAttribute('name') === 'website') return;
+    formStarted.current = true;
+    trackEvent('form_started', {
+      form: 'service_inquiry',
+      locale: formLocale,
+      service,
+    });
+  }
 
   useEffect(() => {
     const onPick = (event: Event) => {
@@ -63,6 +78,14 @@ export function ServiceInquiryForm() {
       return;
     }
 
+    const email = String(data.get('email') ?? '').trim().toLowerCase();
+    if (email) identifyUser(email, { email });
+    trackEvent(
+      'lead_submitted',
+      { form: 'service_inquiry', locale: formLocale, service },
+      { sendInstantly: true },
+    );
+
     const params = new URLSearchParams({ service, lead: '1' });
     const path =
       locale === 'es'
@@ -72,7 +95,12 @@ export function ServiceInquiryForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="relative mt-8 space-y-4" noValidate>
+    <form
+      onSubmit={onSubmit}
+      onFocus={onFormFocus}
+      className="relative mt-8 space-y-4"
+      noValidate
+    >
       <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
         <label>
           Website

@@ -131,6 +131,24 @@ export function utmToAnalyticsProps(utm: UtmData | null | undefined) {
   };
 }
 
+/** Drop empty attribution keys so they are not registered over real values. */
+export function definedAttributionProps(
+  search: string | URLSearchParams,
+  cookieHeader: string,
+): Record<string, string> {
+  const params = typeof search === 'string' ? new URLSearchParams(search.startsWith('?') ? search.slice(1) : search) : search;
+  const fromUrl = utmFromSearchParams(params);
+  const fromCookie = readUtmCookieValue(cookieHeader);
+  const merged =
+    fromUrl && fromCookie ? mergeAttribution(fromCookie, fromUrl) : (fromUrl ?? fromCookie);
+  const raw = utmToAnalyticsProps(merged);
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'string' && value) out[key] = value;
+  }
+  return out;
+}
+
 /** Read `lf_utm` from a raw document.cookie string (client-safe). */
 export function readUtmCookieValue(cookieHeader: string): UtmData | null {
   const match = cookieHeader

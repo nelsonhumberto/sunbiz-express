@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { trackCtaClicked } from '@/lib/analytics';
 import type { ServiceInquiryOption } from '@/lib/service-inquiry';
 
 /** Scrolls to the inquiry form and preselects a service. */
@@ -21,6 +22,10 @@ export function RequestServiceButton({
       variant={variant}
       className={className}
       onClick={() => {
+        trackCtaClicked('business_services_request', {
+          service,
+          page: 'business_services',
+        });
         window.dispatchEvent(new CustomEvent('lf-inquiry-service', { detail: service }));
         document.getElementById('request')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }}

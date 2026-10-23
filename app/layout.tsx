@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
 import { headers } from 'next/headers';
+import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { messagesForPath } from '@/i18n/config';
@@ -14,6 +15,8 @@ import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { LinkedInInsight } from '@/components/analytics/LinkedInInsight';
 import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
+import { openAiPixelBootstrap } from '@/lib/openai-pixel';
+import { openAiPixelId } from '@/lib/tracking-ids';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -72,6 +75,9 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const pathname = headers().get('x-lf-pathname') ?? '';
+  const openAiId = openAiPixelId();
+  // Token URLs stay out of ad pixels. /es/... is rewritten before this header is set.
+  const loadOpenAiPixel = Boolean(openAiId) && pathname !== '/reset-password';
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -79,6 +85,11 @@ export default async function RootLayout({
         className={cn(poppins.variable, 'font-sans')}
         suppressHydrationWarning
       >
+        {loadOpenAiPixel && openAiId ? (
+          <Script id="openai-ads-pixel" strategy="beforeInteractive">
+            {openAiPixelBootstrap(openAiId)}
+          </Script>
+        ) : null}
         <PostHogProvider>
           <NextIntlClientProvider locale={locale} messages={messagesForPath(pathname, messages)}>
             {children}

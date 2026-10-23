@@ -13,7 +13,9 @@ import { utmToAnalyticsProps } from '@/lib/utm';
 import { getClientUtmAttribution } from '@/lib/utm-client';
 
 /**
- * Fires once on /business-services/thank-you (and the Spanish URL).
+ * Fires once on /business-services/thank-you. `/es/business-services/thank-you`
+ * rewrites to this same page, so the English and Spanish URLs both send
+ * `generate_lead` and the OpenAI Ads `lead_created` event.
  * LinkedIn also counts this URL as a lead via the Insight Tag page view.
  */
 export function LeadConversionTracker() {

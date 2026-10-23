@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { countsTowardAdminRevenue } from '@/lib/payment-test';
+import { formatAdminFilingPaidTotal, formatPaymentAmountLabel } from '@/lib/payment-test';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import {
   defaultProcessingOption,
@@ -111,9 +111,9 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     signature?: string;
   } | null>(filing.registeredAgent, null);
 
-  const totalRevenue = filing.payments
-    .filter(countsTowardAdminRevenue)
-    .reduce((s, p) => s + p.amountCents, 0);
+  // Detail view shows what was actually charged, including test payments.
+  // Overview, analytics, and the filings list still exclude isTest revenue.
+  const paidTotal = formatAdminFilingPaidTotal(filing.payments);
 
   const pendingDocs = filing.documents.filter((d) => d.pendingState);
   const issuedTypes = new Set(
@@ -215,11 +215,11 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
             </Badge>
           )}
           <p className="text-xs text-ink-subtle uppercase tracking-wider">{t('totalPaidLabel')}</p>
-          <p className={`font-display text-2xl font-medium ${totalRevenue > 0 ? 'text-success' : 'text-ink-subtle'}`}>
-            {formatCurrency(totalRevenue, { showZero: true })}
+          <p className={`font-display text-2xl font-medium ${paidTotal.cents > 0 ? 'text-success' : 'text-ink-subtle'}`}>
+            {paidTotal.label}
           </p>
           <p className="text-xs text-ink-subtle">
-            {filing.payments.filter((p) => p.status === 'SUCCEEDED').length} payment(s)
+            {paidTotal.count} payment(s)
           </p>
           <p className="text-xs text-ink-subtle">
             {t('submittedShort', {
@@ -701,7 +701,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs">{p.cardBrand} •••• {p.cardLast4}</span>
                         <span className={`font-semibold ${p.status === 'SUCCEEDED' ? 'text-success' : 'text-ink-muted'}`}>
-                          {formatCurrency(p.amountCents, { showZero: true })}
+                          {formatPaymentAmountLabel(p, { showZero: true })}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-ink-subtle">
@@ -724,7 +724,9 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                   ))}
                   <li className="pt-2 flex justify-between font-semibold text-sm">
                     <span>Total revenue</span>
-                    <span className="text-success">{formatCurrency(totalRevenue)}</span>
+                    <span className={paidTotal.cents > 0 ? 'text-success' : 'text-ink-subtle'}>
+                      {paidTotal.cents > 0 ? paidTotal.label : formatCurrency(0)}
+                    </span>
                   </li>
                 </ul>
               )}

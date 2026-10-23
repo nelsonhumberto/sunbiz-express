@@ -8,6 +8,7 @@ import { submitFilingToState } from '@/actions/filings';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
+import { isTestPayment } from '@/lib/payment-test';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,6 +127,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
         stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
         amountCents,
         status: 'SUCCEEDED',
+        isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
         stateFilingFeeCents: filing.stateFeeCents,
         formationServiceFeeCents: filing.serviceFeeCents,
         otherServicesCents: filing.addOnsTotalCents,

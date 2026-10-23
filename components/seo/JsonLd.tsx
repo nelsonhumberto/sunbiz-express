@@ -42,14 +42,16 @@ export function faqPageJsonLd(
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: items.map((item) => ({
-      '@type': 'Question',
-      name: item.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.a,
-      },
-    })),
+    mainEntity: items
+      .filter((item) => item.q.trim().length > 0 && item.a.trim().length > 0)
+      .map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
   };
 }
 
@@ -62,7 +64,7 @@ export function serviceJsonLd(stateName: string, stateSlug: string) {
       '@type': 'Organization',
       name: 'LaunchForma',
     },
-    description: `Form a ${stateName} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and fast filing.`,
+    description: `Form a ${stateName} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`,
     url: `${BASE_URL}/states/${stateSlug}`,
     areaServed: {
       '@type': 'State',

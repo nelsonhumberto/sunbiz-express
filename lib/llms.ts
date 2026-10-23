@@ -17,7 +17,7 @@ import { getMarketingFaq } from '@/lib/marketing-faq';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 const SUMMARY =
-  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida, Wyoming, and Delaware with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and same-business-day submission.';
+  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida, Wyoming, and Delaware with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and submission within 1 business day.';
 
 const ABOUT =
   'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. Every package includes the required state filing fee, free Year-1 Registered Agent service, and digital delivery of filed documents. Optional add-ons include Operating Agreements, S-Corp election (IRS Form 2553), managed annual reports, and compliance alerts. The company also files Florida annual reports. LaunchForma is not a law firm and does not provide legal advice.';

@@ -25,7 +25,7 @@ export default async function AdminFilingsPage({
       user: true,
       _count: { select: { documents: true } },
       payments: {
-        where: { status: 'SUCCEEDED' },
+        where: { status: 'SUCCEEDED', isTest: false },
         select: { amountCents: true },
       },
       annualReports: {

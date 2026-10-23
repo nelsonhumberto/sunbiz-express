@@ -87,7 +87,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
         label: 'Articles of Organization / Incorporation prepared & submitted',
         included: true,
       },
-      { label: 'Same-business-day filing', included: true },
+      { label: 'Filing within 1 business day', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
       { label: 'Free .com domain', included: false },
@@ -120,7 +120,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     slug: 'PREMIUM',
     name: 'Premium',
     bestFor: 'Best for hands-off setup',
-    description: 'Bank-Ready plus year-round compliance, banking, and branding.',
+    description: 'Popular plus year-round compliance, banking, and branding.',
     // May 2026 repricing (audit-driven). $289 + $125 + $5 + $30 = $449 FL LLC.
     serviceMarginCents: 28_900,
     // Top tier carries a "Premium" badge - the audit moved the "Best Value"
@@ -128,7 +128,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     // psychology lines up with the margin-maximising package.
     ribbon: 'Premium',
     features: [
-      { label: 'Everything in Bank-Ready Filing', included: true },
+      { label: 'Everything in Popular', included: true },
       { label: 'Compliance Alerts Plus (year 1)', included: true, highlight: true },
       { label: 'S-Corp Election filing (Form 2553)', included: true, highlight: true },
       { label: 'Free .com domain (year 1)', included: true, highlight: true },

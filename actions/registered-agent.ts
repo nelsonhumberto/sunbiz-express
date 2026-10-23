@@ -8,6 +8,7 @@ import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { isTestPayment } from '@/lib/payment-test';
 
 const RenewSchema = z.object({
   raServiceId: z.string().min(1),
@@ -127,6 +128,7 @@ export async function renewRegisteredAgent(input: z.infer<typeof RenewSchema>) {
           stripePaymentMethodId: pmId,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
+          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
           registeredAgentY1Cents: svc.renewalPriceCents,
           cardLast4,
           cardBrand,

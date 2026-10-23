@@ -19,6 +19,7 @@ import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { isTestPayment } from '@/lib/payment-test';
 
 // We never accept SSN/ITIN values shorter than 9 digits. UI must surface the
 // validation error; this is the server-side defence in depth.
@@ -383,6 +384,7 @@ export async function purchaseEinAddOn(
           stripePaymentMethodId: pm?.id ?? null,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
+          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
           einCents: priceCents,
           cardLast4: pm?.card?.last4 ?? null,
           cardBrand: pm?.card?.brand

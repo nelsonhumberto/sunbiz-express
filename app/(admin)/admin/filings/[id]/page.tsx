@@ -111,7 +111,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   } | null>(filing.registeredAgent, null);
 
   const totalRevenue = filing.payments
-    .filter((p) => p.status === 'SUCCEEDED')
+    .filter((p) => p.status === 'SUCCEEDED' && !p.isTest)
     .reduce((s, p) => s + p.amountCents, 0);
 
   const pendingDocs = filing.documents.filter((d) => d.pendingState);
@@ -704,7 +704,12 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-ink-subtle">
-                        <span>{p.status} · {formatDate(p.completedAt ?? p.createdAt)}</span>
+                        <span>
+                          {p.status}
+                          {p.isTest ? ' · Test' : ''}
+                          {' · '}
+                          {formatDate(p.completedAt ?? p.createdAt)}
+                        </span>
                       </div>
                       {/* Breakdown */}
                       {p.stateFilingFeeCents > 0 && (

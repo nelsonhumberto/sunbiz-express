@@ -30,6 +30,7 @@ export default async function AdminOverview() {
       _sum: { amountCents: true },
       where: {
         status: 'SUCCEEDED',
+        isTest: false,
         filing: { adminArchivedAt: null },
       },
     }),

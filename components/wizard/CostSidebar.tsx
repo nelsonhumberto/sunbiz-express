@@ -192,7 +192,7 @@ export function localizedLineLabel(
 ): string {
   if (line.category === 'package' && line.tierSlug) {
     // line.label already contains the state-aware label from computeCost
-    // (e.g. "Bank-Ready Filing - Wyoming LLC"), so use it directly.
+    // (e.g. "Popular - Wyoming LLC"), so use it directly.
     return line.label;
   }
   if (line.category === 'addon' && line.addOnSlug) {

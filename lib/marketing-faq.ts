@@ -28,11 +28,11 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
     id: 'florida-llc',
     q: 'How long does it take to form a Florida LLC?',
-    a: 'About 15 minutes to complete our wizard. We submit to the Florida Department of State the same business day. The state typically approves online filings in 1-2 business days.',
+    a: 'About 15 minutes to complete our wizard. We submit to the Florida Department of State within 1 business day. The state typically approves online filings in 1-2 business days.',
   },
   {
     q: 'What is included in the package price?',
-    a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and same-business-day submission, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf - there are no separate state fees added at checkout.",
+    a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and submission within 1 business day, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf - there are no separate state fees added at checkout.",
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
@@ -58,13 +58,14 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'What if my name is taken?',
-    a: "We check availability against the Sunbiz database in real time. If your first choice isn't distinguishable on the record, we'll suggest alternatives - and you can keep iterating until you find one that works.",
+    a: "We run a preliminary name search against the Sunbiz database. It is not a guarantee of approval. If your first choice isn't distinguishable on the record, we'll suggest alternatives - and you can keep iterating until you find one that works.",
   },
   {
     q: 'Are you a law firm?',
     a: "No. LaunchForma is a self-help service for forming Florida business entities. We don't provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, professional licensing, securities, etc.), we recommend consulting an attorney or CPA.",
   },
   {
+    id: 'refund',
     q: "What's your refund policy?",
     a: "The LaunchForma portion of your package is refundable for 14 days if we haven't yet submitted your filing to the state. Once Florida has accepted the filing, the state filing fee portion is non-refundable per Florida statute. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and won't auto-renew.",
   },
@@ -79,11 +80,11 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
     id: 'florida-llc',
     q: '¿Cuánto tarda formar una LLC en Florida?',
-    a: 'Unos 15 minutos completar nuestro asistente. Enviamos al Departamento de Estado de Florida el mismo día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
+    a: 'Unos 15 minutos completar nuestro asistente. Enviamos al Departamento de Estado de Florida en 1 día hábil. El estado normalmente aprueba trámites en línea en 1-2 días hábiles.',
   },
   {
     q: '¿Qué incluye el precio del plan?',
-    a: 'Cada plan incluye la tarifa de presentación requerida del Departamento de Estado de Florida ($125 para LLC, $70 para Corporación), nuestra preparación y envío el mismo día hábil, tu Agente Registrado del primer año, y la entrega digital de tus documentos presentados. Pagamos la tarifa estatal a Florida en tu nombre - no se agregan tarifas estatales aparte al pagar.',
+    a: 'Cada plan incluye la tarifa de presentación requerida del Departamento de Estado de Florida ($125 para LLC, $70 para Corporación), nuestra preparación y envío en 1 día hábil, tu Agente Registrado del primer año, y la entrega digital de tus documentos presentados. Pagamos la tarifa estatal a Florida en tu nombre - no se agregan tarifas estatales aparte al pagar.',
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
@@ -109,13 +110,14 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Y si mi nombre está tomado?',
-    a: 'Verificamos la disponibilidad contra la base de datos de Sunbiz en tiempo real. Si tu primera elección no es distinguible en el registro, sugerimos alternativas - y puedes seguir iterando hasta encontrar uno que funcione.',
+    a: 'Hacemos una búsqueda preliminar de nombre contra la base de datos de Sunbiz. No garantiza la aprobación. Si tu primera elección no es distinguible en el registro, sugerimos alternativas - y puedes seguir iterando hasta encontrar uno que funcione.',
   },
   {
     q: '¿Son ustedes un bufete de abogados?',
     a: 'No. LaunchForma es un servicio de auto-ayuda para formar entidades empresariales en Florida. No proporcionamos asesoramiento legal ni te representamos en procedimientos legales. Para situaciones complejas (operaciones multi-estado, licencias profesionales, valores, etc.), recomendamos consultar a un abogado o CPA.',
   },
   {
+    id: 'refund',
     q: '¿Cuál es su política de reembolso?',
     a: 'La parte de LaunchForma de tu plan es reembolsable por 14 días si aún no hemos enviado tu trámite al estado. Una vez que Florida acepta el trámite, la porción de la tarifa estatal no es reembolsable por estatuto de Florida. Los servicios recurrentes (Agente Registrado, Alertas de Cumplimiento) pueden cancelarse en cualquier momento y no se auto-renovarán.',
   },
@@ -131,7 +133,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'How long does it take to form a Wyoming LLC or Corporation?',
-    a: 'About 15 minutes inside our wizard. We submit to the Wyoming Secretary of State the same business day. Standard Wyoming processing currently runs about 3 weeks. We offer an expedited option at checkout for an additional Wyoming state fee - final amount is confirmed at submission.',
+    a: 'About 15 minutes inside our wizard. We submit to the Wyoming Secretary of State within 1 business day. Standard Wyoming processing currently runs about 3 weeks. We offer an expedited option at checkout for an additional Wyoming state fee - final amount is confirmed at submission.',
   },
   {
     q: 'Are there any name restrictions in Wyoming I should know about?',
@@ -159,7 +161,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Does Wyoming require an Operating Agreement?',
-    a: 'Wyoming does not require an Operating Agreement to be filed with the state, but banks and lenders typically demand one to open accounts or extend credit. Bank-Ready and Concierge packages include a custom Wyoming-tailored Operating Agreement.',
+    a: 'Wyoming does not require an Operating Agreement to be filed with the state, but banks and lenders typically demand one to open accounts or extend credit. Popular and Premium packages include a custom Wyoming-tailored Operating Agreement.',
   },
   {
     id: 'boi',
@@ -179,6 +181,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
     a: 'No. LaunchForma is a self-help service for forming Wyoming business entities. We do not provide legal advice or represent you in legal proceedings. For complex situations (multi-state operations, securities, professional licensing) we recommend consulting an attorney.',
   },
   {
+    id: 'refund',
     q: "What's your refund policy?",
     a: "The LaunchForma portion of your package is refundable for 14 days if we have not yet submitted your filing to Wyoming. Once Wyoming has accepted the filing, the state filing fee portion is non-refundable. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and will not auto-renew.",
   },
@@ -192,7 +195,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Cuánto tarda formar una LLC o Corporación en Wyoming?',
-    a: 'Aproximadamente 15 minutos en nuestro asistente. Enviamos al Secretario de Estado de Wyoming el mismo día hábil. El procesamiento estándar de Wyoming tarda alrededor de 3 semanas. Ofrecemos una opción acelerada al pagar por una tarifa adicional del estado - el monto final se confirma al enviarlo.',
+    a: 'Aproximadamente 15 minutos en nuestro asistente. Enviamos al Secretario de Estado de Wyoming en 1 día hábil. El procesamiento estándar de Wyoming tarda alrededor de 3 semanas. Ofrecemos una opción acelerada al pagar por una tarifa adicional del estado - el monto final se confirma al enviarlo.',
   },
   {
     q: '¿Hay restricciones de nombre que deba conocer en Wyoming?',
@@ -220,7 +223,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Wyoming requiere un Operating Agreement?',
-    a: 'Wyoming no requiere presentar un Operating Agreement ante el estado, pero los bancos y prestamistas normalmente lo exigen. Los planes Bank-Ready y Concierge incluyen un Operating Agreement personalizado adaptado a Wyoming.',
+    a: 'Wyoming no requiere presentar un Operating Agreement ante el estado, pero los bancos y prestamistas normalmente lo exigen. Los planes Popular y Premium incluyen un Operating Agreement personalizado adaptado a Wyoming.',
   },
   {
     id: 'boi',
@@ -240,6 +243,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
     a: 'No. LaunchForma es un servicio de auto-ayuda. No proporcionamos asesoría legal. Para situaciones complejas recomendamos consultar a un abogado.',
   },
   {
+    id: 'refund',
     q: '¿Cuál es la política de reembolso?',
     a: 'La parte de LaunchForma es reembolsable por 14 días si aún no enviamos el trámite a Wyoming. Una vez aceptado por el estado, la parte de la tarifa estatal no es reembolsable.',
   },
@@ -283,7 +287,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Does Delaware require an Operating Agreement (LLC) or Bylaws (Corp)?',
-    a: 'Delaware law expects an Operating Agreement for LLCs and Bylaws for Corporations, but they are NOT filed with the state. Banks, investors, and tax advisors will all want copies. Bank-Ready and Concierge packages include a Delaware-tailored Operating Agreement; corporate bylaws are available as an add-on.',
+    a: 'Delaware law expects an Operating Agreement for LLCs and Bylaws for Corporations, but they are NOT filed with the state. Banks, investors, and tax advisors will all want copies. Popular and Premium packages include a Delaware-tailored Operating Agreement; corporate bylaws are available as an add-on.',
   },
   {
     id: 'boi',
@@ -307,6 +311,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
     a: 'No. LaunchForma is a self-help service for forming Delaware business entities. We do not provide legal advice or represent you in legal proceedings. For VC-track corporations, multi-state operations, or complex stock structures we recommend a Delaware attorney.',
   },
   {
+    id: 'refund',
     q: "What's your refund policy?",
     a: 'The LaunchForma portion of your package is refundable for 14 days if we have not yet submitted your filing to Delaware. Once Delaware has accepted the filing, the state filing fee portion is non-refundable. Recurring services (Registered Agent, Compliance Alerts) can be cancelled at any time and will not auto-renew.',
   },
@@ -348,7 +353,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Delaware requiere Operating Agreement o Bylaws?',
-    a: 'La ley de Delaware espera un Operating Agreement para LLCs y Bylaws para Corporaciones, pero NO se presentan ante el estado. Los bancos e inversores los exigirán. Los planes Bank-Ready y Concierge incluyen un Operating Agreement adaptado a Delaware.',
+    a: 'La ley de Delaware espera un Operating Agreement para LLCs y Bylaws para Corporaciones, pero NO se presentan ante el estado. Los bancos e inversores los exigirán. Los planes Popular y Premium incluyen un Operating Agreement adaptado a Delaware.',
   },
   {
     id: 'boi',
@@ -372,6 +377,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
     a: 'No. LaunchForma es un servicio de auto-ayuda. No damos asesoría legal. Para corporaciones con capital de riesgo o estructuras complejas recomendamos un abogado de Delaware.',
   },
   {
+    id: 'refund',
     q: '¿Cuál es la política de reembolso?',
     a: 'La parte de LaunchForma es reembolsable por 14 días si aún no enviamos el trámite a Delaware. Una vez aceptado por el estado, la parte de la tarifa estatal no es reembolsable.',
   },

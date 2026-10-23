@@ -20,14 +20,13 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   // account is auto-created after payment.
   const signUpHref = state.code === 'FL' ? '/start' : `/start?state=${state.code}`;
   const headlineState = state.code === 'FL' ? t('headline2') : `${state.name} business?`;
-  // The default i18n subhead promises "we submit to the state the same
-  // business day" - true everywhere we file. We keep the same phrasing
-  // but soften the implied turnaround for slow-queue states (WY/DE) so
-  // the audit-flagged Florida-only language doesn't bleed through.
+  // The default i18n subhead promises submission within 1 business day.
+  // Soften the implied turnaround for slow-queue states (WY/DE) so the
+  // audit-flagged Florida-only language doesn't bleed through.
   const subhead =
     state.code === 'FL'
       ? t('subhead')
-      : `Most owners finish in 15 minutes. We submit to ${state.name} the same business day - state processing varies.`;
+      : `Most owners finish in 15 minutes. We submit to ${state.name} within 1 business day - state processing varies.`;
 
   return (
     <section data-marketing-state={state.code} className="py-16 md:py-24">

@@ -22,6 +22,7 @@ import {
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
 import { logger } from '@/lib/logger';
+import { isTestPayment } from '@/lib/payment-test';
 
 const AddressSchema = z.object({
   street1: z.string().min(1),
@@ -216,6 +217,7 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
           stripePaymentMethodId: pmId,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
+          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
           stateFilingFeeCents: stateFee,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
           registeredAgentY1Cents: raFee,
@@ -418,6 +420,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           stripePaymentMethodId: pmId,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
+          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
           stateFilingFeeCents: stateFee,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
           registeredAgentY1Cents: raFee,

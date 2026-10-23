@@ -54,7 +54,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
 
   const subtitleCopy =
     state.code === 'FL'
-      ? 'No account needed. Enter your document number, review your info, and we file with the Florida Division of Corporations on the same day.'
+      ? 'No account needed. Enter your document number, review your info, and we file with the Florida Division of Corporations within 1 business day.'
       : `Let us handle your ${state.name} annual compliance. We prepare, review, and submit your filing on time so you never miss a deadline.`;
 
   return (
@@ -139,7 +139,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
               </Link>
             </Button>
             <p className="text-center text-xs text-ink-subtle">
-              No account required · Same-day filing · Secure checkout
+              No account required · Filing within 1 business day · Secure checkout
             </p>
           </motion.div>
 

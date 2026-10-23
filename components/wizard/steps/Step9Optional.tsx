@@ -973,7 +973,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
 
       {/*
         Processing speed selector. Hidden when the state only offers a single
-        speed (e.g. Florida same-day default) - no need to make customers
+        speed (e.g. Florida's default within 1 business day) - no need to make customers
         click through a single-choice form.
       */}
       {stateRule.processingOptions.length > 1 && (

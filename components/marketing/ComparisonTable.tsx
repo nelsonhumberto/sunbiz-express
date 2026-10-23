@@ -3,7 +3,8 @@
 import { useTranslations } from 'next-intl';
 import { Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { ADD_ON_BY_SLUG } from '@/lib/pricing';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface Row {
   labelKey: string;
@@ -14,13 +15,16 @@ interface Row {
 // prices and practices need substantiation we can't keep current.
 const COMPETITORS = ['LaunchForma', 'Typical online filer'];
 
+const oaPrice = formatCurrency(ADD_ON_BY_SLUG.operating_agreement_single.serviceMarginCents);
+const remindersPrice = formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents);
+
 const ROWS: Row[] = [
   { labelKey: 'feat_freeRA', values: [true, false] },
   { labelKey: 'feat_sameDayPrep', values: [true, '$249 tier'] },
   { labelKey: 'feat_allInPricing', values: [true, false] },
   { labelKey: 'feat_noSurpriseFees', values: [true, false] },
-  { labelKey: 'feat_oa', values: [true, '$99'] },
-  { labelKey: 'feat_reminders', values: [true, '$99/yr'] },
+  { labelKey: 'feat_oa', values: [true, oaPrice] },
+  { labelKey: 'feat_reminders', values: [true, `${remindersPrice}/yr`] },
 ];
 
 export function ComparisonTable() {
@@ -86,12 +90,15 @@ export function ComparisonTable() {
                       >
                         {typeof v === 'boolean' ? (
                           v ? (
-                            <Check
-                              className={cn('mx-auto h-5 w-5', i === 0 ? 'text-primary' : 'text-success')}
-                              strokeWidth={3}
-                            />
+                            <span
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white shadow-sm"
+                              role="img"
+                              aria-label="Included"
+                            >
+                              <Check className="h-4 w-4 text-white" strokeWidth={3} aria-hidden />
+                            </span>
                           ) : (
-                            <X className="mx-auto h-5 w-5 text-ink-subtle/60" strokeWidth={2} />
+                            <X className="mx-auto h-5 w-5 text-ink-subtle" strokeWidth={2} aria-label="Not included" />
                           )
                         ) : (
                           <span className="text-xs text-ink-muted">{v}</span>

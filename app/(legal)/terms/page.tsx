@@ -1,14 +1,41 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { LegalDraftNotice } from '@/components/legal/LegalDraftNotice';
 import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
-export const metadata: Metadata = {
-  title: 'Terms of Service',
-  description:
-    'LaunchForma Terms of Service - service description, refund policy, limitation of liability, and third-party integrations. We are not a law firm.',
-  alternates: { canonical: '/terms' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalTerms');
+    return withLocaleMeta('/terms', { title: t('metaTitle'), description: t('metaDescription') }, locale);
+  }
+  return withLocaleMeta(
+    '/terms',
+    {
+      title: 'Terms of Service',
+      description:
+        'LaunchForma Terms of Service - service description, refund policy, limitation of liability, and third-party integrations. We are not a law firm.',
+    },
+    locale,
+  );
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalTerms');
+    return (
+      <>
+        <LegalDraftNotice englishHref="/terms" />
+        <p className="text-xs uppercase tracking-wider text-ink-subtle">{t('effective')}</p>
+        <h1>{t('title')}</h1>
+        <LegalEntityIntro />
+        <MarkdownBody markdown={t('body')} locale="es" />
+      </>
+    );
+  }
   return (
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>

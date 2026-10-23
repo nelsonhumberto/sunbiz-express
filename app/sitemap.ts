@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { ALL_MARKETING_STATES } from '@/lib/marketing-states';
+import { toSpanishUrl } from '@/lib/locale-paths';
 import { contentLastModified } from '@/lib/sitemap-lastmod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
@@ -58,9 +59,15 @@ const STATIC_PAGES: PageDef[] = [
   { path: '/refund-policy', file: 'app/(legal)/refund-policy/page.tsx', changeFrequency: 'yearly', priority: 0.4 },
 ];
 
-function toEntry(page: PageDef): MetadataRoute.Sitemap[number] {
+function absoluteUrl(path: string): string {
+  if (path === '/') return `${BASE_URL}/`;
+  return `${BASE_URL}${path}`;
+}
+
+function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number] {
+  const path = spanish ? toSpanishUrl(page.path) : page.path;
   return {
-    url: page.path === '/' ? `${BASE_URL}/` : `${BASE_URL}${page.path}`,
+    url: absoluteUrl(path),
     lastModified: contentLastModified(page.file),
     changeFrequency: page.changeFrequency,
     priority: page.priority,
@@ -68,18 +75,18 @@ function toEntry(page: PageDef): MetadataRoute.Sitemap[number] {
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPages = STATIC_PAGES.map(toEntry);
-
   // Every indexable /states page, including Florida. Coming-soon slugs are
-  // noindex, so they stay out of the sitemap.
-  const statePages: MetadataRoute.Sitemap = ALL_MARKETING_STATES
-    .filter((s) => s.availability === 'active')
-    .map((s) => ({
-      url: `${BASE_URL}/states/${s.slug}`,
-      lastModified: contentLastModified('app/(marketing)/states/[slug]/page.tsx'),
-      changeFrequency: 'weekly' as const,
-      priority: 0.9,
-    }));
+  // noindex, so they stay out of the sitemap. Each English URL is mirrored
+  // under /es.
+  const statePages: PageDef[] = ALL_MARKETING_STATES.filter(
+    (s) => s.availability === 'active',
+  ).map((s) => ({
+    path: `/states/${s.slug}`,
+    file: 'app/(marketing)/states/[slug]/page.tsx',
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }));
 
-  return [...staticPages, ...statePages];
+  const pages = [...STATIC_PAGES, ...statePages];
+  return [...pages.map((page) => toEntry(page, false)), ...pages.map((page) => toEntry(page, true))];
 }

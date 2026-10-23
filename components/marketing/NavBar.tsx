@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
@@ -11,6 +11,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { StateSwitcher } from './StateSwitcher';
 import { useCurrentMarketingState } from '@/lib/use-current-state';
 import { trackCtaClicked } from '@/lib/analytics';
+import { englishPathname, localizedHref } from '@/lib/locale-paths';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -20,7 +21,9 @@ interface NavBarProps {
 
 export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   const t = useTranslations('nav');
+  const locale = useLocale();
   const pathname = usePathname();
+  const barePath = englishPathname(pathname);
   const currentState = useCurrentMarketingState();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -52,16 +55,16 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
       )}
     >
       <div className="container flex h-16 items-center justify-between">
-        <Logo />
+        <Logo href={localizedHref('/', locale)} />
 
         <nav className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
-              href={link.href}
+              href={localizedHref(link.href, locale)}
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-                pathname === link.href
+                barePath === link.href
                   ? 'text-primary bg-primary/5'
                   : 'text-ink-muted hover:text-ink hover:bg-muted'
               )}
@@ -78,24 +81,24 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
             <>
               {isAdmin && (
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/admin">{t('admin')}</Link>
+                  <Link href={localizedHref('/admin', locale)}>{t('admin')}</Link>
                 </Button>
               )}
               <Button asChild variant="ghost" size="sm">
-                <Link href="/dashboard">{t('dashboard')}</Link>
+                <Link href={localizedHref('/dashboard', locale)}>{t('dashboard')}</Link>
               </Button>
               <Button asChild>
-                <Link href="/dashboard">{t('continueFiling')}</Link>
+                <Link href={localizedHref('/dashboard', locale)}>{t('continueFiling')}</Link>
               </Button>
             </>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href="/sign-in">{t('signIn')}</Link>
+                <Link href={localizedHref('/sign-in', locale)}>{t('signIn')}</Link>
               </Button>
               <Button asChild>
                 <Link
-                  href={`/start?state=${currentState.code}`}
+                  href={localizedHref(`/start?state=${currentState.code}`, locale)}
                   onClick={() =>
                     trackCtaClicked('nav_start', { state: currentState.code })
                   }
@@ -122,10 +125,10 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                href={localizedHref(link.href, locale)}
                 className={cn(
                   'px-4 py-3 text-base font-medium rounded-md',
-                  pathname === link.href ? 'text-primary bg-primary/5' : 'text-ink hover:bg-muted'
+                  barePath === link.href ? 'text-primary bg-primary/5' : 'text-ink hover:bg-muted'
                 )}
               >
                 {link.label}
@@ -140,15 +143,15 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               <LanguageSwitcher variant="full" className="w-full justify-start" />
               {isAuthed ? (
                 <Button asChild variant="outline">
-                  <Link href="/dashboard">{t('dashboard')}</Link>
+                  <Link href={localizedHref('/dashboard', locale)}>{t('dashboard')}</Link>
                 </Button>
               ) : (
                 <>
                   <Button asChild variant="outline">
-                    <Link href="/sign-in">{t('signIn')}</Link>
+                    <Link href={localizedHref('/sign-in', locale)}>{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link href={`/start?state=${currentState.code}`}>
+                    <Link href={localizedHref(`/start?state=${currentState.code}`, locale)}>
                       {t('startFiling')}
                     </Link>
                   </Button>

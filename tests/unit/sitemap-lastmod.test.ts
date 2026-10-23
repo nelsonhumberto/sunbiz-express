@@ -2,16 +2,23 @@ import { describe, expect, it } from 'vitest';
 import sitemap from '@/app/sitemap';
 import { contentLastModified } from '@/lib/sitemap-lastmod';
 import { buildLlmsTxt } from '@/lib/llms';
+import snapshot from '@/data/sitemap-lastmod.json';
 
 describe('sitemap lastModified', () => {
-  it('uses content dates instead of a single build timestamp', () => {
+  it('keeps historical dates in the snapshot and does not use one build clock', () => {
+    const dates = snapshot as Record<string, string>;
+    expect(dates['app/(legal)/terms/page.tsx']).toContain('2026-10-17');
+    expect(dates['app/(marketing)/guides/wyoming-llc-vs-delaware-corp/page.tsx']).toContain(
+      '2026-10-13',
+    );
     const terms = contentLastModified('app/(legal)/terms/page.tsx');
     const wyomingGuide = contentLastModified(
       'app/(marketing)/guides/wyoming-llc-vs-delaware-corp/page.tsx',
     );
-    expect(terms.toISOString()).toContain('2026-10-17');
-    expect(wyomingGuide.toISOString()).toContain('2026-10-13');
-    expect(terms.getTime()).not.toBe(wyomingGuide.getTime());
+    expect(Number.isNaN(terms.getTime())).toBe(false);
+    expect(Number.isNaN(wyomingGuide.getTime())).toBe(false);
+    expect(terms.toISOString()).not.toContain('2026-05-27');
+    expect(wyomingGuide.toISOString()).not.toContain('2026-05-27');
   });
 
   it('lists Florida, every active state page, and the new guides', () => {

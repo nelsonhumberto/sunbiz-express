@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withBrand } from '@/lib/seo-title';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-10-23';
 const TITLE = 'How to Form an LLC in Florida (2026 Guide)';
@@ -24,19 +27,70 @@ const FAQ = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  alternates: { canonical: '/guides/how-to-form-an-llc-in-florida' },
-  openGraph: {
-    title: withBrand(TITLE),
-    description: DESCRIPTION,
-    type: 'article',
-    publishedTime: PUBLISHED,
-  },
-};
+const PATH = '/guides/how-to-form-an-llc-in-florida';
 
-export default function HowToFormFloridaLlcGuide() {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideFlForm');
+    return withLocaleMeta(
+      PATH,
+      {
+        title: t('metaTitle'),
+        description: t('metaDescription'),
+        openGraph: {
+          title: t('ogTitle'),
+          description: t('ogDescription'),
+          type: 'article',
+          publishedTime: PUBLISHED,
+        },
+      },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    PATH,
+    {
+      title: TITLE,
+      description: DESCRIPTION,
+      openGraph: {
+        title: withBrand(TITLE),
+        description: DESCRIPTION,
+        type: 'article',
+        publishedTime: PUBLISHED,
+      },
+    },
+    locale,
+  );
+}
+
+export default async function HowToFormFloridaLlcGuide() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideFlForm');
+    const faq = [1, 2, 3].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
+    return (
+      <>
+        <JsonLd data={faqPageJsonLd(faq)} />
+        <GuideLayout
+          slug="how-to-form-an-llc-in-florida"
+          title={t('title')}
+          description={t('description')}
+          datePublished={PUBLISHED}
+          readingMinutes={7}
+          cta={{
+            headline: t('ctaHeadline'),
+            subhead: t('ctaSubhead'),
+            href: '/start',
+            label: t('ctaLabel'),
+          }}
+        >
+          <MarkdownBody markdown={t('body')} locale="es" />
+          <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>
+        </GuideLayout>
+      </>
+    );
+  }
   return (
     <>
       <JsonLd data={faqPageJsonLd(FAQ)} />

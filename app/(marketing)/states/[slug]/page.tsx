@@ -20,6 +20,7 @@ import { JsonLd, serviceJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/compon
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface StateLandingPageProps {
   params: { slug: string };
@@ -43,37 +44,43 @@ export async function generateMetadata({
     return {};
   }
   const locale = await getLocale();
+  const canonical = `/states/${state.slug}`;
   if (state.availability === 'active') {
-    const phrase = statePageTitlePhrase(state.name);
-    const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`;
-    const canonical = `/states/${state.slug}`;
-    return {
-      title: pageTitle(phrase),
-      description,
-      openGraph: { title: withBrand(phrase), description, type: 'website' },
-      alternates: {
-        canonical,
-        languages: {
-          'en-US': canonical,
-          es: `${canonical}?lang=es`,
-          'x-default': canonical,
-        },
+    const stateName = localizedStateName(state, locale);
+    const phrase =
+      locale === 'es'
+        ? `Forma una LLC en ${stateName} en línea`
+        : statePageTitlePhrase(state.name);
+    const description =
+      locale === 'es'
+        ? `Forma una LLC o corporación en ${stateName} con precio todo incluido, Agente Registrado gratis el primer año y presentación en 1 día hábil.`
+        : `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`;
+    return withLocaleMeta(
+      canonical,
+      {
+        title: pageTitle(phrase),
+        description,
+        openGraph: { title: withBrand(phrase), description, type: 'website' },
       },
-    };
+      locale,
+    );
   }
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
   const phrase = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
-  return {
-    title: pageTitle(phrase),
-    description: t('heroSubhead', { state: stateName }),
-    openGraph: { title: phrase, type: 'website' },
-    alternates: { canonical: `/states/${state.slug}` },
-    // Coming-soon pages are near-duplicate templated content - keep them out
-    // of the index (still crawlable for the waitlist links) to avoid a
-    // thin-content footprint across ~47 state slugs.
-    robots: robotsForMarketingState(state),
-  };
+  return withLocaleMeta(
+    canonical,
+    {
+      title: pageTitle(phrase),
+      description: t('heroSubhead', { state: stateName }),
+      openGraph: { title: phrase, type: 'website' },
+      // Coming-soon pages are near-duplicate templated content - keep them out
+      // of the index (still crawlable for the waitlist links) to avoid a
+      // thin-content footprint across ~47 state slugs.
+      robots: robotsForMarketingState(state),
+    },
+    locale,
+  );
 }
 
 export default async function StateLandingPage({
@@ -97,13 +104,28 @@ export default async function StateLandingPage({
   if (state.availability === 'active') {
     const locale = await getLocale();
     const faqItems = getMarketingFaq(state, locale);
+    const prefix = locale === 'es' ? '/es' : '';
+    const stateUrl = `${baseUrl}${prefix}/states/${state.slug}`;
+    const stateLabel = locale === 'es' ? state.nameEs : state.name;
     return (
       <>
-        <JsonLd data={serviceJsonLd(state.name, state.slug)} />
+        <JsonLd
+          data={serviceJsonLd(stateLabel, state.slug, {
+            url: stateUrl,
+            name:
+              locale === 'es'
+                ? `Formación de LLC y corporación en ${stateLabel}`
+                : undefined,
+            description:
+              locale === 'es'
+                ? `Forma una LLC o corporación en ${stateLabel} con precio todo incluido, Agente Registrado gratis el primer año y presentación en 1 día hábil.`
+                : undefined,
+          })}
+        />
         <JsonLd
           data={breadcrumbJsonLd([
-            { name: 'Home', url: baseUrl },
-            { name: state.name, url: `${baseUrl}/states/${state.slug}` },
+            { name: locale === 'es' ? 'Inicio' : 'Home', url: locale === 'es' ? `${baseUrl}/es` : baseUrl },
+            { name: stateLabel, url: stateUrl },
           ])}
         />
         <JsonLd data={faqPageJsonLd(faqItems)} />

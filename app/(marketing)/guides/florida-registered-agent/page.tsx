@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withBrand } from '@/lib/seo-title';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-10-23';
 const TITLE = 'What Is a Registered Agent in Florida?';
@@ -23,19 +26,70 @@ const FAQ = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  alternates: { canonical: '/guides/florida-registered-agent' },
-  openGraph: {
-    title: withBrand(TITLE),
-    description: DESCRIPTION,
-    type: 'article',
-    publishedTime: PUBLISHED,
-  },
-};
+const PATH = '/guides/florida-registered-agent';
 
-export default function FloridaRegisteredAgentGuide() {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideFlRa');
+    return withLocaleMeta(
+      PATH,
+      {
+        title: t('metaTitle'),
+        description: t('metaDescription'),
+        openGraph: {
+          title: t('ogTitle'),
+          description: t('ogDescription'),
+          type: 'article',
+          publishedTime: PUBLISHED,
+        },
+      },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    PATH,
+    {
+      title: TITLE,
+      description: DESCRIPTION,
+      openGraph: {
+        title: withBrand(TITLE),
+        description: DESCRIPTION,
+        type: 'article',
+        publishedTime: PUBLISHED,
+      },
+    },
+    locale,
+  );
+}
+
+export default async function FloridaRegisteredAgentGuide() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideFlRa');
+    const faq = [1, 2, 3].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
+    return (
+      <>
+        <JsonLd data={faqPageJsonLd(faq)} />
+        <GuideLayout
+          slug="florida-registered-agent"
+          title={t('title')}
+          description={t('description')}
+          datePublished={PUBLISHED}
+          readingMinutes={5}
+          cta={{
+            headline: t('ctaHeadline'),
+            subhead: t('ctaSubhead'),
+            href: '/pricing',
+            label: t('ctaLabel'),
+          }}
+        >
+          <MarkdownBody markdown={t('body')} locale="es" />
+          <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>
+        </GuideLayout>
+      </>
+    );
+  }
   return (
     <>
       <JsonLd data={faqPageJsonLd(FAQ)} />

@@ -1,23 +1,72 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-05-27';
+const PATH = '/guides/florida-llc-operating-agreement';
 
-export const metadata: Metadata = {
-  title: 'Florida LLC Operating Agreement: What It Is & Why You Need One',
-  description:
-    'A clear, no-fluff explainer of the Florida LLC Operating Agreement - what banks actually look for, the clauses that matter, and the difference between single-member and multi-member versions.',
-  alternates: { canonical: '/guides/florida-llc-operating-agreement' },
-  openGraph: {
-    title: 'Florida LLC Operating Agreement - What It Is & Why You Need One',
-    description:
-      'Florida does not require an Operating Agreement on file - but every bank and every lender expects one. Here is what to include.',
-    type: 'article',
-    publishedTime: PUBLISHED,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideOa');
+    return withLocaleMeta(
+      PATH,
+      {
+        title: t('metaTitle'),
+        description: t('metaDescription'),
+        openGraph: {
+          title: t('ogTitle'),
+          description: t('ogDescription'),
+          type: 'article',
+          publishedTime: PUBLISHED,
+        },
+      },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    PATH,
+    {
+      title: 'Florida LLC Operating Agreement: What It Is & Why You Need One',
+      description:
+        'A clear, no-fluff explainer of the Florida LLC Operating Agreement - what banks actually look for, the clauses that matter, and the difference between single-member and multi-member versions.',
+      openGraph: {
+        title: 'Florida LLC Operating Agreement - What It Is & Why You Need One',
+        description:
+          'Florida does not require an Operating Agreement on file - but every bank and every lender expects one. Here is what to include.',
+        type: 'article',
+        publishedTime: PUBLISHED,
+      },
+    },
+    locale,
+  );
+}
 
-export default function FloridaOperatingAgreementGuide() {
+export default async function FloridaOperatingAgreementGuide() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideOa');
+    return (
+      <GuideLayout
+        slug="florida-llc-operating-agreement"
+        title={t('title')}
+        description={t('description')}
+        datePublished={PUBLISHED}
+        readingMinutes={9}
+        cta={{
+          headline: t('ctaHeadline'),
+          subhead: t('ctaSubhead'),
+          href: '/pricing',
+          label: t('ctaLabel'),
+        }}
+      >
+        <MarkdownBody markdown={t('body')} locale="es" />
+        <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>
+      </GuideLayout>
+    );
+  }
   return (
     <GuideLayout
       slug="florida-llc-operating-agreement"

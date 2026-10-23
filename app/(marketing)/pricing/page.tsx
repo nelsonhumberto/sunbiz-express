@@ -10,6 +10,7 @@ import { getMarketingFaq } from '@/lib/marketing-faq';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface PricingPageProps {
   searchParams?: { state?: string | string[] };
@@ -29,22 +30,33 @@ export async function generateMetadata({
   // Self-canonical avoids duplicate-content signals from `?state=` query
   // permutations. The canonical always points at the bare `/pricing` URL
   // for FL and a state-scoped form for WY/DE.
+  const locale = await getLocale();
   const canonical =
     state.code === 'FL' ? '/pricing' : `/pricing?state=${state.code}`;
-  const title =
-    state.code === 'FL'
+  const t = locale === 'es' ? await getTranslations('pricingMeta') : null;
+  const title = t
+    ? state.code === 'FL'
+      ? t('titleFl')
+      : t('titleState', { state: state.name })
+    : state.code === 'FL'
       ? 'LLC & Corporation Formation Pricing - All-In, No Hidden Fees'
       : `${state.name} LLC & Corporation Formation Pricing - All-In Packages`;
-  const description =
-    state.code === 'FL'
+  const description = t
+    ? state.code === 'FL'
+      ? t('descFl')
+      : t('descState', { state: state.name })
+    : state.code === 'FL'
       ? 'Florida LLC and Corporation formation packages from $149 all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.'
       : `${state.name} LLC and Corporation formation pricing with the ${state.name} filing fee included. Free Year-1 Registered Agent, transparent all-in pricing, no upsell tricks.`;
-  return {
-    title,
-    description,
-    alternates: { canonical },
-    openGraph: { title, description, type: 'website' },
-  };
+  return withLocaleMeta(
+    canonical,
+    {
+      title,
+      description,
+      openGraph: { title, description, type: 'website' },
+    },
+    locale,
+  );
 }
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {

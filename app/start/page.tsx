@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { withLocaleMeta } from '@/lib/locale-seo';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
@@ -19,10 +20,16 @@ import { pageTitle } from '@/lib/seo-title';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
-  alternates: { canonical: '/start' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return withLocaleMeta(
+    '/start',
+    {
+      title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
+    },
+    locale,
+  );
+}
 
 const VALID_TIERS = new Set(['BASIC', 'STANDARD', 'PREMIUM']);
 

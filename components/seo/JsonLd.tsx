@@ -55,17 +55,23 @@ export function faqPageJsonLd(
   };
 }
 
-export function serviceJsonLd(stateName: string, stateSlug: string) {
+export function serviceJsonLd(
+  stateName: string,
+  stateSlug: string,
+  opts?: { url?: string; name?: string; description?: string },
+) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: `${stateName} LLC & Corporation Formation`,
+    name: opts?.name ?? `${stateName} LLC & Corporation Formation`,
     provider: {
       '@type': 'Organization',
       name: 'LaunchForma',
     },
-    description: `Form a ${stateName} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`,
-    url: `${BASE_URL}/states/${stateSlug}`,
+    description:
+      opts?.description ??
+      `Form a ${stateName} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`,
+    url: opts?.url ?? `${BASE_URL}/states/${stateSlug}`,
     areaServed: {
       '@type': 'State',
       name: stateName,
@@ -130,11 +136,12 @@ export function pricingProductJsonLd(args: {
  */
 export function servicesItemListJsonLd(
   items: { name: string; description: string; priceCents: number }[],
+  listName = 'LaunchForma Business Formation Services',
 ) {
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'LaunchForma Business Formation Services',
+    name: listName,
     itemListElement: items.map((item, i) => ({
       '@type': 'ListItem',
       position: i + 1,

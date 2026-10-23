@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LOCALE_COOKIE, locales, stripSpanishPrefix, type Locale } from '@/i18n/config';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
@@ -125,6 +126,13 @@ export function middleware(request: NextRequest) {
   // rest of the translation catalog.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-lf-pathname', appPath);
+  // Original browser path (keeps /es) so canonicals and html lang follow the URL.
+  requestHeaders.set(PUBLIC_PATH_HEADER, pathname);
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+  const effectiveLocale: Locale =
+    lockedLocale ??
+    (cookieLocale && locales.includes(cookieLocale as Locale) ? (cookieLocale as Locale) : 'en');
+  requestHeaders.set(LOCALE_HEADER, effectiveLocale);
   if (lockedLocale) {
     const existing = request.headers.get('cookie') ?? '';
     const parts = existing

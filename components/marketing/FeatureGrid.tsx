@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Zap,
   Shield,
@@ -12,7 +12,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
-import { getFormationState } from '@/lib/formation-states';
 
 interface FeatureGridProps {
   /** Resolved marketing state. Defaults to Florida for backwards compatibility. */
@@ -26,83 +25,61 @@ interface FeatureGridProps {
  * even on the WY and DE landing pages. We now branch on state code so
  * Wyoming and Delaware visitors see facts that match their state.
  */
-function featureCopyFor(state: MarketingState) {
-  const rule = getFormationState(state.code);
-  const stateName = state.name;
-  const agency =
-    state.code === 'FL'
-      ? 'Florida Department of State'
-      : state.code === 'WY'
-        ? 'Wyoming Secretary of State'
-        : state.code === 'DE'
-          ? 'Delaware Division of Corporations'
-          : `${stateName} Secretary of State`;
-
-  // Submission within 1 business day still applies in every state. Approval
-  // cadence differs and is surfaced via state-specific marketing timing.
-  const filed1DayBody = `We submit to the ${agency} within 1 business day of checkout. ${rule.marketingTiming.badgeFallback}.`;
-
-  // Name pre-check varies by state - only FL has the live Sunbiz API.
-  // The result is a preliminary search, not a guarantee of state approval.
-  const liveCheckBody =
-    state.code === 'FL'
-      ? "A preliminary search of the Sunbiz database. It is not a guarantee of approval. We tell you if it looks distinguishable on the record before you commit."
-      : state.code === 'WY'
-        ? 'A preliminary scan of the Wyoming Secretary of State business registry. It is not a guarantee of approval. We flag conflicts, restricted words (bank, trust, university), and entries that require manual review before you commit.'
-        : state.code === 'DE'
-          ? 'A preliminary review of Delaware Division of Corporations naming conventions. It is not a guarantee of approval. We surface restricted-word reviews and known subjective-rejection patterns so you do not get bounced at filing.'
-          : `A preliminary search of the ${stateName} business registry. It is not a guarantee of approval.`;
-
-  const freeRABody = `We maintain a ${stateName} physical address for service of process - keeping your home address private and your entity in good standing.`;
-
-  // Annual-report copy needs to reference the right deadline & penalty
-  // (or absence of one). The audit explicitly flagged that WY/DE pages
-  // were claiming Florida's $400 late fee.
-  const complianceBody =
-    state.code === 'FL'
-      ? "Annual report reminders before the May 1 deadline. Optional managed filing means you'll never pay the $400 late fee."
-      : state.code === 'WY'
-        ? "Wyoming annual reports are due on the first of your anniversary month each year ($60 minimum License Tax). We remind you well in advance - and we can file for you."
-        : state.code === 'DE'
-          ? "Delaware LLCs pay a $300 Annual Tax by June 1; Corporations file Annual Report + Franchise Tax by March 1. Miss them and the state charges $200 + 1.5%/month. We remind you - and can file for you."
-          : `Annual compliance reminders well before the ${stateName} deadline - and optional managed filing so you never pay a late penalty.`;
-
-  const transparentBody = `One clear price per package - ${stateName} filing fee already included. No hidden subscriptions. No surprise checkout fees.`;
-
-  return {
-    filed1DayBody,
-    liveCheckBody,
-    freeRABody,
-    complianceBody,
-    transparentBody,
-  };
-}
-
 export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   const t = useTranslations('features');
-  const copy = featureCopyFor(state);
+  const tTiming = useTranslations('stateTiming');
+  const locale = useLocale();
+  const stateLabel = locale === 'es' ? state.nameEs : state.name;
+  const agency =
+    state.code === 'FL'
+      ? t('agencyFl')
+      : state.code === 'WY'
+        ? t('agencyWy')
+        : state.code === 'DE'
+          ? t('agencyDe')
+          : t('agencyOther', { state: stateLabel });
+  const timing = tTiming(state.code);
+
+  // Same-day submission still applies in every state. Approval cadence
+  // differs and is surfaced via state-specific marketing timing.
+  const filed1DayBody = t('filedSameDayBody', { agency, timing });
+
+  // Name pre-check varies by state. Only FL has the live Sunbiz API.
+  const liveCheckBody =
+    state.code === 'FL'
+      ? t('liveCheckFl')
+      : state.code === 'WY'
+        ? t('liveCheckWy')
+        : state.code === 'DE'
+          ? t('liveCheckDe')
+          : t('liveCheckOther', { state: stateLabel });
+  const freeRABody = t('freeRAState', { state: stateLabel });
+
+  const complianceBody =
+    state.code === 'FL'
+      ? t('complianceBody')
+      : state.code === 'WY'
+        ? t('complianceWy')
+        : state.code === 'DE'
+          ? t('complianceDe')
+          : t('complianceOther', { state: stateLabel });
+
+  const transparentBody =
+    state.code === 'FL' ? t('transparentBody') : t('transparentState', { state: stateLabel });
 
   // The headline title for "filed in 1 day" only matches Florida's actual
-  // turnaround. WY and DE state queues are weeks long - surface that
-  // honestly instead of overclaiming.
-  const filed1DayTitle =
-    state.code === 'FL'
-      ? t('filed1Day')
-      : 'Submitted within 1 business day';
-
+  // turnaround. WY and DE state queues are weeks long.
+  const filed1DayTitle = state.code === 'FL' ? t('filed1Day') : t('filedSameDayTitle');
   const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
-    { icon: Zap, title: filed1DayTitle, body: copy.filed1DayBody },
-    { icon: Search, title: t('liveCheck'), body: copy.liveCheckBody },
-    { icon: Shield, title: t('freeRA'), body: copy.freeRABody },
+    { icon: Zap, title: filed1DayTitle, body: filed1DayBody },
+    { icon: Search, title: t('liveCheck'), body: liveCheckBody },
+    { icon: Shield, title: t('freeRA'), body: freeRABody },
     { icon: FileText, title: t('documents'), body: t('documentsBody') },
-    { icon: CalendarCheck, title: t('compliance'), body: copy.complianceBody },
-    { icon: Banknote, title: t('transparent'), body: copy.transparentBody },
+    { icon: CalendarCheck, title: t('compliance'), body: complianceBody },
+    { icon: Banknote, title: t('transparent'), body: transparentBody },
   ];
 
-  const subhead =
-    state.code === 'FL'
-      ? t('subhead')
-      : `Everything you need to form, fund, and run a ${state.name} business - without the legal-tech overwhelm.`;
+  const subhead = state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
 
   return (
     <section

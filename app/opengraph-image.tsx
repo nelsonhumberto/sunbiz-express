@@ -48,7 +48,7 @@ export default function OpengraphImage() {
             Form your LLC or Corporation
           </div>
           <div style={{ color: '#9FD9CF', fontSize: 34, fontWeight: 500 }}>
-            All-in pricing · Free Year-1 Registered Agent · Same-day filing
+            All-in pricing · Free Year-1 Registered Agent · Filing within 1 business day
           </div>
         </div>
 

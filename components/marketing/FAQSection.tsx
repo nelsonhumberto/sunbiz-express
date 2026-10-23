@@ -79,7 +79,9 @@ export function FAQSection({
                 className={item.id ? 'scroll-mt-24' : undefined}
               >
                 <AccordionTrigger>{item.q}</AccordionTrigger>
-                <AccordionContent>{item.a}</AccordionContent>
+                <AccordionContent>
+                  <p>{item.a}</p>
+                </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
@@ -96,7 +98,9 @@ export function FAQSection({
               className={item.id ? 'scroll-mt-24' : undefined}
             >
               <AccordionTrigger>{item.q}</AccordionTrigger>
-              <AccordionContent>{item.a}</AccordionContent>
+              <AccordionContent>
+                <p>{item.a}</p>
+              </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>

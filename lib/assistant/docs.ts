@@ -19,8 +19,8 @@ About LaunchForma
   recommend a licensed professional and offer to connect them with our team.
 
 What's included
-- Every package includes the state filing fee, preparation + same-business-day
-  submission, Year-1 Registered Agent, and digital delivery of filed documents.
+- Every package includes the state filing fee, preparation + submission within
+  1 business day, Year-1 Registered Agent, and digital delivery of filed documents.
 - Registered Agent renews at $150/year after year one; cancel anytime.
 - 14-day satisfaction guarantee (see /refund-policy).
 
@@ -42,6 +42,6 @@ Support + handoff
 
 Useful pages
 - Pricing: /pricing · FAQ: /faq · Services: /services · BOI: /boi-reporting
-- Guides: /guides (operating agreement, Wyoming vs Delaware, BOI update 2026)
+- Guides: /guides (how to form a Florida LLC, Florida annual report, Florida registered agent, operating agreement, Wyoming vs Delaware). BOI update: /boi-reporting (/guides/boi-filing-2026 redirects there).
 - Start a filing: /start
 `.trim();

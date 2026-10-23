@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Hero } from '@/components/marketing/Hero';
 import { StatsBar } from '@/components/marketing/StatsBar';
@@ -17,10 +16,11 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
-import { JsonLd, serviceJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
-import { isSpanishPublicPath, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { JsonLd, serviceJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
+import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
-import { searchParamsToQueryString } from '@/lib/utm';
 
 interface StateLandingPageProps {
   params: { slug: string };
@@ -33,8 +33,6 @@ function pickFirst(value: string | string[] | undefined): string | undefined {
 }
 
 export function generateStaticParams() {
-  // Pre-generate every state slug at build time, including Florida (which
-  // redirects to "/") so we never 404 on a known state.
   return ALL_MARKETING_STATES.map((s) => ({ slug: s.slug }));
 }
 
@@ -46,40 +44,40 @@ export async function generateMetadata({
     return {};
   }
   const locale = await getLocale();
+  const canonical = `/states/${state.slug}`;
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
-    const title =
+    const phrase =
       locale === 'es'
-        ? `LaunchForma · Forma tu empresa en ${stateName} en minutos`
-        : `LaunchForma · Form your ${state.name} business in minutes`;
+        ? `Forma una LLC en ${stateName} en línea`
+        : statePageTitlePhrase(state.name);
     const description =
       locale === 'es'
-        ? `Forma una LLC o corporación en ${stateName} con precio todo incluido, Agente Registrado gratis el primer año y presentación el mismo día hábil.`
-        : `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`;
-    const canonical = `/states/${state.slug}`;
+        ? `Forma una LLC o corporación en ${stateName} con precio todo incluido, Agente Registrado gratis el primer año y presentación en 1 día hábil.`
+        : `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`;
     return withLocaleMeta(
       canonical,
       {
-        title,
+        title: pageTitle(phrase),
         description,
-        openGraph: { title, description, type: 'website' },
+        openGraph: { title: withBrand(phrase), description, type: 'website' },
       },
       locale,
     );
   }
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
-  const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
+  const phrase = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
   return withLocaleMeta(
-    `/states/${state.slug}`,
+    canonical,
     {
-      title,
+      title: pageTitle(phrase),
       description: t('heroSubhead', { state: stateName }),
-      openGraph: { title, type: 'website' },
+      openGraph: { title: phrase, type: 'website' },
       // Coming-soon pages are near-duplicate templated content - keep them out
       // of the index (still crawlable for the waitlist links) to avoid a
       // thin-content footprint across ~47 state slugs.
-      robots: { index: false, follow: true },
+      robots: robotsForMarketingState(state),
     },
     locale,
   );
@@ -98,23 +96,14 @@ export default async function StateLandingPage({
     notFound();
   }
 
-  // Florida already lives at "/", so redirect anyone hitting /states/florida
-  // to the canonical homepage - but preserve ?lang=, utm_*, and any other
-  // query params so ad campaigns land with attribution intact.
-  const locale = await getLocale();
-
-  if (state.code === 'FL') {
-    const qs = searchParamsToQueryString(searchParams);
-    const publicPath = headers().get(PUBLIC_PATH_HEADER) ?? '';
-    const dest = isSpanishPublicPath(publicPath) ? '/es' : '/';
-    redirect(qs ? `${dest}?${qs}` : dest);
-  }
-
-  // Active formation state (WY/DE) - render the full marketing layout with
-  // state-aware hero, pricing footnote, FAQ, and CTA.
+  // Active formation states, including Florida, render the full marketing
+  // layout (state-aware hero, pricing, FAQ, and CTA) with a self canonical.
+  // The homepage stays at "/".
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
   if (state.availability === 'active') {
+    const locale = await getLocale();
+    const faqItems = getMarketingFaq(state, locale);
     const prefix = locale === 'es' ? '/es' : '';
     const stateUrl = `${baseUrl}${prefix}/states/${state.slug}`;
     const stateLabel = locale === 'es' ? state.nameEs : state.name;
@@ -129,7 +118,7 @@ export default async function StateLandingPage({
                 : undefined,
             description:
               locale === 'es'
-                ? `Forma una LLC o corporación en ${stateLabel} con precio todo incluido, Agente Registrado gratis el primer año y presentación el mismo día hábil.`
+                ? `Forma una LLC o corporación en ${stateLabel} con precio todo incluido, Agente Registrado gratis el primer año y presentación en 1 día hábil.`
                 : undefined,
           })}
         />
@@ -139,6 +128,7 @@ export default async function StateLandingPage({
             { name: stateLabel, url: stateUrl },
           ])}
         />
+        <JsonLd data={faqPageJsonLd(faqItems)} />
         <Hero state={state} />
         <StatsBar />
         <FeatureGrid state={state} />
@@ -146,7 +136,7 @@ export default async function StateLandingPage({
         <PricingTable state={state} />
         <ComparisonTable />
         <AnnualReportSection state={state} />
-        <FAQSection state={state} />
+        <FAQSection state={state} suppressJsonLd />
         <CTABanner state={state} />
       </>
     );

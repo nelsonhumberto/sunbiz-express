@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { adminRevenuePaymentWhere } from '@/lib/payment-test';
 import { formatCurrency, formatRelative } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,7 @@ export default async function AdminOverview() {
     prisma.payment.aggregate({
       _sum: { amountCents: true },
       where: {
-        status: 'SUCCEEDED',
+        ...adminRevenuePaymentWhere,
         filing: { adminArchivedAt: null },
       },
     }),

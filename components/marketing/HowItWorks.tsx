@@ -49,7 +49,6 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
     state.code === 'FL'
       ? t('step4Body')
       : t('step4BodyState', { office, timing: tTiming(state.code) });
-
   const STEPS = [
     { n: '01', title: t('step1Title'), body: step1Body },
     { n: '02', title: t('step2Title'), body: step2Body },

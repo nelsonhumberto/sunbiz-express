@@ -13,6 +13,7 @@
  */
 
 import { prisma } from './db';
+import { isDeliverableEmail, normalizeEmail } from './email-address';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
@@ -205,7 +206,7 @@ const TEMPLATES: Record<
     subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
-      <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the state the same business day.</p>
+      <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the state within 1 business day.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
       <p class="muted">Most owners finish in 5 minutes from where you left off.</p>
     `,
@@ -216,7 +217,7 @@ const TEMPLATES: Record<
       <h1>Your name isn't locked in yet</h1>
       <p>${firstName ?? 'Hi'} - states only reserve a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Finish my filing</a>
-      <p class="muted">We'll prepare and submit your Articles to the state the same business day you complete checkout.</p>
+      <p class="muted">We'll prepare and submit your Articles to the state within 1 business day of checkout.</p>
     `,
   }),
   ABANDONED_7D: ({ firstName, businessName, resumeUrl }) => ({
@@ -260,7 +261,7 @@ const TEMPLATES: Record<
               : `${done} of ${TOTAL_DISPLAYED_STEPS} steps complete`
           }</td></tr>
         </table>
-        <p>The time is now. Finish creating your new company today and we'll prepare and submit your filing to the state the same business day.</p>
+        <p>The time is now. Finish creating your new company today and we'll prepare and submit your filing to the state within 1 business day.</p>
         <a class="cta" href="${escapeHtml(resumeUrl ?? `${siteUrl}/dashboard`)}">Finish creating my company</a>
         <p class="muted">${
           linkExpiresInDays
@@ -580,6 +581,49 @@ export async function sendEmail(args: SendEmailArgs) {
   const tpl = TEMPLATES[args.type];
   if (!tpl) throw new Error(`Unknown email type: ${args.type}`);
   const { subject, body } = tpl(args.context ?? {});
+  const recipient = typeof args.to === 'string' ? args.to.trim() : '';
+
+  if (!isDeliverableEmail(recipient)) {
+    const msg = 'Invalid recipient address.';
+    console.error(`[email] skipped invalid recipient: ${JSON.stringify(args.to)}`);
+    const record = await prisma.emailNotification.create({
+      data: {
+        notificationType: args.type,
+        recipientEmail: recipient.slice(0, 320) || '(invalid)',
+        subject,
+        templateName: args.type.toLowerCase(),
+        htmlBody: body,
+        status: 'FAILED',
+        errorMessage: msg,
+        filingId: args.filingId,
+        userId: args.userId,
+      },
+    });
+    return { ...record, status: 'FAILED', errorMessage: msg };
+  }
+
+  const suppressed = await prisma.emailSuppression.findUnique({
+    where: { email: normalizeEmail(recipient) },
+    select: { id: true },
+  });
+  if (suppressed) {
+    const msg = 'Recipient is on the suppression list.';
+    console.warn(`[email] skipped suppressed recipient: ${normalizeEmail(recipient)}`);
+    const record = await prisma.emailNotification.create({
+      data: {
+        notificationType: args.type,
+        recipientEmail: recipient,
+        subject,
+        templateName: args.type.toLowerCase(),
+        htmlBody: body,
+        status: 'FAILED',
+        errorMessage: msg,
+        filingId: args.filingId,
+        userId: args.userId,
+      },
+    });
+    return { ...record, status: 'FAILED', errorMessage: msg };
+  }
 
   // Persist to DB first so the admin Outbox always has a record. We start in
   // QUEUED and only flip to SENT once delivery actually succeeds - this keeps
@@ -588,7 +632,7 @@ export async function sendEmail(args: SendEmailArgs) {
   const record = await prisma.emailNotification.create({
     data: {
       notificationType: args.type,
-      recipientEmail: args.to,
+      recipientEmail: recipient,
       subject,
       templateName: args.type.toLowerCase(),
       htmlBody: body,
@@ -604,7 +648,7 @@ export async function sendEmail(args: SendEmailArgs) {
   if (!isEmailDeliveryConfigured()) {
     const msg =
       'No email provider configured (set RESEND_API_KEY or SMTP_HOST/USER/PASS).';
-    console.error(`[email] NOT DELIVERED → ${args.to} | "${subject}" | ${msg}`);
+    console.error(`[email] NOT DELIVERED → ${recipient} | "${subject}" | ${msg}`);
     await prisma.emailNotification.update({
       where: { id: record.id },
       data: { status: 'FAILED', errorMessage: msg },
@@ -616,7 +660,7 @@ export async function sendEmail(args: SendEmailArgs) {
   // so the status reflects reality; delivery errors are caught (not rethrown)
   // so a transient mail outage never breaks the calling user action.
   try {
-    await deliverEmail(args.to, subject, body);
+    await deliverEmail(recipient, subject, body);
     const sentAt = new Date();
     await prisma.emailNotification.update({
       where: { id: record.id },

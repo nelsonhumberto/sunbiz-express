@@ -84,7 +84,7 @@ export default async function StatesIndexPage() {
                 'LLC',
                 state.code as StateCode,
               );
-              const href = localizedHref(state.code === 'FL' ? '/' : `/states/${state.slug}`, locale);
+              const href = localizedHref(`/states/${state.slug}`, locale);
               const stateName = localizedStateName(state, locale);
               return (
                 <Link

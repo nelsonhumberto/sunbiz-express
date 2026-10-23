@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
@@ -7,14 +8,27 @@ import { getWizardActor } from '@/lib/guest';
 import { safeParseJson } from '@/lib/utils';
 import {
   computeCost,
+  tierBundledStateFeeCents,
   type AddOnSlug,
+  type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import {
+  CHECKOUT_BELOW_STATE_FEE_ERROR,
+  checkoutBelowStateFee,
+} from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
 } from '@/lib/formation-states';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { getServerUtmAttribution } from '@/lib/utm-server';
+import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
+import {
+  distinctIdFromPosthogCookie,
+  posthogPersistenceCookieName,
+  sanitizeDistinctId,
+} from '@/lib/posthog-distinct-id';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -49,9 +63,11 @@ export async function POST(request: NextRequest) {
   try {
     const stripe = getStripe();
     const body = await request.json();
-    const { amountCents, filingId } = body as {
+    const { amountCents, filingId, posthogDistinctId } = body as {
       amountCents: number;
       filingId?: string;
+      /** Browser PostHog distinct id. The only client field copied onto the PI. */
+      posthogDistinctId?: string;
       metadata?: Record<string, string>;
     };
 
@@ -69,6 +85,13 @@ export async function POST(request: NextRequest) {
     // When tied to a filing: verify ownership and bound the amount to the
     // server-computed total so the client can't mint arbitrary charges.
     let verifiedFilingId: string | undefined;
+    let attributionFiling: {
+      utmSource: string | null;
+      utmMedium: string | null;
+      utmCampaign: string | null;
+      utmContent: string | null;
+      utmTerm: string | null;
+    } | null = null;
     if (filingId) {
       const filing = await prisma.filing.findUnique({
         where: { id: filingId },
@@ -105,7 +128,41 @@ export async function POST(request: NextRequest) {
         );
         return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
       }
+      const stateFeeMinimum = tierBundledStateFeeCents(
+        filing.serviceTier as TierSlug,
+        filing.entityType as EntityType,
+        asStateCode(filing.state),
+      );
+      if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
+        logger.error(
+          'payment-intent amount below tier state fee',
+          { area: 'stripe', entityId: filing.id, tag: 'pi-amount-min' },
+          { amountCents, stateFeeMinimum },
+        );
+        return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
+      }
       verifiedFilingId = filing.id;
+      attributionFiling = filing;
+    }
+
+    // UTMs come from the lf_utm cookie (set by middleware), not from the
+    // client body. The PostHog distinct id only exists in the browser, so we
+    // accept that one field after sanitizing, and fall back to the posthog-js
+    // persistence cookie when the client didn't send it.
+    let cookieUtm: ReturnType<typeof getServerUtmAttribution> = null;
+    let cookieDistinctId: string | null = null;
+    try {
+      cookieUtm = getServerUtmAttribution();
+      const cookieName = posthogPersistenceCookieName(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+      if (cookieName) {
+        cookieDistinctId = distinctIdFromPosthogCookie(cookies().get(cookieName)?.value);
+      }
+    } catch (err) {
+      logger.warn('payment-intent attribution unavailable', {
+        area: 'stripe',
+        tag: 'pi-attribution',
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
 
     // Attach/create a Stripe Customer for authed users so saved methods reuse.
@@ -144,10 +201,17 @@ export async function POST(request: NextRequest) {
         ? { customer: customerId, setup_future_usage: 'off_session' as const }
         : {}),
       automatic_payment_methods: { enabled: true },
-      // Metadata is set server-side only - never trust client metadata here.
+      // Metadata is set server-side. Client `metadata` is ignored. UTMs are
+      // copied from the visitor cookie (filing columns fill gaps) and the
+      // PostHog distinct id is the sanitized browser value.
       metadata: {
         ...(verifiedFilingId ? { filingId: verifiedFilingId } : {}),
         userId: actor.id,
+        ...checkoutAttributionMetadata({
+          cookie: cookieUtm,
+          filing: attributionFiling,
+          posthogDistinctId: sanitizeDistinctId(posthogDistinctId) ?? cookieDistinctId,
+        }),
       },
     });
 

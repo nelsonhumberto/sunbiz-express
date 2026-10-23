@@ -53,7 +53,6 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
         : state.code === 'DE'
           ? t('liveCheckDe')
           : t('liveCheckOther', { state: stateLabel });
-
   const freeRABody = t('freeRAState', { state: stateLabel });
 
   const complianceBody =
@@ -71,7 +70,6 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   // The headline title for "filed in 1 day" only matches Florida's actual
   // turnaround. WY and DE state queues are weeks long.
   const filed1DayTitle = state.code === 'FL' ? t('filed1Day') : t('filedSameDayTitle');
-
   const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
     { icon: Zap, title: filed1DayTitle, body: filed1DayBody },
     { icon: Search, title: t('liveCheck'), body: liveCheckBody },

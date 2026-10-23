@@ -31,7 +31,6 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   // file, and names slower state processing on WY/DE.
   const subhead =
     state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
-
   return (
     <section data-marketing-state={state.code} className="py-16 md:py-24">
       <div className="container">

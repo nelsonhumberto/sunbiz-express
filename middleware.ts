@@ -111,6 +111,16 @@ export function middleware(request: NextRequest) {
   }
   const strippedPath = stripSpanishPrefix(pathname);
   const appPath = strippedPath ?? pathname;
+
+  // Bare /wizard (and /es/wizard) is not a filing. Send visitors to /start
+  // before the wizard layout asks them to sign in.
+  if (appPath === '/wizard') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/start';
+    const redirectResponse = NextResponse.redirect(url, 308);
+    if (lockedLocale) setLocaleCookie(redirectResponse, lockedLocale);
+    return redirectResponse;
+  }
   // Forward the path and the locale cookie into this render. `headers()` in
   // the root layout reads `x-lf-pathname` so the ad landing page can omit the
   // rest of the translation catalog.

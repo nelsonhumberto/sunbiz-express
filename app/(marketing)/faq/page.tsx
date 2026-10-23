@@ -9,6 +9,7 @@ import {
 } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface FAQPageProps {
@@ -63,8 +64,8 @@ export async function generateMetadata({
         : `${stateName} formation FAQ - coming soon`,
       description: tMeta
         ? tMeta('comingDesc', { state: stateName })
-        : `LaunchForma is rolling out ${stateName} business formations. Join the early-access list to get notified when it opens.`,
-      robots: { index: false, follow: true },
+        : `LaunchForma is rolling out ${state.name} business formations. Join the early-access list to get notified when it opens.`,
+      robots: robotsForMarketingState(state),
     },
     locale,
   );
@@ -95,7 +96,7 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
             {isActive
-              ? t('headline')
+              ? t('pageHeadline', { state: stateName })
               : tComingSoon('faqHeadline', { state: stateName })}
           </h1>
         </div>

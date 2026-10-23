@@ -32,6 +32,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe-client';
+import { getAnalyticsDistinctId } from '@/lib/analytics';
 
 // ── Public API exposed via ref ─────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ const InnerCard = forwardRef(function InnerCard(
           amountCents,
           ...(filingId ? { filingId } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
+          posthogDistinctId: getAnalyticsDistinctId(),
         }),
       });
       const json = await res.json();

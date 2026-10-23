@@ -48,7 +48,6 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
   const corpFeeLabel = formatCurrency(corpFee);
   const allInLabel = formatCurrency(OUR_FEE + llcFee);
   const lateLabel = formatCurrency(llcLate);
-
   return (
     <section className="py-20 md:py-28 bg-gradient-to-b from-white to-primary/5">
       <div className="container max-w-6xl">
@@ -134,8 +133,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
               </Link>
             </Button>
             <p className="text-center text-xs text-ink-subtle">
-              {t('footnote')}
-            </p>
+              {t('footnote')}            </p>
           </motion.div>
 
           {/* Right - what's included cards */}

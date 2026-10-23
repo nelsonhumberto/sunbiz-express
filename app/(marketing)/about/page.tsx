@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { ADD_ON_BY_SLUG } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+import { pageTitle } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return withLocaleMeta(
     '/about',
     {
-      title: 'About LaunchForma - Transparent Business Formation',
+      title: pageTitle('About LaunchForma - Transparent Business Formation'),
       description:
         'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
       openGraph: {
@@ -43,6 +46,8 @@ export default async function AboutPage() {
   const locale = await getLocale();
   if (locale === 'es') {
     const t = await getTranslations('aboutPage');
+    const oa = formatCurrency(ADD_ON_BY_SLUG.operating_agreement_single.serviceMarginCents);
+    const alerts = formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents);
     return (
       <>
         <section className="pt-16 pb-12">
@@ -70,7 +75,7 @@ export default async function AboutPage() {
               {t('whyTitle')}
             </h2>
             <div className="prose prose-lg max-w-none text-ink-muted leading-relaxed">
-              <p>{t('p1')}</p>
+              <p>{t('p1', { oa, alerts })}</p>
               <p>{t('p2')}</p>
               <p>
                 <strong className="text-ink">{t('p3')}</strong>
@@ -146,14 +151,16 @@ export default async function AboutPage() {
           <div className="prose prose-lg max-w-none text-ink-muted leading-relaxed">
             <p>
               We were filing our own LLCs through LegalZoom in 2024 and got hit with the same trap
-              everyone gets hit with: a $0 "free" formation that ballooned to $399 by the time we
-              hit the checkout. Registered agent for $249/year. Operating agreement for $99.
-              Compliance reminders for another $99/year.
+              everyone gets hit with: a $0 &quot;free&quot; formation that ballooned to $399 by the time we
+              hit the checkout. Registered agent for $249/year. Operating agreement for{' '}
+              {formatCurrency(ADD_ON_BY_SLUG.operating_agreement_single.serviceMarginCents)}.
+              Compliance reminders for another{' '}
+              {formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents)}/year.
             </p>
             <p>
-              Meanwhile, Florida's official Sunbiz portal looks like it was last updated when
-              Netscape was a thing. The state filing fee is $125 - a fact that's deliberately buried
-              under three pages of optional services on every competitor's website.
+              Meanwhile, Florida&apos;s official Sunbiz portal looks like it was last updated when
+              Netscape was a thing. The state filing fee is $125 - a fact that&apos;s deliberately buried
+              under three pages of optional services on every competitor&apos;s website.
             </p>
             <p>
               <strong className="text-ink">We thought there had to be a better way.</strong>
@@ -166,8 +173,8 @@ export default async function AboutPage() {
               fees stacked on top.
             </p>
             <p>
-              Most importantly - we don't sell your data. Your name, address, and SSN aren't being
-              monetized through "marketing partners." When you pay our service fee, that's it.
+              Most importantly - we don&apos;t sell your data. Your name, address, and SSN aren&apos;t being
+              monetized through &quot;marketing partners.&quot; When you pay our service fee, that&apos;s it.
             </p>
           </div>
         </div>
@@ -183,7 +190,7 @@ export default async function AboutPage() {
               hello@launchforma.com
             </a>
             <br />
-            We respond within one business day. No bots, no hold music, no "Tier 1 support" runaround.
+            We respond within one business day. No bots, no hold music, no &quot;Tier 1 support&quot; runaround.
           </p>
         </div>
       </section>

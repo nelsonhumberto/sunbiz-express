@@ -179,6 +179,7 @@ npx tsx scripts/generate-sunbiz-seed.ts
 5. Add background job queue (Celery / Inngest / BullMQ) for: email sending, e-filing automation, abandonment reminders, compliance alerts.
 6. Wire up Sentry / DataDog / Mixpanel.
 7. Set up Playwright automation against efile.sunbiz.org with proxy rotation.
+8. Enable row level security on every new `public` table in the same migration (`ALTER TABLE "<Table>" ENABLE ROW LEVEL SECURITY;`, never `FORCE`). See [docs/row-level-security.md](docs/row-level-security.md). `npm run check:rls` fails CI when a migration creates a table without it.
 
 ---
 

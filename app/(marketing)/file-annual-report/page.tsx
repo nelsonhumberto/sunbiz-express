@@ -3,9 +3,12 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { GuestAnnualReportForm } from '@/components/marketing/GuestAnnualReportForm';
 import { FL } from '@/lib/florida';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { withBrand } from '@/lib/seo-title';
 import { formatCurrency } from '@/lib/utils';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { CheckCircle2, X } from 'lucide-react';
+
+const TITLE = 'File Your Florida Annual Report';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -28,11 +31,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return withLocaleMeta(
     '/file-annual-report',
     {
-      title: 'File Your Florida Annual Report | LaunchForma',
+      title: TITLE,
       description:
         'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee - cheaper than LegalZoom or FilingServices.com.',
       openGraph: {
-        title: 'File Your Florida Annual Report | LaunchForma',
+        title: withBrand(TITLE),
         description:
           'Avoid the $400 non-waivable late penalty. We file directly with the Florida Division of Corporations - no account required.',
         type: 'website',

@@ -1,16 +1,27 @@
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
+import { adminRevenuePaymentWhere } from '@/lib/payment-test';
 import { AnalyticsCharts } from './analytics-charts';
 import { formatCurrency } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminAnalyticsPage() {
-  // Exclude admin-archived / test filings so auditor fakes don't skew KPIs.
-  const filings = await prisma.filing.findMany({
-    where: { adminArchivedAt: null },
-    select: { status: true, serviceTier: true, totalCents: true, createdAt: true, entityType: true },
-  });
+  // Exclude admin-archived filings so auditor fakes don't skew KPIs.
+  // Revenue is succeeded, non-test payments with a Stripe charge or real pi_.
+  const [filings, revenuePayments] = await Promise.all([
+    prisma.filing.findMany({
+      where: { adminArchivedAt: null },
+      select: { status: true, serviceTier: true, createdAt: true, entityType: true, id: true },
+    }),
+    prisma.payment.findMany({
+      where: {
+        ...adminRevenuePaymentWhere,
+        filing: { adminArchivedAt: null },
+      },
+      select: { amountCents: true, createdAt: true, filingId: true },
+    }),
+  ]);
 
   const statusCounts = filings.reduce(
     (acc, f) => ({ ...acc, [f.status]: (acc[f.status] ?? 0) + 1 }),
@@ -34,15 +45,19 @@ export default async function AdminAnalyticsPage() {
     const inDay = filings.filter(
       (f) => f.createdAt >= d && f.createdAt < next
     );
+    const paidInDay = revenuePayments.filter(
+      (p) => p.createdAt >= d && p.createdAt < next
+    );
     days.push({
       day: d.toISOString().slice(5, 10),
       count: inDay.length,
-      revenue: inDay.reduce((s, f) => s + f.totalCents, 0) / 100,
+      revenue: paidInDay.reduce((s, p) => s + p.amountCents, 0) / 100,
     });
   }
 
-  const totalRevenue = filings.reduce((s, f) => s + f.totalCents, 0);
-  const avgFilingValue = filings.length > 0 ? totalRevenue / filings.length : 0;
+  const totalRevenue = revenuePayments.reduce((s, p) => s + p.amountCents, 0);
+  const paidFilingCount = new Set(revenuePayments.map((p) => p.filingId)).size;
+  const avgFilingValue = paidFilingCount > 0 ? totalRevenue / paidFilingCount : 0;
   const llcCount = filings.filter((f) => f.entityType === 'LLC').length;
   const corpCount = filings.filter((f) => f.entityType === 'CORP').length;
 

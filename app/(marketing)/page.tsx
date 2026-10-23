@@ -14,6 +14,10 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
+import { homeTitlePhrase, pageTitle, withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface HomePageSearchParams {
@@ -37,14 +41,15 @@ export async function generateMetadata({
 
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
-    const title =
-      locale === 'es'
-        ? (await getTranslations('homeMeta'))('title', { state: stateName })
-        : `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
-    const description =
-      locale === 'es'
-        ? (await getTranslations('homeMeta'))('description', { state: stateName })
-        : `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
+    const tMeta = locale === 'es' ? await getTranslations('homeMeta') : null;
+    const phrase = tMeta
+      ? state.code === 'FL'
+        ? tMeta('titleFl')
+        : tMeta('titleState', { state: stateName })
+      : homeTitlePhrase(state.name, state.code);
+    const description = tMeta
+      ? tMeta('description', { state: stateName })
+      : `Start your ${state.name} LLC or Corporation online in minutes. We prepare and file with the state on your behalf within 1 business day. Free Year-1 Registered Agent and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
     // for the same content.
@@ -52,10 +57,10 @@ export async function generateMetadata({
     return withLocaleMeta(
       englishPath,
       {
-        title,
+        title: pageTitle(phrase),
         description,
         openGraph: {
-          title,
+          title: withBrand(phrase),
           description,
           type: 'website',
         },
@@ -66,29 +71,26 @@ export async function generateMetadata({
 
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
-  const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
+  const phrase = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
   const description = t('heroSubhead', { state: stateName });
 
   return withLocaleMeta(
     `/?state=${state.code}`,
     {
-      title,
+      title: pageTitle(phrase),
       description,
       openGraph: {
-        title,
+        title: phrase,
         description,
         type: 'website',
       },
-      robots: {
-        index: false,
-        follow: true,
-      },
+      robots: robotsForMarketingState(state),
     },
     locale,
   );
 }
 
-export default function HomePage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams?: HomePageSearchParams;
@@ -101,8 +103,12 @@ export default function HomePage({
     return <ComingSoonLanding state={state} campaign={campaign} />;
   }
 
+  const locale = await getLocale();
+  const faqItems = getMarketingFaq(state, locale);
+
   return (
     <>
+      <JsonLd data={faqPageJsonLd(faqItems)} />
       <Hero state={state} />
       <StatsBar />
       <FeatureGrid state={state} />
@@ -110,7 +116,7 @@ export default function HomePage({
       <PricingTable state={state} />
       <ComparisonTable />
       <AnnualReportSection state={state} />
-      <FAQSection state={state} />
+      <FAQSection state={state} suppressJsonLd />
       <CTABanner state={state} />
     </>
   );

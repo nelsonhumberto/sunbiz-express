@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendEmail, type NotificationType } from '@/lib/email';
+import { shouldSkipDraftRecovery } from '@/lib/draft-recovery';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -73,13 +74,24 @@ async function runDraftRecovery(now: number) {
   const drafts = await prisma.filing.findMany({
     where: {
       status: 'DRAFT',
+      isTest: false,
+      adminArchivedAt: null,
+      userArchivedAt: null,
       updatedAt: { gte: oldestCutoff, lte: newestCutoff },
+      user: {
+        role: { not: 'ADMIN' },
+        NOT: {
+          email: { endsWith: '@launchforma.com', mode: 'insensitive' },
+        },
+      },
     },
     include: { user: true },
   });
 
   let sent = 0;
   for (const draft of drafts) {
+    // Belt and suspenders: never mail admins, @launchforma.com, or test/archived drafts.
+    if (shouldSkipDraftRecovery(draft)) continue;
     const ageHours = (now - draft.updatedAt.getTime()) / (60 * 60 * 1000);
     const bucket = DRAFT_BUCKETS.find(
       (b) => ageHours >= b.minHours && ageHours < b.maxHours,

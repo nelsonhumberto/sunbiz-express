@@ -1,21 +1,35 @@
 // One-time seeding endpoint (local/dev only). Hit it ONCE after first deploy:
 //   curl -X POST "http://localhost:3000/api/seed" -H "Authorization: Bearer YOUR_SEED_SECRET"
 //
-// Requires SEED_SECRET. Disabled in production unless ALLOW_SEED=true.
-// Idempotent - checks if already seeded. Demo credentials live in this source.
+// Requires SEED_SECRET. Returns 404 when VERCEL_ENV or NODE_ENV is production
+// unless ALLOW_SEED=true. Admin password comes from SEED_ADMIN_PASSWORD
+// (or is generated once). Idempotent - checks if already seeded.
 
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { TIERS, ADD_ONS } from '@/lib/pricing';
+import { isTestPayment } from '@/lib/payment-test';
+import { resolveSeedAdminCredentials } from '@/lib/seed-admin';
+
+function seedBlockedInProduction(): boolean {
+  if (process.env.ALLOW_SEED === 'true') return false;
+  return process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+}
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+export async function GET() {
+  if (seedBlockedInProduction()) {
+    return new NextResponse(null, { status: 404 });
+  }
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+}
+
 export async function POST(req: NextRequest) {
-  // Never allow demo seeding in production - these are known-credential accounts.
-  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED !== 'true') {
-    return NextResponse.json({ error: 'Disabled in production.' }, { status: 403 });
+  if (seedBlockedInProduction()) {
+    return new NextResponse(null, { status: 404 });
   }
 
   const headerSecret =
@@ -102,8 +116,8 @@ export async function POST(req: NextRequest) {
         includedFeatures: JSON.stringify(t.features.filter((f) => f.included).map((f) => f.label)),
         includesRegisteredAgentY1: true,
         includesOperatingAgreement: t.slug !== 'BASIC',
-        includesEin: t.slug !== 'BASIC',
-        includesExpedited: t.slug !== 'BASIC',
+        includesEin: false,
+        includesExpedited: false,
         includesCertifiedCopy: t.slug !== 'BASIC',
         includesCertificateOfStatus: t.slug !== 'BASIC',
         includesAnnualCompliance: t.slug === 'PREMIUM',
@@ -133,12 +147,19 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Demo users
+  // Demo users. Admin password is never hardcoded.
   const demoPassword = await bcrypt.hash('Demo1234!', 10);
+  const adminCreds = resolveSeedAdminCredentials();
+  const adminPassword = await bcrypt.hash(adminCreds.password, 10);
+  if (adminCreds.generated) {
+    console.log(
+      `Generated admin password for ${adminCreds.email} (printed once): ${adminCreds.password}`,
+    );
+  }
   await prisma.user.create({
     data: {
-      email: 'admin@inc.demo',
-      passwordHash: demoPassword,
+      email: adminCreds.email,
+      passwordHash: adminPassword,
       firstName: 'Ada',
       lastName: 'Admin',
       role: 'ADMIN',
@@ -232,6 +253,7 @@ export async function POST(req: NextRequest) {
       stripePaymentIntentId: 'pi_mock_demo_filing_paid',
       amountCents: 22_400,
       status: 'SUCCEEDED',
+      isTest: isTestPayment({ stripePaymentIntentId: 'pi_mock_demo_filing_paid' }),
       stateFilingFeeCents: 12_500,
       formationServiceFeeCents: 9_900,
       cardLast4: '4242',

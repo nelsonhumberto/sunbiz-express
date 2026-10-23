@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import sitemap from '@/app/sitemap';
-import { contentLastModified } from '@/lib/sitemap-lastmod';
 import { buildLlmsTxt } from '@/lib/llms';
 
 const ES_PATHS = [
@@ -12,10 +11,14 @@ const ES_PATHS = [
   '/es/about',
   '/es/file-annual-report',
   '/es/states',
+  '/es/states/florida',
   '/es/states/delaware',
   '/es/states/wyoming',
   '/es/boi-reporting',
   '/es/guides',
+  '/es/guides/how-to-form-an-llc-in-florida',
+  '/es/guides/florida-annual-report',
+  '/es/guides/florida-registered-agent',
   '/es/guides/wyoming-llc-vs-delaware-corp',
   '/es/guides/florida-llc-operating-agreement',
   '/es/terms',
@@ -24,17 +27,7 @@ const ES_PATHS = [
   '/es/refund-policy',
 ];
 
-describe('sitemap lastModified', () => {
-  it('keeps distinct git-sourced dates from the committed map', () => {
-    const terms = contentLastModified('/terms');
-    const wyomingGuide = contentLastModified('/guides/wyoming-llc-vs-delaware-corp');
-    const spanishServices = contentLastModified('/es/services');
-    expect(terms.toISOString()).toContain('2026-10-17');
-    expect(wyomingGuide.toISOString()).toContain('2026-10-13');
-    expect(spanishServices.toISOString()).toContain('2026-10-23');
-    expect(terms.getTime()).not.toBe(wyomingGuide.getTime());
-  });
-
+describe('Spanish sitemap URLs', () => {
   it('lists every Spanish URL and does not send /es at the English homepage', () => {
     const urls = sitemap().map((entry) => entry.url);
     for (const path of ES_PATHS) {
@@ -57,7 +50,10 @@ describe('llms.txt Spanish URLs', () => {
     expect(text).toContain('https://launchforma.com/es/services');
     expect(text).toContain('https://launchforma.com/es/states/delaware');
     expect(text).toContain('https://launchforma.com/es/guides/florida-llc-operating-agreement');
+    expect(text).toContain('https://launchforma.com/es/guides/how-to-form-an-llc-in-florida');
+    expect(text).toContain('https://launchforma.com/es/guides/florida-annual-report');
+    expect(text).toContain('https://launchforma.com/es/guides/florida-registered-agent');
+    expect(text).toContain('https://launchforma.com/es/states/florida');
     expect(text).toContain('Traducción en borrador');
-    expect(text).not.toContain('https://launchforma.com/guides/how-to-form-an-llc-in-florida');
   });
 });

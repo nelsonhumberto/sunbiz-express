@@ -18,12 +18,16 @@ const CSP = [
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com https://js.stripe.com",
   "object-src 'none'",
-  "img-src 'self' data: blob: https://*.stripe.com https://images.unsplash.com https://avatars.githubusercontent.com https://*.posthog.com https://*.i.posthog.com https://*.vercel.app https://*.vercel-insights.com https://www.google-analytics.com https://www.googletagmanager.com https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://px.ads.linkedin.com https://www.linkedin.com https://bzr.openai.com",
+  // Ads conversion pixels (Google Ads + LinkedIn Insight) plus PostHog
+  // (us.i.posthog.com, us-assets.i.posthog.com) and the OpenAI ads pixel
+  // (bzr.openai.com, bzrcdn.openai.com). googleads.g.doubleclick.net is listed
+  // explicitly next to *.doubleclick.net so the conversion hosts stay allowed.
+  "img-src 'self' data: blob: https://*.stripe.com https://images.unsplash.com https://avatars.githubusercontent.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.vercel.app https://*.vercel-insights.com https://www.google-analytics.com https://www.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.posthog.com https://*.i.posthog.com https://va.vercel-scripts.com https://vercel.live https://www.googletagmanager.com https://www.google-analytics.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://snap.licdn.com https://bzrcdn.openai.com",
-  "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.posthog.com https://*.i.posthog.com https://vitals.vercel-insights.com https://*.vercel-insights.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://www.google.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://pagead2.googlesyndication.com https://px.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com https://bzrcdn.openai.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live https://www.googletagmanager.com https://www.google-analytics.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://px.ads.linkedin.com https://snap.licdn.com https://bzrcdn.openai.com",
+  "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vitals.vercel-insights.com https://*.vercel-insights.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://pagead2.googlesyndication.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com https://bzrcdn.openai.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   'upgrade-insecure-requests',
@@ -77,6 +81,7 @@ const nextConfig = {
     // 301s to its modern canonical so we preserve any link equity that
     // remains and stop wasting crawl budget on dead URLs.
     return [
+      { source: '/wizard', destination: '/start', permanent: true },
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/why-us', destination: '/about#why', permanent: true },
       { source: '/annual-report-help', destination: '/file-annual-report', permanent: true },
@@ -84,6 +89,19 @@ const nextConfig = {
         source: '/florida-llc-guide',
         destination: '/guides/florida-llc-operating-agreement',
         permanent: true,
+      },
+      // /blog has no pages. 301 (not next's permanent:true, which is 308).
+      { source: '/blog', destination: '/guides', statusCode: 301 },
+      { source: '/blog/:path*', destination: '/guides', statusCode: 301 },
+      // www → apex. Live traffic currently 307s at Vercel's domain layer
+      // (see the PR). statusCode 301 is a real permanent redirect; `permanent:
+      // true` would emit 308. If the dashboard domain redirect still answers
+      // first, change that domain setting to a permanent redirect.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.launchforma.com' }],
+        destination: 'https://launchforma.com/:path*',
+        statusCode: 301,
       },
     ];
   },

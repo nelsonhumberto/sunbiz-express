@@ -106,16 +106,7 @@ export default async function ServicesPage() {
             {t ? t('kicker') : 'Services'}
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
-            {t ? (
-              <>
-                {t('titleBefore')} <span className="italic">{t('titleEm')}</span>
-              </>
-            ) : (
-              <>
-                Everything you need - {' '}
-                <span className="italic">all in one place.</span>
-              </>
-            )}
+            {t ? t('titleH1') : 'Registered agent and LLC formation services'}
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             {t

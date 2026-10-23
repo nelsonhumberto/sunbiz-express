@@ -16,12 +16,19 @@ import {
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
+import { pageTitle } from '@/lib/seo-title';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  return withLocaleMeta('/start', {}, locale);
+  return withLocaleMeta(
+    '/start',
+    {
+      title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
+    },
+    locale,
+  );
 }
 
 const VALID_TIERS = new Set(['BASIC', 'STANDARD', 'PREMIUM']);

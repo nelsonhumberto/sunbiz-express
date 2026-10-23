@@ -20,7 +20,7 @@ export function BusinessServicesHeroCta({
   const phoneHref = trimmed.replace(/[^\d+]/g, '');
 
   return (
-    <div className="mt-6 flex w-full max-w-md mx-auto flex-col gap-3 sm:max-w-lg">
+    <div className="mt-5 flex w-full max-w-md mx-auto flex-col gap-3 sm:max-w-lg">
       <Button asChild size="xl" className="text-base shadow-xl w-full">
         <a
           href="#request"

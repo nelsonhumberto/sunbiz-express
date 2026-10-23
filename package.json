@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force && npm run seed",
     "smoke:three-state": "tsx scripts/three-state-smoke.ts",
+    "check:rls": "node scripts/check-migration-rls.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:all": "vitest run && tsx scripts/three-state-smoke.ts && tsx scripts/wizard-smoke.ts",

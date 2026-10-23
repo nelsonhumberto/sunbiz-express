@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { isTestPayment } from '@/lib/payment-test';
+import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,11 @@ export async function POST(request: NextRequest) {
 
   try {
     if (event.type === 'payment_intent.succeeded') {
-      const outcome = await reconcilePaidFiling(event.data.object as Stripe.PaymentIntent);
+      const pi = event.data.object as Stripe.PaymentIntent;
+      // Analytics only. capturePurchaseCompletedServer never throws, and a
+      // failure here must not change the webhook outcome.
+      await capturePurchaseCompletedServer(pi);
+      const outcome = await reconcilePaidFiling(pi);
       if (outcome === 'defer') {
         // Too soon - let the client checkout finish. Non-2xx makes Stripe
         // redeliver later; by then processCheckout has either completed

@@ -78,7 +78,7 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
             {isActive
-              ? t('headline')
+              ? t('pageHeadline', { state: stateName })
               : tComingSoon('faqHeadline', { state: stateName })}
           </h1>
         </div>

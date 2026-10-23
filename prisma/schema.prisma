@@ -156,6 +156,10 @@ model Filing {
   // formation counts, charts). The row is never deleted — toggle to restore.
   adminArchivedAt          DateTime?
 
+  // Internal/test draft. Recovery skips these. Existing admin DRAFT rows are
+  // flagged by migration (not deleted) so the cron stops emailing them.
+  isTest                   Boolean  @default(false)
+
   steps                    FilingStep[]
   managersMembers          ManagerMember[]
   payments                 Payment[]
@@ -405,6 +409,18 @@ model EmailNotification {
   createdAt        DateTime @default(now())
 
   @@index([userId, notificationType, createdAt])
+  @@index([recipientEmail])
+}
+
+// Addresses that must not be mailed again. Populated by the Resend bounce
+// webhook. sendEmail checks this list before delivery.
+model EmailSuppression {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String   @default("BOUNCE")
+  detail    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AnnualReport {

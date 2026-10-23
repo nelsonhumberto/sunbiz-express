@@ -3,9 +3,10 @@ import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { ADD_ON_BY_SLUG } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
+import { pageTitle } from '@/lib/seo-title';
 
 export const metadata: Metadata = {
-  title: 'About LaunchForma - Transparent Business Formation',
+  title: pageTitle('About LaunchForma - Transparent Business Formation'),
   description:
     'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
   alternates: { canonical: '/about' },

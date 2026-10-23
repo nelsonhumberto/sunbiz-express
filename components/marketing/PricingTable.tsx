@@ -18,6 +18,8 @@ interface PricingTableProps {
   className?: string;
   /** Resolved marketing state (controls the per-state footnote). */
   state?: MarketingState;
+  /** Optional note under the fee footnote. Used on /pricing for the Florida $160 breakdown. */
+  feeNote?: string;
 }
 
 const FEATURE_KEYS: Record<string, string> = {
@@ -55,6 +57,7 @@ export function PricingTable({
   showHeader = true,
   className,
   state = FLORIDA,
+  feeNote,
 }: PricingTableProps) {
   const t = useTranslations('pricing');
   const formationState = getFormationState(state.code);
@@ -212,6 +215,11 @@ export function PricingTable({
         </div>
 
         <p className="text-center text-xs text-ink-subtle mt-10">{footnoteCopy}</p>
+        {feeNote ? (
+          <p className="text-center text-sm text-ink-muted mt-3 max-w-3xl mx-auto leading-relaxed">
+            {feeNote}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex items-center justify-center gap-2 text-sm text-ink-muted">
           <ShieldCheck className="h-4 w-4 text-success shrink-0" />

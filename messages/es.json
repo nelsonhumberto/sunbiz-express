@@ -71,6 +71,9 @@
     "privacy": "Política de Privacidad",
     "disclaimer": "Aviso Legal",
     "refundPolicy": "Política de Reembolsos",
+    "howToFormFloridaLlc": "Cómo formar una LLC en Florida",
+    "floridaAnnualReportGuide": "Reporte anual de Florida",
+    "floridaRegisteredAgentGuide": "Agente registrado en Florida",
     "floridaLLCGuide": "Guía: Acuerdo Operativo de LLC en Florida",
     "wyVsDeGuide": "LLC en Wyoming vs Corp en Delaware",
     "boiGuide": "Actualización BOI 2026",
@@ -193,6 +196,8 @@
   "pricing": {
     "kicker": "Precio todo incluido",
     "headline": "Elige un plan. Paga una vez. Listo.",
+    "pageHeadline": "¿Cuánto cuesta una LLC en {state}?",
+    "floridaBundledStateFees": "En Popular y Premium, los $160 que aparecen con el precio de la LLC de Florida son la tarifa estatal de $125 más una copia certificada ($30) y un certificado de estado ($5). Cada plan incluye la tarifa estatal de $125.",
     "subhead": "Un solo precio claro por plan - la tarifa estatal de Florida ya está incluida. Sin suscripciones, sin cargos sorpresa al pagar.",
     "footnote": "El total de cada tarjeta es nuestra tarifa de servicio más la tarifa estatal de {state}, indicadas por separado debajo. LaunchForma paga la tarifa estatal en tu nombre.",
     "allIn": "todo incluido",
@@ -254,6 +259,7 @@
   "faq": {
     "kicker": "Preguntas frecuentes",
     "headline": "Preguntas, respondidas.",
+    "pageHeadline": "Preguntas frecuentes: formar una LLC en {state}",
     "stillHaveQuestions": "¿Aún tienes preguntas?",
     "emailUs": "Escríbenos",
     "respondWithin": "y te responderemos en un día hábil."

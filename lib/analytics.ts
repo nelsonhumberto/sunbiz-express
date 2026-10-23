@@ -41,6 +41,15 @@ export function trackEvent(
   );
 }
 
+/** Current PostHog distinct id, when the browser SDK has loaded. */
+export function getAnalyticsDistinctId(): string | undefined {
+  const id = ph()?.get_distinct_id?.();
+  if (typeof id !== 'string') return undefined;
+  const trimmed = id.trim();
+  if (!trimmed || trimmed.length > 200) return undefined;
+  return trimmed;
+}
+
 export function identifyUser(userId: string, traits?: Record<string, unknown>) {
   ph()?.identify(userId, traits);
 }

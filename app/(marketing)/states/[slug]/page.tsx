@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Hero } from '@/components/marketing/Hero';
 import { StatsBar } from '@/components/marketing/StatsBar';
@@ -19,7 +19,7 @@ import {
 import { JsonLd, serviceJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
-import { searchParamsToQueryString } from '@/lib/utm';
+import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
 
 interface StateLandingPageProps {
   params: { slug: string };
@@ -32,8 +32,6 @@ function pickFirst(value: string | string[] | undefined): string | undefined {
 }
 
 export function generateStaticParams() {
-  // Pre-generate every state slug at build time, including Florida (which
-  // redirects to "/") so we never 404 on a known state.
   return ALL_MARKETING_STATES.map((s) => ({ slug: s.slug }));
 }
 
@@ -46,13 +44,13 @@ export async function generateMetadata({
   }
   const locale = await getLocale();
   if (state.availability === 'active') {
-    const title = `LaunchForma · Form your ${state.name} business in minutes`;
+    const phrase = statePageTitlePhrase(state.name);
     const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`;
     const canonical = `/states/${state.slug}`;
     return {
-      title,
+      title: pageTitle(phrase),
       description,
-      openGraph: { title, description, type: 'website' },
+      openGraph: { title: withBrand(phrase), description, type: 'website' },
       alternates: {
         canonical,
         languages: {
@@ -65,11 +63,11 @@ export async function generateMetadata({
   }
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
-  const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
+  const phrase = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
   return {
-    title,
+    title: pageTitle(phrase),
     description: t('heroSubhead', { state: stateName }),
-    openGraph: { title, type: 'website' },
+    openGraph: { title: phrase, type: 'website' },
     alternates: { canonical: `/states/${state.slug}` },
     // Coming-soon pages are near-duplicate templated content - keep them out
     // of the index (still crawlable for the waitlist links) to avoid a
@@ -91,16 +89,9 @@ export default async function StateLandingPage({
     notFound();
   }
 
-  // Florida already lives at "/", so redirect anyone hitting /states/florida
-  // to the canonical homepage - but preserve ?lang=, utm_*, and any other
-  // query params so ad campaigns land with attribution intact.
-  if (state.code === 'FL') {
-    const qs = searchParamsToQueryString(searchParams);
-    redirect(qs ? `/?${qs}` : '/');
-  }
-
-  // Active formation state (WY/DE) - render the full marketing layout with
-  // state-aware hero, pricing footnote, FAQ, and CTA.
+  // Active formation states, including Florida, render the full marketing
+  // layout (state-aware hero, pricing, FAQ, and CTA) with a self canonical.
+  // The homepage stays at "/".
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
   if (state.availability === 'active') {

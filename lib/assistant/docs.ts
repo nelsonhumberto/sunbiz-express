@@ -42,6 +42,6 @@ Support + handoff
 
 Useful pages
 - Pricing: /pricing · FAQ: /faq · Services: /services · BOI: /boi-reporting
-- Guides: /guides (operating agreement, Wyoming vs Delaware, BOI update 2026)
+- Guides: /guides (how to form a Florida LLC, Florida annual report, Florida registered agent, operating agreement, Wyoming vs Delaware). BOI update: /boi-reporting (/guides/boi-filing-2026 redirects there).
 - Start a filing: /start
 `.trim();

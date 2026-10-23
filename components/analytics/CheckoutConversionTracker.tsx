@@ -17,6 +17,8 @@ interface CheckoutConversionTrackerProps {
     utmCampaign?: string | null;
     utmContent?: string | null;
     utmTerm?: string | null;
+    gclid?: string | null;
+    liFatId?: string | null;
   };
 }
 
@@ -44,6 +46,8 @@ export function CheckoutConversionTracker({
             utm_campaign: utm.utmCampaign ?? undefined,
             utm_content: utm.utmContent ?? undefined,
             utm_term: utm.utmTerm ?? undefined,
+            gclid: utm.gclid ?? undefined,
+            li_fat_id: utm.liFatId ?? undefined,
           }
         : null,
     );
@@ -51,7 +55,10 @@ export function CheckoutConversionTracker({
     identifyUser(userId, utmProps);
     trackPurchaseCompleted({
       filing_id: filingId,
+      order_id: filingId,
       revenue_cents: totalCents,
+      value: totalCents / 100,
+      currency: 'USD',
       state,
       entity_type: entityType,
       tier,

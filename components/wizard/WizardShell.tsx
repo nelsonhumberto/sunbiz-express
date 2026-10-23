@@ -11,6 +11,7 @@ import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { Progress } from '@/components/ui/progress';
 import {
   TOTAL_DISPLAYED_STEPS,
+  TOTAL_STEPS,
   displayStepNumber,
   isBonusStep,
   phaseForStep,
@@ -20,6 +21,7 @@ import { CostSidebar } from './CostSidebar';
 import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
 import { GuestSaveExitDialog } from './GuestSaveExitDialog';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 import type { TierSlug } from '@/lib/pricing';
 import type { StateCode } from '@/lib/formation-states';
 
@@ -42,7 +44,7 @@ interface WizardShellProps {
 }
 
 export function WizardShell({
-  filingId: _filingId,
+  filingId,
   step,
   children,
   costData,
@@ -52,6 +54,13 @@ export function WizardShell({
 }: WizardShellProps) {
   const t = useTranslations('wizard');
   const tDisc = useTranslations('disclosure');
+
+  useEffect(() => {
+    trackEvent('wizard_step_viewed', { step });
+    if (step === TOTAL_STEPS) {
+      trackEvent('checkout_started', { step, filing_id: filingId });
+    }
+  }, [step, filingId]);
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
   const subKey = `step${step}Subtitle` as keyof IntlMessages;

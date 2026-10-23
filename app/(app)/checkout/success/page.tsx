@@ -58,6 +58,8 @@ export default async function CheckoutSuccessPage({
           utmCampaign: filing.utmCampaign,
           utmContent: filing.utmContent,
           utmTerm: filing.utmTerm,
+          gclid: filing.gclid,
+          liFatId: filing.liFatId,
         }}
       />
       {/* Confetti-ish hero */}

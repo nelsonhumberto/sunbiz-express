@@ -32,6 +32,9 @@ describe('stripSpanishPrefix', () => {
 
   it('rewrites a prefixed path and leaves ordinary paths alone', () => {
     expect(stripSpanishPrefix('/es/business-services')).toBe('/business-services');
+    expect(stripSpanishPrefix('/es/business-services/thank-you')).toBe(
+      '/business-services/thank-you',
+    );
     expect(stripSpanishPrefix('/es/offer')).toBe('/offer');
     expect(stripSpanishPrefix('/business-services')).toBeNull();
     expect(stripSpanishPrefix('/services')).toBeNull();

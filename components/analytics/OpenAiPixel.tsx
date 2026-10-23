@@ -1,6 +1,5 @@
 'use client';
 
-import Script from 'next/script';
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { trackOpenAiPageView } from '@/lib/analytics';
@@ -11,46 +10,24 @@ const PIXEL_ID = openAiPixelId();
 const UNTRACKED_PATHS = new Set(['/reset-password']);
 
 /**
- * OpenAI Ads Measurement Pixel, installed from the official snippet:
- * https://developers.openai.com/ads/measurement-pixel
+ * SPA `page_viewed` events for the OpenAI Ads pixel.
  *
- * nelsonhumberto's GitHub has no Cafecito TECH site repo to copy. The same
- * loader and pixel ID are on https://cafecitotech.com. `oaiq("init")` already
- * measures the first view; later client navigations send `page_viewed`.
- * `lead_created` is fired from the thank-you page, not here.
+ * The loader and `oaiq("init")` live in the root layout as a
+ * beforeInteractive script so the stub exists before hydration. Init does
+ * not emit `page_viewed` or `lead_created`. `lead_created` is sent from the
+ * business-services thank-you page (English and `/es/...`, same route).
  */
 export function OpenAiPixel() {
   const pathname = usePathname();
   const untracked = UNTRACKED_PATHS.has(pathname);
-  const skippedFirstView = useRef(false);
+  const lastPath = useRef<string | null>(null);
 
   useEffect(() => {
     if (!PIXEL_ID || untracked) return;
-    if (!skippedFirstView.current) {
-      skippedFirstView.current = true;
-      return;
-    }
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
     trackOpenAiPageView(pathname);
   }, [pathname, untracked]);
 
-  if (!PIXEL_ID || untracked) return null;
-
-  return (
-    <Script id="openai-ads-pixel" strategy="afterInteractive">
-      {`
-        (function (w, d, s, u) {
-          if (w.oaiq) return;
-          var q = function () { q.q.push(arguments); };
-          q.q = [];
-          w.oaiq = q;
-          var js = d.createElement(s);
-          js.async = true;
-          js.src = u;
-          var f = d.getElementsByTagName(s)[0];
-          f.parentNode.insertBefore(js, f);
-        })(window, document, "script", "https://bzrcdn.openai.com/sdk/oaiq.min.js");
-        oaiq("init", { pixelId: ${JSON.stringify(PIXEL_ID)} });
-      `}
-    </Script>
-  );
+  return null;
 }

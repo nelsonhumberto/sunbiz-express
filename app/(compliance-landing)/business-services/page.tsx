@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { Button } from '@/components/ui/button';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
+import { BusinessServicesHeroCta } from '@/components/marketing/BusinessServicesHeroCta';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { RequestServiceButton } from '@/components/marketing/RequestServiceButton';
 import { ServiceInquiryForm } from '@/components/marketing/ServiceInquiryForm';
@@ -57,12 +56,12 @@ export default async function BusinessServicesPage() {
   return (
     <>
       <div className="bg-amber-50/60 border-b border-amber-200">
-        <div className="container py-4">
+        <div className="container py-3 md:py-4">
           <GovDisclosure variant="prominent" text={tDisc('notAffiliatedServices')} />
         </div>
       </div>
 
-      <section className="relative overflow-hidden pt-14 pb-12 md:pt-20 md:pb-16">
+      <section className="relative overflow-hidden pt-6 pb-10 md:pt-20 md:pb-16">
         <div className="absolute inset-0 mesh-bg" />
         <div className="aurora" />
         <div className="container relative max-w-3xl text-center">
@@ -70,10 +69,16 @@ export default async function BusinessServicesPage() {
             <ShieldCheck className="h-3.5 w-3.5" />
             {t('badge')}
           </span>
-          <h1 className="mt-4 font-display text-4xl md:text-6xl font-medium tracking-tight text-balance">
+          <h1 className="mt-3 font-display text-3xl md:text-6xl font-medium tracking-tight text-balance">
             {t('headline')}
           </h1>
-          <p className="mt-4 text-lg text-ink-muted leading-relaxed max-w-xl mx-auto">
+          <BusinessServicesHeroCta
+            primaryLabel={t('primaryCta')}
+            callLabel={BUSINESS_PHONE ? t('callCta', { phone: BUSINESS_PHONE }) : ''}
+            phone={BUSINESS_PHONE}
+          />
+          <p className="mt-3 text-sm text-ink-muted">{t('notALawFirm')}</p>
+          <p className="mt-4 text-base md:text-lg text-ink-muted leading-relaxed max-w-xl mx-auto">
             {t('subhead')}
           </p>
           <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink">
@@ -84,12 +89,11 @@ export default async function BusinessServicesPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-8">
-            <Button asChild size="xl" className="text-base shadow-xl">
-              <Link href="#services">{t('seeServices')}</Link>
-            </Button>
-          </div>
-          <p className="mt-3 text-sm text-ink-muted">{t('notALawFirm')}</p>
+          <p className="mt-4">
+            <a href="#services" className="text-sm font-medium text-primary hover:underline">
+              {t('seeServices')}
+            </a>
+          </p>
         </div>
       </section>
 

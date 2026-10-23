@@ -18,7 +18,7 @@ export default function OpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          backgroundColor: '#0F1F1C',
+          backgroundColor: '#0D1B2A',
           padding: '72px',
           fontFamily: 'sans-serif',
         }}
@@ -29,7 +29,7 @@ export default function OpengraphImage() {
               width: 64,
               height: 64,
               borderRadius: 16,
-              backgroundColor: '#0B7A6B',
+              backgroundColor: '#1565FF',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
@@ -47,12 +47,12 @@ export default function OpengraphImage() {
           <div style={{ color: '#ffffff', fontSize: 64, fontWeight: 700, lineHeight: 1.1 }}>
             Form your LLC or Corporation
           </div>
-          <div style={{ color: '#9FD9CF', fontSize: 34, fontWeight: 500 }}>
+          <div style={{ color: '#C8D9FF', fontSize: 34, fontWeight: 500 }}>
             All-in pricing · Free Year-1 Registered Agent · Filing within 1 business day
           </div>
         </div>
 
-        <div style={{ color: '#6E8B85', fontSize: 26 }}>
+        <div style={{ color: '#8BA3C0', fontSize: 26 }}>
           Florida · Wyoming · Delaware · launchforma.com
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
+import { adminRevenuePaymentWhere } from '@/lib/payment-test';
 import { AnalyticsCharts } from './analytics-charts';
 import { formatCurrency } from '@/lib/utils';
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminAnalyticsPage() {
   // Exclude admin-archived filings so auditor fakes don't skew KPIs.
-  // Revenue comes from succeeded, non-test payments only.
+  // Revenue is succeeded, non-test payments with a Stripe charge or real pi_.
   const [filings, revenuePayments] = await Promise.all([
     prisma.filing.findMany({
       where: { adminArchivedAt: null },
@@ -15,8 +16,7 @@ export default async function AdminAnalyticsPage() {
     }),
     prisma.payment.findMany({
       where: {
-        status: 'SUCCEEDED',
-        isTest: false,
+        ...adminRevenuePaymentWhere,
         filing: { adminArchivedAt: null },
       },
       select: { amountCents: true, createdAt: true, filingId: true },

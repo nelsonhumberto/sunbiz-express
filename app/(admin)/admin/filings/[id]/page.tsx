@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { countsTowardAdminRevenue } from '@/lib/payment-test';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import {
   defaultProcessingOption,
@@ -111,7 +112,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   } | null>(filing.registeredAgent, null);
 
   const totalRevenue = filing.payments
-    .filter((p) => p.status === 'SUCCEEDED' && !p.isTest)
+    .filter(countsTowardAdminRevenue)
     .reduce((s, p) => s + p.amountCents, 0);
 
   const pendingDocs = filing.documents.filter((d) => d.pendingState);

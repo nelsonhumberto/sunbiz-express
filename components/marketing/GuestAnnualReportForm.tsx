@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   Search, Loader2, CheckCircle2, ChevronDown,
   Plus, Trash2, Shield, CreditCard, User, Check, X, Pencil, Building2,
@@ -21,15 +22,16 @@ type Address = { street1: string; street2?: string; city: string; state: string;
 type Officer = { name: string; title: string };
 
 function AddressForm({ value, onChange, label }: { value: Address; onChange: (a: Address) => void; label: string }) {
+  const t = useTranslations('annualReportForm');
   return (
     <div className="space-y-2 pt-2">
       <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">{label}</p>
-      <Input placeholder="Street address" value={value.street1} onChange={(e) => onChange({ ...value, street1: e.target.value })} />
-      <Input placeholder="Suite / Apt (optional)" value={value.street2 ?? ''} onChange={(e) => onChange({ ...value, street2: e.target.value || undefined })} />
+      <Input placeholder={t('street')} value={value.street1} onChange={(e) => onChange({ ...value, street1: e.target.value })} />
+      <Input placeholder={t('suite')} value={value.street2 ?? ''} onChange={(e) => onChange({ ...value, street2: e.target.value || undefined })} />
       <div className="grid grid-cols-3 gap-2">
-        <Input placeholder="City" value={value.city} onChange={(e) => onChange({ ...value, city: e.target.value })} className="col-span-1" />
-        <Input placeholder="ST" value={value.state} onChange={(e) => onChange({ ...value, state: e.target.value.toUpperCase().slice(0, 2) })} className="uppercase" />
-        <Input placeholder="ZIP" value={value.zip} onChange={(e) => onChange({ ...value, zip: e.target.value })} />
+        <Input placeholder={t('city')} value={value.city} onChange={(e) => onChange({ ...value, city: e.target.value })} className="col-span-1" />
+        <Input placeholder={t('st')} value={value.state} onChange={(e) => onChange({ ...value, state: e.target.value.toUpperCase().slice(0, 2) })} className="uppercase" />
+        <Input placeholder={t('zip')} value={value.zip} onChange={(e) => onChange({ ...value, zip: e.target.value })} />
       </div>
     </div>
   );
@@ -39,15 +41,16 @@ function SectionCard({ title, children, editing, onEdit, onSave, onCancel }: {
   title: string; children: React.ReactNode; editing: boolean;
   onEdit: () => void; onSave: () => void; onCancel: () => void;
 }) {
+  const t = useTranslations('annualReportForm');
   return (
     <Card>
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-ink">{title}</h3>
           {!editing
-            ? <Button variant="outline" size="sm" onClick={onEdit} className="h-7 px-3 text-xs"><Pencil className="h-3 w-3 mr-1" /> CHANGE</Button>
+            ? <Button variant="outline" size="sm" onClick={onEdit} className="h-7 px-3 text-xs"><Pencil className="h-3 w-3 mr-1" /> {t('change')}</Button>
             : <div className="flex gap-2">
-                <Button size="sm" onClick={onSave} className="h-7 px-3 text-xs"><Check className="h-3 w-3 mr-1" /> Save</Button>
+                <Button size="sm" onClick={onSave} className="h-7 px-3 text-xs"><Check className="h-3 w-3 mr-1" /> {t('save')}</Button>
                 <Button variant="outline" size="sm" onClick={onCancel} className="h-7 px-3 text-xs"><X className="h-3 w-3" /></Button>
               </div>}
         </div>
@@ -64,6 +67,7 @@ function addrFrom(a?: { address_1?: string; city?: string; state?: string; zip?:
 }
 
 export function GuestAnnualReportForm() {
+  const t = useTranslations('annualReportForm');
   const [lookupPending, startLookup] = useTransition();
   const [searchPending, startSearch] = useTransition();
   const [submitPending, startSubmit] = useTransition();
@@ -83,7 +87,7 @@ export function GuestAnnualReportForm() {
     setSearchError('');
     setSearchResults(null);
     const q = query.trim();
-    if (!q) { setSearchError('Enter a company name or document number.'); return; }
+    if (!q) { setSearchError(t('searchEmpty')); return; }
 
     if (isDocNumber(q)) {
       // Treat as direct document number lookup
@@ -102,7 +106,7 @@ export function GuestAnnualReportForm() {
       const res = await searchEntitiesByName(q);
       if (!res.ok) { setSearchError(res.error); return; }
       if (res.results.length === 0) {
-        setSearchError('No active Florida companies found with that name. Try a different spelling or enter the document number directly.');
+        setSearchError(t('searchNone'));
         return;
       }
       setSearchResults(res.results);
@@ -166,10 +170,10 @@ export function GuestAnnualReportForm() {
   const reportYear = new Date().getFullYear();
 
   const onSubmit = () => {
-    if (!signingOfficer) { toast.error('Please select an officer to sign.'); return; }
-    if (!termsAccepted) { toast.error('Please accept the terms.'); return; }
-    if (!guestEmail) { toast.error('Email is required to receive your confirmation.'); return; }
-    if (!cardholderName.trim()) { toast.error('Cardholder name is required.'); return; }
+    if (!signingOfficer) { toast.error(t('selectOfficer')); return; }
+    if (!termsAccepted) { toast.error(t('acceptTerms')); return; }
+    if (!guestEmail) { toast.error(t('emailRequired')); return; }
+    if (!cardholderName.trim()) { toast.error(t('cardholderRequired')); return; }
 
     startSubmit(async () => {
       // 1. Confirm payment with Stripe client-side
@@ -211,12 +215,12 @@ export function GuestAnnualReportForm() {
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success mx-auto">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          <h2 className="font-display text-2xl font-medium">Annual report submitted!</h2>
+          <h2 className="font-display text-2xl font-medium">{t('successTitle')}</h2>
           <p className="text-sm text-ink-muted max-w-sm mx-auto">
-            Your {reportYear} Florida annual report has been filed. A confirmation will be sent to <strong>{guestEmail}</strong>.
+            {t('successBefore', { year: reportYear })} <strong>{guestEmail}</strong>.
           </p>
           <p className="text-xs text-ink-subtle">
-            Total charged: <strong>{formatCurrency(totalCents)}</strong>
+            {t('successCharged')} <strong>{formatCurrency(totalCents)}</strong>
           </p>
         </CardContent>
       </Card>
@@ -228,13 +232,13 @@ export function GuestAnnualReportForm() {
     return (
       <Card>
         <CardContent className="p-6 space-y-4">
-          <h3 className="font-semibold text-ink">Find your Florida company</h3>
+          <h3 className="font-semibold text-ink">{t('findTitle')}</h3>
           <p className="text-sm text-ink-muted">
-            Type your company name or document number (e.g.&nbsp;L15000063512) and press Search.
+            {t('findBody')}
           </p>
           <div className="flex gap-2">
             <Input
-              placeholder="Company name or document number"
+              placeholder={t('placeholderQuery')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onSearch()}
@@ -242,7 +246,7 @@ export function GuestAnnualReportForm() {
             />
             <Button onClick={onSearch} disabled={lookupPending || searchPending}>
               {(lookupPending || searchPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              &nbsp;Search
+              &nbsp;{t('search')}
             </Button>
           </div>
 
@@ -254,7 +258,7 @@ export function GuestAnnualReportForm() {
           {searchResults && searchResults.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
-                Select your company to file the annual report
+                {t('selectCompany')}
               </p>
               <div className="divide-y divide-border rounded-lg border overflow-hidden">
                 {searchResults.map((hit) => (
@@ -272,7 +276,7 @@ export function GuestAnnualReportForm() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
-                        Active
+                        {t('active')}
                       </span>
                       <Building2 className="h-4 w-4 text-ink-muted" />
                     </div>
@@ -280,7 +284,7 @@ export function GuestAnnualReportForm() {
                 ))}
               </div>
               <p className="text-xs text-ink-subtle">
-                Don&apos;t see your company? Try a more specific name or enter the document number directly.
+                {t('notListed')}
               </p>
             </div>
           )}
@@ -301,72 +305,72 @@ export function GuestAnnualReportForm() {
           <div className="flex-1">
             <p className="font-display text-lg font-semibold">{detail.corporation_name}</p>
             <div className="flex flex-wrap gap-4 mt-1 text-sm text-white/80">
-              <span>State ID: <span className="font-mono">{docNumber}</span></span>
-              <span>{entityType === 'LLC' ? 'FLAL (LLC)' : 'Florida Corp'}</span>
-              {detail.status && <span>Status: {detail.status}</span>}
+              <span>{t('stateId')} <span className="font-mono">{docNumber}</span></span>
+              <span>{entityType === 'LLC' ? t('llcLabel') : t('corpLabel')}</span>
+              {detail.status && <span>{t('status')} {detail.status}</span>}
             </div>
           </div>
           <Button variant="outline" size="sm"
             className="shrink-0 text-white border-white/30 hover:bg-white/10 hover:text-white text-xs"
             onClick={() => { setDetail(null); setDocNumber(''); }}>
-            Change
+            {t('changeCompany')}
           </Button>
         </CardContent>
       </Card>
 
       {/* Registered Agent */}
-      <SectionCard title="Registered Agent" editing={editRa}
+      <SectionCard title={t('raTitle')} editing={editRa}
         onEdit={() => { setDraftRaName(raName); setDraftRaAddr({ ...raAddr }); setEditRa(true); }}
         onSave={() => setEditRa(false)}
         onCancel={() => { setRaName(draftRaName); setRaAddr(draftRaAddr); setEditRa(false); }}>
         {editRa
-          ? <div className="space-y-2"><Input placeholder="Agent name" value={raName} onChange={(e) => setRaName(e.target.value)} /><AddressForm value={raAddr} onChange={setRaAddr} label="Agent address" /></div>
-          : <div className="text-sm text-ink-muted"><p>Agent: <strong className="text-ink">{raName || '-'}</strong></p><p className="mt-1">{raAddr.street1 && `${raAddr.street1}, ${raAddr.city}, ${raAddr.state} ${raAddr.zip}`}</p></div>}
+          ? <div className="space-y-2"><Input placeholder={t('agentNamePh')} value={raName} onChange={(e) => setRaName(e.target.value)} /><AddressForm value={raAddr} onChange={setRaAddr} label={t('agentAddress')} /></div>
+          : <div className="text-sm text-ink-muted"><p>{t('agentLabel')} <strong className="text-ink">{raName || '-'}</strong></p><p className="mt-1">{raAddr.street1 && `${raAddr.street1}, ${raAddr.city}, ${raAddr.state} ${raAddr.zip}`}</p></div>}
 
         <div className="mt-4 rounded-lg border border-border p-4 space-y-3">
           <div className="text-xs text-ink-muted bg-primary/5 rounded-md p-3 leading-relaxed">
-            <p className="font-medium text-ink mb-1">You&apos;re already here - why not let us take this burden off your busy plate?</p>
-            <p>For just <strong>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}/year</strong>, our Registered Agent Service ensures you:</p>
+            <p className="font-medium text-ink mb-1">{t('raPitchTitle')}</p>
+            <p>{t('raPitchBefore')} <strong>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}{t('perYear')}</strong>{t('raPitchAfter')}</p>
             <ul className="list-disc list-inside mt-1 space-y-0.5">
-              <li>Never miss a notice from the state</li>
-              <li>Have documents handled quickly and securely</li>
-              <li>Protect your privacy and free up your time</li>
+              <li>{t('raLi1')}</li>
+              <li>{t('raLi2')}</li>
+              <li>{t('raLi3')}</li>
             </ul>
           </div>
           <div className="flex items-center gap-2 font-medium text-sm text-ink">
             <Shield className="h-4 w-4 text-primary" />
-            Would you like us to be your Registered Agent?
+            {t('raAsk')}
           </div>
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="useOurRaGuest" checked={useOurRa} onChange={() => setUseOurRa(true)} className="accent-primary" />
-              Yes, add for {formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}/yr
+              {t('raYes', { price: formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS) })}
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="useOurRaGuest" checked={!useOurRa} onChange={() => setUseOurRa(false)} className="accent-primary" />
-              No thanks
+              {t('raNo')}
             </label>
           </div>
         </div>
       </SectionCard>
 
       {/* Physical Address */}
-      <SectionCard title="Company Physical Address" editing={editPrincipal}
+      <SectionCard title={t('physicalTitle')} editing={editPrincipal}
         onEdit={() => { setDraftPrincipal({ ...principal }); setEditPrincipal(true); }}
         onSave={() => setEditPrincipal(false)}
         onCancel={() => { setPrincipal(draftPrincipal); setEditPrincipal(false); }}>
         {editPrincipal
-          ? <AddressForm value={principal} onChange={setPrincipal} label="Physical address" />
+          ? <AddressForm value={principal} onChange={setPrincipal} label={t('physicalLabel')} />
           : <div className="text-sm text-ink-muted"><p>{principal.street1 || '-'}</p>{principal.city && <p>{principal.city}, {principal.state} {principal.zip}</p>}</div>}
       </SectionCard>
 
       {/* Mailing Address */}
-      <SectionCard title="Company Mailing Address" editing={editMailing}
+      <SectionCard title={t('mailingTitle')} editing={editMailing}
         onEdit={() => { setDraftMailing({ ...mailing }); setEditMailing(true); }}
         onSave={() => setEditMailing(false)}
         onCancel={() => { setMailing(draftMailing); setEditMailing(false); }}>
         {editMailing
-          ? <AddressForm value={mailing} onChange={setMailing} label="Mailing address" />
+          ? <AddressForm value={mailing} onChange={setMailing} label={t('mailingLabel')} />
           : <div className="text-sm text-ink-muted"><p>{mailing.street1 || '-'}</p>{mailing.city && <p>{mailing.city}, {mailing.state} {mailing.zip}</p>}</div>}
       </SectionCard>
 
@@ -374,11 +378,11 @@ export function GuestAnnualReportForm() {
       <Card>
         <CardContent className="p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-ink">Officers Summary</h3>
+            <h3 className="text-sm font-semibold text-ink">{t('officersTitle')}</h3>
             {!editOfficers && (
               <Button variant="outline" size="sm" className="h-7 px-3 text-xs"
                 onClick={() => { setDraftOfficers(officers.map((o) => ({ ...o }))); setEditOfficers(true); }}>
-                <Pencil className="h-3 w-3 mr-1" /> CHANGE
+                <Pencil className="h-3 w-3 mr-1" /> {t('change')}
               </Button>
             )}
           </div>
@@ -399,7 +403,7 @@ export function GuestAnnualReportForm() {
           {editOfficers && (
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex gap-2">
-                <Input placeholder="Full name" value={newOfficerName} onChange={(e) => setNewOfficerName(e.target.value)} className="flex-1" />
+                <Input placeholder={t('fullName')} value={newOfficerName} onChange={(e) => setNewOfficerName(e.target.value)} className="flex-1" />
                 <select value={newOfficerTitle} onChange={(e) => setNewOfficerTitle(e.target.value)} className="border border-border rounded-md px-2 text-sm bg-background">
                   {['MGR','MGRM','AMBR','DIRECTOR','OFFICER','PRES','SEC','VP','CEO','CFO'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -408,15 +412,15 @@ export function GuestAnnualReportForm() {
                 </Button>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setOfficers(draftOfficers); setEditOfficers(false); }}>Cancel</Button>
-                <Button size="sm" onClick={() => setEditOfficers(false)}><Check className="h-3.5 w-3.5 mr-1" /> Done</Button>
+                <Button variant="outline" size="sm" onClick={() => { setOfficers(draftOfficers); setEditOfficers(false); }}>{t('cancel')}</Button>
+                <Button size="sm" onClick={() => setEditOfficers(false)}><Check className="h-3.5 w-3.5 mr-1" /> {t('done')}</Button>
               </div>
             </div>
           )}
           {!editOfficers && (
             <Button variant="outline" size="sm" className="w-full border-dashed text-ink-muted"
               onClick={() => { setDraftOfficers(officers.map((o) => ({ ...o }))); setEditOfficers(true); }}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> ADD OFFICER
+              <Plus className="h-3.5 w-3.5 mr-1" /> {t('addOfficer')}
             </Button>
           )}
         </CardContent>
@@ -425,12 +429,12 @@ export function GuestAnnualReportForm() {
       {/* Sign officer */}
       <Card className={!signingOfficer ? 'border-primary/40 ring-1 ring-primary/20' : ''}>
         <CardContent className="p-5 space-y-2">
-          <h3 className="text-sm font-semibold text-ink">Select an Officer to Sign the Annual Report</h3>
-          <p className="text-xs text-ink-muted">Required.</p>
+          <h3 className="text-sm font-semibold text-ink">{t('signTitle')}</h3>
+          <p className="text-xs text-ink-muted">{t('required')}</p>
           <div className="relative">
             <select value={signingOfficer} onChange={(e) => setSigningOfficer(e.target.value)}
               className="w-full border border-border rounded-md px-3 py-2.5 text-sm bg-background appearance-none pr-8">
-              <option value="">Select officer from the list below</option>
+              <option value="">{t('selectOfficerOption')}</option>
               {officers.map((o, i) => <option key={i} value={o.name}>{o.name} - {o.title}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-ink-subtle pointer-events-none" />
@@ -443,23 +447,23 @@ export function GuestAnnualReportForm() {
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-ink">Contact & Payment</h3>
+            <h3 className="text-sm font-semibold text-ink">{t('contactTitle')}</h3>
           </div>
           <div className="space-y-1.5">
-            <Label>Your email (for confirmation)</Label>
+            <Label>{t('emailLabel')}</Label>
             <Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="you@example.com" />
           </div>
           {/* Price breakdown */}
           <div className="rounded-md border border-border divide-y divide-border text-sm">
-            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">Annual report service fee</span><span>{formatCurrency(ANNUAL_REPORT_SERVICE_FEE_CENTS)}</span></div>
-            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">Florida state filing fee ({entityType})</span><span>{formatCurrency(stateFee)}</span></div>
-            {useOurRa && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">Registered Agent (1 yr)</span><span>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}</span></div>}
-            <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>Total</span><span>{formatCurrency(totalCents)}</span></div>
+            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('serviceFee')}</span><span>{formatCurrency(ANNUAL_REPORT_SERVICE_FEE_CENTS)}</span></div>
+            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(stateFee)}</span></div>
+            {useOurRa && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('raLine')}</span><span>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}</span></div>}
+            <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>{t('total')}</span><span>{formatCurrency(totalCents)}</span></div>
           </div>
           <div className="grid gap-3">
-            <div className="space-y-1.5"><Label>Name on card</Label><Input value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} autoComplete="cc-name" placeholder="Full name" /></div>
+            <div className="space-y-1.5"><Label>{t('cardName')}</Label><Input value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} autoComplete="cc-name" placeholder={t('cardNamePh')} /></div>
             <div className="space-y-1.5">
-              <Label>Card details</Label>
+              <Label>{t('cardDetails')}</Label>
               <StripeCardInput ref={cardRef} />
             </div>
           </div>
@@ -472,11 +476,11 @@ export function GuestAnnualReportForm() {
           <label className="flex items-start gap-3 cursor-pointer">
             <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5 accent-primary h-4 w-4 shrink-0" />
             <p className="text-xs text-ink-muted leading-relaxed">
-              I certify that I am an authorized representative and that all information is true and accurate. I authorize LaunchForma to file this annual report with the Florida Division of Corporations on my behalf. Submitting false information constitutes a third degree felony.
+              {t('felony')}
             </p>
           </label>
           <Button type="button" className="w-full" size="lg" disabled={submitPending} onClick={onSubmit}>
-            {submitPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : `Submit & Pay - ${formatCurrency(totalCents)}`}
+            {submitPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> {t('processing')}</> : t('submit', { total: formatCurrency(totalCents) })}
           </Button>
         </CardContent>
       </Card>

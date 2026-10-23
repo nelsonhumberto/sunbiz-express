@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { withLocaleMeta } from '@/lib/locale-seo';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { BusinessServicesHeroCta } from '@/components/marketing/BusinessServicesHeroCta';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -24,17 +25,21 @@ import { formatCurrency } from '@/lib/utils';
 // clicks, not to compete with the public site in search.
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('businessServices');
+  const locale = await getLocale();
   const title = t('metaTitle');
   const description = t('metaDescription');
-  return {
-    title,
-    description,
-    keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
-    robots: { index: false, follow: true },
-    alternates: { canonical: '/business-services' },
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary_large_image', title, description },
-  };
+  return withLocaleMeta(
+    '/business-services',
+    {
+      title,
+      description,
+      keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
+      robots: { index: false, follow: true },
+      openGraph: { title, description, type: 'website' },
+      twitter: { card: 'summary_large_image', title, description },
+    },
+    locale,
+  );
 }
 
 export default async function BusinessServicesPage() {

@@ -1,49 +1,61 @@
 import type { MetadataRoute } from 'next';
 import { ALL_MARKETING_STATES } from '@/lib/marketing-states';
+import { toSpanishUrl } from '@/lib/locale-paths';
+import { contentLastModified } from '@/lib/sitemap-lastmod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
+type ChangeFrequency = 'weekly' | 'monthly' | 'yearly';
+
+interface PageDef {
+  path: string;
+  changeFrequency: ChangeFrequency;
+  priority: number;
+}
+
+const STATIC_PAGES: PageDef[] = [
+  { path: '/', changeFrequency: 'weekly', priority: 1.0 },
+  { path: '/start', changeFrequency: 'monthly', priority: 0.7 },
+  { path: '/pricing', changeFrequency: 'weekly', priority: 0.9 },
+  { path: '/faq', changeFrequency: 'weekly', priority: 0.8 },
+  { path: '/services', changeFrequency: 'monthly', priority: 0.7 },
+  { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/file-annual-report', changeFrequency: 'monthly', priority: 0.8 },
+  { path: '/states', changeFrequency: 'monthly', priority: 0.8 },
+  { path: '/boi-reporting', changeFrequency: 'monthly', priority: 0.8 },
+  { path: '/guides', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/guides/wyoming-llc-vs-delaware-corp', changeFrequency: 'monthly', priority: 0.7 },
+  { path: '/guides/florida-llc-operating-agreement', changeFrequency: 'monthly', priority: 0.7 },
+  { path: '/terms', changeFrequency: 'yearly', priority: 0.3 },
+  { path: '/privacy', changeFrequency: 'yearly', priority: 0.3 },
+  { path: '/disclaimer', changeFrequency: 'yearly', priority: 0.3 },
+  { path: '/refund-policy', changeFrequency: 'yearly', priority: 0.4 },
+];
+
+function absoluteUrl(path: string): string {
+  if (path === '/') return `${BASE_URL}/`;
+  return `${BASE_URL}${path}`;
+}
+
+function entry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number] {
+  const path = spanish ? toSpanishUrl(page.path) : page.path;
+  return {
+    url: absoluteUrl(path),
+    lastModified: contentLastModified(path),
+    changeFrequency: page.changeFrequency,
+    priority: page.priority,
+  };
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: `${BASE_URL}/`, lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
-    { url: `${BASE_URL}/start`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${BASE_URL}/pricing`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${BASE_URL}/faq`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${BASE_URL}/services`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${BASE_URL}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE_URL}/file-annual-report`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE_URL}/states`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE_URL}/boi-reporting`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE_URL}/guides`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    // Cornerstone SEO guide pages - built in the May 2026 audit fix.
-    {
-      url: `${BASE_URL}/guides/wyoming-llc-vs-delaware-corp`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/guides/florida-llc-operating-agreement`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    // Legal pages - indexable, important for E-E-A-T signals.
-    { url: `${BASE_URL}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${BASE_URL}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${BASE_URL}/disclaimer`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${BASE_URL}/refund-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.4 },
-  ];
+  const statePages: PageDef[] = ALL_MARKETING_STATES.filter(
+    (s) => s.availability === 'active' && s.code !== 'FL',
+  ).map((s) => ({
+    path: `/states/${s.slug}`,
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }));
 
-  const statePages: MetadataRoute.Sitemap = ALL_MARKETING_STATES
-    .filter((s) => s.availability === 'active' && s.code !== 'FL')
-    .map((s) => ({
-      url: `${BASE_URL}/states/${s.slug}`,
-      lastModified: now,
-      changeFrequency: 'weekly' as const,
-      priority: 0.9,
-    }));
-
-  return [...staticPages, ...statePages];
+  const pages = [...STATIC_PAGES, ...statePages];
+  return [...pages.map((page) => entry(page, false)), ...pages.map((page) => entry(page, true))];
 }

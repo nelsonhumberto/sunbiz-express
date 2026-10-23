@@ -1,14 +1,41 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { LegalDraftNotice } from '@/components/legal/LegalDraftNotice';
 import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy',
-  description:
-    'LaunchForma Privacy Policy - what we collect, why, who we share it with (no marketing partners, ever), and how to exercise your GDPR / CCPA rights.',
-  alternates: { canonical: '/privacy' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalPrivacy');
+    return withLocaleMeta('/privacy', { title: t('metaTitle'), description: t('metaDescription') }, locale);
+  }
+  return withLocaleMeta(
+    '/privacy',
+    {
+      title: 'Privacy Policy',
+      description:
+        'LaunchForma Privacy Policy - what we collect, why, who we share it with (no marketing partners, ever), and how to exercise your GDPR / CCPA rights.',
+    },
+    locale,
+  );
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalPrivacy');
+    return (
+      <>
+        <LegalDraftNotice englishHref="/privacy" />
+        <p className="text-xs uppercase tracking-wider text-ink-subtle">{t('effective')}</p>
+        <h1>{t('title')}</h1>
+        <LegalEntityIntro />
+        <MarkdownBody markdown={t('body')} locale="es" />
+      </>
+    );
+  }
   return (
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>

@@ -53,6 +53,27 @@ const LEGAL: LinkEntry[] = [
   { title: 'Refund Policy', path: '/refund-policy', note: 'Refund terms.' },
 ];
 
+const SPANISH_PAGES: LinkEntry[] = [
+  { title: 'Inicio (español)', path: '/es', note: 'Página de inicio en español.' },
+  { title: 'Precios', path: '/es/pricing', note: 'Precios todo incluido, tarifa estatal incluida.' },
+  { title: 'Servicios', path: '/es/services', note: 'Servicios adicionales: acuerdo operativo, elección S-Corp, reporte anual gestionado y alertas de cumplimiento.' },
+  { title: 'Preguntas frecuentes', path: '/es/faq', note: 'Preguntas sobre formación, agente registrado y reportes anuales.' },
+  { title: 'Nosotros', path: '/es/about', note: 'Qué es LaunchForma y cómo trabajamos.' },
+  { title: 'Reporte anual', path: '/es/file-annual-report', note: 'Presentación del reporte anual de Florida.' },
+  { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final de agosto de 2026).' },
+  { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },
+  { title: 'Delaware', path: '/es/states/delaware', note: 'Formar una LLC o corporación en Delaware.' },
+  { title: 'Wyoming', path: '/es/states/wyoming', note: 'Formar una LLC o corporación en Wyoming.' },
+  { title: 'Empezar un trámite', path: '/es/start', note: 'Empieza una LLC, corporación o elección S-Corp sin crear cuenta.' },
+  { title: 'Guías', path: '/es/guides', note: 'Índice de guías en español.' },
+  { title: 'Acuerdo operativo de Florida', path: '/es/guides/florida-llc-operating-agreement', note: 'Para qué sirve un acuerdo operativo de LLC en Florida.' },
+  { title: 'Wyoming o Delaware', path: '/es/guides/wyoming-llc-vs-delaware-corp', note: 'Comparación entre una LLC de Wyoming y una corporación de Delaware.' },
+  { title: 'Términos (borrador)', path: '/es/terms', note: 'Traducción en borrador. La versión en inglés es la que rige: /terms.' },
+  { title: 'Privacidad (borrador)', path: '/es/privacy', note: 'Traducción en borrador. La versión en inglés es la que rige: /privacy.' },
+  { title: 'Aviso legal (borrador)', path: '/es/disclaimer', note: 'Traducción en borrador. La versión en inglés es la que rige: /disclaimer.' },
+  { title: 'Reembolsos (borrador)', path: '/es/refund-policy', note: 'Traducción en borrador. La versión en inglés es la que rige: /refund-policy.' },
+];
+
 function line(entry: LinkEntry): string {
   return `- [${entry.title}](${BASE_URL}${entry.path}): ${entry.note}`;
 }
@@ -86,6 +107,12 @@ export function buildLlmsTxt(): string {
   parts.push('');
   parts.push('## Legal');
   parts.push(...LEGAL.map(line));
+  parts.push('');
+  parts.push('## Español');
+  parts.push(
+    'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Las páginas legales en español son una traducción en borrador y rige la versión en inglés.',
+  );
+  parts.push(...SPANISH_PAGES.map(line));
   parts.push('');
   parts.push('## Optional');
   parts.push(

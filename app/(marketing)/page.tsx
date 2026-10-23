@@ -14,6 +14,7 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface HomePageSearchParams {
   state?: string | string[];
@@ -36,29 +37,31 @@ export async function generateMetadata({
 
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
-    const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
-    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
+    const title =
+      locale === 'es'
+        ? (await getTranslations('homeMeta'))('title', { state: stateName })
+        : `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
+    const description =
+      locale === 'es'
+        ? (await getTranslations('homeMeta'))('description', { state: stateName })
+        : `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
     // for the same content.
-    const canonical = state.code === 'FL' ? '/' : `/states/${state.slug}`;
-    return {
-      title,
-      description,
-      openGraph: {
+    const englishPath = state.code === 'FL' ? '/' : `/states/${state.slug}`;
+    return withLocaleMeta(
+      englishPath,
+      {
         title,
         description,
-        type: 'website',
-      },
-      alternates: {
-        canonical,
-        languages: {
-          'en-US': canonical,
-          es: `${canonical}${canonical.includes('?') ? '&' : '?'}lang=es`,
-          'x-default': canonical,
+        openGraph: {
+          title,
+          description,
+          type: 'website',
         },
       },
-    };
+      locale,
+    );
   }
 
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
@@ -66,22 +69,23 @@ export async function generateMetadata({
   const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
   const description = t('heroSubhead', { state: stateName });
 
-  return {
-    title,
-    description,
-    openGraph: {
+  return withLocaleMeta(
+    `/?state=${state.code}`,
+    {
       title,
       description,
-      type: 'website',
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
     },
-    alternates: {
-      canonical: `/?state=${state.code}`,
-    },
-    robots: {
-      index: false,
-      follow: true,
-    },
-  };
+    locale,
+  );
 }
 
 export default function HomePage({

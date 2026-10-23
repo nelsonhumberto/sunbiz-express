@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Hero } from '@/components/marketing/Hero';
@@ -17,6 +18,8 @@ import {
   resolveMarketingState,
 } from '@/lib/marketing-states';
 import { JsonLd, serviceJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
+import { isSpanishPublicPath, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { withLocaleMeta } from '@/lib/locale-seo';
 import { searchParamsToQueryString } from '@/lib/utm';
 
 interface StateLandingPageProps {
@@ -44,39 +47,45 @@ export async function generateMetadata({
   }
   const locale = await getLocale();
   if (state.availability === 'active') {
-    const title = `LaunchForma · Form your ${state.name} business in minutes`;
-    const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`;
+    const stateName = localizedStateName(state, locale);
+    const title =
+      locale === 'es'
+        ? `LaunchForma · Forma tu empresa en ${stateName} en minutos`
+        : `LaunchForma · Form your ${state.name} business in minutes`;
+    const description =
+      locale === 'es'
+        ? `Forma una LLC o corporación en ${stateName} con precio todo incluido, Agente Registrado gratis el primer año y presentación el mismo día hábil.`
+        : `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`;
     const canonical = `/states/${state.slug}`;
-    return {
-      title,
-      description,
-      openGraph: { title, description, type: 'website' },
-      alternates: {
-        canonical,
-        languages: {
-          'en-US': canonical,
-          es: `${canonical}?lang=es`,
-          'x-default': canonical,
-        },
+    return withLocaleMeta(
+      canonical,
+      {
+        title,
+        description,
+        openGraph: { title, description, type: 'website' },
       },
-    };
+      locale,
+    );
   }
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
   const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
-  return {
-    title,
-    description: t('heroSubhead', { state: stateName }),
-    openGraph: { title, type: 'website' },
-    alternates: { canonical: `/states/${state.slug}` },
-    // Coming-soon pages are near-duplicate templated content - keep them out
-    // of the index (still crawlable for the waitlist links) to avoid a
-    // thin-content footprint across ~47 state slugs.
-    robots: { index: false, follow: true },
-  };
+  return withLocaleMeta(
+    `/states/${state.slug}`,
+    {
+      title,
+      description: t('heroSubhead', { state: stateName }),
+      openGraph: { title, type: 'website' },
+      // Coming-soon pages are near-duplicate templated content - keep them out
+      // of the index (still crawlable for the waitlist links) to avoid a
+      // thin-content footprint across ~47 state slugs.
+      robots: { index: false, follow: true },
+    },
+    locale,
+  );
 }
 
-export default function StateLandingPage({
+export default async function StateLandingPage({
   params,
   searchParams,
 }: StateLandingPageProps) {
@@ -92,9 +101,13 @@ export default function StateLandingPage({
   // Florida already lives at "/", so redirect anyone hitting /states/florida
   // to the canonical homepage - but preserve ?lang=, utm_*, and any other
   // query params so ad campaigns land with attribution intact.
+  const locale = await getLocale();
+
   if (state.code === 'FL') {
     const qs = searchParamsToQueryString(searchParams);
-    redirect(qs ? `/?${qs}` : '/');
+    const publicPath = headers().get(PUBLIC_PATH_HEADER) ?? '';
+    const dest = isSpanishPublicPath(publicPath) ? '/es' : '/';
+    redirect(qs ? `${dest}?${qs}` : dest);
   }
 
   // Active formation state (WY/DE) - render the full marketing layout with
@@ -102,13 +115,28 @@ export default function StateLandingPage({
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
   if (state.availability === 'active') {
+    const prefix = locale === 'es' ? '/es' : '';
+    const stateUrl = `${baseUrl}${prefix}/states/${state.slug}`;
+    const stateLabel = locale === 'es' ? state.nameEs : state.name;
     return (
       <>
-        <JsonLd data={serviceJsonLd(state.name, state.slug)} />
+        <JsonLd
+          data={serviceJsonLd(stateLabel, state.slug, {
+            url: stateUrl,
+            name:
+              locale === 'es'
+                ? `Formación de LLC y corporación en ${stateLabel}`
+                : undefined,
+            description:
+              locale === 'es'
+                ? `Forma una LLC o corporación en ${stateLabel} con precio todo incluido, Agente Registrado gratis el primer año y presentación el mismo día hábil.`
+                : undefined,
+          })}
+        />
         <JsonLd
           data={breadcrumbJsonLd([
-            { name: 'Home', url: baseUrl },
-            { name: state.name, url: `${baseUrl}/states/${state.slug}` },
+            { name: locale === 'es' ? 'Inicio' : 'Home', url: locale === 'es' ? `${baseUrl}/es` : baseUrl },
+            { name: stateLabel, url: stateUrl },
           ])}
         />
         <Hero state={state} />

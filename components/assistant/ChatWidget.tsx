@@ -122,7 +122,10 @@ export function ChatWidget() {
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Sparkles className="h-4 w-4" />
               </span>
-              <span className="font-semibold text-ink text-sm">{t('title')}</span>
+              <span className="min-w-0">
+                <span className="block font-semibold text-ink text-sm leading-tight">{t('title')}</span>
+                <span className="block text-[11px] text-ink-subtle leading-tight">{t('availability')}</span>
+              </span>
             </div>
             <button
               type="button"

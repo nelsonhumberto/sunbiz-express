@@ -1,15 +1,46 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { LegalDraftNotice } from '@/components/legal/LegalDraftNotice';
 import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
-export const metadata: Metadata = {
-  title: 'Refund Policy',
-  description:
-    'LaunchForma refund policy: 14-day refund window on service fees prior to state submission, state filing fees non-refundable once accepted, and how to cancel recurring services.',
-  alternates: { canonical: '/refund-policy' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalRefund');
+    return withLocaleMeta(
+      '/refund-policy',
+      { title: t('metaTitle'), description: t('metaDescription') },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    '/refund-policy',
+    {
+      title: 'Refund Policy',
+      description:
+        'LaunchForma refund policy: 14-day refund window on service fees prior to state submission, state filing fees non-refundable once accepted, and how to cancel recurring services.',
+    },
+    locale,
+  );
+}
 
-export default function RefundPolicyPage() {
+export default async function RefundPolicyPage() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalRefund');
+    return (
+      <>
+        <LegalDraftNotice englishHref="/refund-policy" />
+        <p className="text-xs uppercase tracking-wider text-ink-subtle">{t('effective')}</p>
+        <h1>{t('title')}</h1>
+        <LegalEntityIntro />
+        <MarkdownBody markdown={t('body')} locale="es" />
+      </>
+    );
+  }
   return (
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">

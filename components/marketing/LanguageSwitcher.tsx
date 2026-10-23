@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Globe, Check } from 'lucide-react';
 import {
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { setLocaleAction } from '@/actions/locale';
 import { locales, localeNames, localeFlags, type Locale } from '@/i18n/config';
+import { pathForLocale } from '@/lib/locale-paths';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -20,12 +22,20 @@ interface Props {
 
 export function LanguageSwitcher({ variant = 'icon', className }: Props) {
   const currentLocale = useLocale() as Locale;
+  const router = useRouter();
   const [pending, start] = useTransition();
 
   const switchLocale = (locale: Locale) => {
     if (locale === currentLocale) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete('lang');
+    const qs = params.toString();
+    const nextPath = pathForLocale(window.location.pathname, locale);
+    const href = `${nextPath}${qs ? `?${qs}` : ''}${window.location.hash}`;
     start(async () => {
       await setLocaleAction(locale);
+      router.push(href);
+      router.refresh();
     });
   };
 

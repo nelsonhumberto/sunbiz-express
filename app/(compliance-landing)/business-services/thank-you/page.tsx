@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Mail, MapPin } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { withLocaleMeta } from '@/lib/locale-seo';
 import { LeadConversionTracker } from '@/components/analytics/LeadConversionTracker';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -14,17 +15,21 @@ import {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('businessServices');
+  const locale = await getLocale();
   const title = t('thankYouMetaTitle');
   const description = t('thankYouMetaDescription');
-  return {
-    title,
-    description,
-    keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
-    robots: { index: false, follow: false },
-    alternates: { canonical: '/business-services/thank-you' },
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary', title, description },
-  };
+  return withLocaleMeta(
+    '/business-services/thank-you',
+    {
+      title,
+      description,
+      keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
+      robots: { index: false, follow: false },
+      openGraph: { title, description, type: 'website' },
+      twitter: { card: 'summary', title, description },
+    },
+    locale,
+  );
 }
 
 export default async function BusinessServicesThankYouPage() {

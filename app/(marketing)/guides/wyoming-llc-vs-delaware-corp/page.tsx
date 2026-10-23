@@ -1,23 +1,72 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-05-27';
+const PATH = '/guides/wyoming-llc-vs-delaware-corp';
 
-export const metadata: Metadata = {
-  title: 'Wyoming LLC vs Delaware Corp: Which State Should You Choose?',
-  description:
-    'A founder-friendly comparison of forming a Wyoming LLC versus a Delaware C-Corp - taxes, privacy, annual cost, investor expectations, and when each makes sense.',
-  alternates: { canonical: '/guides/wyoming-llc-vs-delaware-corp' },
-  openGraph: {
-    title: 'Wyoming LLC vs Delaware Corp - Which Should You Choose?',
-    description:
-      'Side-by-side comparison: privacy, asset protection, taxes, annual costs, and investor expectations.',
-    type: 'article',
-    publishedTime: PUBLISHED,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideWyDe');
+    return withLocaleMeta(
+      PATH,
+      {
+        title: t('metaTitle'),
+        description: t('metaDescription'),
+        openGraph: {
+          title: t('ogTitle'),
+          description: t('ogDescription'),
+          type: 'article',
+          publishedTime: PUBLISHED,
+        },
+      },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    PATH,
+    {
+      title: 'Wyoming LLC vs Delaware Corp: Which State Should You Choose?',
+      description:
+        'A founder-friendly comparison of forming a Wyoming LLC versus a Delaware C-Corp - taxes, privacy, annual cost, investor expectations, and when each makes sense.',
+      openGraph: {
+        title: 'Wyoming LLC vs Delaware Corp - Which Should You Choose?',
+        description:
+          'Side-by-side comparison: privacy, asset protection, taxes, annual costs, and investor expectations.',
+        type: 'article',
+        publishedTime: PUBLISHED,
+      },
+    },
+    locale,
+  );
+}
 
-export default function WyomingVsDelawareGuide() {
+export default async function WyomingVsDelawareGuide() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('guideWyDe');
+    return (
+      <GuideLayout
+        slug="wyoming-llc-vs-delaware-corp"
+        title={t('title')}
+        description={t('description')}
+        datePublished={PUBLISHED}
+        readingMinutes={8}
+        cta={{
+          headline: t('ctaHeadline'),
+          subhead: t('ctaSubhead'),
+          href: '/states',
+          label: t('ctaLabel'),
+        }}
+      >
+        <MarkdownBody markdown={t('body')} locale="es" />
+        <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>
+      </GuideLayout>
+    );
+  }
   return (
     <GuideLayout
       slug="wyoming-llc-vs-delaware-corp"

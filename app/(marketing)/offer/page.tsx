@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Check, ArrowRight, Clock, ShieldCheck, Landmark } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { withLocaleMeta } from '@/lib/locale-seo';
+import { localizedHref } from '@/lib/locale-paths';
 import { Button } from '@/components/ui/button';
 import { StatsBar } from '@/components/marketing/StatsBar';
 import { PricingTable } from '@/components/marketing/PricingTable';
@@ -23,12 +25,16 @@ function pickFirst(v: string | string[] | undefined): string | undefined {
 // clicks, not to rank. Every CTA drops straight into the guest flow (/start).
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('offer');
-  return {
-    title: t('metaTitle'),
-    description: t('metaDescription'),
-    robots: { index: false, follow: true },
-    alternates: { canonical: '/offer' },
-  };
+  const locale = await getLocale();
+  return withLocaleMeta(
+    '/offer',
+    {
+      title: t('metaTitle'),
+      description: t('metaDescription'),
+      robots: { index: false, follow: true },
+    },
+    locale,
+  );
 }
 
 export default async function OfferPage({ searchParams }: OfferPageProps) {
@@ -37,7 +43,10 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
   const locale = await getLocale();
   const state = resolveMarketingState(pickFirst(searchParams?.state));
   const tier = pickFirst(searchParams?.tier);
-  const startHref = `/start?state=${state.code}${tier ? `&tier=${tier}` : ''}`;
+  const startHref = localizedHref(
+    `/start?state=${state.code}${tier ? `&tier=${tier}` : ''}`,
+    locale,
+  );
   const stateName = localizedStateName(state, locale);
 
   return (

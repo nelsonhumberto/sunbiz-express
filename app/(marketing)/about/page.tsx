@@ -1,21 +1,106 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
-export const metadata: Metadata = {
-  title: 'About LaunchForma - Transparent Business Formation',
-  description:
-    'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
-  alternates: { canonical: '/about' },
-  openGraph: {
-    title: 'About LaunchForma - Modern, Transparent Business Formation',
-    description:
-      'Why we built LaunchForma: a clean, honest alternative to legal-tech upsell traps. All-in pricing, no data sales.',
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('aboutPage');
+    return withLocaleMeta(
+      '/about',
+      {
+        title: t('metaTitle'),
+        description: t('metaDescription'),
+        openGraph: {
+          title: t('ogTitle'),
+          description: t('ogDescription'),
+          type: 'website',
+        },
+      },
+      locale,
+    );
+  }
+  return withLocaleMeta(
+    '/about',
+    {
+      title: 'About LaunchForma - Transparent Business Formation',
+      description:
+        'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
+      openGraph: {
+        title: 'About LaunchForma - Modern, Transparent Business Formation',
+        description:
+          'Why we built LaunchForma: a clean, honest alternative to legal-tech upsell traps. All-in pricing, no data sales.',
+        type: 'website',
+      },
+    },
+    locale,
+  );
+}
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('aboutPage');
+    return (
+      <>
+        <section className="pt-16 pb-12">
+          <div className="container max-w-3xl text-center">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary">{t('kicker')}</span>
+            <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
+              {t('titleBefore')}{' '}
+              <span className="italic text-primary">{t('titleEm')}</span>
+            </h1>
+            <p className="mt-6 text-lg text-ink-muted leading-relaxed">{t('intro')}</p>
+          </div>
+        </section>
+
+        <section className="py-12">
+          <div className="container max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ValueCard icon={<Target className="h-5 w-5" />} title={t('missionTitle')} body={t('missionBody')} />
+            <ValueCard icon={<Eye className="h-5 w-5" />} title={t('visionTitle')} body={t('visionBody')} />
+            <ValueCard icon={<Heart className="h-5 w-5" />} title={t('valuesTitle')} body={t('valuesBody')} />
+          </div>
+        </section>
+
+        <section id="why" className="py-12 md:py-20 bg-white border-y border-border">
+          <div className="container max-w-3xl">
+            <h2 className="font-display text-4xl font-medium tracking-tight text-center mb-10">
+              {t('whyTitle')}
+            </h2>
+            <div className="prose prose-lg max-w-none text-ink-muted leading-relaxed">
+              <p>{t('p1')}</p>
+              <p>{t('p2')}</p>
+              <p>
+                <strong className="text-ink">{t('p3')}</strong>
+              </p>
+              <p>{t('p4')}</p>
+              <p>{t('p5')}</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="py-16">
+          <div className="container max-w-2xl text-center">
+            <Sparkles className="h-8 w-8 mx-auto text-accent mb-3" />
+            <h2 className="font-display text-3xl font-medium tracking-tight">{t('contactTitle')}</h2>
+            <p className="mt-3 text-ink-muted">
+              {t('contactBefore')}{' '}
+              <a href="mailto:hello@launchforma.com" className="text-primary font-medium hover:underline">
+                hello@launchforma.com
+              </a>
+              <br />
+              {t('contactAfter')}
+            </p>
+          </div>
+        </section>
+
+        <CTABanner />
+      </>
+    );
+  }
+
   return (
     <>
       <section className="pt-16 pb-12">

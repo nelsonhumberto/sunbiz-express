@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { getFormationState, type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { trackCtaClicked } from '@/lib/analytics';
+import { localizedHref } from '@/lib/locale-paths';
 
 interface HeroProps {
   /**
@@ -23,12 +24,16 @@ interface HeroProps {
 
 export function Hero({ state = FLORIDA }: HeroProps = {}) {
   const t = useTranslations('hero');
-  const formationState = getFormationState(state.code);
+  const tTiming = useTranslations('stateTiming');
+  const locale = useLocale();
+  const stateLabel = locale === 'es' ? state.nameEs : state.name;
+  const alsoStates =
+    state.code === 'WY' ? t('alsoWy') : state.code === 'DE' ? t('alsoDe') : t('alsoFl');
   // Funnel everyone through /start so the chosen formation state and the
   // guest-friendly entry experience travel with the visitor. /start writes
   // the selected state into a cookie and creates a draft for guests, then
   // jumps into the wizard.
-  const startFilingHref = `/start?state=${state.code}`;
+  const startFilingHref = localizedHref(`/start?state=${state.code}`, locale);
 
   return (
     <section
@@ -50,28 +55,26 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
           className="max-w-3xl mx-auto text-center"
         >
           <Link
-            href="/about"
+            href={localizedHref('/about', locale)}
             className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {state.code === 'FL'
-              ? t('badge')
-              : `Built for ${state.name} entrepreneurs`}
+            {state.code === 'FL' ? t('badge') : t('badgeState', { state: stateLabel })}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.05] tracking-tight text-balance">
-            {state.code === 'FL'
-              ? t('headlineLine1')
-              : `Form your ${state.name} business`}{' '}
+            {state.code === 'FL' ? t('headlineLine1') : t('headlineState', { state: stateLabel })}{' '}
             <br className="hidden md:block" />
             <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
           <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
-            {state.code === 'FL'
-              ? t('subhead')
-              : `We prepare and file your LLC or Corporation with the State of ${state.name} on your behalf - without the upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.`}
+            {state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel })}
+          </p>
+
+          <p className="mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+            {t('formaLine')}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -85,7 +88,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/pricing">{t('seePricing')}</Link>
+              <Link href={localizedHref('/pricing', locale)}>{t('seePricing')}</Link>
             </Button>
           </div>
 
@@ -96,9 +99,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              {state.code === 'FL'
-                ? t('filedIn1Day')
-                : formationState.marketingTiming.badgeFallback}
+              {state.code === 'FL' ? t('filedIn1Day') : tTiming(state.code)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5 text-accent" />
@@ -110,16 +111,13 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
               Lets non-FL visitors immediately discover WY/DE without
               hunting through the state switcher. */}
           <p className="mt-5 text-xs text-ink-subtle">
-            Filing in{' '}
-            <span className="font-medium text-ink">
-              {state.name}
-            </span>{' '}
-            ·{' '}
+            {t('filingIn')}{' '}
+            <span className="font-medium text-ink">{stateLabel}</span> ·{' '}
             <Link
-              href="/states"
+              href={localizedHref('/states', locale)}
               className="text-primary hover:underline font-medium"
             >
-              We also serve {state.code === 'FL' ? 'Wyoming and Delaware' : state.code === 'WY' ? 'Florida and Delaware' : 'Florida and Wyoming'} →
+              {t('alsoServe', { states: alsoStates })} →
             </Link>
           </p>
         </motion.div>
@@ -139,6 +137,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
 
 function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
   const t = useTranslations('hero');
+  const locale = useLocale();
   const formationState = getFormationState(state.code);
   const stateCode = (state.code as StateCode) || 'FL';
   const previewPrice = tierPackagePriceCents('STANDARD', 'LLC', stateCode);
@@ -201,7 +200,7 @@ function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
             <div className="mt-4 space-y-3">
               <SummaryRow
                 label={t('previewBankReady')}
-                sublabel={`${formationState.name} LLC · all-in`}
+                sublabel={t('previewAllIn', { name: formationState.name })}
                 amount={previewPriceFormatted}
               />
               <SummaryRow label={t('previewRA')} amount={t('previewIncluded')} muted />

@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
-import { getFormationState, type StateCode } from '@/lib/formation-states';
+import { type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 
@@ -15,8 +15,10 @@ interface HowItWorksProps {
 export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const t = useTranslations('howItWorks');
   const tPricing = useTranslations('pricing');
-  const rule = getFormationState(state.code);
+  const tTiming = useTranslations('stateTiming');
+  const locale = useLocale();
   const stateCode = state.code as StateCode;
+  const stateLabel = locale === 'es' ? state.nameEs : state.name;
 
   // Resolve the headline tier prices + names for the current state so the
   // "Pick your package" step never lies. The audit flagged that WY/DE
@@ -30,18 +32,23 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const tierPremium = tPricing('tier_PREMIUM');
 
   const step1Body =
-    state.code === 'FL'
-      ? t('step1Body')
-      : `Choose LLC or Corporation, enter your name, and we check ${state.name} state-registry conventions live.`;
-  const step2Body = `${tierBasic} (${basic}), ${tierStandard} (${standard}), or ${tierPremium} (${premium}). ${state.name} filing fee already included.`;
+    state.code === 'FL' ? t('step1Body') : t('step1BodyState', { state: stateLabel });
+  const step2Body = t('step2Dynamic', {
+    basic: tierBasic,
+    basicPrice: basic,
+    standard: tierStandard,
+    standardPrice: standard,
+    premium: tierPremium,
+    premiumPrice: premium,
+    state: stateLabel,
+  });
   const step4Title =
-    state.code === 'FL'
-      ? t('step4Title')
-      : `We file with ${state.name}`;
+    state.code === 'FL' ? t('step4Title') : t('step4TitleState', { state: stateLabel });
+  const office = state.code === 'DE' ? t('officeDe') : t('officeSos');
   const step4Body =
     state.code === 'FL'
       ? t('step4Body')
-      : `Submitted same business day to the ${rule.name === 'Delaware' ? 'Division of Corporations' : 'Secretary of State'}. ${rule.marketingTiming.badgeFallback}. Documents are emailed and stored in your dashboard.`;
+      : t('step4BodyState', { office, timing: tTiming(state.code) });
 
   const STEPS = [
     { n: '01', title: t('step1Title'), body: step1Body },

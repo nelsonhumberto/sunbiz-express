@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { localizedHref } from '@/lib/locale-paths';
 import { Logo } from './Logo';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME, COPYRIGHT_YEAR } from '@/lib/constants';
 
@@ -7,33 +8,35 @@ export function Footer() {
   const tFooter = useTranslations('footer');
   const tNav = useTranslations('nav');
   const tDisc = useTranslations('disclosure');
+  const locale = useLocale();
+  const href = (path: string) => localizedHref(path, locale);
 
   const FOOTER_LINKS = {
     product: [
-      { label: tFooter('formAnLLC'), href: '/start?entity=LLC' },
-      { label: tFooter('formACorp'), href: '/start?entity=CORP' },
-      { label: tNav('pricing'), href: '/pricing' },
-      { label: tFooter('registeredAgent'), href: '/services#formation' },
-      { label: tFooter('complianceService'), href: '/services#compliance' },
-      { label: tFooter('statesWeServe'), href: '/states' },
+      { label: tFooter('formAnLLC'), href: href('/start?entity=LLC') },
+      { label: tFooter('formACorp'), href: href('/start?entity=CORP') },
+      { label: tNav('pricing'), href: href('/pricing') },
+      { label: tFooter('registeredAgent'), href: href('/services#formation') },
+      { label: tFooter('complianceService'), href: href('/services#compliance') },
+      { label: tFooter('statesWeServe'), href: href('/states') },
     ],
     company: [
-      { label: tNav('about'), href: '/about' },
-      { label: tFooter('whyUs'), href: '/about#why' },
-      { label: tNav('faq'), href: '/faq' },
-      { label: tFooter('contact'), href: '/about#contact' },
+      { label: tNav('about'), href: href('/about') },
+      { label: tFooter('whyUs'), href: href('/about#why') },
+      { label: tNav('faq'), href: href('/faq') },
+      { label: tFooter('contact'), href: href('/about#contact') },
     ],
     legal: [
-      { label: tFooter('terms'), href: '/terms' },
-      { label: tFooter('privacy'), href: '/privacy' },
-      { label: tFooter('disclaimer'), href: '/disclaimer' },
-      { label: tFooter('refundPolicy'), href: '/refund-policy' },
+      { label: tFooter('terms'), href: href('/terms') },
+      { label: tFooter('privacy'), href: href('/privacy') },
+      { label: tFooter('disclaimer'), href: href('/disclaimer') },
+      { label: tFooter('refundPolicy'), href: href('/refund-policy') },
     ],
     resources: [
-      { label: tFooter('floridaLLCGuide'), href: '/guides/florida-llc-operating-agreement' },
-      { label: tFooter('wyVsDeGuide'), href: '/guides/wyoming-llc-vs-delaware-corp' },
-      { label: tFooter('boiGuide'), href: '/boi-reporting' },
-      { label: tFooter('annualReportHelp'), href: '/file-annual-report' },
+      { label: tFooter('floridaLLCGuide'), href: href('/guides/florida-llc-operating-agreement') },
+      { label: tFooter('wyVsDeGuide'), href: href('/guides/wyoming-llc-vs-delaware-corp') },
+      { label: tFooter('boiGuide'), href: href('/boi-reporting') },
+      { label: tFooter('annualReportHelp'), href: href('/file-annual-report') },
     ],
   };
 
@@ -42,7 +45,7 @@ export function Footer() {
       <div className="container py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-16">
           <div className="col-span-2 md:col-span-1 space-y-4">
-            <Logo variant="dark" />
+            <Logo variant="dark" href={href('/')} />
             <p className="text-sm text-white/60 leading-relaxed max-w-xs">{tFooter('tagline')}</p>
             <div className="flex items-center gap-2 text-xs text-white/40">
               <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse-soft" />

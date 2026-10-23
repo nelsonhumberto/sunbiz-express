@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { trackCtaClicked } from '@/lib/analytics';
+import { localizedHref } from '@/lib/locale-paths';
 
 interface CTABannerProps {
   /** Resolved marketing state. Defaults to Florida (active). */
@@ -15,19 +16,21 @@ interface CTABannerProps {
 
 export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
+  const locale = useLocale();
+  const stateLabel = locale === 'es' ? state.nameEs : state.name;
   // Route to the low-friction guest flow (/start) rather than full account
   // creation (/sign-up). Cold ad traffic gets straight into the wizard; an
   // account is auto-created after payment.
-  const signUpHref = state.code === 'FL' ? '/start' : `/start?state=${state.code}`;
-  const headlineState = state.code === 'FL' ? t('headline2') : `${state.name} business?`;
-  // The default i18n subhead promises "we submit to the state the same
-  // business day" - true everywhere we file. We keep the same phrasing
-  // but soften the implied turnaround for slow-queue states (WY/DE) so
-  // the audit-flagged Florida-only language doesn't bleed through.
+  const signUpHref = localizedHref(
+    state.code === 'FL' ? '/start' : `/start?state=${state.code}`,
+    locale,
+  );
+  const headlineState =
+    state.code === 'FL' ? t('headline2') : t('headlineState', { state: stateLabel });
+  // The default subhead promises same-business-day submission everywhere we
+  // file, and names slower state processing on WY/DE.
   const subhead =
-    state.code === 'FL'
-      ? t('subhead')
-      : `Most owners finish in 15 minutes. We submit to ${state.name} the same business day - state processing varies.`;
+    state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
 
   return (
     <section data-marketing-state={state.code} className="py-16 md:py-24">

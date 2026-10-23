@@ -9,6 +9,7 @@ import {
 } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
 interface FAQPageProps {
   searchParams?: { state?: string | string[] };
@@ -24,32 +25,49 @@ export async function generateMetadata({
 }: FAQPageProps): Promise<Metadata> {
   const state = resolveMarketingState(pickFirst(searchParams?.state));
   const locale = await getLocale();
+  const tMeta = locale === 'es' ? await getTranslations('faqMeta') : null;
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
     const canonical =
       state.code === 'FL' ? '/faq' : `/faq?state=${state.code}`;
-    const title =
-      state.code === 'FL'
+    const title = tMeta
+      ? state.code === 'FL'
+        ? tMeta('titleFl')
+        : tMeta('titleState', { state: stateName })
+      : state.code === 'FL'
         ? 'LLC & Corporation Formation FAQ - Pricing, Timing, Registered Agent'
         : `${stateName} LLC & Corporation FAQ - Pricing, Timing, Compliance`;
-    const description =
-      state.code === 'FL'
+    const description = tMeta
+      ? state.code === 'FL'
+        ? tMeta('descFl')
+        : tMeta('descState', { state: stateName })
+      : state.code === 'FL'
         ? 'Answers about LaunchForma packages, Florida filing timing, Registered Agent, annual reports, and refund policy.'
         : `Answers about LaunchForma packages for ${stateName} - filing timing, Registered Agent, annual compliance, and refunds.`;
-    return {
-      title,
-      description,
-      alternates: { canonical },
-      openGraph: { title, description, type: 'website' },
-    };
+    return withLocaleMeta(
+      canonical,
+      {
+        title,
+        description,
+        openGraph: { title, description, type: 'website' },
+      },
+      locale,
+    );
   }
   const stateName = localizedStateName(state, locale);
-  return {
-    title: `${stateName} formation FAQ - coming soon`,
-    description: `LaunchForma is rolling out ${stateName} business formations. Join the early-access list to get notified when it opens.`,
-    robots: { index: false, follow: true },
-    alternates: { canonical: `/faq?state=${state.code}` },
-  };
+  return withLocaleMeta(
+    `/faq?state=${state.code}`,
+    {
+      title: tMeta
+        ? tMeta('comingTitle', { state: stateName })
+        : `${stateName} formation FAQ - coming soon`,
+      description: tMeta
+        ? tMeta('comingDesc', { state: stateName })
+        : `LaunchForma is rolling out ${stateName} business formations. Join the early-access list to get notified when it opens.`,
+      robots: { index: false, follow: true },
+    },
+    locale,
+  );
 }
 
 export default async function FAQPage({ searchParams }: FAQPageProps) {

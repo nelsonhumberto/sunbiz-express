@@ -1,14 +1,41 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { LegalDraftNotice } from '@/components/legal/LegalDraftNotice';
 import { LegalEntityIntro } from '@/components/legal/LegalEntityIntro';
+import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { withLocaleMeta } from '@/lib/locale-seo';
 
-export const metadata: Metadata = {
-  title: 'Legal Disclaimer',
-  description:
-    'LaunchForma is a private, independent self-help business formation service - not a law firm and not a government agency. Read our legal disclaimers covering government affiliation, document accuracy, state filing acceptance, compliance reminders, and tax advice.',
-  alternates: { canonical: '/disclaimer' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalDisclaimer');
+    return withLocaleMeta('/disclaimer', { title: t('metaTitle'), description: t('metaDescription') }, locale);
+  }
+  return withLocaleMeta(
+    '/disclaimer',
+    {
+      title: 'Legal Disclaimer',
+      description:
+        'LaunchForma is a private, independent self-help business formation service - not a law firm and not a government agency. Read our legal disclaimers covering government affiliation, document accuracy, state filing acceptance, compliance reminders, and tax advice.',
+    },
+    locale,
+  );
+}
 
-export default function DisclaimerPage() {
+export default async function DisclaimerPage() {
+  const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('legalDisclaimer');
+    return (
+      <>
+        <LegalDraftNotice englishHref="/disclaimer" />
+        <p className="text-xs uppercase tracking-wider text-ink-subtle">{t('effective')}</p>
+        <h1>{t('title')}</h1>
+        <LegalEntityIntro />
+        <MarkdownBody markdown={t('body')} locale="es" />
+      </>
+    );
+  }
   return (
     <>
       <p className="text-xs uppercase tracking-wider text-ink-subtle">Effective April 25, 2026</p>

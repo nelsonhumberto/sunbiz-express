@@ -71,6 +71,9 @@
     "privacy": "Privacy Policy",
     "disclaimer": "Disclaimer",
     "refundPolicy": "Refund Policy",
+    "howToFormFloridaLlc": "How to form an LLC in Florida",
+    "floridaAnnualReportGuide": "Florida annual report",
+    "floridaRegisteredAgentGuide": "Florida registered agent",
     "floridaLLCGuide": "Florida LLC Operating Agreement guide",
     "wyVsDeGuide": "Wyoming LLC vs Delaware Corp",
     "boiGuide": "BOI update 2026",
@@ -193,6 +196,8 @@
   "pricing": {
     "kicker": "All-In Package Pricing",
     "headline": "Pick a package. Pay once. Done.",
+    "pageHeadline": "How much does a {state} LLC cost?",
+    "floridaBundledStateFees": "On Popular and Premium, the $160 shown with the Florida LLC price is the $125 state filing fee plus a certified copy ($30) and a certificate of status ($5). Every package includes the $125 state filing fee.",
     "subhead": "One clear price per package - Florida filing fee already included. No subscriptions, no surprise checkout fees.",
     "footnote": "The total on each card is our service fee plus the {state} state fee, listed separately underneath. LaunchForma remits the state fee on your behalf.",
     "allIn": "all-in",
@@ -254,6 +259,7 @@
   "faq": {
     "kicker": "Frequently asked",
     "headline": "Questions, answered.",
+    "pageHeadline": "{state} LLC formation FAQ",
     "stillHaveQuestions": "Still have questions?",
     "emailUs": "Email us",
     "respondWithin": "and we'll get back to you within one business day."

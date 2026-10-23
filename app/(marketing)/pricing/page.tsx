@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
-import { resolveMarketingState } from '@/lib/marketing-states';
+import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd } from '@/components/seo/JsonLd';
@@ -48,9 +48,11 @@ export async function generateMetadata({
 
 export default async function PricingPage({ searchParams }: PricingPageProps) {
   const t = await getTranslations('pricing');
+  const locale = await getLocale();
   const explicitState = pickFirst(searchParams?.state);
   const preferred = cookies().get('preferred_state')?.value;
   const state = resolveMarketingState(explicitState ?? preferred);
+  const stateName = localizedStateName(state, locale);
 
   // Build pricing schema from the live tier catalog so search rich
   // results never drift away from what we actually charge.
@@ -79,12 +81,18 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             {t('kicker')}
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
-            {t('headline')}
+            {state.availability === 'active'
+              ? t('pageHeadline', { state: stateName })
+              : t('headline')}
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">{t('subhead')}</p>
         </div>
       </section>
-      <PricingTable showHeader={false} state={state} />
+      <PricingTable
+        showHeader={false}
+        state={state}
+        feeNote={state.code === 'FL' ? t('floridaBundledStateFees') : undefined}
+      />
       <ComparisonTable />
       <FAQSection state={state} />
       <CTABanner state={state} />

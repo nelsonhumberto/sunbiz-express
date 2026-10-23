@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -14,8 +15,14 @@ import {
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
+import { pageTitle } from '@/lib/seo-title';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
+  alternates: { canonical: '/start' },
+};
 
 const VALID_TIERS = new Set(['BASIC', 'STANDARD', 'PREMIUM']);
 

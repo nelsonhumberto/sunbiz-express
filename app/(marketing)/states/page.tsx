@@ -62,7 +62,7 @@ export default async function StatesIndexPage() {
                 'LLC',
                 state.code as StateCode,
               );
-              const href = state.code === 'FL' ? '/' : `/states/${state.slug}`;
+              const href = `/states/${state.slug}`;
               return (
                 <Link
                   key={state.code}

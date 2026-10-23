@@ -30,6 +30,9 @@ export function Footer() {
       { label: tFooter('refundPolicy'), href: '/refund-policy' },
     ],
     resources: [
+      { label: tFooter('howToFormFloridaLlc'), href: '/guides/how-to-form-an-llc-in-florida' },
+      { label: tFooter('floridaAnnualReportGuide'), href: '/guides/florida-annual-report' },
+      { label: tFooter('floridaRegisteredAgentGuide'), href: '/guides/florida-registered-agent' },
       { label: tFooter('floridaLLCGuide'), href: '/guides/florida-llc-operating-agreement' },
       { label: tFooter('wyVsDeGuide'), href: '/guides/wyoming-llc-vs-delaware-corp' },
       { label: tFooter('boiGuide'), href: '/boi-reporting' },

@@ -85,6 +85,19 @@ const nextConfig = {
         destination: '/guides/florida-llc-operating-agreement',
         permanent: true,
       },
+      // /blog has no pages. 301 (not next's permanent:true, which is 308).
+      { source: '/blog', destination: '/guides', statusCode: 301 },
+      { source: '/blog/:path*', destination: '/guides', statusCode: 301 },
+      // www → apex. Live traffic currently 307s at Vercel's domain layer
+      // (see the PR). statusCode 301 is a real permanent redirect; `permanent:
+      // true` would emit 308. If the dashboard domain redirect still answers
+      // first, change that domain setting to a permanent redirect.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.launchforma.com' }],
+        destination: 'https://launchforma.com/:path*',
+        statusCode: 301,
+      },
     ];
   },
 };

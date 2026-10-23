@@ -14,6 +14,7 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
+import { homeTitlePhrase, pageTitle, withBrand } from '@/lib/seo-title';
 
 interface HomePageSearchParams {
   state?: string | string[];
@@ -36,7 +37,8 @@ export async function generateMetadata({
 
   if (state.availability === 'active') {
     const stateName = localizedStateName(state, locale);
-    const title = `LaunchForma | Form a ${stateName} LLC & Incorporate Your Business`;
+    const phrase = homeTitlePhrase(stateName, state.code);
+    const title = pageTitle(phrase);
     const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
@@ -46,7 +48,7 @@ export async function generateMetadata({
       title,
       description,
       openGraph: {
-        title,
+        title: withBrand(phrase),
         description,
         type: 'website',
       },
@@ -63,14 +65,14 @@ export async function generateMetadata({
 
   const t = await getTranslations({ locale, namespace: 'comingSoon' });
   const stateName = localizedStateName(state, locale);
-  const title = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
+  const phrase = `${t('heroHeadlineLine1', { state: stateName })} ${t('heroHeadlineLine2')}`;
   const description = t('heroSubhead', { state: stateName });
 
   return {
-    title,
+    title: pageTitle(phrase),
     description,
     openGraph: {
-      title,
+      title: phrase,
       description,
       type: 'website',
     },

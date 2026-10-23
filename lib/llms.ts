@@ -42,8 +42,12 @@ const CORE_PAGES: LinkEntry[] = [
 
 const GUIDES: LinkEntry[] = [
   { title: 'Guides index', path: '/guides', note: 'Long-form formation and compliance guides.' },
+  { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
+  { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
+  { title: 'Florida Registered Agent', path: '/guides/florida-registered-agent', note: 'Who can serve, the street-address rule, and state fees to appoint or change an agent.' },
   { title: 'Wyoming LLC vs Delaware Corp', path: '/guides/wyoming-llc-vs-delaware-corp', note: 'Compare Wyoming LLC and Delaware C-Corp for privacy, taxes, and fundraising.' },
   { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'Why and how to create a Florida LLC operating agreement.' },
+  { title: 'BOI Reporting Update 2026', path: '/guides/boi-filing-2026', note: 'Redirects to the BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting.' },
 ];
 
 const LEGAL: LinkEntry[] = [
@@ -60,9 +64,7 @@ function line(entry: LinkEntry): string {
 function stateLines(): string[] {
   const active = ALL_MARKETING_STATES.filter((s) => s.availability === 'active');
   return active.map((s) => {
-    // Florida is the canonical homepage; other active states have /states/{slug}.
-    const path = s.code === 'FL' ? '/' : `/states/${s.slug}`;
-    return `- [${s.name} LLC & Corporation formation](${BASE_URL}${path}): File a ${s.name} LLC or Corporation with all-in pricing and free Year-1 Registered Agent.`;
+    return `- [${s.name} LLC & Corporation formation](${BASE_URL}/states/${s.slug}): File a ${s.name} LLC or Corporation with all-in pricing and free Year-1 Registered Agent.`;
   });
 }
 

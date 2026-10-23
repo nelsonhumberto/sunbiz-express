@@ -68,8 +68,7 @@ export default function ServicesPage() {
             Services
           </span>
           <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
-            Everything you need - {' '}
-            <span className="italic">all in one place.</span>
+            Registered agent and LLC formation services
           </h1>
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             Formation is just the start. We help you stay compliant, look professional, and avoid

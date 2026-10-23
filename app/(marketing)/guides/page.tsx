@@ -6,17 +6,38 @@ import { JsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 export const metadata: Metadata = {
   title: 'Guides - LLC, Corporation & Compliance Resources',
   description:
-    'Plain-English guides to forming and running a business: operating agreements, Wyoming vs. Delaware, and the 2026 FinCEN BOI report.',
+    'Plain-English guides to forming a Florida LLC, the annual report, registered agents, operating agreements, Wyoming vs. Delaware, and the 2026 FinCEN BOI update.',
   alternates: { canonical: '/guides' },
   openGraph: {
     title: 'LaunchForma Guides',
     description:
-      'Plain-English guides to forming and running a business - operating agreements and Wyoming vs. Delaware.',
+      'Plain-English guides to forming a Florida LLC, annual reports, registered agents, operating agreements, and Wyoming vs. Delaware.',
     type: 'website',
   },
 };
 
 const GUIDES = [
+  {
+    slug: 'how-to-form-an-llc-in-florida',
+    title: 'How to Form an LLC in Florida',
+    description:
+      'The steps to form a Florida LLC, the state fees from the Division of Corporations, and what to do after your Articles are filed.',
+    readingMinutes: 7,
+  },
+  {
+    slug: 'florida-annual-report',
+    title: 'Florida Annual Report: Deadline, Fees, and How to File',
+    description:
+      'When the Florida annual report is due, what it costs for LLCs and corporations, and what happens if you file after May 1.',
+    readingMinutes: 5,
+  },
+  {
+    slug: 'florida-registered-agent',
+    title: 'What Is a Registered Agent in Florida?',
+    description:
+      'Who can serve, the Florida street-address rule, and what the state charges to appoint or change your agent.',
+    readingMinutes: 5,
+  },
   {
     slug: 'florida-llc-operating-agreement',
     title: 'Florida LLC Operating Agreement: Why You Need One',
@@ -30,6 +51,13 @@ const GUIDES = [
     description:
       'Privacy, taxes, fees, and investor expectations compared - so you pick the right home state for your entity.',
     readingMinutes: 10,
+  },
+  {
+    slug: 'boi-filing-2026',
+    title: 'BOI Reporting Update 2026',
+    description:
+      'U.S.-formed companies are exempt from FinCEN beneficial ownership reporting under the August 2026 final rule.',
+    readingMinutes: 4,
   },
 ];
 

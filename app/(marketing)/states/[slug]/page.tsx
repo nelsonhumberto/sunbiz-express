@@ -16,7 +16,9 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
-import { JsonLd, serviceJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
+import { JsonLd, serviceJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
 
 interface StateLandingPageProps {
@@ -43,7 +45,7 @@ export async function generateMetadata({
   const locale = await getLocale();
   if (state.availability === 'active') {
     const phrase = statePageTitlePhrase(state.name);
-    const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and same-business-day filing.`;
+    const description = `Form a ${state.name} LLC or Corporation with all-in package pricing, free Year-1 Registered Agent, and filing within 1 business day.`;
     const canonical = `/states/${state.slug}`;
     return {
       title: pageTitle(phrase),
@@ -70,11 +72,11 @@ export async function generateMetadata({
     // Coming-soon pages are near-duplicate templated content - keep them out
     // of the index (still crawlable for the waitlist links) to avoid a
     // thin-content footprint across ~47 state slugs.
-    robots: { index: false, follow: true },
+    robots: robotsForMarketingState(state),
   };
 }
 
-export default function StateLandingPage({
+export default async function StateLandingPage({
   params,
   searchParams,
 }: StateLandingPageProps) {
@@ -93,6 +95,8 @@ export default function StateLandingPage({
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
   if (state.availability === 'active') {
+    const locale = await getLocale();
+    const faqItems = getMarketingFaq(state, locale);
     return (
       <>
         <JsonLd data={serviceJsonLd(state.name, state.slug)} />
@@ -102,6 +106,7 @@ export default function StateLandingPage({
             { name: state.name, url: `${baseUrl}/states/${state.slug}` },
           ])}
         />
+        <JsonLd data={faqPageJsonLd(faqItems)} />
         <Hero state={state} />
         <StatsBar />
         <FeatureGrid state={state} />
@@ -109,7 +114,7 @@ export default function StateLandingPage({
         <PricingTable state={state} />
         <ComparisonTable />
         <AnnualReportSection state={state} />
-        <FAQSection state={state} />
+        <FAQSection state={state} suppressJsonLd />
         <CTABanner state={state} />
       </>
     );

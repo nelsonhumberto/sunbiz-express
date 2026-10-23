@@ -32,7 +32,7 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const step1Body =
     state.code === 'FL'
       ? t('step1Body')
-      : `Choose LLC or Corporation, enter your name, and we check ${state.name} state-registry conventions live.`;
+      : `Choose LLC or Corporation, enter your name, and we run a preliminary ${state.name} name search. It is not a guarantee of approval.`;
   const step2Body = `${tierBasic} (${basic}), ${tierStandard} (${standard}), or ${tierPremium} (${premium}). ${state.name} filing fee already included.`;
   const step4Title =
     state.code === 'FL'
@@ -41,7 +41,7 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const step4Body =
     state.code === 'FL'
       ? t('step4Body')
-      : `Submitted same business day to the ${rule.name === 'Delaware' ? 'Division of Corporations' : 'Secretary of State'}. ${rule.marketingTiming.badgeFallback}. Documents are emailed and stored in your dashboard.`;
+      : `Submitted within 1 business day to the ${rule.name === 'Delaware' ? 'Division of Corporations' : 'Secretary of State'}. ${rule.marketingTiming.badgeFallback}. Documents are emailed and stored in your dashboard.`;
 
   const STEPS = [
     { n: '01', title: t('step1Title'), body: step1Body },

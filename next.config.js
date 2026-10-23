@@ -81,6 +81,7 @@ const nextConfig = {
     // 301s to its modern canonical so we preserve any link equity that
     // remains and stop wasting crawl budget on dead URLs.
     return [
+      { source: '/wizard', destination: '/start', permanent: true },
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/why-us', destination: '/about#why', permanent: true },
       { source: '/annual-report-help', destination: '/file-annual-report', permanent: true },

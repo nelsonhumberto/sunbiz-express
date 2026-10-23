@@ -38,19 +38,20 @@ function featureCopyFor(state: MarketingState) {
           ? 'Delaware Division of Corporations'
           : `${stateName} Secretary of State`;
 
-  // Same-day submission still applies in every state. Approval cadence
-  // differs and is surfaced via state-specific marketing timing.
-  const filed1DayBody = `We submit to the ${agency} the same day you complete checkout. ${rule.marketingTiming.badgeFallback}.`;
+  // Submission within 1 business day still applies in every state. Approval
+  // cadence differs and is surfaced via state-specific marketing timing.
+  const filed1DayBody = `We submit to the ${agency} within 1 business day of checkout. ${rule.marketingTiming.badgeFallback}.`;
 
   // Name pre-check varies by state - only FL has the live Sunbiz API.
+  // The result is a preliminary search, not a guarantee of state approval.
   const liveCheckBody =
     state.code === 'FL'
-      ? "Real-time check against the Sunbiz database. We tell you if it's distinguishable on the record before you commit."
+      ? "A preliminary search of the Sunbiz database. It is not a guarantee of approval. We tell you if it looks distinguishable on the record before you commit."
       : state.code === 'WY'
-        ? 'We scan the Wyoming Secretary of State business registry and flag conflicts, restricted words (bank, trust, university), and entries that require manual review before you commit.'
+        ? 'A preliminary scan of the Wyoming Secretary of State business registry. It is not a guarantee of approval. We flag conflicts, restricted words (bank, trust, university), and entries that require manual review before you commit.'
         : state.code === 'DE'
-          ? 'We surface Delaware Division of Corporations naming conventions, restricted-word reviews, and known subjective-rejection patterns so you do not get bounced at filing.'
-          : `We check the ${stateName} business registry before you commit so you do not get bounced at filing.`;
+          ? 'A preliminary review of Delaware Division of Corporations naming conventions. It is not a guarantee of approval. We surface restricted-word reviews and known subjective-rejection patterns so you do not get bounced at filing.'
+          : `A preliminary search of the ${stateName} business registry. It is not a guarantee of approval.`;
 
   const freeRABody = `We maintain a ${stateName} physical address for service of process - keeping your home address private and your entity in good standing.`;
 
@@ -87,7 +88,7 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   const filed1DayTitle =
     state.code === 'FL'
       ? t('filed1Day')
-      : 'Submitted the same business day';
+      : 'Submitted within 1 business day';
 
   const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
     { icon: Zap, title: filed1DayTitle, body: copy.filed1DayBody },

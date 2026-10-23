@@ -14,7 +14,9 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'State filing fee included': 'feat_floridaFee',
   'Articles of Organization / Incorporation prepared & submitted': 'feat_articles',
   'Same-business-day filing': 'feat_sameDay',
+  'Filing within 1 business day': 'feat_sameDay',
   'Same-business-day preparation and submission': 'feat_sameDayPrep',
+  'Preparation and submission within 1 business day': 'feat_sameDayPrep',
   'Free Year-1 Registered Agent': 'feat_freeRA',
   'Email support': 'feat_emailSupport',
   'Operating Agreement (custom)': 'feat_oa',
@@ -34,6 +36,7 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Everything in Filing Only': 'feat_everythingBasic',
   'Everything in Basic Filing': 'feat_everythingBasic',
   'Everything in Bank-Ready Filing': 'feat_everythingBankReady',
+  'Everything in Popular': 'feat_everythingBankReady',
   'S-Corp Election filing (Form 2553)': 'feat_scorpFiling',
 };
 

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Heart, Target, Eye, Sparkles } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { ADD_ON_BY_SLUG } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 import { pageTitle } from '@/lib/seo-title';
 
 export const metadata: Metadata = {
@@ -63,8 +65,10 @@ export default function AboutPage() {
             <p>
               We were filing our own LLCs through LegalZoom in 2024 and got hit with the same trap
               everyone gets hit with: a $0 "free" formation that ballooned to $399 by the time we
-              hit the checkout. Registered agent for $249/year. Operating agreement for $99.
-              Compliance reminders for another $99/year.
+              hit the checkout. Registered agent for $249/year. Operating agreement for{' '}
+              {formatCurrency(ADD_ON_BY_SLUG.operating_agreement_single.serviceMarginCents)}.
+              Compliance reminders for another{' '}
+              {formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents)}/year.
             </p>
             <p>
               Meanwhile, Florida's official Sunbiz portal looks like it was last updated when

@@ -8,9 +8,15 @@ import { getWizardActor } from '@/lib/guest';
 import { safeParseJson } from '@/lib/utils';
 import {
   computeCost,
+  tierBundledStateFeeCents,
   type AddOnSlug,
+  type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import {
+  CHECKOUT_BELOW_STATE_FEE_ERROR,
+  checkoutBelowStateFee,
+} from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
@@ -121,6 +127,19 @@ export async function POST(request: NextRequest) {
           { amountCents, computed: breakdown.totalCents },
         );
         return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
+      }
+      const stateFeeMinimum = tierBundledStateFeeCents(
+        filing.serviceTier as TierSlug,
+        filing.entityType as EntityType,
+        asStateCode(filing.state),
+      );
+      if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
+        logger.error(
+          'payment-intent amount below tier state fee',
+          { area: 'stripe', entityId: filing.id, tag: 'pi-amount-min' },
+          { amountCents, stateFeeMinimum },
+        );
+        return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
       }
       verifiedFilingId = filing.id;
       attributionFiling = filing;

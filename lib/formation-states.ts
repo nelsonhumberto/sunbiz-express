@@ -435,14 +435,14 @@ const FLORIDA_RULE: FormationStateRule = {
   },
   marketingTiming: {
     badgeKey: 'badge_filedSameDay',
-    badgeFallback: 'Filed same business day',
+    badgeFallback: 'Filed within 1 business day',
   },
   processingOptions: [
     {
       id: 'standard',
       label: 'Standard processing',
       description:
-        'Florida processes electronic filings same business day in most cases. No additional state fee.',
+        'Florida processes electronic filings within 1 business day in most cases. No additional state fee.',
       estimate: '1–2 business days',
       feeCents: 0,
       isDefault: true,

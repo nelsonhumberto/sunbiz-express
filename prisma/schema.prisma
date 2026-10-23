@@ -223,6 +223,8 @@ model Payment {
   amountCents              Int
   currency                 String   @default("usd")
   status                   String   @default("PENDING") // PENDING | SUCCEEDED | FAILED | REFUNDED
+  // Test-mode, mock, and tester-bypass charges. Excluded from admin revenue.
+  isTest                   Boolean  @default(false)
 
   stateFilingFeeCents      Int      @default(0)
   formationServiceFeeCents Int      @default(0)

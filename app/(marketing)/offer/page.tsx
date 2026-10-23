@@ -9,6 +9,8 @@ import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
 interface OfferPageProps {
   searchParams?: { state?: string | string[]; tier?: string | string[] };
@@ -42,6 +44,7 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
 
   return (
     <>
+      <JsonLd data={faqPageJsonLd(getMarketingFaq(state, locale))} />
       <div className="container pt-6">
         <GovDisclosure
           variant="prominent"

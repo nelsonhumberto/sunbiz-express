@@ -9,6 +9,7 @@ import {
 } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
 
 interface FAQPageProps {
   searchParams?: { state?: string | string[] };
@@ -47,7 +48,7 @@ export async function generateMetadata({
   return {
     title: `${stateName} formation FAQ - coming soon`,
     description: `LaunchForma is rolling out ${stateName} business formations. Join the early-access list to get notified when it opens.`,
-    robots: { index: false, follow: true },
+    robots: robotsForMarketingState(state),
     alternates: { canonical: `/faq?state=${state.code}` },
   };
 }

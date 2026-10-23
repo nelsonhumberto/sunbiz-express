@@ -6,9 +6,10 @@ import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
+import { getMarketingFaq } from '@/lib/marketing-faq';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { type StateCode } from '@/lib/formation-states';
-import { JsonLd, pricingProductJsonLd } from '@/components/seo/JsonLd';
+import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
 interface PricingPageProps {
   searchParams?: { state?: string | string[] };
@@ -52,6 +53,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
   const explicitState = pickFirst(searchParams?.state);
   const preferred = cookies().get('preferred_state')?.value;
   const state = resolveMarketingState(explicitState ?? preferred);
+  const faqItems = getMarketingFaq(state, locale);
   const stateName = localizedStateName(state, locale);
 
   // Build pricing schema from the live tier catalog so search rich
@@ -75,6 +77,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           tiers: tiersForSchema,
         })}
       />
+      <JsonLd data={faqPageJsonLd(faqItems)} />
       <section className="pt-16 pb-8">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
@@ -94,7 +97,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         feeNote={state.code === 'FL' ? t('floridaBundledStateFees') : undefined}
       />
       <ComparisonTable />
-      <FAQSection state={state} />
+      <FAQSection state={state} suppressJsonLd />
       <CTABanner state={state} />
     </>
   );

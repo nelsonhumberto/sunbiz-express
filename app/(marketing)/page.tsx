@@ -14,6 +14,9 @@ import {
   localizedStateName,
   resolveMarketingState,
 } from '@/lib/marketing-states';
+import { getMarketingFaq } from '@/lib/marketing-faq';
+import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { homeTitlePhrase, pageTitle, withBrand } from '@/lib/seo-title';
 
 interface HomePageSearchParams {
@@ -39,7 +42,7 @@ export async function generateMetadata({
     const stateName = localizedStateName(state, locale);
     const phrase = homeTitlePhrase(stateName, state.code);
     const title = pageTitle(phrase);
-    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf - same-day filing, free Year-1 Registered Agent, and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
+    const description = `Start your ${stateName} LLC or Corporation online in minutes. We prepare and file with the state on your behalf within 1 business day. Free Year-1 Registered Agent and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
     // Consolidate WY/DE: the ?state= homepage variant points its canonical at
     // the dedicated /states/{slug} page so search engines don't index two URLs
     // for the same content.
@@ -79,14 +82,11 @@ export async function generateMetadata({
     alternates: {
       canonical: `/?state=${state.code}`,
     },
-    robots: {
-      index: false,
-      follow: true,
-    },
+    robots: robotsForMarketingState(state),
   };
 }
 
-export default function HomePage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams?: HomePageSearchParams;
@@ -99,8 +99,12 @@ export default function HomePage({
     return <ComingSoonLanding state={state} campaign={campaign} />;
   }
 
+  const locale = await getLocale();
+  const faqItems = getMarketingFaq(state, locale);
+
   return (
     <>
+      <JsonLd data={faqPageJsonLd(faqItems)} />
       <Hero state={state} />
       <StatsBar />
       <FeatureGrid state={state} />
@@ -108,7 +112,7 @@ export default function HomePage({
       <PricingTable state={state} />
       <ComparisonTable />
       <AnnualReportSection state={state} />
-      <FAQSection state={state} />
+      <FAQSection state={state} suppressJsonLd />
       <CTABanner state={state} />
     </>
   );

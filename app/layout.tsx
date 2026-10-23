@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
-      'Private Florida LLC formation service. All-in pricing, free registered agent, same-day submission. Not a government agency.',
+      'Private Florida LLC formation service. All-in pricing, free registered agent, submission within 1 business day. Not a government agency.',
   },
   robots: {
     index: true,

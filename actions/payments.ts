@@ -8,7 +8,18 @@ import { cookies } from 'next/headers';
 import { auth, signIn } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
-import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import {
+  computeCost,
+  tierBundledStateFeeCents,
+  type AddOnSlug,
+  type EntityType,
+  type TierSlug,
+} from '@/lib/pricing';
+import { isTestPayment } from '@/lib/payment-test';
+import {
+  CHECKOUT_BELOW_STATE_FEE_ERROR,
+  checkoutBelowStateFee,
+} from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
@@ -114,12 +125,21 @@ export async function processCheckout(input: {
   });
   const discountCents = input.discountCents ?? 0;
   const expectedTotal = Math.max(0, breakdown.totalCents - discountCents);
+  const stateFeeMinimum = tierBundledStateFeeCents(
+    filing.serviceTier as TierSlug,
+    filing.entityType as EntityType,
+    asStateCode(filing.state),
+  );
+  if (checkoutBelowStateFee({ totalCents: expectedTotal, stateFeeCents: stateFeeMinimum })) {
+    return { error: CHECKOUT_BELOW_STATE_FEE_ERROR };
+  }
 
   let cardLast4: string | null = null;
   let cardBrand: string | null = null;
   let cardholderName: string | null = null;
   let pmId: string | null = null;
   let stripeIntentId: string;
+  let livemode: boolean | null = null;
 
   if (isTesterBypass) {
     // Synthetic payment - no Stripe call
@@ -166,6 +186,7 @@ export async function processCheckout(input: {
     cardholderName = pm?.billing_details?.name ?? null;
     pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
     stripeIntentId = pi.id;
+    livemode = pi.livemode;
   }
 
   await prisma.payment.create({
@@ -176,6 +197,7 @@ export async function processCheckout(input: {
       stripePaymentMethodId: pmId,
       amountCents: expectedTotal,
       status: 'SUCCEEDED',
+      isTest: isTestPayment({ stripePaymentIntentId: stripeIntentId, livemode }),
       stateFilingFeeCents: breakdown.governmentRemittanceCents,
       formationServiceFeeCents: breakdown.packageMarginCents,
       otherServicesCents: breakdown.addOnsCents,

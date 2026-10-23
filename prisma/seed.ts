@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { TIERS, ADD_ONS } from '../lib/pricing';
+import { isTestPayment } from '../lib/payment-test';
+import { resolveSeedAdminCredentials } from '../lib/seed-admin';
 
 const prisma = new PrismaClient();
 
@@ -130,6 +132,8 @@ async function main() {
   }
 
   // ─── Pricing tiers ──────────────────────────────────────────────
+  // Always sourced from lib/pricing.ts (Essential / Popular / Premium).
+  // Do not reintroduce the retired Starter $0 / Pro $99 / Concierge $299 catalog.
   for (let i = 0; i < TIERS.length; i++) {
     const t = TIERS[i];
     await prisma.pricingTier.create({
@@ -142,8 +146,9 @@ async function main() {
         includedFeatures: JSON.stringify(t.features.filter((f) => f.included).map((f) => f.label)),
         includesRegisteredAgentY1: true,
         includesOperatingAgreement: t.slug !== 'BASIC',
-        includesEin: t.slug !== 'BASIC',
-        includesExpedited: t.slug !== 'BASIC',
+        // EIN is a dashboard add-on, not bundled into any formation tier.
+        includesEin: false,
+        includesExpedited: false,
         includesCertifiedCopy: t.slug !== 'BASIC',
         includesCertificateOfStatus: t.slug !== 'BASIC',
         includesAnnualCompliance: t.slug === 'PREMIUM',
@@ -175,13 +180,12 @@ async function main() {
 
   // ─── Demo users ─────────────────────────────────────────────────
   const demoPassword = await bcrypt.hash('Demo1234!', 10);
-  const adminPassword = await bcrypt.hash('DiegoVickyEli', 10);
-
-  const seedAdminEmail = process.env.SEED_ADMIN_EMAIL?.trim() || 'laura@launchforma.com';
+  const adminCreds = resolveSeedAdminCredentials();
+  const adminPassword = await bcrypt.hash(adminCreds.password, 10);
 
   await prisma.user.create({
     data: {
-      email: seedAdminEmail,
+      email: adminCreds.email,
       passwordHash: adminPassword,
       firstName: 'Laura',
       lastName: 'Admin',
@@ -280,6 +284,7 @@ async function main() {
       stripePaymentIntentId: 'pi_mock_demo_filing_paid',
       amountCents: 22_400,
       status: 'SUCCEEDED',
+      isTest: isTestPayment({ stripePaymentIntentId: 'pi_mock_demo_filing_paid' }),
       stateFilingFeeCents: 12_500,
       formationServiceFeeCents: 9_900,
       cardLast4: '4242',
@@ -359,7 +364,11 @@ async function main() {
   console.log('✅ Seed complete.');
   console.log('');
   console.log('   Demo accounts:');
-  console.log(`   • ${seedAdminEmail} / DiegoVickyEli  (admin)`);
+  if (adminCreds.generated) {
+    console.log(`   • Generated admin password for ${adminCreds.email} (printed once): ${adminCreds.password}`);
+  } else {
+    console.log(`   • ${adminCreds.email} (admin password from SEED_ADMIN_PASSWORD)`);
+  }
   console.log('   • demo@inc.demo  / Demo1234!  (user with sample filing)');
 }
 

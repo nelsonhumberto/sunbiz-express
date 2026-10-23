@@ -59,7 +59,7 @@ const TEMPLATES: Record<
     subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
       <h1>Almost there, ${firstName ?? 'there'}</h1>
-      <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the Florida Department of State the same business day.</p>
+      <p>Your draft for <strong>${businessName ?? 'your business'}</strong> is saved. Finish today and we submit to the Florida Department of State within 1 business day.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Resume Filing</a>
       <p class="muted">Most owners finish in 5 minutes from where you left off.</p>
     `,
@@ -70,7 +70,7 @@ const TEMPLATES: Record<
       <h1>Your name isn't locked in yet</h1>
       <p>${firstName ?? 'Hi'} - Florida only reserves a business name once your formation is filed. Anyone else can claim it in the meantime.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Finish my filing</a>
-      <p class="muted">We'll prepare and submit your Articles to the Florida Department of State the same business day you complete checkout.</p>
+      <p class="muted">We'll prepare and submit your Articles to the Florida Department of State within 1 business day of checkout.</p>
     `,
   }),
   ABANDONED_7D: ({ firstName, businessName }) => ({

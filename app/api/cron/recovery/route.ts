@@ -13,8 +13,8 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 //      1 day, and 3 days after Filing.updatedAt on a DRAFT that is still
 //      unpaid. Replaces the old ABANDONED_24H / ABANDONED_72H / ABANDONED_7D
 //      cron. When the flag is off, none of those abandoned-draft emails send.
-//      The 7-day job still stamps abandonedAt only after a successful send.
-//      The last resume step does the same when that email is the one that goes out.
+//      runDraftRecovery still stamps abandonedAt only after a successful 7-day
+//      send. The last resume step stamps the same way when that email is sent.
 //   2. Registered-agent renewal at 60 / 30 / 7 days. The window is one calendar
 //      day wide and EmailNotification dedupes the type, so the hourly cron
 //      still sends each reminder once.

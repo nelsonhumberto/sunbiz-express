@@ -290,9 +290,15 @@ describe('checklist signup gate', () => {
       'Yes, I opt in to get the free checklist plus occasional tips and updates from LaunchForma by email. This list is opt-in only: we only add you if you check this box, and you can unsubscribe at any time. See our Privacy Policy.',
     );
     expect(checklistCopy('es').headline.length).toBeGreaterThan(0);
-    const cron = readFileSync('vercel.json', 'utf8');
-    expect(cron).toContain('"schedule": "0 14 * * *"');
-    expect(cron).not.toContain('"schedule": "0 * * * *"');
+    const cron = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+    expect(cron.crons).toEqual([
+      { path: '/api/cron/recovery', schedule: '0 13 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 17 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 22 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 2 * * *' },
+    ]);
     const workflow = readFileSync('.github/workflows/recovery-cron.yml', 'utf8');
     expect(workflow).toContain('15 * * * *');
     expect(workflow).toContain('workflow_dispatch');
@@ -305,5 +311,7 @@ describe('checklist signup gate', () => {
     expect(route).not.toContain('function run');
     expect(route).toContain('runScheduledDraftRecovery');
     expect(route).toContain('runRaRenewalReminders');
+    expect(route).not.toContain('searchParams');
+    expect(route).not.toContain('request.url');
   });
 });

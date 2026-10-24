@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
+import { localizedHref } from '@/lib/locale-paths';
 
 interface PricingTableProps {
   showHeader?: boolean;
@@ -66,6 +67,8 @@ export function PricingTable({
   feeNote,
 }: PricingTableProps) {
   const t = useTranslations('pricing');
+  const locale = useLocale();
+  const oaGuideHref = localizedHref('/guides/florida-llc-operating-agreement', locale);
   const formationState = getFormationState(state.code);
   const footnoteCopy = t('footnote', { state: formationState.name });
   // Headline price shown on each card is the LLC price for the active state
@@ -212,7 +215,15 @@ export function PricingTable({
                             <Minus className="h-4 w-4 shrink-0 mt-0.5 text-ink-subtle" />
                           )}
                           <span className={feat.highlight ? 'font-semibold text-ink' : ''}>
-                            {label}
+                            {tier.slug === 'STANDARD' &&
+                            feat.label === 'Operating Agreement (custom)' &&
+                            feat.included ? (
+                              <Link href={oaGuideHref} className="underline decoration-primary/40 underline-offset-2 hover:decoration-primary">
+                                {label}
+                              </Link>
+                            ) : (
+                              label
+                            )}
                           </span>
                         </li>
                       );

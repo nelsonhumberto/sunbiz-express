@@ -40,7 +40,11 @@ describe('Spanish guide pages', () => {
       const guide = messages[name];
       expect(guide, name).toBeTruthy();
       expect(ENGLISH_TITLES, name).not.toContain(guide.metaTitle);
-      expect(guide.metaTitle, name).toMatch(/[áéíóúñ¿¡]/);
+      if (name === 'guideOa') {
+        expect(guide.metaTitle).toBe('Florida LLC Operating Agreement: acuerdo operativo');
+      } else {
+        expect(guide.metaTitle, name).toMatch(/[áéíóúñ¿¡]/);
+      }
       expect(guide.metaDescription, name).toMatch(/[áéíóúñ¿¡]/);
       expect(guide.metaDescription, name).not.toMatch(/\b(the|and|with|your|what|when|how)\b/i);
       expect(`${guide.metaTitle} ${guide.metaDescription}`, name).not.toMatch(/—|–/);

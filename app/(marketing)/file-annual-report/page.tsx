@@ -8,7 +8,9 @@ import { formatCurrency } from '@/lib/utils';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { CheckCircle2, X } from 'lucide-react';
 
-const TITLE = 'File Your Florida Annual Report';
+const TITLE = 'File Your Florida Annual Report Online | Due May 1';
+const DESCRIPTION =
+  'File your Florida LLC or corporation annual report between Jan 1 and May 1. See the state fee, the $400 late fee, and how LaunchForma files it for you.';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -32,12 +34,10 @@ export async function generateMetadata(): Promise<Metadata> {
     '/file-annual-report',
     {
       title: TITLE,
-      description:
-        'File your Florida LLC or Corporation annual report quickly and affordably. Just $80 + state fee - cheaper than LegalZoom or FilingServices.com.',
+      description: DESCRIPTION,
       openGraph: {
         title: withBrand(TITLE),
-        description:
-          'Avoid the $400 non-waivable late penalty. We file directly with the Florida Division of Corporations - no account required.',
+        description: DESCRIPTION,
         type: 'website',
       },
     },

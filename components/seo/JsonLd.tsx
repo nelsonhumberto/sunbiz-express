@@ -38,10 +38,12 @@ export function organizationJsonLd() {
 
 export function faqPageJsonLd(
   items: { q: string; a: string }[],
+  opts?: { inLanguage?: string },
 ) {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
+    ...(opts?.inLanguage ? { inLanguage: opts.inLanguage } : {}),
     mainEntity: items
       .filter((item) => item.q.trim().length > 0 && item.a.trim().length > 0)
       .map((item) => ({
@@ -161,6 +163,24 @@ export function servicesItemListJsonLd(
  * Standalone Article schema for long-form guide pages - feeds Google's
  * "Article" rich result.
  */
+export function webPageJsonLd(args: {
+  name: string;
+  description: string;
+  url: string;
+  inLanguage: string;
+  dateModified: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: args.name,
+    description: args.description,
+    url: args.url,
+    inLanguage: args.inLanguage,
+    dateModified: args.dateModified,
+  };
+}
+
 export function articleJsonLd(args: {
   headline: string;
   description: string;
@@ -168,13 +188,19 @@ export function articleJsonLd(args: {
   datePublished: string;
   dateModified?: string;
   authorName?: string;
+  inLanguage?: string;
 }) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: args.headline,
     description: args.description,
-    mainEntityOfPage: { '@type': 'WebPage', '@id': args.url },
+    ...(args.inLanguage ? { inLanguage: args.inLanguage } : {}),
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': args.url,
+      ...(args.inLanguage ? { inLanguage: args.inLanguage } : {}),
+    },
     url: args.url,
     datePublished: args.datePublished,
     dateModified: args.dateModified ?? args.datePublished,

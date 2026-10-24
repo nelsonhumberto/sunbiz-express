@@ -21,6 +21,8 @@ interface GuideLayoutProps {
   cta?: { headline: string; subhead: string; href: string; label: string };
   /** Compact CTA rendered under the title, before the body. */
   topCta?: { href: string; label: string };
+  /** BCP 47 language for Article JSON-LD. Omitted on guides that do not set it. */
+  inLanguage?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export async function GuideLayout({
   children,
   cta,
   topCta,
+  inLanguage,
 }: GuideLayoutProps) {
   const locale = await getLocale();
   const t = await getTranslations('guidesChrome');
@@ -54,6 +57,7 @@ export async function GuideLayout({
           url,
           datePublished,
           dateModified,
+          inLanguage,
         })}
       />
       <JsonLd

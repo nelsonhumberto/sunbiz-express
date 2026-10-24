@@ -42,7 +42,9 @@ export type NotificationType =
   | 'ANNUAL_REPORT_FINAL'
   | 'COMPLIANCE_ALERT'
   | 'PASSWORD_RESET'
-  | 'SERVICE_INQUIRY';
+  | 'SERVICE_INQUIRY'
+  | 'OA_TEMPLATE_CONFIRM'
+  | 'OA_TEMPLATE_DOWNLOAD';
 
 interface EmailContext {
   firstName?: string;
@@ -100,6 +102,14 @@ interface EmailContext {
   inquiryUtmTerm?: string;
   inquiryGclid?: string;
   inquiryLiFatId?: string;
+  // ── Operating agreement sample (double opt-in) ──
+  oaLocale?: 'en' | 'es';
+  oaConfirmUrl?: string;
+  oaSinglePdfUrl?: string;
+  oaSingleDocxUrl?: string;
+  oaMultiPdfUrl?: string;
+  oaMultiDocxUrl?: string;
+  oaUnsubscribeUrl?: string;
 }
 
 export interface SendEmailArgs {
@@ -406,6 +416,67 @@ const TEMPLATES: Record<
           <tr><td>li_fat_id</td><td>${cell(ctx.inquiryLiFatId)}</td></tr>
         </table>
         ${message ? `<p><strong>Message</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>` : ''}
+      `,
+    };
+  },
+  OA_TEMPLATE_CONFIRM: (ctx) => {
+    const confirmUrl = escapeHtml(ctx.oaConfirmUrl ?? '#');
+    const unsub = escapeHtml(ctx.oaUnsubscribeUrl ?? '#');
+    if (ctx.oaLocale === 'es') {
+      return {
+        subject: 'Confirma tu correo para la muestra del acuerdo operativo',
+        body: html`
+          <h1>Confirma tu correo</h1>
+          <p>Confirma tu dirección y te enviaremos los enlaces de descarga de la muestra de acuerdo operativo para LLC en Florida (un miembro y varios miembros, PDF y Word).</p>
+          <a class="cta" href="${confirmUrl}">Confirmar mi correo</a>
+          <p class="muted">La muestra es información general, no asesoría legal. Pide a un abogado que la revise antes de usarla.</p>
+          <p class="muted"><a href="${unsub}">Darme de baja</a></p>
+        `,
+      };
+    }
+    return {
+      subject: 'Confirm your email for the Florida LLC operating agreement sample',
+      body: html`
+        <h1>Confirm your email</h1>
+        <p>Confirm your email and we'll send the download links for the free Florida LLC operating agreement sample (single-member and multi-member, PDF and Word).</p>
+        <a class="cta" href="${confirmUrl}">Confirm my email</a>
+        <p class="muted">The sample is general information, not legal advice. Have an attorney review it before you use it.</p>
+        <p class="muted"><a href="${unsub}">Unsubscribe</a></p>
+      `,
+    };
+  },
+  OA_TEMPLATE_DOWNLOAD: (ctx) => {
+    const singlePdf = escapeHtml(ctx.oaSinglePdfUrl ?? '#');
+    const singleDocx = escapeHtml(ctx.oaSingleDocxUrl ?? '#');
+    const multiPdf = escapeHtml(ctx.oaMultiPdfUrl ?? '#');
+    const multiDocx = escapeHtml(ctx.oaMultiDocxUrl ?? '#');
+    const unsub = escapeHtml(ctx.oaUnsubscribeUrl ?? '#');
+    if (ctx.oaLocale === 'es') {
+      return {
+        subject: 'Tu muestra de acuerdo operativo de LLC en Florida',
+        body: html`
+          <h1>Tu muestra está lista</h1>
+          <p>Aquí están las muestras gratis del acuerdo operativo para una LLC en Florida.</p>
+          <p><a href="${singlePdf}">PDF de un miembro</a></p>
+          <p><a href="${singleDocx}">Word de un miembro</a></p>
+          <p><a href="${multiPdf}">PDF de varios miembros</a></p>
+          <p><a href="${multiDocx}">Word de varios miembros</a></p>
+          <p class="muted">Los enlaces vencen en 7 días. La muestra es información general, no asesoría legal. Pide a un abogado que la revise antes de usarla. LaunchForma no es un despacho de abogados.</p>
+          <p class="muted"><a href="${unsub}">Darme de baja</a></p>
+        `,
+      };
+    }
+    return {
+      subject: 'Your Florida LLC operating agreement sample',
+      body: html`
+        <h1>Your sample is ready</h1>
+        <p>Here are the free Florida LLC operating agreement samples.</p>
+        <p><a href="${singlePdf}">Single-member PDF</a></p>
+        <p><a href="${singleDocx}">Single-member Word</a></p>
+        <p><a href="${multiPdf}">Multi-member PDF</a></p>
+        <p><a href="${multiDocx}">Multi-member Word</a></p>
+        <p class="muted">These links expire in 7 days. The sample is general information, not legal advice. Have an attorney review it before you use it. LaunchForma is not a law firm.</p>
+        <p class="muted"><a href="${unsub}">Unsubscribe</a></p>
       `,
     };
   },

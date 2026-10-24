@@ -662,6 +662,35 @@ model AssistantConversation {
   @@index([filingId])
 }
 
+// Double opt-in lead for the Florida operating agreement samples.
+// Table is public.leads. RLS is on and there are no anon policies; the
+// app writes through the database role. consent must be true (SQL check).
+// The raw confirm token and the client IP are never stored.
+// newsletterSyncedAt is reserved for a later newsletter handoff.
+model Lead {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                 String    @db.Citext
+  consent               Boolean
+  consentText           String    @map("consent_text")
+  consentAt             DateTime  @default(now()) @map("consent_at") @db.Timestamptz(6)
+  locale                String
+  source                String
+  confirmTokenHash      String?   @unique @map("confirm_token_hash")
+  confirmTokenExpiresAt DateTime? @map("confirm_token_expires_at") @db.Timestamptz(6)
+  confirmedAt           DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  newsletterSyncedAt    DateTime? @map("newsletter_synced_at") @db.Timestamptz(6)
+  unsubscribedAt        DateTime? @map("unsubscribed_at") @db.Timestamptz(6)
+  ipHash                String?   @map("ip_hash")
+  userAgent             String?   @map("user_agent")
+  utmSource             String?   @map("utm_source")
+  utmMedium             String?   @map("utm_medium")
+  utmCampaign           String?   @map("utm_campaign")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([email, source], map: "leads_email_source_key")
+  @@map("leads")
+}
+
 model AssistantMessage {
   id             String                @id @default(cuid())
   conversationId String

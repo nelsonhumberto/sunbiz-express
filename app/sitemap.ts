@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { ALL_MARKETING_STATES } from '@/lib/marketing-states';
 import { toSpanishUrl } from '@/lib/locale-paths';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
+import { OA_GUIDE_PATH, OA_SITEMAP_LASTMOD } from '@/lib/oa-guide-copy';
 import { contentLastModified } from '@/lib/sitemap-lastmod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
@@ -98,12 +99,25 @@ function absoluteUrl(path: string): string {
 
 function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number] {
   const path = spanish ? toSpanishUrl(page.path) : page.path;
-  return {
+  const entry: MetadataRoute.Sitemap[number] = {
     url: absoluteUrl(path),
-    lastModified: contentLastModified(page.file),
+    lastModified:
+      page.path === OA_GUIDE_PATH
+        ? new Date(OA_SITEMAP_LASTMOD)
+        : contentLastModified(page.file),
     changeFrequency: page.changeFrequency,
     priority: page.priority,
   };
+  if (page.path === OA_GUIDE_PATH) {
+    entry.alternates = {
+      languages: {
+        en: absoluteUrl(OA_GUIDE_PATH),
+        es: absoluteUrl(toSpanishUrl(OA_GUIDE_PATH)),
+        'x-default': absoluteUrl(OA_GUIDE_PATH),
+      },
+    };
+  }
+  return entry;
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {

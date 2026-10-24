@@ -46,7 +46,7 @@ const GUIDES: LinkEntry[] = [
   { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
   { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
   { title: 'Florida Registered Agent', path: '/guides/florida-registered-agent', note: 'Who can serve, the street-address rule, and state fees to appoint or change an agent.' },
-  { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'Why and how to create a Florida LLC operating agreement.' },
+  { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'What a Florida LLC operating agreement is, what Chapter 605 says, and how to adopt one.' },
   { title: 'BOI Reporting Update 2026', path: '/guides/boi-filing-2026', note: 'Redirects to the BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting.' },
 ];
 

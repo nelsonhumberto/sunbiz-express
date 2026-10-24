@@ -19,6 +19,8 @@ interface GuideLayoutProps {
   children: React.ReactNode;
   /** Optional CTA card text at the foot of the guide. */
   cta?: { headline: string; subhead: string; href: string; label: string };
+  /** Compact CTA rendered under the title, before the body. */
+  topCta?: { href: string; label: string };
 }
 
 /**
@@ -35,6 +37,7 @@ export async function GuideLayout({
   readingMinutes,
   children,
   cta,
+  topCta,
 }: GuideLayoutProps) {
   const locale = await getLocale();
   const t = await getTranslations('guidesChrome');
@@ -81,6 +84,17 @@ export async function GuideLayout({
           <span>· {t('minRead', { minutes: readingMinutes })}</span>
         </p>
         <h1>{title}</h1>
+        {topCta ? (
+          <p className="not-prose mt-4 mb-2">
+            <Link
+              href={localizedHref(topCta.href, locale)}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
+            >
+              {topCta.label}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </p>
+        ) : null}
         <p className="lead text-lg text-ink-muted">{description}</p>
         {children}
 

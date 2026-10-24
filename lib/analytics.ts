@@ -54,6 +54,28 @@ export function identifyUser(userId: string, traits?: Record<string, unknown>) {
   ph()?.identify(userId, traits);
 }
 
+/**
+ * Mark the current browser as internal traffic. `register` stamps later
+ * events. `identify` and `setPersonProperties` set the person property so
+ * the account can be filtered out.
+ */
+export function markInternalTraffic(userId: string, email?: string | null) {
+  const apply = () => {
+    const client = ph();
+    if (!client || !userId.trim()) return;
+    client.register({ is_internal: true });
+    const traits: Record<string, unknown> = { is_internal: true };
+    if (email?.trim()) traits.email = email.trim();
+    client.identify(userId, traits);
+    client.setPersonProperties?.({ is_internal: true });
+  };
+  if (ph()) {
+    apply();
+    return;
+  }
+  whenReady(() => Boolean(ph()), apply);
+}
+
 export function resetAnalytics() {
   ph()?.reset();
 }

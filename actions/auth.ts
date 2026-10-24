@@ -11,6 +11,7 @@ import { userUtmCreateFields } from '@/lib/utm-attribution';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { safeRedirectPath } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
+import { storedLocale } from '@/lib/stored-locale';
 
 const SignUpSchema = z
   .object({
@@ -70,6 +71,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
+  const locale = await storedLocale();
   const user = await prisma.user.create({
     data: {
       email: data.email.toLowerCase(),
@@ -78,6 +80,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
       lastName: data.lastName,
       role: 'USER',
       emailVerified: true, // auto-verified for demo
+      ...(locale ? { locale } : {}),
       ...userUtmCreateFields(),
     },
   });

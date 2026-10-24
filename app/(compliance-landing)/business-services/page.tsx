@@ -16,6 +16,7 @@ import {
 import {
   ADD_ON_BY_SLUG,
   RA_RENEWAL_PRICE_CENTS,
+  TIER_BY_SLUG,
 } from '@/lib/pricing';
 import type { ServiceInquiryOption } from '@/lib/service-inquiry';
 import { formatCurrency } from '@/lib/utils';
@@ -56,32 +57,38 @@ export default async function BusinessServicesPage() {
     ADD_ON_BY_SLUG.operating_agreement_multi.serviceMarginCents,
   );
   const alertsPrice = formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents);
+  // Essential (BASIC) Florida LLC reference price. Do not hardcode the dollar amount.
+  const plansFrom = formatCurrency(TIER_BY_SLUG.BASIC.packagePriceCents);
   const phoneHref = BUSINESS_PHONE.replace(/[^\d+]/g, '');
 
   return (
     <>
       <div className="bg-amber-50/60 border-b border-amber-200">
-        <div className="container py-3 md:py-4">
-          <GovDisclosure variant="prominent" text={tDisc('notAffiliatedServices')} />
+        <div className="container py-2 md:py-4">
+          <GovDisclosure
+            variant="prominent"
+            text={tDisc('notAffiliatedServices')}
+            className="px-3 py-2 text-xs leading-snug md:px-4 md:py-3.5 md:text-sm md:leading-relaxed"
+          />
         </div>
       </div>
 
-      <section className="relative overflow-hidden pt-6 pb-10 md:pt-20 md:pb-16">
+      <section className="relative overflow-hidden pt-4 pb-8 md:pt-20 md:pb-16">
         <div className="absolute inset-0 mesh-bg" />
         <div className="aurora" />
         <div className="container relative max-w-3xl text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            {t('badge')}
-          </span>
-          <h1 className="mt-3 font-display text-3xl md:text-6xl font-medium tracking-tight text-balance">
-            {t('headline')}
+          <h1 className="font-display text-[1.65rem] leading-[1.2] md:text-6xl md:leading-[1.05] font-medium tracking-tight text-balance">
+            {t('headline', { price: plansFrom })}
           </h1>
           <BusinessServicesHeroCta
             primaryLabel={t('primaryCta')}
             callLabel={BUSINESS_PHONE ? t('callCta', { phone: BUSINESS_PHONE }) : ''}
             phone={BUSINESS_PHONE}
           />
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {t('badge')}
+          </span>
           <p className="mt-3 text-sm text-ink-muted">{t('notALawFirm')}</p>
           <p className="mt-4 text-base md:text-lg text-ink-muted leading-relaxed max-w-xl mx-auto">
             {t('subhead')}

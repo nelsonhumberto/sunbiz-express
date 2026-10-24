@@ -556,7 +556,8 @@ model MarketingLead {
 model ServiceInquiry {
   id          String   @id @default(cuid())
   name        String
-  email       String
+  // Optional: the public form collects phone/WhatsApp, not email.
+  email       String?
   phone       String
   service     String   // registered_agent | operating_agreement | compliance_alerts | other
   message     String?

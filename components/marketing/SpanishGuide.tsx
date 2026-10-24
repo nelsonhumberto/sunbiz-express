@@ -69,6 +69,10 @@ export async function SpanishGuide({
         description={t('description')}
         datePublished={t('published')}
         readingMinutes={readingMinutes}
+        topCta={{
+          href: '/start',
+          label: t('ctaLabel'),
+        }}
         cta={{
           headline: t('ctaHeadline'),
           subhead: t('ctaSubhead'),

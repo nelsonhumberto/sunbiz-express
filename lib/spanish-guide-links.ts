@@ -1,0 +1,51 @@
+export type SpanishGuideLink = {
+  href: string;
+  /** Spanish page title. Must match the guide's `title` in messages/es.json. */
+  label: string;
+};
+
+export const SPANISH_GUIDE_LLC_SIN_SSN: SpanishGuideLink = {
+  href: '/es/guides/llc-florida-sin-seguro-social',
+  label: 'LLC en Florida sin número de Seguro Social: cómo funciona',
+};
+
+export const SPANISH_GUIDE_MIAMI: SpanishGuideLink = {
+  href: '/es/guides/licencia-negocio-miami-dade',
+  label: 'Licencia de negocio en Miami-Dade después de formar tu LLC',
+};
+
+export const SPANISH_GUIDE_BROWARD: SpanishGuideLink = {
+  href: '/es/guides/licencia-negocio-broward',
+  label: 'Licencia de negocio en Broward y Fort Lauderdale',
+};
+
+export const SPANISH_GUIDE_LLC_VS_SOLE: SpanishGuideLink = {
+  href: '/es/guides/llc-o-negocio-individual-florida',
+  label: '¿LLC o negocio individual en Florida?',
+};
+
+export const SPANISH_GUIDE_LLC_APP: SpanishGuideLink = {
+  href: '/es/guides/llc-para-tu-app-florida',
+  label: 'LLC para tu app en Florida',
+};
+
+/** Related Spanish guides for /guides/how-to-form-an-llc-in-florida. */
+export const EN_FORM_LLC_SPANISH_LINKS: readonly SpanishGuideLink[] = [
+  SPANISH_GUIDE_LLC_SIN_SSN,
+  SPANISH_GUIDE_LLC_VS_SOLE,
+];
+
+/** Related Spanish guides for the Florida annual-report guide and /states/florida. */
+export const EN_FLORIDA_LICENSE_SPANISH_LINKS: readonly SpanishGuideLink[] = [
+  SPANISH_GUIDE_MIAMI,
+  SPANISH_GUIDE_BROWARD,
+];
+
+/** All five Spanish-only guides, in sitemap order. */
+export const EN_GUIDES_INDEX_SPANISH_LINKS: readonly SpanishGuideLink[] = [
+  SPANISH_GUIDE_LLC_SIN_SSN,
+  SPANISH_GUIDE_MIAMI,
+  SPANISH_GUIDE_BROWARD,
+  SPANISH_GUIDE_LLC_VS_SOLE,
+  SPANISH_GUIDE_LLC_APP,
+];

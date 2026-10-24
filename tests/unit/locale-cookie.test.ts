@@ -180,4 +180,17 @@ describe('cross-language links do not prefetch', () => {
     expect(switcher).toContain('document.documentElement.lang = locale');
     expect(switcher).toContain('setLocaleAction');
   });
+
+  it('loads the other language with a full navigation after the cookie is set', () => {
+    const switcher = readFileSync(
+      path.join(process.cwd(), 'components/marketing/LanguageSwitcher.tsx'),
+      'utf8',
+    );
+    const cookie = switcher.indexOf('await setLocaleAction(locale)');
+    const navigate = switcher.indexOf('window.location.assign(href)');
+    expect(cookie).toBeGreaterThan(-1);
+    expect(navigate).toBeGreaterThan(cookie);
+    expect(switcher).not.toContain('router.push');
+    expect(switcher).not.toContain('router.refresh');
+  });
 });

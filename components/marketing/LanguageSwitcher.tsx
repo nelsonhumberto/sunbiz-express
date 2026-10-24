@@ -1,7 +1,6 @@
 'use client';
 
 import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Globe, Check } from 'lucide-react';
 import {
@@ -22,7 +21,6 @@ interface Props {
 
 export function LanguageSwitcher({ variant = 'icon', className }: Props) {
   const currentLocale = useLocale() as Locale;
-  const router = useRouter();
   const [pending, start] = useTransition();
 
   const switchLocale = (locale: Locale) => {
@@ -35,8 +33,9 @@ export function LanguageSwitcher({ variant = 'icon', className }: Props) {
     const href = `${nextPath}${qs ? `?${qs}` : ''}${window.location.hash}`;
     start(async () => {
       await setLocaleAction(locale);
-      router.push(href);
-      router.refresh();
+      // A client navigation can reuse a cached RSC payload for the rewritten
+      // route, so the URL changes and the copy stays put. A full load does not.
+      window.location.assign(href);
     });
   };
 

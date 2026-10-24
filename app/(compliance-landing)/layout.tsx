@@ -21,7 +21,7 @@ export default async function ComplianceLandingLayout({
     <>
       <SkipLink label={t('skip')} />
       <header className="border-b border-border bg-white">
-        <div className="container flex h-16 items-center justify-between gap-4">
+        <div className="container flex h-14 items-center justify-between gap-4 md:h-16">
           <Logo href="/business-services" />
           <nav aria-label={t('languageNav')} className="flex items-center gap-1 text-sm font-medium">
             <Link

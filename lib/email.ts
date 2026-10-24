@@ -384,13 +384,13 @@ const TEMPLATES: Record<
     `,
   }),
   SERVICE_INQUIRY: (ctx) => {
-    const cell = (value?: string) => escapeHtml(value?.trim() || '—');
+    const cell = (value?: string) => escapeHtml(value?.trim() || 'Not provided');
     const message = ctx.inquiryMessage?.trim();
     return {
       subject: `Service request: ${(ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80)}`,
       body: html`
         <h1>New business-services request</h1>
-        <p>Someone asked for a service from the ad landing page. Reply to them directly.</p>
+        <p>Someone asked for a service from the ad landing page. Reply by phone or WhatsApp. Use email only when one is listed.</p>
         <table class="meta">
           <tr><td>Name</td><td>${cell(ctx.inquiryName)}</td></tr>
           <tr><td>Email</td><td>${cell(ctx.inquiryEmail)}</td></tr>

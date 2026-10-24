@@ -2,7 +2,7 @@ name: Recovery cron
 
 on:
   schedule:
-    # Hourly. Vercel Hobby only allows the daily cron in vercel.json.
+    # Hourly. Vercel also calls this route four times a day.
     - cron: "15 * * * *"
   workflow_dispatch:
 

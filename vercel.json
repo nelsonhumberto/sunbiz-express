@@ -2,7 +2,19 @@
   "crons": [
     {
       "path": "/api/cron/recovery",
-      "schedule": "0 14 * * *"
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/recovery",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/recovery",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/recovery",
+      "schedule": "0 2 * * *"
     }
   ]
 }

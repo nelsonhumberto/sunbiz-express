@@ -526,14 +526,7 @@ export async function checkNameAvailability(
 ): Promise<NameCheckResult> {
   const trimmed = query.trim();
   if (!trimmed || trimmed.length < 2) {
-    return {
-      query,
-      available: false,
-      status: 'available',
-      message: 'Enter at least 2 characters to check availability.',
-      conflicts: [],
-      suggestions: [],
-    };
+    throw new SunbizError('unknown', 'Enter at least 2 characters to check availability.');
   }
 
   const targetNorm = normalizeDistinguishableName(trimmed);

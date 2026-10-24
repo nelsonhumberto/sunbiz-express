@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield } from 'lucide-react';
@@ -10,8 +12,9 @@ import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState, type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
-import { trackCtaClicked } from '@/lib/analytics';
+import { trackCtaClicked, trackEvent } from '@/lib/analytics';
 import { localizedHref } from '@/lib/locale-paths';
+import { nameCheckSubmittedEvent, startHrefForNameCheck } from '@/lib/name-check';
 
 interface HeroProps {
   /**
@@ -77,7 +80,9 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             {t('formaLine')}
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <HeroNameCheck stateCode={state.code} />
+
+          <div className="mt-3 flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Button asChild size="lg" className="group">
               <Link
                 href={startFilingHref}
@@ -135,19 +140,68 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
   );
 }
 
-function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
+function HeroNameCheck({ stateCode }: { stateCode: string }) {
   const t = useTranslations('hero');
   const locale = useLocale();
+  const router = useRouter();
+  const [value, setValue] = useState('');
+  const [missing, setMissing] = useState(false);
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const href = startHrefForNameCheck(stateCode, value);
+    if (!href) {
+      setMissing(true);
+      return;
+    }
+    const submitted = nameCheckSubmittedEvent('hero');
+    trackEvent(submitted.event, submitted.properties);
+    router.push(localizedHref(href, locale));
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-8 mx-auto w-full max-w-xl text-left">
+      <label htmlFor="hero-business-name" className="sr-only">
+        {t('nameCheckLabel')}
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="hero-business-name"
+          type="text"
+          inputMode="text"
+          name="businessName"
+          value={value}
+          maxLength={100}
+          autoComplete="organization"
+          enterKeyHint="search"
+          placeholder={t('nameCheckPlaceholder')}
+          aria-invalid={missing || undefined}
+          aria-describedby={missing ? 'hero-business-name-error' : undefined}
+          onChange={(e) => {
+            setValue(e.target.value.slice(0, 100));
+            if (missing) setMissing(false);
+          }}
+          className="h-12 w-full min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base text-ink"
+        />
+        <Button type="submit" size="lg" className="w-full shrink-0 sm:w-auto">
+          {t('checkName')}
+        </Button>
+      </div>
+      {missing ? (
+        <p id="hero-business-name-error" className="mt-2 text-xs text-destructive">
+          {t('nameCheckRequired')}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
+  const t = useTranslations('hero');
   const formationState = getFormationState(state.code);
   const stateCode = (state.code as StateCode) || 'FL';
   const previewPrice = tierPackagePriceCents('STANDARD', 'LLC', stateCode);
   const previewPriceFormatted = formatCurrency(previewPrice);
-  const sampleName =
-    state.code === 'WY'
-      ? 'Mountain Ridge Ventures LLC'
-      : state.code === 'DE'
-        ? 'First State Holdings LLC'
-        : 'Sunshine Coast Ventures LLC';
   const searchUrl =
     state.code === 'FL'
       ? 'launchforma.com/wizard/your-llc/2'
@@ -172,25 +226,8 @@ function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
               {t('previewStep')}
             </Badge>
             <h3 className="font-display text-2xl font-medium mb-2">{t('previewQuestion')}</h3>
-            <p className="text-sm text-ink-muted mb-6">{t('previewSubtitle')}</p>
-
-            <div className="relative">
-              <input
-                value={sampleName}
-                readOnly
-                className="w-full h-12 px-4 pr-32 rounded-md border border-input bg-card text-base font-medium"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success-subtle text-success text-xs font-semibold">
-                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {t('previewAvailable')}
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 rounded-md bg-success-subtle/50 border border-success/20 text-sm text-ink">
-              {t('previewSuccess')}
-            </div>
+            <p className="text-sm text-ink-muted leading-relaxed">{t('previewSubtitle')}</p>
+            <p className="mt-4 text-sm text-ink-muted leading-relaxed">{t('previewHint')}</p>
           </div>
 
           <div className="p-8 md:p-10 bg-muted/30">

@@ -37,14 +37,7 @@ export async function checkNameAvailability(
 
   const normalized = stripSuffix(query);
   if (!normalized || normalized.length < 2) {
-    return {
-      query,
-      available: false,
-      status: 'available',
-      message: 'Enter at least 2 characters to check availability.',
-      conflicts: [],
-      suggestions: [],
-    };
+    throw new Error('Enter at least 2 characters to check availability.');
   }
 
   const exact: SunbizEntity[] = [];

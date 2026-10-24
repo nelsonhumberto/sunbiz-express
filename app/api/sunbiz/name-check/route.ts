@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkNameAvailability, SunbizError } from '@/lib/sunbiz';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { nameCheckErrorResponse } from '@/lib/name-check';
 
 // Real (non-mock) Sunbiz lookup. Primary source is the sunbizdaily.com JSON
 // API (set SUNBIZDAILY_API_KEY in env). Falls back to a CF-bypass scrape
@@ -13,13 +14,10 @@ export async function GET(req: NextRequest) {
   const limit = rateLimit(`name-check:${clientIp()}`, 30, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(
-      {
-        available: false,
-        status: 'available',
+      nameCheckErrorResponse({
+        error: 'rate_limit',
         message: 'Too many lookups. Please wait a moment and try again.',
-        conflicts: [],
-        suggestions: [],
-      },
+      }),
       { status: 429 },
     );
   }
@@ -31,60 +29,59 @@ export async function GET(req: NextRequest) {
 
   if (!name || name.length < 2) {
     return NextResponse.json(
-      {
-        available: false,
-        status: 'available',
+      nameCheckErrorResponse({
+        query: name,
+        error: 'invalid',
         message: 'Enter at least 2 characters.',
-        conflicts: [],
-        suggestions: [],
-      },
+      }),
       { status: 400 },
     );
   }
 
   if (name.length > 100) {
     return NextResponse.json(
-      {
-        available: false,
-        status: 'available',
+      nameCheckErrorResponse({
+        query: name,
+        error: 'invalid',
         message: 'Name is too long (maximum 100 characters).',
-        conflicts: [],
-        suggestions: [],
-      },
+      }),
       { status: 400 },
     );
   }
 
   try {
     const result = await checkNameAvailability(name, type);
+    // A contradictory body (status available, available false) is an error.
+    if (result.status === 'available' && result.available === false) {
+      return NextResponse.json(
+        nameCheckErrorResponse({
+          query: name,
+          error: 'invalid',
+          message: result.message || 'Enter at least 2 characters.',
+        }),
+        { status: 400 },
+      );
+    }
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof SunbizError) {
       const httpStatus = errorCodeToHttp(err.code);
       const message = errorCodeToUserMessage(err.code);
       return NextResponse.json(
-        {
+        nameCheckErrorResponse({
           query: name,
-          available: false,
-          status: 'available',
           error: err.code,
           message,
-          conflicts: [],
-          suggestions: [],
-        },
+        }),
         { status: httpStatus },
       );
     }
     return NextResponse.json(
-      {
+      nameCheckErrorResponse({
         query: name,
-        available: false,
-        status: 'available',
         error: 'unknown',
         message: 'Unexpected error checking name availability.',
-        conflicts: [],
-        suggestions: [],
-      },
+      }),
       { status: 500 },
     );
   }

@@ -1,7 +1,7 @@
 /**
  * Resume-drip send claims.
  *
- * The cron can overlap (four Vercel slots plus GitHub at minute 37).
+ * The four daily Vercel crons can overlap.
  * A partial unique index on EmailNotification (filingId, notificationType, step)
  * makes the second insert fail. The winner inserts PENDING, sends, then marks
  * SENT. A loser sees the fresh claim and does not send.

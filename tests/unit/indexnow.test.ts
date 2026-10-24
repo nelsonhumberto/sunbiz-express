@@ -18,9 +18,13 @@ describe('IndexNow', () => {
 
   it('POSTs the five Spanish guide URLs to api.indexnow.org', async () => {
     const calls: Array<{ url: string; body: string }> = [];
-    const fetchImpl = async (url: string, init: { body?: string }) => {
-      calls.push({ url, body: String(init.body ?? '') });
-      return { ok: true, status: 202, text: async () => '' };
+    const fetchImpl: typeof fetch = async (url, init) => {
+      const raw = init?.body;
+      calls.push({
+        url: String(url),
+        body: typeof raw === 'string' ? raw : '',
+      });
+      return new Response('', { status: 202 });
     };
     const result = await notifyIndexNow(INDEXNOW_URLS, fetchImpl);
     expect(result.status).toBe(202);

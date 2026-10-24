@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { allDripCopyText, checklistCopy, emailShellCopy, resumeStepCopy } from '@/lib/drip-copy';
 import { buildResumeEmail } from '@/lib/drip-email';
@@ -9,6 +9,7 @@ import {
   guestResumeUrl,
   planResumeDrip,
   raRenewalTypeForDays,
+  RESUME_DRIP_MAX_AGE_HOURS,
   resolveDripLocale,
   resumeDraftListArgs,
   resumeLinkPlan,
@@ -35,6 +36,10 @@ import {
 } from '@/lib/unsubscribe';
 
 const DAY = 24 * 60 * 60 * 1000;
+
+function testEnv(values: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  return values as unknown as NodeJS.ProcessEnv;
+}
 
 const ready: ResumeDripCandidate = {
   enabled: true,
@@ -64,15 +69,16 @@ describe('resume drip schedule', () => {
     const last = planResumeDrip({ ...ready, ageHours: 72 });
     expect(last.send).toBe('RESUME_3D');
     expect(last.final).toBe(true);
+    expect(planResumeDrip({ ...ready, ageHours: 72.01 }).send).toBe('RESUME_3D');
     expect(planResumeDrip({ ...ready, ageHours: 95 }).send).toBe('RESUME_3D');
     expect(planResumeDrip({ ...ready, ageHours: 96 }).reason).toBe('window-closed');
   });
 
   it('sends nothing when the flag is off', () => {
-    expect(isResumeDripEnabled({} as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: 'false' } as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: '0' } as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: 'true' } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isResumeDripEnabled(testEnv())).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: 'false' }))).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: '0' }))).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: 'true' }))).toBe(true);
     expect(planResumeDrip({ ...ready, enabled: false }).reason).toBe('disabled');
     expect(planResumeDrip({ ...ready, enabled: false, ageHours: 80 }).send).toBeNull();
   });
@@ -137,8 +143,51 @@ describe('resume drip dedupe', () => {
     expect(planResumeDrip({ ...ready, sentTypes: ['RESUME_1H'] }).reason).toBe('already-sent');
     expect(planResumeDrip({ ...ready, ageHours: 30, sentTypes: ['RESUME_1H'] }).send).toBe('RESUME_1D');
     expect(
+      planResumeDrip({ ...ready, ageHours: 72, sentTypes: ['RESUME_1H', 'RESUME_1D', 'RESUME_3D'] }).reason,
+    ).toBe('already-sent');
+    expect(
       planResumeDrip({ ...ready, ageHours: 80, sentTypes: ['RESUME_1H', 'RESUME_1D', 'RESUME_3D'] }).reason,
     ).toBe('already-sent');
+    expect(planResumeDrip({ ...ready, ageHours: 80, sentTypes: ['RESUME_1H', 'RESUME_1D'] }).send).toBe(
+      'RESUME_3D',
+    );
+  });
+});
+
+describe('resume drip 96 hour cap', () => {
+  it('sends only RESUME_3D from 72 to 96 hours, and nothing after that', () => {
+    expect(RESUME_DRIP_MAX_AGE_HOURS).toBe(96);
+    for (const ageHours of [72, 73, 80, 95, 95.9]) {
+      const decision = planResumeDrip({ ...ready, ageHours });
+      expect(decision.send).toBe('RESUME_3D');
+      expect(decision.final).toBe(true);
+    }
+    for (const ageHours of [96, 96.01, 24 * 7, 24 * 30]) {
+      const decision = planResumeDrip({ ...ready, ageHours });
+      expect(decision.send).toBeNull();
+      expect(decision.reason).toBe('window-closed');
+    }
+    expect(planResumeDrip({ ...ready, ageHours: 71 }).send).toBe('RESUME_1D');
+    expect(planResumeDrip({ ...ready, ageHours: 23.5 }).send).toBe('RESUME_1H');
+    expect(planResumeDrip({ ...ready, ageHours: 2 }).send).toBe('RESUME_1H');
+  });
+
+  it('queries a 72 to 96 hour window only for RESUME_3D', () => {
+    const now = Date.parse('2026-10-24T12:00:00.000Z');
+    const at = (hours: number) => new Date(now - hours * 60 * 60 * 1000);
+    const args = resumeDraftListArgs(now);
+    expect(args.where.updatedAt).toEqual({ gt: at(96) });
+    const windows = Object.fromEntries(
+      args.where.OR.map((branch) => [branch.notifications.none.notificationType, branch.updatedAt]),
+    );
+    expect(windows).toEqual({
+      RESUME_1H: { gt: at(24), lte: at(1) },
+      RESUME_1D: { gt: at(72), lte: at(24) },
+      RESUME_3D: { gt: at(96), lte: at(72) },
+    });
+    const json = JSON.stringify(args.where);
+    expect(json).toContain(at(96).toISOString());
+    expect(json).not.toContain(at(24 * 7).toISOString());
   });
 });
 
@@ -161,6 +210,47 @@ describe('qa and e2e skip', () => {
       user: { role: 'USER', email: 'qa+draft@gmail.com' },
     });
     expect(planResumeDrip({ ...ready, skip }).reason).toBe('skip');
+  });
+
+  it('skips internal and test addresses and keeps the existing exclusions', () => {
+    const skipped = [
+      'admin@launchforma.com',
+      'social@LaunchForma.com',
+      'NelsonHumberto@Gmail.com',
+      'dev@Intelepeer.ai',
+      'qa@Aqurio.com',
+      'A@Resend.dev',
+      'qa+draft@gmail.com',
+      'e2e+signup@example.com',
+    ];
+    for (const email of skipped) {
+      expect(
+        shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email } }),
+      ).toBe(true);
+    }
+    const kept = [
+      'buyer@example.com',
+      'ada@sub.launchforma.com',
+      'ada@launchforma.com.evil',
+      'dev@intelepeer.ai.evil',
+      'qa@aqurio.com.evil',
+      'nelsonhumberto@gmail.com.evil',
+      'not-nelsonhumberto@gmail.com',
+    ];
+    for (const email of kept) {
+      expect(
+        shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email } }),
+      ).toBe(false);
+    }
+    const json = JSON.stringify(resumeDraftListArgs(Date.parse('2026-10-24T12:00:00.000Z')).where);
+    expect(json).toContain('@launchforma.com');
+    expect(json).toContain('nelsonhumberto@gmail.com');
+    expect(json).toContain('@intelepeer.ai');
+    expect(json).toContain('@aqurio.com');
+    expect(json).toContain('@resend.dev');
+    expect(json).toContain('qa+');
+    expect(json).toContain('e2e+');
+    expect(json).toContain('insensitive');
   });
 });
 
@@ -299,8 +389,8 @@ describe('resume copy and reply-to', () => {
   });
 
   it('defaults Reply-To to admin@launchforma.com', () => {
-    expect(resumeEmailReplyTo({} as NodeJS.ProcessEnv)).toBe('admin@launchforma.com');
-    expect(resumeEmailReplyTo({ EMAIL_REPLY_TO: ' help@launchforma.com ' } as NodeJS.ProcessEnv)).toBe(
+    expect(resumeEmailReplyTo(testEnv())).toBe('admin@launchforma.com');
+    expect(resumeEmailReplyTo(testEnv({ EMAIL_REPLY_TO: ' help@launchforma.com ' }))).toBe(
       'help@launchforma.com',
     );
   });
@@ -316,10 +406,30 @@ describe('resume copy and reply-to', () => {
   });
 });
 
+describe('recovery schedule', () => {
+  it('keeps the four daily Vercel crons and drops the GitHub recovery workflow', () => {
+    expect(existsSync('.github/workflows/recovery-cron.yml')).toBe(false);
+    const cron = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+    expect(cron.crons.filter((entry) => entry.path === '/api/cron/recovery')).toEqual([
+      { path: '/api/cron/recovery', schedule: '0 13 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 17 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 22 * * *' },
+      { path: '/api/cron/recovery', schedule: '0 2 * * *' },
+    ]);
+    const route = readFileSync('app/api/cron/recovery/route.ts', 'utf8');
+    const claim = readFileSync('lib/resume-drip-claim.ts', 'utf8');
+    expect(route).not.toContain('minute 37');
+    expect(route).not.toContain('recovery-cron');
+    expect(claim).not.toContain('minute 37');
+  });
+});
+
 describe('checklist signup gate', () => {
   it('stays off unless the flag is on, and the consent box is not prechecked', () => {
-    expect(isSignupCaptureEnabled({} as NodeJS.ProcessEnv)).toBe(false);
-    expect(isSignupCaptureEnabled({ SIGNUP_CAPTURE_ENABLED: 'yes' } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isSignupCaptureEnabled(testEnv())).toBe(false);
+    expect(isSignupCaptureEnabled(testEnv({ SIGNUP_CAPTURE_ENABLED: 'yes' }))).toBe(true);
     const form = readFileSync('components/marketing/ChecklistSignupForm.tsx', 'utf8');
     expect(form).toContain('type="checkbox"');
     expect(form).not.toContain('defaultChecked');
@@ -342,12 +452,7 @@ describe('checklist signup gate', () => {
       { path: '/api/cron/recovery', schedule: '0 22 * * *' },
       { path: '/api/cron/recovery', schedule: '0 2 * * *' },
     ]);
-    const workflow = readFileSync('.github/workflows/recovery-cron.yml', 'utf8');
-    expect(workflow).toContain('37 * * * *');
-    expect(workflow).toContain('workflow_dispatch');
-    expect(workflow).toContain('https://launchforma.com/api/cron/recovery');
-    expect(workflow).toContain('Authorization: Bearer ${CRON_SECRET}');
-    expect(workflow).toContain('::notice::');
+    expect(existsSync('.github/workflows/recovery-cron.yml')).toBe(false);
     const route = readFileSync('app/api/cron/recovery/route.ts', 'utf8');
     expect(route).toContain('export async function GET');
     expect(route).not.toMatch(/^export (async )?function (?!GET)/m);
@@ -412,6 +517,8 @@ describe('resume drip claim and batch', () => {
     expect(args.orderBy).toEqual({ updatedAt: 'asc' });
     expect(args.where.abandonedAt).toBeNull();
     expect(JSON.stringify(args.where)).toContain('@resend.dev');
+    expect(JSON.stringify(args.where)).toContain('RESUME_1H');
+    expect(JSON.stringify(args.where)).toContain('"none"');
     const sql = readFileSync(
       'prisma/migrations/20261024220000_resume_drip_send_claim/migration.sql',
       'utf8',

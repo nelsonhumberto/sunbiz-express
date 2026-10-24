@@ -33,8 +33,8 @@ export function LanguageSwitcher({ variant = 'icon', className }: Props) {
     const href = `${nextPath}${qs ? `?${qs}` : ''}${window.location.hash}`;
     start(async () => {
       await setLocaleAction(locale);
-      // router.push plus refresh can reuse a cached RSC payload for the
-      // rewritten route, so the URL changes and the copy stays put.
+      // A client navigation can reuse a cached RSC payload for the rewritten
+      // route, so the URL changes and the copy stays put. A full load does not.
       window.location.assign(href);
     });
   };

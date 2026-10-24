@@ -177,7 +177,8 @@ describe('resume drip 3 day cap', () => {
     expect(windows).toContainEqual({ gte: new Date(cutoff), lte: new Date(cutoff) });
     for (const window of windows) {
       const oldest = 'gte' in window ? window.gte : window.gt;
-      expect(oldest.getTime()).toBeGreaterThanOrEqual(new Date(cutoff).getTime());
+      expect(oldest).toBeInstanceOf(Date);
+      expect(oldest?.getTime()).toBeGreaterThanOrEqual(new Date(cutoff).getTime());
     }
   });
 });

@@ -106,6 +106,36 @@ export default async function GuidesHubPage() {
           description: t('oaDescription'),
           readingMinutes: 9,
         },
+        {
+          slug: 'llc-florida-sin-seguro-social',
+          title: t('ssnTitle'),
+          description: t('ssnDescription'),
+          readingMinutes: 8,
+        },
+        {
+          slug: 'licencia-negocio-miami-dade',
+          title: t('miamiTitle'),
+          description: t('miamiDescription'),
+          readingMinutes: 7,
+        },
+        {
+          slug: 'licencia-negocio-broward',
+          title: t('browardTitle'),
+          description: t('browardDescription'),
+          readingMinutes: 7,
+        },
+        {
+          slug: 'llc-o-negocio-individual-florida',
+          title: t('soleTitle'),
+          description: t('soleDescription'),
+          readingMinutes: 6,
+        },
+        {
+          slug: 'llc-para-tu-app-florida',
+          title: t('appTitle'),
+          description: t('appDescription'),
+          readingMinutes: 6,
+        },
       ]
     : GUIDES;
   return (

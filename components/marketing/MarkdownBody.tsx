@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { localizedHref } from '@/lib/locale-paths';
 
 /** Renders translated long-form copy. Parent pages supply the prose styles. */
@@ -11,6 +12,7 @@ export function MarkdownBody({
 }) {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         a: ({ href, children }) => {
           const next = href ? localizedHref(href, locale) : href;

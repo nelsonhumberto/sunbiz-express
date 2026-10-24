@@ -11,6 +11,8 @@ interface PageDef {
   file: string;
   changeFrequency: 'weekly' | 'monthly' | 'yearly';
   priority: number;
+  /** Spanish-only article. The English path redirects to /es and stays out of the sitemap. */
+  spanishOnly?: boolean;
 }
 
 const STATIC_PAGES: PageDef[] = [
@@ -47,6 +49,41 @@ const STATIC_PAGES: PageDef[] = [
     file: 'app/(marketing)/guides/florida-llc-operating-agreement/page.tsx',
     changeFrequency: 'monthly',
     priority: 0.7,
+  },
+  {
+    path: '/guides/llc-florida-sin-seguro-social',
+    file: 'app/(marketing)/guides/llc-florida-sin-seguro-social/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
+  },
+  {
+    path: '/guides/licencia-negocio-miami-dade',
+    file: 'app/(marketing)/guides/licencia-negocio-miami-dade/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
+  },
+  {
+    path: '/guides/licencia-negocio-broward',
+    file: 'app/(marketing)/guides/licencia-negocio-broward/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
+  },
+  {
+    path: '/guides/llc-o-negocio-individual-florida',
+    file: 'app/(marketing)/guides/llc-o-negocio-individual-florida/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
+  },
+  {
+    path: '/guides/llc-para-tu-app-florida',
+    file: 'app/(marketing)/guides/llc-para-tu-app-florida/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
   },
   { path: '/terms', file: 'app/(legal)/terms/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/privacy', file: 'app/(legal)/privacy/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
@@ -85,5 +122,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const pages = [...STATIC_PAGES, ...statePages].filter(
     (page) => retiredStateDestination(page.path) == null,
   );
-  return [...pages.map((page) => toEntry(page, false)), ...pages.map((page) => toEntry(page, true))];
+  return [
+    ...pages.filter((page) => !page.spanishOnly).map((page) => toEntry(page, false)),
+    ...pages.map((page) => toEntry(page, true)),
+  ];
 }

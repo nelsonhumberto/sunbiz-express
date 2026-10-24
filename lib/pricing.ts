@@ -152,8 +152,14 @@ export function tierPackagePriceCents(
   return def.serviceMarginCents + tierBundledStateFeeCents(tier, entityType, state);
 }
 
+/** True when the tier's state-fee line includes a certified copy and a certificate of status. */
+export function tierIncludesCertificateFees(tier: TierSlug): boolean {
+  const bundled = TIER_BUNDLED_STATE_FEE_ADDONS[tier];
+  return bundled.includes('cert_status') && bundled.includes('cert_copy');
+}
+
 /**
- * Sum of government fees a tier bundles in for a (state, entity) pair - 
+ * Sum of government fees a tier bundles in for a (state, entity) pair:
  * formation filing fee plus any bundled certificate fees. Drives both the
  * customer-facing tier price and the package's government-remittance line.
  */

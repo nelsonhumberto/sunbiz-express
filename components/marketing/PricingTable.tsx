@@ -5,7 +5,13 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
+import {
+  TIERS,
+  tierIncludesCertificateFees,
+  tierPackagePriceCents,
+  tierPriceParts,
+  type TierSlug,
+} from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { cn } from '@/lib/utils';
@@ -138,11 +144,15 @@ export function PricingTable({
                     <span className="text-ink-subtle text-sm">{t('allIn')}</span>
                   </div>
                   <p className="mt-2 text-sm font-medium leading-snug text-ink">
-                    {feeSplitLabel(t, prices.llcParts, formationState.name)}
+                    {feeSplitLabel(t, prices.llcParts, formationState.name, tier.slug)}
                   </p>
                   {prices.corpDiffers && (
                     <p className="mt-1 text-xs leading-snug text-ink-muted">
-                      {t('feeSplitCorp', {
+                      {t(
+                        tierIncludesCertificateFees(tier.slug)
+                          ? 'feeSplitCorpWithCertificates'
+                          : 'feeSplitCorp',
+                        {
                         service: formatCurrency(prices.corpParts.serviceCents),
                         state: formationState.name,
                         stateFee: formatCurrency(prices.corpParts.stateFeeCents),

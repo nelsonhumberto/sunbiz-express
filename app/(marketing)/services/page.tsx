@@ -170,7 +170,11 @@ function ServiceCategory({
           {services.map((service) => {
             const Icon = ICONS[service.iconKey] ?? FileText;
             return (
-              <Card key={service.slug} className="hover:shadow-card transition-shadow">
+              <Card
+                key={service.slug}
+                id={service.slug === 'registered_agent' ? 'registered-agent' : undefined}
+                className="hover:shadow-card transition-shadow scroll-mt-24"
+              >
                 <CardContent className="p-6 space-y-3">
                   <div className="flex items-start justify-between">
                     <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${service.highlight ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary'}`}>

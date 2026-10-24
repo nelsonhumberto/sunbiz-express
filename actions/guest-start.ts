@@ -22,6 +22,7 @@ import {
   userUtmCreateFields,
 } from '@/lib/utm-attribution';
 import { getTranslations } from 'next-intl/server';
+import { storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 
@@ -86,6 +87,8 @@ export async function startGuestFiling(
   const seededStep = seededName ? 3 : 2;
   const seededCompleted = JSON.stringify(seededName ? [1, 2] : [1]);
   const email = parsed.data.email.toLowerCase().trim();
+  const locale = await storedLocale();
+  const localeData = locale ? { locale } : {};
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
     return { error: t('errorStateUnavailable') };
@@ -104,6 +107,7 @@ export async function startGuestFiling(
         businessName: seededName,
         currentStep: seededStep,
         completedSteps: seededCompleted,
+        ...localeData,
         ...filingUtmCreateFields(),
       },
     });
@@ -139,6 +143,7 @@ export async function startGuestFiling(
         passwordHash: placeholderPassword,
         accountStatus: 'GUEST',
         guestToken: token,
+        ...localeData,
         ...userUtmCreateFields(),
       },
     });
@@ -147,12 +152,12 @@ export async function startGuestFiling(
     token = newGuestToken();
     await prisma.user.update({
       where: { id: guestUser.id },
-      data: { guestToken: token, firstName, lastName },
+      data: { guestToken: token, firstName, lastName, ...localeData },
     });
   } else {
     await prisma.user.update({
       where: { id: guestUser.id },
-      data: { firstName, lastName },
+      data: { firstName, lastName, ...localeData },
     });
     await ensureUserFirstTouchUtm(guestUser.id);
   }
@@ -193,6 +198,7 @@ export async function startGuestFiling(
       businessName: seededName,
       currentStep: seededStep,
       completedSteps: seededCompleted,
+      ...localeData,
       ...filingUtmCreateFields(),
     },
   });

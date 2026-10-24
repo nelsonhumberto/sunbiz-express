@@ -1,30 +1,44 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { sendEmail, type NotificationType } from '@/lib/email';
-import { shouldSkipDraftRecovery } from '@/lib/draft-recovery';
+import { sendEmail } from '@/lib/email';
+import { normalizeEmail } from '@/lib/email-address';
+import {
+  ageHoursSince,
+  guestResumeUrl,
+  planResumeDrip,
+  raRenewalTypeForDays,
+  RESUME_DRIP_STEPS,
+  resolveDripLocale,
+  resumeLinkPlan,
+  shouldSkipDraftRecovery,
+  signInResumeUrl,
+  wholeDaysUntil,
+  wizardPathForDraft,
+} from '@/lib/draft-recovery';
+import { isResumeDripEnabled, resumeEmailReplyTo } from '@/lib/feature-flags';
+import { createLoginLink } from '@/lib/login-link';
+import { unsubscribeLink } from '@/lib/unsubscribe';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 // Recovery + retention scheduler.
 //
-// Run on a daily cron (Vercel Cron, GitHub Actions, etc). The route is
-// idempotent - it inspects the EmailNotification table to make sure the same
-// (filing, type) combination is never sent twice. That keeps the implementation
-// safe to retry and easy to test by curling locally.
+// Hourly so the resume sequence can send about 1 hour after a draft goes idle.
+// The route is idempotent: EmailNotification is the record of which resume
+// step already went to a filing, so the same step is never sent twice.
 //
 // What it sends:
 //
-//   1. Abandoned-draft recovery - 24h, 72h, and 7d after the last update on a
-//      DRAFT filing. We pick the strongest single message in each window so a
-//      customer who's been gone 5 days only gets the 24h reminder once, then
-//      the 72h "name not reserved" nudge, then the 7d "need help?" message.
-//   2. Registered-agent renewal - 60 / 30 / 7 days before the active RA's
-//      renewalDate. The first-year service is included with every package, so
-//      the renewal cascade introduces the paid renewal upsell at the moment
-//      it's most relevant.
+//   1. Resume-order sequence (RESUME_DRIP_ENABLED, default off). About 1 hour,
+//      1 day, and 3 days after Filing.updatedAt on a DRAFT that is still
+//      unpaid. Replaces the old ABANDONED_24H / ABANDONED_72H / ABANDONED_7D
+//      cron. When the flag is off, none of those abandoned-draft emails send.
+//      The last step stamps abandonedAt.
+//   2. Registered-agent renewal at 60 / 30 / 7 days. The window is one calendar
+//      day wide and EmailNotification dedupes the type, so the hourly cron
+//      still sends each reminder once.
 //
-// Annual report reminders are handled separately - those rely on the
-// AnnualReport table and are emitted from the existing compliance flow.
+// Annual report reminders are handled separately.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 
@@ -55,21 +69,18 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, drafts: draftStats, raRenewals: raStats });
 }
 
-// ─── Draft recovery ───────────────────────────────────────────────────────
-
-const DRAFT_BUCKETS: Array<{
-  type: NotificationType;
-  minHours: number;
-  maxHours: number;
-}> = [
-  { type: 'ABANDONED_24H', minHours: 24, maxHours: 48 },
-  { type: 'ABANDONED_72H', minHours: 72, maxHours: 96 },
-  { type: 'ABANDONED_7D', minHours: 24 * 7, maxHours: 24 * 8 },
-];
+// ─── Resume-order sequence ────────────────────────────────────────────────
 
 async function runDraftRecovery(now: number) {
-  const oldestCutoff = new Date(now - 24 * 8 * 60 * 60 * 1000);
-  const newestCutoff = new Date(now - 24 * 60 * 60 * 1000);
+  if (!isResumeDripEnabled()) {
+    return { scanned: 0, sent: 0, disabled: true };
+  }
+
+  const oldestHours = RESUME_DRIP_STEPS[RESUME_DRIP_STEPS.length - 1]!.maxHours;
+  const newestHours = RESUME_DRIP_STEPS[0]!.minHours;
+  const oldestCutoff = new Date(now - oldestHours * 60 * 60 * 1000);
+  const newestCutoff = new Date(now - newestHours * 60 * 60 * 1000);
+  const stepTypes = RESUME_DRIP_STEPS.map((step) => step.type);
 
   const drafts = await prisma.filing.findMany({
     where: {
@@ -78,70 +89,88 @@ async function runDraftRecovery(now: number) {
       adminArchivedAt: null,
       userArchivedAt: null,
       updatedAt: { gte: oldestCutoff, lte: newestCutoff },
+      payments: { none: { status: 'SUCCEEDED' } },
       user: {
         role: { not: 'ADMIN' },
-        NOT: {
-          email: { endsWith: '@launchforma.com', mode: 'insensitive' },
-        },
+        accountStatus: { not: 'DELETED' },
+        AND: [
+          { NOT: { email: { endsWith: '@launchforma.com', mode: 'insensitive' } } },
+          { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' } } },
+          { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' } } },
+        ],
       },
     },
-    include: { user: true },
+    include: {
+      user: true,
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
   });
 
   let sent = 0;
   for (const draft of drafts) {
-    // Belt and suspenders: never mail admins, @launchforma.com, or test/archived drafts.
-    if (shouldSkipDraftRecovery(draft)) continue;
-    const ageHours = (now - draft.updatedAt.getTime()) / (60 * 60 * 1000);
-    const bucket = DRAFT_BUCKETS.find(
-      (b) => ageHours >= b.minHours && ageHours < b.maxHours,
-    );
-    if (!bucket) continue;
+    try {
+      const prior = await prisma.emailNotification.findMany({
+        where: { filingId: draft.id, notificationType: { in: stepTypes } },
+        select: { notificationType: true },
+      });
+      const optedOut = await prisma.marketingOptOut.findUnique({
+        where: { email: normalizeEmail(draft.user.email) },
+        select: { id: true },
+      });
+      const decision = planResumeDrip({
+        enabled: true,
+        ageHours: ageHoursSince(draft.updatedAt, now),
+        sentTypes: prior.map((row) => row.notificationType),
+        status: draft.status,
+        paid: draft.payments.length > 0,
+        unsubscribed: Boolean(optedOut),
+        deleted: draft.user.accountStatus === 'DELETED',
+        skip: shouldSkipDraftRecovery(draft),
+      });
+      if (!decision.send) continue;
 
-    const alreadySent = await prisma.emailNotification.findFirst({
-      where: { filingId: draft.id, notificationType: bucket.type },
-      select: { id: true },
-    });
-    if (alreadySent) continue;
+      const wizardPath = wizardPathForDraft(draft.id, draft.currentStep);
+      const linkKind = resumeLinkPlan(draft.user);
+      const resumeUrl =
+        linkKind === 'guest' && draft.user.guestToken
+          ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken)
+          : linkKind === 'login-link'
+            ? await createLoginLink(draft.userId, wizardPath)
+            : signInResumeUrl(SITE_URL, wizardPath);
+      const unsubscribeUrl = unsubscribeLink(SITE_URL, draft.user.email);
 
-    // Build a CTA that actually works for the recipient. Guests have no
-    // password/dashboard, so we hand them a tokenized /resume link that
-    // re-authorizes them straight back into the wizard. Account holders go to
-    // their dashboard (they can sign in).
-    const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
-    const resumeUrl =
-      draft.user.accountStatus === 'GUEST' && draft.user.guestToken
-        ? `${SITE_URL}/resume?f=${draft.id}&t=${draft.user.guestToken}`
-        : `${SITE_URL}/dashboard`;
+      await sendEmail({
+        type: decision.send,
+        to: draft.user.email,
+        filingId: draft.id,
+        userId: draft.userId,
+        replyTo: resumeEmailReplyTo(),
+        listUnsubscribeUrl: unsubscribeUrl,
+        context: {
+          firstName: draft.user.firstName,
+          businessName: draft.businessName ?? undefined,
+          resumeUrl,
+          unsubscribeUrl,
+          locale: resolveDripLocale(draft.locale, draft.user.locale),
+        },
+      });
 
-    await sendEmail({
-      type: bucket.type,
-      to: draft.user.email,
-      filingId: draft.id,
-      userId: draft.userId,
-      context: {
-        firstName: draft.user.firstName,
-        businessName: draft.businessName ?? undefined,
-        resumeUrl,
-      },
-    });
-    sent++;
+      if (decision.final && !draft.abandonedAt) {
+        await prisma.filing.update({
+          where: { id: draft.id },
+          data: { abandonedAt: new Date(now) },
+        });
+      }
+      sent++;
+    } catch (err) {
+      console.error('[recovery] resume drip failed', draft.id, err);
+    }
   }
 
-  return { scanned: drafts.length, sent };
+  return { scanned: drafts.length, sent, disabled: false };
 }
 
 // ─── Registered-agent renewal reminders ───────────────────────────────────
-
-const RA_BUCKETS: Array<{
-  type: NotificationType;
-  minDays: number;
-  maxDays: number;
-}> = [
-  { type: 'RA_RENEWAL_60', minDays: 60, maxDays: 61 },
-  { type: 'RA_RENEWAL_30', minDays: 30, maxDays: 31 },
-  { type: 'RA_RENEWAL_7', minDays: 7, maxDays: 8 },
-];
 
 async function runRaRenewalReminders(now: number) {
   const horizon = new Date(now + 62 * 24 * 60 * 60 * 1000);
@@ -169,18 +198,18 @@ async function runRaRenewalReminders(now: number) {
 
   let sent = 0;
   for (const svc of services) {
-    const days = Math.floor((svc.renewalDate.getTime() - now) / (24 * 60 * 60 * 1000));
-    const bucket = RA_BUCKETS.find((b) => days >= b.minDays && days < b.maxDays);
+    const days = wholeDaysUntil(svc.renewalDate.getTime(), now);
+    const bucket = raRenewalTypeForDays(days);
     if (!bucket) continue;
 
     const alreadySent = await prisma.emailNotification.findFirst({
-      where: { filingId: svc.filingId, notificationType: bucket.type },
+      where: { filingId: svc.filingId, notificationType: bucket },
       select: { id: true },
     });
     if (alreadySent) continue;
 
     await sendEmail({
-      type: bucket.type,
+      type: bucket,
       to: svc.filing.user.email,
       filingId: svc.filingId,
       userId: svc.filing.userId,

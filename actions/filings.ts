@@ -40,6 +40,7 @@ import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
+import { storedLocale } from '@/lib/stored-locale';
 
 export async function createFiling(input?: {
   entityType?: 'LLC' | 'CORP';
@@ -57,6 +58,7 @@ export async function createFiling(input?: {
     ? (requestedState as StateCode)
     : 'FL';
 
+  const locale = await storedLocale();
   const filing = await prisma.filing.create({
     data: {
       userId: session.user.id,
@@ -64,6 +66,7 @@ export async function createFiling(input?: {
       state: stateCode,
       serviceTier: input?.tier ?? 'STANDARD',
       currentStep: 1,
+      ...(locale ? { locale } : {}),
       ...filingUtmCreateFields(),
     },
   });

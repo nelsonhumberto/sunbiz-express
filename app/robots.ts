@@ -12,6 +12,8 @@ const DISALLOW = [
   '/sign-up',
   '/guides/florida-llc-operating-agreement/download',
   '/es/guides/florida-llc-operating-agreement/download',
+  // Sample files live under /oa/<unguessable>/. Disallow the prefix, not the secret directory.
+  '/oa/',
 ];
 
 // AI / LLM crawlers we explicitly welcome for Generative Engine Optimization

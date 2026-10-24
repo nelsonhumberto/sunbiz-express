@@ -69,8 +69,8 @@ describe('resume drip schedule', () => {
     const last = planResumeDrip({ ...ready, ageHours: 72 });
     expect(last.send).toBe('RESUME_3D');
     expect(last.final).toBe(true);
-    expect(planResumeDrip({ ...ready, ageHours: 72.01 }).reason).toBe('window-closed');
-    expect(planResumeDrip({ ...ready, ageHours: 95 }).reason).toBe('window-closed');
+    expect(planResumeDrip({ ...ready, ageHours: 72.01 }).send).toBe('RESUME_3D');
+    expect(planResumeDrip({ ...ready, ageHours: 95 }).send).toBe('RESUME_3D');
     expect(planResumeDrip({ ...ready, ageHours: 96 }).reason).toBe('window-closed');
   });
 
@@ -147,39 +147,47 @@ describe('resume drip dedupe', () => {
     ).toBe('already-sent');
     expect(
       planResumeDrip({ ...ready, ageHours: 80, sentTypes: ['RESUME_1H', 'RESUME_1D', 'RESUME_3D'] }).reason,
-    ).toBe('window-closed');
+    ).toBe('already-sent');
+    expect(planResumeDrip({ ...ready, ageHours: 80, sentTypes: ['RESUME_1H', 'RESUME_1D'] }).send).toBe(
+      'RESUME_3D',
+    );
   });
 });
 
-describe('resume drip 3 day cap', () => {
-  it('sends no step once last activity is older than 3 days', () => {
-    expect(RESUME_DRIP_MAX_AGE_HOURS).toBe(72);
-    for (const ageHours of [73, 80, 96, 24 * 7, 24 * 30]) {
+describe('resume drip 96 hour cap', () => {
+  it('sends only RESUME_3D from 72 to 96 hours, and nothing after that', () => {
+    expect(RESUME_DRIP_MAX_AGE_HOURS).toBe(96);
+    for (const ageHours of [72, 73, 80, 95, 95.9]) {
+      const decision = planResumeDrip({ ...ready, ageHours });
+      expect(decision.send).toBe('RESUME_3D');
+      expect(decision.final).toBe(true);
+    }
+    for (const ageHours of [96, 96.01, 24 * 7, 24 * 30]) {
       const decision = planResumeDrip({ ...ready, ageHours });
       expect(decision.send).toBeNull();
       expect(decision.reason).toBe('window-closed');
     }
-    expect(planResumeDrip({ ...ready, ageHours: 72 }).send).toBe('RESUME_3D');
     expect(planResumeDrip({ ...ready, ageHours: 71 }).send).toBe('RESUME_1D');
+    expect(planResumeDrip({ ...ready, ageHours: 23.5 }).send).toBe('RESUME_1H');
     expect(planResumeDrip({ ...ready, ageHours: 2 }).send).toBe('RESUME_1H');
   });
 
-  it('queries only drafts whose updatedAt is within the last 3 days', () => {
+  it('queries a 72 to 96 hour window only for RESUME_3D', () => {
     const now = Date.parse('2026-10-24T12:00:00.000Z');
+    const at = (hours: number) => new Date(now - hours * 60 * 60 * 1000);
     const args = resumeDraftListArgs(now);
-    const cutoff = new Date(now - RESUME_DRIP_MAX_AGE_HOURS * 60 * 60 * 1000).toISOString();
-    const beyond = new Date(now - 96 * 60 * 60 * 1000).toISOString();
+    expect(args.where.updatedAt).toEqual({ gt: at(96) });
+    const windows = Object.fromEntries(
+      args.where.OR.map((branch) => [branch.notifications.none.notificationType, branch.updatedAt]),
+    );
+    expect(windows).toEqual({
+      RESUME_1H: { gt: at(24), lte: at(1) },
+      RESUME_1D: { gt: at(72), lte: at(24) },
+      RESUME_3D: { gt: at(96), lte: at(72) },
+    });
     const json = JSON.stringify(args.where);
-    expect(args.where.updatedAt).toEqual({ gte: new Date(cutoff) });
-    expect(json).toContain(cutoff);
-    expect(json).not.toContain(beyond);
-    const windows = args.where.OR.map((branch) => branch.updatedAt);
-    expect(windows).toContainEqual({ gte: new Date(cutoff), lte: new Date(cutoff) });
-    for (const window of windows) {
-      const oldest = 'gte' in window ? window.gte : window.gt;
-      expect(oldest).toBeInstanceOf(Date);
-      expect(oldest?.getTime()).toBeGreaterThanOrEqual(new Date(cutoff).getTime());
-    }
+    expect(json).toContain(at(96).toISOString());
+    expect(json).not.toContain(at(24 * 7).toISOString());
   });
 });
 

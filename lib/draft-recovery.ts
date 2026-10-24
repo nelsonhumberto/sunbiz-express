@@ -176,28 +176,28 @@ export interface ResumeDripStep {
   type: ResumeDripType;
   /** Inclusive, hours since the draft last changed. */
   minHours: number;
-  /**
-   * Hours since the draft last changed. Exclusive, except the final step,
-   * which includes this instant.
-   */
+  /** Exclusive. Hours since the draft last changed. */
   maxHours: number;
   /** The last email. The cron stamps Filing.abandonedAt when this one is sent. */
   final: boolean;
 }
 
-/** Nothing older than 3 days since updatedAt is eligible for any resume step. */
-export const RESUME_DRIP_MAX_AGE_HOURS = 72;
+/**
+ * Nothing at or past 96 hours since updatedAt is eligible.
+ * RESUME_3D is the only step that can match from 72 hours up to this bound.
+ */
+export const RESUME_DRIP_MAX_AGE_HOURS = 96;
 
 /**
  * About 1 hour, 1 day, and 3 days after a draft goes idle.
- * Each step stays open until the next one starts. The last step matches only
- * the exact 3 day mark. A draft older than that is closed, so an old backlog
- * cannot receive the 1 hour email.
+ * RESUME_1H is 1 to 24 hours and RESUME_1D is 24 to 72 hours.
+ * RESUME_3D stays open from 72 to 96 hours so the four daily crons can send it.
+ * An older backlog matches no step, so it cannot receive the 1 hour email.
  */
 export const RESUME_DRIP_STEPS: readonly ResumeDripStep[] = [
   { type: 'RESUME_1H', minHours: 1, maxHours: 24, final: false },
   { type: 'RESUME_1D', minHours: 24, maxHours: 72, final: false },
-  { type: 'RESUME_3D', minHours: RESUME_DRIP_MAX_AGE_HOURS, maxHours: RESUME_DRIP_MAX_AGE_HOURS, final: true },
+  { type: 'RESUME_3D', minHours: 72, maxHours: RESUME_DRIP_MAX_AGE_HOURS, final: true },
 ];
 
 export type ResumeDripReason =
@@ -242,16 +242,13 @@ export function planResumeDrip(candidate: ResumeDripCandidate): ResumeDripDecisi
     return STOPPED;
   }
 
-  if (candidate.ageHours > RESUME_DRIP_MAX_AGE_HOURS) {
+  if (candidate.ageHours >= RESUME_DRIP_MAX_AGE_HOURS) {
     return { send: null, final: false, reason: 'window-closed' };
   }
 
-  const step = RESUME_DRIP_STEPS.find((item) => {
-    if (candidate.ageHours < item.minHours) return false;
-    return item.final
-      ? candidate.ageHours <= item.maxHours
-      : candidate.ageHours < item.maxHours;
-  });
+  const step = RESUME_DRIP_STEPS.find(
+    (item) => candidate.ageHours >= item.minHours && candidate.ageHours < item.maxHours,
+  );
   if (!step) {
     const first = RESUME_DRIP_STEPS[0];
     if (first && candidate.ageHours < first.minHours) {
@@ -381,19 +378,18 @@ function blockingResumeNotification(type: ResumeDripType, nowMs: number) {
 }
 
 function resumeStepUpdatedAt(step: ResumeDripStep, now: number) {
-  const oldest = new Date(now - step.maxHours * 60 * 60 * 1000);
-  const newest = new Date(now - step.minHours * 60 * 60 * 1000);
-  // The final step is the exact 3 day mark. An earlier updatedAt is older than 3 days.
-  if (step.final) return { gte: oldest, lte: newest };
-  return { gt: oldest, lte: newest };
+  return {
+    gt: new Date(now - step.maxHours * 60 * 60 * 1000),
+    lte: new Date(now - step.minHours * 60 * 60 * 1000),
+  };
 }
 
 /**
  * Oldest drafts that still have a step to send. A draft waiting between
  * steps, or stuck on a fresh claim or a maxed failure, is not in this set,
  * so it cannot fill the page ahead of a newer 1h draft.
- * updatedAt is the last-activity clock. Anything older than 3 days is out,
- * including the old backlog that used to look like a late 1 hour send.
+ * updatedAt is the last-activity clock. Anything 96 hours or older is out.
+ * From 72 to 96 hours the only matching step is RESUME_3D.
  * `take` is the page size. The job keeps reading pages until it has attempted
  * RESUME_DRIP_BATCH_SIZE sends or the window is empty.
  */
@@ -406,7 +402,7 @@ export function resumeDraftListArgs(now: number) {
       adminArchivedAt: null,
       userArchivedAt: null,
       abandonedAt: null,
-      updatedAt: { gte: oldestActivity },
+      updatedAt: { gt: oldestActivity },
       payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
         role: { not: 'ADMIN' as const },

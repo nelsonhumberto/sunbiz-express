@@ -132,6 +132,15 @@ describe('contact phone migration', () => {
   });
 });
 
+describe('authorized shares copy', () => {
+  it('spells the share range in words', () => {
+    expect(en.wizard.authorizedSharesHint).toContain('1,000 to 10,000,000');
+    expect(en.wizard.authorizedSharesHelp).toContain('1,000 to 10,000,000');
+    expect(es.wizard.authorizedSharesHint).toContain('1,000 a 10,000,000');
+    expect(es.wizard.authorizedSharesHelp).toContain('1,000 a 10,000,000');
+  });
+});
+
 describe('start form strings', () => {
   it('has a field-required message in both locales', () => {
     expect(en.start.fieldRequired.length).toBeGreaterThan(0);

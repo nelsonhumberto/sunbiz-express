@@ -13,7 +13,7 @@
  */
 
 import { prisma } from './db';
-import { isDeliverableEmail, normalizeEmail } from './email-address';
+import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from './email-address';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
@@ -534,7 +534,20 @@ export async function deliverEmailDirect(to: string, subject: string, html: stri
   return deliverEmail(to, subject, html);
 }
 
-async function deliverEmail(to: string, subject: string, html: string) {
+async function deliverEmail(
+  to: string,
+  subject: string,
+  html: string,
+): Promise<{ ok: true }> {
+  // QA and end-to-end fixtures (local part qa+ or e2e+, any case) are not
+  // handed to Resend or SMTP. Transactional, drip, and abandoned-cart mail
+  // all reach this helper, as does direct delivery. Callers treat the return
+  // as a successful send.
+  if (isQaOrE2eRecipient(to)) {
+    console.log(`[email] skipped test recipient: ${normalizeEmail(to)}`);
+    return { ok: true };
+  }
+
   const resendKey = process.env.RESEND_API_KEY;
   const smtpHost  = process.env.SMTP_HOST;
   const smtpUser  = process.env.SMTP_USER;
@@ -549,7 +562,7 @@ async function deliverEmail(to: string, subject: string, html: string) {
       console.error('[email] Resend error:', error);
       throw new Error(`Email delivery failed: ${error.message}`);
     }
-    return;
+    return { ok: true };
   }
 
   if (smtpHost && smtpUser && smtpPass) {
@@ -562,11 +575,12 @@ async function deliverEmail(to: string, subject: string, html: string) {
       auth: { user: smtpUser, pass: smtpPass },
     });
     await transporter.sendMail({ from: FROM, to, subject, html });
-    return;
+    return { ok: true };
   }
 
   // ── Option 3: console only (dev / no credentials) ─────────────────────
   console.log(`[email] → ${to} | "${subject}" (no RESEND_API_KEY or SMTP_* set)`);
+  return { ok: true };
 }
 
 /** True when at least one real delivery provider is configured. */
@@ -602,27 +616,34 @@ export async function sendEmail(args: SendEmailArgs) {
     return { ...record, status: 'FAILED', errorMessage: msg };
   }
 
-  const suppressed = await prisma.emailSuppression.findUnique({
-    where: { email: normalizeEmail(recipient) },
-    select: { id: true },
-  });
-  if (suppressed) {
-    const msg = 'Recipient is on the suppression list.';
-    console.warn(`[email] skipped suppressed recipient: ${normalizeEmail(recipient)}`);
-    const record = await prisma.emailNotification.create({
-      data: {
-        notificationType: args.type,
-        recipientEmail: recipient,
-        subject,
-        templateName: args.type.toLowerCase(),
-        htmlBody: body,
-        status: 'FAILED',
-        errorMessage: msg,
-        filingId: args.filingId,
-        userId: args.userId,
-      },
+  // Test fixtures return success from deliverEmail without a provider. Skip
+  // the suppression lookup and the "no provider" failure so every caller
+  // (transactional, drip, abandoned-cart) records a successful skip.
+  const testRecipient = isQaOrE2eRecipient(recipient);
+
+  if (!testRecipient) {
+    const suppressed = await prisma.emailSuppression.findUnique({
+      where: { email: normalizeEmail(recipient) },
+      select: { id: true },
     });
-    return { ...record, status: 'FAILED', errorMessage: msg };
+    if (suppressed) {
+      const msg = 'Recipient is on the suppression list.';
+      console.warn(`[email] skipped suppressed recipient: ${normalizeEmail(recipient)}`);
+      const record = await prisma.emailNotification.create({
+        data: {
+          notificationType: args.type,
+          recipientEmail: recipient,
+          subject,
+          templateName: args.type.toLowerCase(),
+          htmlBody: body,
+          status: 'FAILED',
+          errorMessage: msg,
+          filingId: args.filingId,
+          userId: args.userId,
+        },
+      });
+      return { ...record, status: 'FAILED', errorMessage: msg };
+    }
   }
 
   // Persist to DB first so the admin Outbox always has a record. We start in
@@ -645,7 +666,7 @@ export async function sendEmail(args: SendEmailArgs) {
   // No provider configured → leave the record as QUEUED with a clear reason
   // instead of pretending it was sent. This is what surfaces a misconfigured
   // production environment instead of silently swallowing mail.
-  if (!isEmailDeliveryConfigured()) {
+  if (!testRecipient && !isEmailDeliveryConfigured()) {
     const msg =
       'No email provider configured (set RESEND_API_KEY or SMTP_HOST/USER/PASS).';
     console.error(`[email] NOT DELIVERED → ${recipient} | "${subject}" | ${msg}`);

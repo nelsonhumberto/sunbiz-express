@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { describe, expect, it } from 'vitest';
-import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
+import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from '@/lib/email-address';
 import { shouldSkipDraftRecovery } from '@/lib/draft-recovery';
 import { parseEmailBounce, shouldSuppressBounce } from '@/lib/resend-bounce';
 import { verifySvixSignature } from '@/lib/svix';
@@ -24,6 +24,25 @@ describe('recipient validation', () => {
     expect(isDeliverableEmail('a@b')).toBe(false);
     expect(isDeliverableEmail('bad yuki.t@example.com')).toBe(false);
     expect(isDeliverableEmail('')).toBe(false);
+  });
+});
+
+describe('qa and e2e recipient prefixes', () => {
+  it('matches qa+ and e2e+ at the start of the local part, in any case', () => {
+    expect(isQaOrE2eRecipient('qa+buyer@example.com')).toBe(true);
+    expect(isQaOrE2eRecipient('QA+Buyer@Example.com')).toBe(true);
+    expect(isQaOrE2eRecipient('  e2e+cart@example.com ')).toBe(true);
+    expect(isQaOrE2eRecipient('E2E+Cart@Example.COM')).toBe(true);
+    expect(isQaOrE2eRecipient('qa+@example.com')).toBe(true);
+  });
+
+  it('leaves ordinary addresses and other plus-addresses alone', () => {
+    expect(isQaOrE2eRecipient('buyer@example.com')).toBe(false);
+    expect(isQaOrE2eRecipient('qa.buyer@example.com')).toBe(false);
+    expect(isQaOrE2eRecipient('notqa+buyer@example.com')).toBe(false);
+    expect(isQaOrE2eRecipient('user+e2e+@example.com')).toBe(false);
+    expect(isQaOrE2eRecipient('e2e@example.com')).toBe(false);
+    expect(isQaOrE2eRecipient('buyer@qa+example.com')).toBe(false);
   });
 });
 

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendEmail, type NotificationType } from '@/lib/email';
-import { shouldSkipDraftRecovery } from '@/lib/draft-recovery';
+import {
+  shouldSkipDraftRecovery,
+  shouldSkipSevenDayAbandoned,
+  shouldStampAbandonedAt,
+} from '@/lib/draft-recovery';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -67,7 +71,7 @@ const DRAFT_BUCKETS: Array<{
   { type: 'ABANDONED_7D', minHours: 24 * 7, maxHours: 24 * 8 },
 ];
 
-async function runDraftRecovery(now: number) {
+export async function runDraftRecovery(now: number) {
   const oldestCutoff = new Date(now - 24 * 8 * 60 * 60 * 1000);
   const newestCutoff = new Date(now - 24 * 60 * 60 * 1000);
 
@@ -98,6 +102,9 @@ async function runDraftRecovery(now: number) {
     );
     if (!bucket) continue;
 
+    // A DRAFT that already has abandonedAt has received the 7-day mail.
+    if (bucket.type === 'ABANDONED_7D' && shouldSkipSevenDayAbandoned(draft)) continue;
+
     const alreadySent = await prisma.emailNotification.findFirst({
       where: { filingId: draft.id, notificationType: bucket.type },
       select: { id: true },
@@ -114,7 +121,7 @@ async function runDraftRecovery(now: number) {
         ? `${SITE_URL}/resume?f=${draft.id}&t=${draft.user.guestToken}`
         : `${SITE_URL}/dashboard`;
 
-    await sendEmail({
+    const delivery = await sendEmail({
       type: bucket.type,
       to: draft.user.email,
       filingId: draft.id,
@@ -125,6 +132,18 @@ async function runDraftRecovery(now: number) {
         resumeUrl,
       },
     });
+    if (
+      shouldStampAbandonedAt({
+        status: draft.status,
+        notificationType: bucket.type,
+        deliveryStatus: delivery.status,
+      })
+    ) {
+      await prisma.filing.updateMany({
+        where: { id: draft.id, status: 'DRAFT', abandonedAt: null },
+        data: { abandonedAt: new Date(now) },
+      });
+    }
     sent++;
   }
 

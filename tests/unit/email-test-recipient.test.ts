@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const send = vi.hoisted(() => vi.fn());
-const Resend = vi.hoisted(() =>
-  vi.fn().mockImplementation(() => ({
-    emails: { send },
-  })),
-);
+const { send, resendCalls, Resend } = vi.hoisted(() => {
+  const send = vi.fn();
+  const resendCalls: unknown[][] = [];
+  class Resend {
+    emails = { send };
+    constructor(...args: unknown[]) {
+      resendCalls.push(args);
+    }
+  }
+  return { send, resendCalls, Resend };
+});
 const create = vi.hoisted(() => vi.fn());
 const update = vi.hoisted(() => vi.fn());
 const findUnique = vi.hoisted(() => vi.fn());
@@ -27,7 +32,7 @@ const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[k
 beforeEach(() => {
   send.mockReset();
   send.mockResolvedValue({ data: { id: 're_1' }, error: null });
-  Resend.mockClear();
+  resendCalls.length = 0;
   create.mockReset();
   update.mockReset();
   findUnique.mockReset();
@@ -67,12 +72,12 @@ describe('test-address suppression', () => {
 
     for (const args of cases) {
       send.mockClear();
-      Resend.mockClear();
+      resendCalls.length = 0;
       log.mockClear();
       const result = await sendEmail({ type: args.type, to: args.to, filingId: 'fil_1' });
       expect(result.status).toBe('SENT');
       expect(send).not.toHaveBeenCalled();
-      expect(Resend).not.toHaveBeenCalled();
+      expect(resendCalls).toEqual([]);
       expect(log).toHaveBeenCalledWith(`[email] skipped test recipient: ${args.logged}`);
     }
 
@@ -85,7 +90,7 @@ describe('test-address suppression', () => {
     const result = await sendEmail({ type: 'WELCOME', to: 'qa+signup@example.com' });
     expect(result.status).toBe('SENT');
     expect(send).not.toHaveBeenCalled();
-    expect(Resend).not.toHaveBeenCalled();
+    expect(resendCalls).toEqual([]);
     expect(log).toHaveBeenCalledWith('[email] skipped test recipient: qa+signup@example.com');
     log.mockRestore();
   });
@@ -93,7 +98,7 @@ describe('test-address suppression', () => {
   it('still delivers a normal recipient through Resend', async () => {
     const result = await sendEmail({ type: 'WELCOME', to: 'buyer@example.com' });
     expect(result.status).toBe('SENT');
-    expect(Resend).toHaveBeenCalledWith('re_test_key');
+    expect(resendCalls).toEqual([['re_test_key']]);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: 'buyer@example.com' }));
   });

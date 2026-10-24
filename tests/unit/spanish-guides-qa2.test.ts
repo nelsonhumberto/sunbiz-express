@@ -65,15 +65,19 @@ describe('Spanish guides QA round 2', () => {
     expect(broward).not.toContain('[Business Tax]');
     expect(broward).not.toContain('[Certificate of Use]');
     expect(broward).toContain('## Primero, forma la LLC');
-    expect(messages.guideBrowardBtr.ctaHeadline).toBe('Primero, forma la LLC');
+    expect(messages.guideBrowardBtr.ctaHeadline).toBe('Forma tu LLC con LaunchForma');
 
     expect(messages.guideMiamiBtr.body).toContain('## Primero, forma la LLC');
     expect(messages.guideMiamiBtr.body).not.toContain('## Primero, la LLC\n');
-    expect(messages.guideMiamiBtr.ctaHeadline).toBe('Primero, forma la LLC');
+    expect(messages.guideMiamiBtr.ctaHeadline).toBe('Forma tu LLC con LaunchForma');
 
     expect(messages.guideLlcApp.body).toContain('## Antes de publicar');
-    expect(messages.guideLlcApp.ctaHeadline).toBe('Antes de publicar');
+    expect(messages.guideLlcApp.ctaHeadline).toBe('Forma tu LLC con LaunchForma');
     expect(messages.guideLlcApp.body).not.toContain('Ponle nombre de empresa a la app');
+    expect(messages.guideLlcApp.body).toContain(
+      '[IRS, cómo obtener un EIN](https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number)',
+    );
+    expect(messages.guideLlcApp.body).not.toContain('get an employer identification number');
   });
 
   it('relabels the D-U-N-S link and does not end a sentence with EE. UU..', () => {
@@ -93,7 +97,8 @@ describe('Spanish guides QA round 2', () => {
 
   it('keeps claims that match the linked official page, and does not touch prices', () => {
     const broward = messages.guideBrowardBtr.body ?? '';
-    expect(broward).toContain('24 a 48 horas');
+    expect(visible(broward)).toContain('suele ser rápido; confirma el plazo con el condado');
+    expect(broward).not.toContain('24 a 48 horas');
     expect(broward).toContain(
       'https://www.broward.org/recordstaxestreasury/taxesfees/lists/localbusiness/allitems.aspx',
     );

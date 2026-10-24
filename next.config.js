@@ -75,6 +75,11 @@ const nextConfig = {
         source: '/:path*',
         headers: SECURITY_HEADERS,
       },
+      {
+        // Operating agreement samples. noindex so a leaked URL is not indexed.
+        source: '/oa/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
     ];
   },
   async redirects() {

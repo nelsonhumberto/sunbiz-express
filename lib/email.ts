@@ -489,7 +489,7 @@ const TEMPLATES: Record<
           <p><a href="${singleDocx}">Word de un miembro</a></p>
           <p><a href="${multiPdf}">PDF de varios miembros</a></p>
           <p><a href="${multiDocx}">Word de varios miembros</a></p>
-          <p class="muted">Los enlaces vencen en 7 días. La muestra es información general, no asesoría legal. Pide a un abogado que la revise antes de usarla. LaunchForma no es un despacho de abogados.</p>
+          <p class="muted">La muestra es información general, no asesoría legal. Pide a un abogado que la revise antes de usarla. LaunchForma no es un despacho de abogados.</p>
           <p class="muted"><a href="${unsub}">Darme de baja</a></p>
         `,
       };
@@ -503,7 +503,7 @@ const TEMPLATES: Record<
         <p><a href="${singleDocx}">Single-member Word</a></p>
         <p><a href="${multiPdf}">Multi-member PDF</a></p>
         <p><a href="${multiDocx}">Multi-member Word</a></p>
-        <p class="muted">These links expire in 7 days. The sample is general information, not legal advice. Have an attorney review it before you use it. LaunchForma is not a law firm.</p>
+        <p class="muted">The sample is general information, not legal advice. Have an attorney review it before you use it. LaunchForma is not a law firm.</p>
         <p class="muted"><a href="${unsub}">Unsubscribe</a></p>
       `,
     };

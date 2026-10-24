@@ -12,14 +12,16 @@ export function oaTemplateDownloadEnabled(): boolean {
 }
 
 export const OA_TEMPLATE_SOURCE = 'oa-template';
-export const OA_BUCKET = 'lead-magnets';
-/** Confirm link lifetime. Signed file URLs use OA_SIGNED_URL_TTL_SECONDS. */
+/**
+ * Unguessable folder under public/oa. The samples are static files.
+ * Do not print this value in robots.txt; disallow /oa/ and send noindex.
+ */
+export const OA_PUBLIC_DIR = '00b55f865c09bd021c4d3248a27f39ef';
+/** Confirm link lifetime. */
 export const OA_CONFIRM_TTL_MS = 48 * 60 * 60 * 1000;
-/** Suggested lifetime for private Storage signed URLs. */
-export const OA_SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
-/** Download-page cookie lifetime, aligned with the signed URL window. */
+/** How long the confirmed download page remembers the lead. The files themselves stay put. */
 export const OA_DOWNLOAD_COOKIE = 'oa_dl';
-export const OA_DOWNLOAD_COOKIE_TTL_SECONDS = OA_SIGNED_URL_TTL_SECONDS;
+export const OA_DOWNLOAD_COOKIE_TTL_SECONDS = 7 * 24 * 60 * 60;
 /** 32 random bytes in base64url: 43 chars, no padding. */
 export const OA_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const LEAD_ID_PATTERN =
@@ -33,12 +35,12 @@ export interface OaTemplateAsset {
   locale: OaTemplateLocale;
   variant: OaTemplateVariant;
   format: OaTemplateFormat;
-  /** Object name inside the private `lead-magnets` bucket. */
+  /** File name inside public/oa/<OA_PUBLIC_DIR>/. */
   filename: string;
   label: string;
 }
 
-/** Built samples committed under content/oa-templates/downloads. */
+/** Built samples committed under public/oa/<OA_PUBLIC_DIR>/. */
 export const OA_TEMPLATE_ASSETS: OaTemplateAsset[] = [
   {
     locale: 'en',
@@ -110,6 +112,30 @@ export const OA_COMING_SOON: Record<OaTemplateLocale, string> = {
 
 export function oaTemplateAssets(locale: OaTemplateLocale): OaTemplateAsset[] {
   return OA_TEMPLATE_ASSETS.filter((item) => item.locale === locale);
+}
+
+export interface OaDownloadLink {
+  filename: string;
+  label: string;
+  url: string;
+  format: OaTemplateFormat;
+  variant: OaTemplateVariant;
+}
+
+/** Public path of one sample. No storage client and no signed URL. */
+export function oaAssetPath(filename: string): string {
+  return `/oa/${OA_PUBLIC_DIR}/${filename}`;
+}
+
+/** Four links for the locale: single and multi member, PDF and Word. */
+export function oaTemplateLinks(locale: OaTemplateLocale): OaDownloadLink[] {
+  return oaTemplateAssets(locale).map((asset) => ({
+    filename: asset.filename,
+    label: asset.label,
+    format: asset.format,
+    variant: asset.variant,
+    url: `${siteUrl()}${oaAssetPath(asset.filename)}`,
+  }));
 }
 
 export function oaTemplateLocale(value: unknown): OaTemplateLocale {
@@ -213,12 +239,3 @@ export function openOaDownloadSession(
   }
 }
 
-/** Turn a Storage sign response path into an absolute URL. */
-export function absoluteStorageSignedUrl(supabaseUrl: string, signedPath: string): string {
-  const base = supabaseUrl.replace(/\/$/, '');
-  if (signedPath.startsWith('http://') || signedPath.startsWith('https://')) return signedPath;
-  if (signedPath.startsWith('/storage/v1/')) return `${base}${signedPath}`;
-  if (signedPath.startsWith('/object/')) return `${base}/storage/v1${signedPath}`;
-  const path = signedPath.startsWith('/') ? signedPath : `/${signedPath}`;
-  return `${base}/storage/v1${path}`;
-}

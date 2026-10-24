@@ -3,7 +3,6 @@ import 'server-only';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
-import { signOaTemplateLinks, type OaSignedLink } from '@/lib/oa-template-storage';
 import {
   OA_TEMPLATE_SOURCE,
   OA_TOKEN_PATTERN,
@@ -11,9 +10,11 @@ import {
   mintOaToken,
   oaConfirmExpiry,
   oaConfirmUrl,
+  oaTemplateLinks,
   oaTemplateLocale,
   oaUnsubscribeSignatureValid,
   oaUnsubscribeUrl,
+  type OaDownloadLink,
   type OaTemplateLocale,
 } from '@/lib/oa-template';
 
@@ -29,9 +30,9 @@ export interface OaLeadSubmitInput {
 }
 
 function linkBy(
-  links: OaSignedLink[],
-  variant: OaSignedLink['variant'],
-  format: OaSignedLink['format'],
+  links: OaDownloadLink[],
+  variant: OaDownloadLink['variant'],
+  format: OaDownloadLink['format'],
 ): string {
   const link = links.find((item) => item.variant === variant && item.format === format);
   if (!link) throw new Error(`Missing ${variant} ${format} link`);
@@ -39,13 +40,7 @@ function linkBy(
 }
 
 async function sendDownloadEmail(email: string, locale: OaTemplateLocale, leadId: string): Promise<boolean> {
-  let links: OaSignedLink[];
-  try {
-    links = await signOaTemplateLinks(locale);
-  } catch (err) {
-    logger.error('oa template sign failed', { area: 'marketing', tag: 'oa-template-sign' }, err);
-    return false;
-  }
+  const links = oaTemplateLinks(locale);
   const sent = await sendEmail({
     type: 'OA_TEMPLATE_DOWNLOAD',
     to: email,
@@ -241,7 +236,7 @@ export async function unsubscribeOaTemplateLead(
   return { locale: oaTemplateLocale(lead.locale) };
 }
 
-/** Confirmed lead that may see signed links. */
+/** Confirmed lead that may see the static sample links. */
 export async function confirmedOaLeadForSession(leadId: string) {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead || lead.source !== OA_TEMPLATE_SOURCE) return null;

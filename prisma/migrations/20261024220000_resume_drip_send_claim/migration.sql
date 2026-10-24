@@ -8,25 +8,6 @@ ALTER TABLE "EmailNotification" ADD COLUMN IF NOT EXISTS "claimedAt" TIMESTAMP(3
 
 ALTER TABLE "Filing" ADD COLUMN IF NOT EXISTS "entryPath" TEXT;
 
-DELETE FROM "EmailNotification"
-WHERE id IN (
-  SELECT id FROM (
-    SELECT
-      id,
-      ROW_NUMBER() OVER (
-        PARTITION BY "filingId", "notificationType"
-        ORDER BY
-          CASE WHEN status = 'SENT' THEN 0 ELSE 1 END,
-          "createdAt" DESC,
-          id DESC
-      ) AS rn
-    FROM "EmailNotification"
-    WHERE "notificationType" IN ('RESUME_1H', 'RESUME_1D', 'RESUME_3D')
-      AND "filingId" IS NOT NULL
-  ) ranked
-  WHERE rn > 1
-);
-
 UPDATE "EmailNotification"
 SET "step" = "notificationType"
 WHERE "notificationType" IN ('RESUME_1H', 'RESUME_1D', 'RESUME_3D')

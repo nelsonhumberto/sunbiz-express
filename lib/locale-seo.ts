@@ -30,6 +30,20 @@ export function localeAlternates(
   };
 }
 
+/**
+ * hreflang for a Spanish-only URL. There is no English article, and the
+ * unprefixed path 308-redirects to /es, so `en` is omitted on purpose.
+ */
+export function spanishOnlyAlternates(esPath: string): NonNullable<Metadata['alternates']> {
+  return {
+    canonical: esPath,
+    languages: {
+      es: esPath,
+      'x-default': esPath,
+    },
+  };
+}
+
 export function buildLocaleAlternates(englishPath: string): NonNullable<Metadata['alternates']> {
   const requestPath = headers().get(PUBLIC_PATH_HEADER) ?? '';
   return localeAlternates(englishPath, requestPath);

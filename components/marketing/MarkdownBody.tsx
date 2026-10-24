@@ -18,7 +18,11 @@ export function MarkdownBody({
           const next = href ? localizedHref(href, locale) : href;
           const external = Boolean(next?.startsWith('http'));
           return (
-            <a href={next} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+            <a
+              href={next}
+              className="break-words [overflow-wrap:anywhere]"
+              {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            >
               {children}
             </a>
           );

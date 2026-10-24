@@ -421,6 +421,8 @@ describe('resume drip claim and batch', () => {
     );
     expect(sql).toContain('("filingId", "notificationType", "step")');
     expect(sql).not.toContain('CREATE TABLE');
+    expect(sql).not.toContain('DELETE FROM');
+    expect(sql).toContain('SET "step" = "notificationType"');
     const job = readFileSync('lib/draft-recovery.ts', 'utf8');
     const body = job.slice(job.indexOf('async function runResumeDrip'));
     const claim = body.indexOf('claimResumeSend');

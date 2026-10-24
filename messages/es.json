@@ -873,7 +873,7 @@
     "packageDisclosure": "Incluye la tarifa de presentación estatal requerida. LaunchForma la paga al estado en tu nombre.",
     "raAutoRenewLabel": "Mantener mi Agente Registrado activo automáticamente",
     "raAutoRenewMandate": "Autorizo a LaunchForma a cobrar {price} a esta tarjeta el {renewalDate}, y una vez cada año después, para renovar mi servicio de Agente Registrado hasta que cancele. Tu primer año es gratis - este es el cobro de renovación posterior. Cancela cuando quieras desde tu panel antes de la fecha de renovación.",
-    "testModeBadge": "Modo de prueba — sin cargo real",
+    "testModeBadge": "Modo de prueba. Sin cargo real.",
     "afterPaymentHeadline": "Qué sucede después del pago",
     "afterPaymentStep1": "Enviamos tu trámite al Departamento de Estado de {state} (en 1 día hábil).",
     "afterPaymentStep2": "{state} revisa y aprueba la formación.",

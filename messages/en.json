@@ -873,7 +873,7 @@
     "packageDisclosure": "Includes the required state filing fee. LaunchForma remits the fee on your behalf.",
     "raAutoRenewLabel": "Keep my Registered Agent active automatically",
     "raAutoRenewMandate": "I authorize LaunchForma to charge this card {price} on {renewalDate}, and once every year after, to renew my Registered Agent service until I cancel. Your first year is free - this is the renewal after it. Cancel anytime from your dashboard before the renewal date.",
-    "testModeBadge": "Test mode — no real charge",
+    "testModeBadge": "Test mode. No real charge.",
     "afterPaymentHeadline": "What happens after payment",
     "afterPaymentStep1": "We submit your filing to the {state} Department of State (within 1 business day).",
     "afterPaymentStep2": "{state} reviews and approves your formation.",

@@ -116,8 +116,8 @@ describe('registered agent renewal copy', () => {
       expect(messages.wizard.phoneInvalid.length).toBeGreaterThan(0);
       expect(messages.wizard.packageNotChosen.length).toBeGreaterThan(0);
     }
-    expect(en.wizard.testModeBadge).toBe('Test mode — no real charge');
-    expect(es.wizard.testModeBadge).toBe('Modo de prueba — sin cargo real');
+    expect(en.wizard.testModeBadge).toBe('Test mode. No real charge.');
+    expect(es.wizard.testModeBadge).toBe('Modo de prueba. Sin cargo real.');
   });
 });
 

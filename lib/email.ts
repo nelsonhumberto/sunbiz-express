@@ -19,8 +19,9 @@ import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
 import { buildChecklistEmail, buildResumeEmail } from './drip-email';
-import type { ResumeStepId } from './drip-copy';
+import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
+import { isResumeDripType, RESUME_DRIP_MAX_ATTEMPTS } from './resume-drip-claim';
 import { listUnsubscribeHeaders } from './unsubscribe';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ interface EmailContext {
    * the abandoned-draft recovery emails so the CTA isn't a dead-end.
    */
   resumeUrl?: string;
-  /** en or es. Resume and checklist mail default to Spanish when this is missing. */
+  /** en or es. Resume and checklist mail use English when this is missing. */
   locale?: string;
   /** Signed unsubscribe URL for marketing mail. */
   unsubscribeUrl?: string;
@@ -134,6 +135,11 @@ export interface SendEmailArgs {
   replyTo?: string;
   /** HTTPS unsubscribe URL. Adds List-Unsubscribe and the one-click POST header. */
   listUnsubscribeUrl?: string;
+  /**
+   * Update this EmailNotification instead of inserting another row.
+   * The resume drip claims the row (PENDING) before delivery.
+   */
+  notificationId?: string;
 }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -264,7 +270,10 @@ const TEMPLATES: Record<
       siteUrl,
       unsubscribeUrl: ctx.unsubscribeUrl,
     });
-    return { subject: built.subject, body: html`${built.inner}` };
+    return {
+      subject: built.subject,
+      body: wrap(built.inner, { locale: dripShellLocale(ctx.locale) }),
+    };
   },
   DRAFT_REENGAGE: ({
     firstName,
@@ -531,6 +540,10 @@ function html(strings: TemplateStringsArray, ...vars: unknown[]) {
   return wrap(result);
 }
 
+function dripShellLocale(locale: string | null | undefined): DripLocale {
+  return locale === 'es' ? 'es' : 'en';
+}
+
 /** OA mail has no account, so the footer preferences link is the unsubscribe URL. */
 function localizedHtml(ctx: EmailContext) {
   const locale = ctx.oaLocale === 'es' ? 'es' : 'en';
@@ -544,20 +557,18 @@ function localizedHtml(ctx: EmailContext) {
   };
 }
 
-function wrap(inner: string, shell: { locale?: 'en' | 'es'; preferencesUrl?: string } = {}) {
+function wrap(
+  inner: string,
+  options: { locale?: DripLocale; preferencesUrl?: string } = {},
+) {
+  const copy = emailShellCopy(options.locale === 'es' ? 'es' : 'en');
   // Modern transactional shell: full-bleed canvas, white card, brand blue
   // CTA matching the live site (#1565FF). Table-based for Outlook safety.
-  const es = shell.locale === 'es';
-  const lang = es ? 'es' : 'en';
-  const preferencesHref = shell.preferencesUrl
-    ? escapeHtml(shell.preferencesUrl)
+  const preferencesHref = options.preferencesUrl
+    ? escapeHtml(options.preferencesUrl)
     : `${siteUrl}/dashboard/settings`;
-  const tagline = es ? 'Forma tu empresa con claridad' : 'Form your business the honest way';
-  const questions = es ? '¿Preguntas?' : 'Questions?';
-  const preferencesLabel = es ? 'Preferencias de correo' : 'Email preferences';
-  const notLaw = es ? 'No es un despacho de abogados' : 'Not a law firm';
   return `<!doctype html>
-<html lang="${lang}">
+<html lang="${copy.lang}">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -613,12 +624,12 @@ function wrap(inner: string, shell: { locale?: 'en' | 'es'; preferencesUrl?: str
       </div>
     </div>
     <div class="footer">
-      <p>LaunchForma · ${tagline}</p>
+      <p>LaunchForma · ${copy.tagline}</p>
       <p>
-        ${questions} <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
-        · <a href="${preferencesHref}" style="color:#667085;text-decoration:underline">${preferencesLabel}</a>
+        ${copy.questions} <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
+        · <a href="${preferencesHref}" style="color:#667085;text-decoration:underline">${copy.preferences}</a>
       </p>
-      <p>© ${new Date().getFullYear()} ${BUSINESS_LEGAL_NAME} · ${BUSINESS_ADDRESS} · ${notLaw}</p>
+      <p>© ${new Date().getFullYear()} ${BUSINESS_LEGAL_NAME} · ${BUSINESS_ADDRESS} · ${copy.notALawFirm}</p>
     </div>
   </div>
 </body>
@@ -636,7 +647,10 @@ function resumeDripTemplate(
     resumeUrl: ctx.resumeUrl ?? `${siteUrl}/dashboard`,
     unsubscribeUrl: ctx.unsubscribeUrl,
   });
-  return { subject: built.subject, body: decorateResumeEmailHtml(html`${built.inner}`, step) };
+  return {
+    subject: built.subject,
+    body: decorateResumeEmailHtml(wrap(built.inner, { locale: dripShellLocale(ctx.locale) }), step),
+  };
 }
 
 // ─── Public helper - render a template without sending ────────────────────────
@@ -753,22 +767,48 @@ export async function sendEmail(args: SendEmailArgs) {
   if (!tpl) throw new Error(`Unknown email type: ${args.type}`);
   const { subject, body } = tpl(args.context ?? {});
   const recipient = typeof args.to === 'string' ? args.to.trim() : '';
+  const templateName = args.type.toLowerCase();
+
+  async function save(data: {
+    status: string;
+    errorMessage?: string;
+    recipientEmail: string;
+    attemptCount?: number;
+  }) {
+    const payload = {
+      recipientEmail: data.recipientEmail,
+      subject,
+      templateName,
+      htmlBody: body,
+      status: data.status,
+      ...(data.errorMessage !== undefined ? { errorMessage: data.errorMessage } : {}),
+      ...(data.attemptCount !== undefined ? { attemptCount: data.attemptCount } : {}),
+    };
+    if (args.notificationId) {
+      return prisma.emailNotification.update({
+        where: { id: args.notificationId },
+        data: payload,
+      });
+    }
+    return prisma.emailNotification.create({
+      data: {
+        ...payload,
+        notificationType: args.type,
+        filingId: args.filingId,
+        userId: args.userId,
+        ...(isResumeDripType(args.type) ? { step: args.type } : {}),
+      },
+    });
+  }
 
   if (!isDeliverableEmail(recipient)) {
     const msg = 'Invalid recipient address.';
     console.error(`[email] skipped invalid recipient: ${JSON.stringify(args.to)}`);
-    const record = await prisma.emailNotification.create({
-      data: {
-        notificationType: args.type,
-        recipientEmail: recipient.slice(0, 320) || '(invalid)',
-        subject,
-        templateName: args.type.toLowerCase(),
-        htmlBody: body,
-        status: 'FAILED',
-        errorMessage: msg,
-        filingId: args.filingId,
-        userId: args.userId,
-      },
+    const record = await save({
+      status: 'FAILED',
+      errorMessage: msg,
+      recipientEmail: recipient.slice(0, 320) || '(invalid)',
+      ...(args.notificationId ? { attemptCount: RESUME_DRIP_MAX_ATTEMPTS } : {}),
     });
     return { ...record, status: 'FAILED', errorMessage: msg };
   }
@@ -786,18 +826,11 @@ export async function sendEmail(args: SendEmailArgs) {
     if (suppressed) {
       const msg = 'Recipient is on the suppression list.';
       console.warn(`[email] skipped suppressed recipient: ${normalizeEmail(recipient)}`);
-      const record = await prisma.emailNotification.create({
-        data: {
-          notificationType: args.type,
-          recipientEmail: recipient,
-          subject,
-          templateName: args.type.toLowerCase(),
-          htmlBody: body,
-          status: 'FAILED',
-          errorMessage: msg,
-          filingId: args.filingId,
-          userId: args.userId,
-        },
+      const record = await save({
+        status: 'FAILED',
+        errorMessage: msg,
+        recipientEmail: recipient,
+        ...(args.notificationId ? { attemptCount: RESUME_DRIP_MAX_ATTEMPTS } : {}),
       });
       return { ...record, status: 'FAILED', errorMessage: msg };
     }
@@ -807,22 +840,21 @@ export async function sendEmail(args: SendEmailArgs) {
   // QUEUED and only flip to SENT once delivery actually succeeds - this keeps
   // the Outbox honest (the previous version marked everything SENT up front,
   // which hid every delivery failure, including silent "no provider" drops).
-  const record = await prisma.emailNotification.create({
-    data: {
-      notificationType: args.type,
-      recipientEmail: recipient,
-      subject,
-      templateName: args.type.toLowerCase(),
-      htmlBody: body,
-      status: 'QUEUED',
-      filingId: args.filingId,
-      userId: args.userId,
-    },
-  });
+  // A resume claim already inserted PENDING, so that path updates the same row.
+  const record = args.notificationId
+    ? {
+        id: args.notificationId,
+        status: 'PENDING' as const,
+        recipientEmail: recipient,
+        subject,
+        htmlBody: body,
+      }
+    : await save({ status: 'QUEUED', recipientEmail: recipient });
 
-  // No provider configured → leave the record as QUEUED with a clear reason
-  // instead of pretending it was sent. This is what surfaces a misconfigured
-  // production environment instead of silently swallowing mail.
+  // No provider configured → record FAILED with a clear reason instead of
+  // pretending it was sent. This surfaces a misconfigured production
+  // environment instead of silently swallowing mail. Attempt count stays
+  // put so a later run can retry a resume claim.
   if (!testRecipient && !isEmailDeliveryConfigured()) {
     const msg =
       'No email provider configured (set RESEND_API_KEY or SMTP_HOST/USER/PASS).';
@@ -847,9 +879,9 @@ export async function sendEmail(args: SendEmailArgs) {
     const sentAt = new Date();
     await prisma.emailNotification.update({
       where: { id: record.id },
-      data: { status: 'SENT', sentAt },
+      data: { status: 'SENT', sentAt, subject, htmlBody: body, recipientEmail: recipient },
     });
-    return { ...record, status: 'SENT', sentAt };
+    return { ...record, status: 'SENT', sentAt, errorMessage: null as string | null };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[email] delivery failed:', errorMessage);

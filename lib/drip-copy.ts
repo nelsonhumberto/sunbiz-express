@@ -1,6 +1,7 @@
 /**
  * Resume-order and checklist copy. English matches the spec.
- * Spanish is the default for the resume sequence when no locale is stored.
+ * When no locale is stored, resume mail is English unless the filing
+ * entry path is under /es.
  * No em dashes.
  */
 
@@ -309,6 +310,34 @@ export function privacyPolicyUrl(locale: DripLocale, siteUrl: string): string {
   return locale === 'es' ? `${base}/es/privacy` : `${base}/privacy`;
 }
 
+export interface EmailShellCopy {
+  lang: DripLocale;
+  tagline: string;
+  questions: string;
+  preferences: string;
+  notALawFirm: string;
+}
+
+const EMAIL_SHELL_EN: EmailShellCopy = {
+  lang: 'en',
+  tagline: 'Form your business the honest way',
+  questions: 'Questions?',
+  preferences: 'Email preferences',
+  notALawFirm: 'Not a law firm',
+};
+
+const EMAIL_SHELL_ES: EmailShellCopy = {
+  lang: 'es',
+  tagline: 'Forma tu empresa con claridad',
+  questions: '¿Preguntas?',
+  preferences: 'Preferencias de correo',
+  notALawFirm: 'No es un despacho de abogados',
+};
+
+export function emailShellCopy(locale: DripLocale): EmailShellCopy {
+  return locale === 'es' ? EMAIL_SHELL_ES : EMAIL_SHELL_EN;
+}
+
 export function checklistPageUrl(locale: DripLocale, siteUrl: string): string {
   const base = siteUrl.replace(/\/$/, '');
   return locale === 'es' ? `${base}/es/checklist` : `${base}/checklist`;
@@ -324,6 +353,8 @@ export function allDripCopyText(): string {
     }
     const frame = resumeFrameCopy(locale);
     chunks.push(frame.greeting('Ana'), frame.greeting(''), frame.thanks, frame.team, frame.reason, frame.unsubscribe);
+    const shell = emailShellCopy(locale);
+    chunks.push(shell.tagline, shell.questions, shell.preferences, shell.notALawFirm);
     const list = checklistCopy(locale);
     chunks.push(
       list.headline,

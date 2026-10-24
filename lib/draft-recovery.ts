@@ -5,10 +5,18 @@
  * The jobs live here so `app/api/cron/recovery/route.ts` exports only handlers.
  */
 import { prisma } from './db';
-import { sendEmail, type NotificationType } from './email';
+import { renderTemplate, sendEmail, type NotificationType } from './email';
 import { isQaOrE2eRecipient, normalizeEmail } from './email-address';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
+import { isSpanishPublicPath } from './locale-paths';
 import { captureResumeEmailSent } from './posthog-server';
+import {
+  claimResumeSend,
+  isResendDevAddress,
+  RESUME_DRIP_BATCH_SIZE,
+  resumeDeliveryCountsAsSent,
+  resumeSendBlocksAnotherAttempt,
+} from './resume-drip-claim';
 import { withResumeUtms } from './resume-utm';
 import { unsubscribeLink } from './unsubscribe';
 
@@ -37,6 +45,7 @@ export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
   if (draft.user.role === 'ADMIN') return true;
   const email = draft.user.email.trim().toLowerCase();
   if (email.endsWith('@launchforma.com')) return true;
+  if (isResendDevAddress(email)) return true;
   if (isQaOrE2eRecipient(email)) return true;
   return false;
 }
@@ -222,20 +231,42 @@ export function ageHoursSince(updatedAt: Date, nowMs: number): number {
   return (nowMs - updatedAt.getTime()) / (60 * 60 * 1000);
 }
 
+function localeToken(value: string): 'es' | 'en' | null {
+  const token = value.trim().toLowerCase();
+  if (token === 'en' || token.startsWith('en-') || token.startsWith('en_')) return 'en';
+  if (token === 'es' || token.startsWith('es-') || token.startsWith('es_')) return 'es';
+  return null;
+}
+
+function pathFromCandidate(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('/')) return (trimmed.split('?')[0] ?? trimmed).split('#')[0] || '/';
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    return new URL(trimmed).pathname || '/';
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Filing locale, then the user's locale, then Spanish.
- * Unknown values are ignored so a bad string still falls through to es.
+ * Filing locale, then the user's locale. A stored en or es wins.
+ * When neither is stored, English is the default unless a candidate is a
+ * public path under /es (the filing's entry path).
  */
 export function resolveDripLocale(
   ...candidates: Array<string | null | undefined>
 ): 'es' | 'en' {
+  let spanishPath = false;
   for (const candidate of candidates) {
-    const value = candidate?.trim().toLowerCase();
+    const value = candidate?.trim();
     if (!value) continue;
-    if (value === 'en' || value.startsWith('en-') || value.startsWith('en_')) return 'en';
-    if (value === 'es' || value.startsWith('es-') || value.startsWith('es_')) return 'es';
+    const token = localeToken(value);
+    if (token) return token;
+    const path = pathFromCandidate(value);
+    if (path && isSpanishPublicPath(path)) spanishPath = true;
   }
-  return 'es';
+  return spanishPath ? 'es' : 'en';
 }
 
 export function wizardPathForDraft(
@@ -283,31 +314,43 @@ export async function runScheduledDraftRecovery(now: number) {
   return { ...stats, disabled: false as const };
 }
 
-async function runResumeDrip(now: number) {
+/** Oldest idle drafts first, capped so one run cannot walk the whole backlog. */
+export function resumeDraftListArgs(now: number) {
   const oldestHours = RESUME_DRIP_STEPS[RESUME_DRIP_STEPS.length - 1]!.maxHours;
   const newestHours = RESUME_DRIP_STEPS[0]!.minHours;
   const oldestCutoff = new Date(now - oldestHours * 60 * 60 * 1000);
   const newestCutoff = new Date(now - newestHours * 60 * 60 * 1000);
-  const stepTypes = RESUME_DRIP_STEPS.map((step) => step.type);
-
-  const drafts = await prisma.filing.findMany({
+  return {
     where: {
-      status: 'DRAFT',
+      status: 'DRAFT' as const,
       isTest: false,
       adminArchivedAt: null,
       userArchivedAt: null,
+      abandonedAt: null,
       updatedAt: { gte: oldestCutoff, lte: newestCutoff },
-      payments: { none: { status: 'SUCCEEDED' } },
+      payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
-        role: { not: 'ADMIN' },
-        accountStatus: { not: 'DELETED' },
+        role: { not: 'ADMIN' as const },
+        accountStatus: { not: 'DELETED' as const },
         AND: [
-          { NOT: { email: { endsWith: '@launchforma.com', mode: 'insensitive' } } },
-          { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' } } },
-          { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' } } },
+          { NOT: { email: { endsWith: '@launchforma.com', mode: 'insensitive' as const } } },
+          { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' as const } } },
+          { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' as const } } },
+          { NOT: { email: { endsWith: '@resend.dev', mode: 'insensitive' as const } } },
         ],
       },
     },
+    orderBy: { updatedAt: 'asc' as const },
+    take: RESUME_DRIP_BATCH_SIZE,
+  };
+}
+
+async function runResumeDrip(now: number) {
+  const stepTypes = RESUME_DRIP_STEPS.map((step) => step.type);
+  const listArgs = resumeDraftListArgs(now);
+
+  const drafts = await prisma.filing.findMany({
+    ...listArgs,
     include: {
       user: true,
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
@@ -319,7 +362,13 @@ async function runResumeDrip(now: number) {
     try {
       const prior = await prisma.emailNotification.findMany({
         where: { filingId: draft.id, notificationType: { in: stepTypes } },
-        select: { notificationType: true },
+        select: {
+          notificationType: true,
+          status: true,
+          attemptCount: true,
+          claimedAt: true,
+          createdAt: true,
+        },
       });
       const optedOut = await prisma.marketingOptOut.findUnique({
         where: { email: normalizeEmail(draft.user.email) },
@@ -328,7 +377,9 @@ async function runResumeDrip(now: number) {
       const decision = planResumeDrip({
         enabled: true,
         ageHours: ageHoursSince(draft.updatedAt, now),
-        sentTypes: prior.map((row) => row.notificationType),
+        sentTypes: prior
+          .filter((row) => resumeSendBlocksAnotherAttempt(row, now))
+          .map((row) => row.notificationType),
         status: draft.status,
         paid: draft.payments.length > 0,
         unsubscribed: Boolean(optedOut),
@@ -350,7 +401,25 @@ async function runResumeDrip(now: number) {
         unsubscribeLink(SITE_URL, draft.user.email),
         decision.send,
       );
-      const locale = resolveDripLocale(draft.locale, draft.user.locale);
+      const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
+      const context = {
+        firstName: draft.user.firstName,
+        businessName: draft.businessName ?? undefined,
+        resumeUrl,
+        unsubscribeUrl,
+        locale,
+      };
+      const rendered = renderTemplate(decision.send, context);
+      const claim = await claimResumeSend({
+        filingId: draft.id,
+        userId: draft.userId,
+        type: decision.send,
+        recipientEmail: draft.user.email,
+        subject: rendered.subject,
+        htmlBody: rendered.html,
+        nowMs: now,
+      });
+      if (!claim.ok) continue;
 
       const delivery = await sendEmail({
         type: decision.send,
@@ -359,29 +428,24 @@ async function runResumeDrip(now: number) {
         userId: draft.userId,
         replyTo: resumeEmailReplyTo(),
         listUnsubscribeUrl: unsubscribeUrl,
-        context: {
-          firstName: draft.user.firstName,
-          businessName: draft.businessName ?? undefined,
-          resumeUrl,
-          unsubscribeUrl,
-          locale,
-        },
+        notificationId: claim.id,
+        context,
       });
 
-      if (delivery.status === 'SENT') {
-        await captureResumeEmailSent({
-          step: decision.send,
-          filingId: draft.id,
-          locale,
-        });
-        if (decision.final && draft.status === 'DRAFT') {
-          await prisma.filing.updateMany({
-            where: { id: draft.id, status: 'DRAFT', abandonedAt: null },
-            data: { abandonedAt: new Date(now) },
-          });
-        }
-      }
+      if (!resumeDeliveryCountsAsSent(delivery.status)) continue;
+
       sent++;
+      await captureResumeEmailSent({
+        step: decision.send,
+        filingId: draft.id,
+        locale,
+      });
+      if (decision.final && draft.status === 'DRAFT') {
+        await prisma.filing.updateMany({
+          where: { id: draft.id, status: 'DRAFT', abandonedAt: null },
+          data: { abandonedAt: new Date(now) },
+        });
+      }
     } catch (err) {
       console.error('[recovery] resume drip failed', draft.id, err);
     }

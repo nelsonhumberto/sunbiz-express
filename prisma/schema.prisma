@@ -170,8 +170,11 @@ model Filing {
   isTest                   Boolean  @default(false)
 
   // Language the customer was using when the order started (en | es).
-  // Resume emails prefer this over User.locale, then Spanish.
+  // Resume emails prefer this, then User.locale. With neither stored,
+  // English is used unless entryPath is under /es.
   locale                   String?
+  // Original public path, including /es when the order started there.
+  entryPath                String?
 
   steps                    FilingStep[]
   managersMembers          ManagerMember[]
@@ -414,11 +417,18 @@ model EmailNotification {
   subject          String
   templateName     String
   htmlBody         String   // rendered preview
-  status           String   @default("QUEUED") // QUEUED | SENT | FAILED | BOUNCED
+  status           String   @default("QUEUED") // QUEUED | PENDING | SENT | FAILED | BOUNCED
   sentAt           DateTime?
   openedAt         DateTime?
   clickedAt        DateTime?
   errorMessage     String?
+  // Resume claims set step to the notification type. A partial unique index
+  // on (filingId, notificationType, step) for RESUME_1H / RESUME_1D / RESUME_3D
+  // is created in SQL. It is not a Prisma @@unique: other types may repeat,
+  // and a full unique would also miss NULL steps.
+  step             String?
+  attemptCount     Int      @default(0)
+  claimedAt        DateTime?
   createdAt        DateTime @default(now())
 
   @@index([userId, notificationType, createdAt])

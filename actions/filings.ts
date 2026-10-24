@@ -40,7 +40,7 @@ import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
-import { storedLocale } from '@/lib/stored-locale';
+import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 
 export async function createFiling(input?: {
   entityType?: 'LLC' | 'CORP';
@@ -59,6 +59,7 @@ export async function createFiling(input?: {
     : 'FL';
 
   const locale = await storedLocale();
+  const entryPath = storedEntryPath();
   const filing = await prisma.filing.create({
     data: {
       userId: session.user.id,
@@ -67,6 +68,7 @@ export async function createFiling(input?: {
       serviceTier: input?.tier ?? 'STANDARD',
       currentStep: 1,
       ...(locale ? { locale } : {}),
+      ...(entryPath ? { entryPath } : {}),
       ...filingUtmCreateFields(),
     },
   });

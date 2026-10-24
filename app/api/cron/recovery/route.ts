@@ -3,9 +3,10 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 
 // Recovery + retention scheduler.
 //
-// Hourly so the resume sequence can send about 1 hour after a draft goes idle.
-// The route is idempotent: EmailNotification is the record of which resume
-// step already went to a filing, so the same step is never sent twice.
+// Vercel Hobby only allows a daily cron, so vercel.json stays at 14:00 UTC.
+// GitHub Actions calls this route every hour. Both callers are safe together:
+// EmailNotification is the record of which (filing, type) already went out,
+// so a later hour does not send that step or that renewal reminder again.
 //
 // What it sends (the jobs live in lib/draft-recovery.ts):
 //

@@ -80,6 +80,35 @@ describe('resume drip schedule', () => {
     expect(raRenewalTypeForDays(7)).toBe('RA_RENEWAL_7');
     expect(raRenewalTypeForDays(8)).toBeNull();
   });
+
+  it('does not repeat a resume step or RA reminder when the route runs again an hour later', () => {
+    const first = planResumeDrip({ ...ready, ageHours: 2 });
+    expect(first.send).toBe('RESUME_1H');
+    const hourLater = planResumeDrip({
+      ...ready,
+      ageHours: 3,
+      sentTypes: [first.send!],
+    });
+    expect(hourLater.send).toBeNull();
+    expect(hourLater.reason).toBe('already-sent');
+
+    const now = Date.UTC(2026, 9, 1, 14, 15, 0);
+    const renewal = now + 7 * DAY + 3 * 60 * 60 * 1000;
+    const day = wholeDaysUntil(renewal, now);
+    const nextHour = wholeDaysUntil(renewal, now + 60 * 60 * 1000);
+    expect(raRenewalTypeForDays(day)).toBe('RA_RENEWAL_7');
+    expect(raRenewalTypeForDays(nextHour)).toBe(raRenewalTypeForDays(day));
+
+    const job = readFileSync('lib/draft-recovery.ts', 'utf8');
+    const resumeCheck = job.indexOf('notificationType: { in: stepTypes }');
+    const resumeSend = job.indexOf('type: decision.send');
+    const raCheck = job.indexOf('notificationType: bucket');
+    const raSend = job.lastIndexOf('type: bucket');
+    expect(resumeCheck).toBeGreaterThan(-1);
+    expect(raCheck).toBeGreaterThan(-1);
+    expect(resumeCheck).toBeLessThan(resumeSend);
+    expect(raCheck).toBeLessThan(raSend);
+  });
 });
 
 describe('resume drip stop conditions', () => {
@@ -262,7 +291,14 @@ describe('checklist signup gate', () => {
     );
     expect(checklistCopy('es').headline.length).toBeGreaterThan(0);
     const cron = readFileSync('vercel.json', 'utf8');
-    expect(cron).toContain('"schedule": "0 * * * *"');
+    expect(cron).toContain('"schedule": "0 14 * * *"');
+    expect(cron).not.toContain('"schedule": "0 * * * *"');
+    const workflow = readFileSync('.github/workflows/recovery-cron.yml', 'utf8');
+    expect(workflow).toContain('15 * * * *');
+    expect(workflow).toContain('workflow_dispatch');
+    expect(workflow).toContain('https://launchforma.com/api/cron/recovery');
+    expect(workflow).toContain('Authorization: Bearer ${CRON_SECRET}');
+    expect(workflow).toContain('::notice::');
     const route = readFileSync('app/api/cron/recovery/route.ts', 'utf8');
     expect(route).toContain('export async function GET');
     expect(route).not.toMatch(/^export (async )?function (?!GET)/m);

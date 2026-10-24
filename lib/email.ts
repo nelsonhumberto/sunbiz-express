@@ -450,10 +450,11 @@ const TEMPLATES: Record<
   OA_TEMPLATE_CONFIRM: (ctx) => {
     const confirmUrl = escapeHtml(ctx.oaConfirmUrl ?? '#');
     const unsub = escapeHtml(ctx.oaUnsubscribeUrl ?? '#');
+    const shell = localizedHtml(ctx);
     if (ctx.oaLocale === 'es') {
       return {
         subject: 'Confirma tu correo para la muestra del acuerdo operativo',
-        body: html`
+        body: shell`
           <h1>Confirma tu correo</h1>
           <p>Confirma tu dirección y te enviaremos los enlaces de descarga de la muestra de acuerdo operativo para LLC en Florida (un miembro y varios miembros, PDF y Word).</p>
           <a class="cta" href="${confirmUrl}">Confirmar mi correo</a>
@@ -464,7 +465,7 @@ const TEMPLATES: Record<
     }
     return {
       subject: 'Confirm your email for the Florida LLC operating agreement sample',
-      body: html`
+      body: shell`
         <h1>Confirm your email</h1>
         <p>Confirm your email and we'll send the download links for the free Florida LLC operating agreement sample (single-member and multi-member, PDF and Word).</p>
         <a class="cta" href="${confirmUrl}">Confirm my email</a>
@@ -479,10 +480,11 @@ const TEMPLATES: Record<
     const multiPdf = escapeHtml(ctx.oaMultiPdfUrl ?? '#');
     const multiDocx = escapeHtml(ctx.oaMultiDocxUrl ?? '#');
     const unsub = escapeHtml(ctx.oaUnsubscribeUrl ?? '#');
+    const shell = localizedHtml(ctx);
     if (ctx.oaLocale === 'es') {
       return {
         subject: 'Tu muestra de acuerdo operativo de LLC en Florida',
-        body: html`
+        body: shell`
           <h1>Tu muestra está lista</h1>
           <p>Aquí están las muestras gratis del acuerdo operativo para una LLC en Florida.</p>
           <p><a href="${singlePdf}">PDF de un miembro</a></p>
@@ -496,7 +498,7 @@ const TEMPLATES: Record<
     }
     return {
       subject: 'Your Florida LLC operating agreement sample',
-      body: html`
+      body: shell`
         <h1>Your sample is ready</h1>
         <p>Here are the free Florida LLC operating agreement samples.</p>
         <p><a href="${singlePdf}">Single-member PDF</a></p>
@@ -529,11 +531,33 @@ function html(strings: TemplateStringsArray, ...vars: unknown[]) {
   return wrap(result);
 }
 
-function wrap(inner: string) {
+/** OA mail has no account, so the footer preferences link is the unsubscribe URL. */
+function localizedHtml(ctx: EmailContext) {
+  const locale = ctx.oaLocale === 'es' ? 'es' : 'en';
+  const preferencesUrl = ctx.oaUnsubscribeUrl;
+  return (strings: TemplateStringsArray, ...vars: unknown[]) => {
+    let result = '';
+    strings.forEach((str, i) => {
+      result += str + (vars[i] !== undefined ? String(vars[i] ?? '') : '');
+    });
+    return wrap(result, { locale, preferencesUrl });
+  };
+}
+
+function wrap(inner: string, shell: { locale?: 'en' | 'es'; preferencesUrl?: string } = {}) {
   // Modern transactional shell: full-bleed canvas, white card, brand blue
   // CTA matching the live site (#1565FF). Table-based for Outlook safety.
+  const es = shell.locale === 'es';
+  const lang = es ? 'es' : 'en';
+  const preferencesHref = shell.preferencesUrl
+    ? escapeHtml(shell.preferencesUrl)
+    : `${siteUrl}/dashboard/settings`;
+  const tagline = es ? 'Forma tu empresa con claridad' : 'Form your business the honest way';
+  const questions = es ? '¿Preguntas?' : 'Questions?';
+  const preferencesLabel = es ? 'Preferencias de correo' : 'Email preferences';
+  const notLaw = es ? 'No es un despacho de abogados' : 'Not a law firm';
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -589,12 +613,12 @@ function wrap(inner: string) {
       </div>
     </div>
     <div class="footer">
-      <p>LaunchForma · Form your business the honest way</p>
+      <p>LaunchForma · ${tagline}</p>
       <p>
-        Questions? <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
-        · <a href="${siteUrl}/dashboard/settings" style="color:#667085;text-decoration:underline">Email preferences</a>
+        ${questions} <a href="mailto:help@launchforma.com" style="color:#667085;text-decoration:underline">help@launchforma.com</a>
+        · <a href="${preferencesHref}" style="color:#667085;text-decoration:underline">${preferencesLabel}</a>
       </p>
-      <p>© ${new Date().getFullYear()} ${BUSINESS_LEGAL_NAME} · ${BUSINESS_ADDRESS} · Not a law firm</p>
+      <p>© ${new Date().getFullYear()} ${BUSINESS_LEGAL_NAME} · ${BUSINESS_ADDRESS} · ${notLaw}</p>
     </div>
   </div>
 </body>

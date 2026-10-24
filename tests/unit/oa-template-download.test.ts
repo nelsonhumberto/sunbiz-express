@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import es from '../../messages/es.json';
+import { renderTemplate } from '@/lib/email';
 import { OA_GUIDE_EN } from '@/lib/oa-guide-copy';
 import {
   OA_COMING_SOON,
@@ -162,5 +163,74 @@ describe('operating agreement token links', () => {
     expect(es.guideOa.downloadSampleHeader).toBe(OA_SAMPLE_HEADER.es);
     expect(OA_SAMPLE_HEADER.es).not.toMatch(/—|–/);
     expect(OA_COMING_SOON.es).not.toMatch(/—|–/);
+  });
+
+  it('asks for the four download links in both languages', () => {
+    expect(OA_GUIDE_EN.download.success).toBe(
+      "Check your inbox. Confirm your email and we'll send your download links.",
+    );
+    expect(es.guideOa.downloadSuccess).toBe(
+      'Revisa tu correo. Confirma tu dirección y te enviaremos los enlaces de descarga.',
+    );
+    expect(es.guideOa.downloadSuccess).not.toMatch(/—|–/);
+  });
+});
+
+describe('operating agreement email unsubscribe', () => {
+  const unsubscribeUrl = 'https://launchforma.com/api/leads/unsubscribe?id=11111111-1111-4111-8111-111111111111&sig=abc';
+
+  it('passes the unsubscribe URL into both sends the way the resume drip does', () => {
+    const lead = readFileSync('lib/oa-template-lead.ts', 'utf8');
+    expect(lead.match(/listUnsubscribeUrl:/g)).toHaveLength(2);
+    const send = readFileSync('lib/email.ts', 'utf8');
+    expect(send).toContain('listUnsubscribeHeaders(args.listUnsubscribeUrl)');
+  });
+
+  it('points the footer at the unsubscribe page and translates the Spanish shell', () => {
+    const shared = {
+      oaConfirmUrl: 'https://launchforma.com/api/leads/confirm?token=abc',
+      oaUnsubscribeUrl: unsubscribeUrl,
+      oaSinglePdfUrl: 'https://launchforma.com/oa/sample.pdf',
+      oaSingleDocxUrl: 'https://launchforma.com/oa/sample.docx',
+      oaMultiPdfUrl: 'https://launchforma.com/oa/multi.pdf',
+      oaMultiDocxUrl: 'https://launchforma.com/oa/multi.docx',
+    };
+    const escaped = 'https://launchforma.com/api/leads/unsubscribe?id=11111111-1111-4111-8111-111111111111&amp;sig=abc';
+    for (const type of ['OA_TEMPLATE_CONFIRM', 'OA_TEMPLATE_DOWNLOAD'] as const) {
+      const en = renderTemplate(type, { ...shared, oaLocale: 'en' });
+      expect(en.html).toContain('lang="en"');
+      expect(en.html).toContain(`href="${escaped}"`);
+      expect(en.html).toContain('Email preferences');
+      expect(en.html).not.toContain('/dashboard/settings');
+
+      const esMail = renderTemplate(type, { ...shared, oaLocale: 'es' });
+      expect(esMail.html).toContain('lang="es"');
+      expect(esMail.html).toContain('Forma tu empresa con claridad');
+      expect(esMail.html).toContain('¿Preguntas?');
+      expect(esMail.html).toContain('Preferencias de correo');
+      expect(esMail.html).toContain('No es un despacho de abogados');
+      expect(esMail.html).toContain(`href="${escaped}"`);
+      expect(esMail.html).not.toContain('/dashboard/settings');
+      expect(esMail.html).not.toContain('Email preferences');
+      expect(esMail.html).not.toMatch(/—|–/);
+    }
+
+    const welcome = renderTemplate('WELCOME', { firstName: 'Ada' });
+    expect(welcome.html).toContain('/dashboard/settings');
+    expect(welcome.html).toContain('Email preferences');
+  });
+
+  it('lets GET confirm and keeps the one-click POST', () => {
+    const route = readFileSync('app/api/leads/unsubscribe/route.ts', 'utf8');
+    const getStart = route.indexOf('export async function GET');
+    const postStart = route.indexOf('export async function POST');
+    expect(getStart).toBeGreaterThan(0);
+    expect(postStart).toBeGreaterThan(getStart);
+    const getBody = route.slice(getStart, postStart);
+    expect(getBody).toContain('peekOaUnsubscribeLead');
+    expect(getBody).not.toContain('unsubscribeOaTemplateLead');
+    expect(route.slice(postStart)).toContain('unsubscribeOaTemplateLead');
+    expect(route).toContain('method="post"');
+    expect(route).toContain('List-Unsubscribe-Post');
   });
 });

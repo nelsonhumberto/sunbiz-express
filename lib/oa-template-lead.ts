@@ -41,16 +41,18 @@ function linkBy(
 
 async function sendDownloadEmail(email: string, locale: OaTemplateLocale, leadId: string): Promise<boolean> {
   const links = oaTemplateLinks(locale);
+  const unsubscribeUrl = oaUnsubscribeUrl(leadId);
   const sent = await sendEmail({
     type: 'OA_TEMPLATE_DOWNLOAD',
     to: email,
+    listUnsubscribeUrl: unsubscribeUrl,
     context: {
       oaLocale: locale,
       oaSinglePdfUrl: linkBy(links, 'single', 'pdf'),
       oaSingleDocxUrl: linkBy(links, 'single', 'docx'),
       oaMultiPdfUrl: linkBy(links, 'multi', 'pdf'),
       oaMultiDocxUrl: linkBy(links, 'multi', 'docx'),
-      oaUnsubscribeUrl: oaUnsubscribeUrl(leadId),
+      oaUnsubscribeUrl: unsubscribeUrl,
     },
   });
   if (sent.status !== 'SENT') {
@@ -65,13 +67,15 @@ async function sendDownloadEmail(email: string, locale: OaTemplateLocale, leadId
 }
 
 async function sendConfirmEmail(email: string, locale: OaTemplateLocale, leadId: string, token: string): Promise<boolean> {
+  const unsubscribeUrl = oaUnsubscribeUrl(leadId);
   const sent = await sendEmail({
     type: 'OA_TEMPLATE_CONFIRM',
     to: email,
+    listUnsubscribeUrl: unsubscribeUrl,
     context: {
       oaLocale: locale,
       oaConfirmUrl: oaConfirmUrl(token),
-      oaUnsubscribeUrl: oaUnsubscribeUrl(leadId),
+      oaUnsubscribeUrl: unsubscribeUrl,
     },
   });
   if (sent.status !== 'SENT') {
@@ -218,6 +222,17 @@ export async function resendOaTemplateFromToken(token: string): Promise<boolean>
     });
   }
   return sent;
+}
+
+/** Valid link for a real lead. Does not write unsubscribedAt. */
+export async function peekOaUnsubscribeLead(
+  leadId: string,
+  sig: string,
+): Promise<{ locale: OaTemplateLocale } | null> {
+  if (!oaUnsubscribeSignatureValid(leadId, sig)) return null;
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead || lead.source !== OA_TEMPLATE_SOURCE) return null;
+  return { locale: oaTemplateLocale(lead.locale) };
 }
 
 export async function unsubscribeOaTemplateLead(

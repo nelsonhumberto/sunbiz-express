@@ -25,6 +25,13 @@ import {
 
 const DISMISS_KEY = 'lf_guest_prompt_seen';
 
+function isEditingControl(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return target.isContentEditable;
+}
+
 interface Props {
   firstName: string;
   email: string;
@@ -51,10 +58,23 @@ export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
     if (typeof window === 'undefined') return;
     const seen = window.localStorage.getItem(DISMISS_KEY);
     if (seen) return;
+    let engaged = isEditingControl(document.activeElement);
+    function markEngaged(event: Event) {
+      if (isEditingControl(event.target)) engaged = true;
+    }
+    document.addEventListener('focusin', markEngaged);
+    document.addEventListener('input', markEngaged);
     const isAdTraffic = !!getClientUtmAttribution();
     const delay = isAdTraffic ? 45_000 : 1_200;
-    const timer = setTimeout(() => setOpen(true), delay);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      if (engaged || isEditingControl(document.activeElement)) return;
+      setOpen(true);
+    }, delay);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('focusin', markEngaged);
+      document.removeEventListener('input', markEngaged);
+    };
   }, []);
 
   function dismiss() {

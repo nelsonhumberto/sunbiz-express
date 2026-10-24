@@ -406,6 +406,8 @@ describe('name check copy and wiring', () => {
     const guest = readFileSync('components/wizard/GuestAccountPrompt.tsx', 'utf8');
     expect(guest).not.toMatch(/temporary password|resume link|Email confirmations/i);
     expect(guest).toContain("t('saveExitBenefitDocuments')");
+    expect(guest).toContain('isEditingControl(document.activeElement)');
+    expect(guest).not.toContain('setTimeout(() => setOpen(true)');
     const sunbiz = readFileSync('lib/sunbiz.ts', 'utf8');
     expect(sunbiz).not.toMatch(/available:\s*false,\s*status:\s*'available'/);
     expect(readFileSync('lib/sunbiz-mock.ts', 'utf8')).not.toMatch(

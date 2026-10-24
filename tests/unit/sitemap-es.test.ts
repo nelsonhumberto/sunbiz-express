@@ -15,6 +15,7 @@ const ES_PATHS = [
   '/es/boi-reporting',
   '/es/guides',
   '/es/guides/how-to-form-an-llc-in-florida',
+  '/es/guides/how-to-form-a-florida-corporation',
   '/es/guides/florida-annual-report',
   '/es/guides/florida-registered-agent',
   '/es/guides/florida-llc-operating-agreement',
@@ -58,6 +59,8 @@ describe('llms.txt Spanish URLs', () => {
     expect(text).not.toContain('/guides/wyoming-llc-vs-delaware-corp');
     expect(text).toContain('https://launchforma.com/es/guides/florida-llc-operating-agreement');
     expect(text).toContain('https://launchforma.com/es/guides/how-to-form-an-llc-in-florida');
+    expect(text).toContain('https://launchforma.com/es/guides/how-to-form-a-florida-corporation');
+    expect(text).toContain('https://launchforma.com/guides/how-to-form-a-florida-corporation');
     expect(text).toContain('https://launchforma.com/es/guides/florida-annual-report');
     expect(text).toContain('https://launchforma.com/es/guides/florida-registered-agent');
     expect(text).toContain('https://launchforma.com/es/guides/llc-florida-sin-seguro-social');

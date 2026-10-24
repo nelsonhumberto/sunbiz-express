@@ -44,6 +44,7 @@ const CORE_PAGES: LinkEntry[] = [
 const GUIDES: LinkEntry[] = [
   { title: 'Guides index', path: '/guides', note: 'Long-form formation and compliance guides.' },
   { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
+  { title: 'How to Form a Florida Corporation', path: '/guides/how-to-form-a-florida-corporation', note: 'Steps, Sunbiz fees ($70 to form, $150 annual report), and what to do after Articles of Incorporation are filed. Spanish alternate: /es/guides/how-to-form-a-florida-corporation.' },
   { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
   { title: 'Florida Registered Agent', path: '/guides/florida-registered-agent', note: 'Who can serve, the street-address rule, and state fees to appoint or change an agent.' },
   { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'What a Florida LLC operating agreement is, what Chapter 605 says, and how to adopt one.' },
@@ -70,6 +71,7 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Empezar un trámite', path: '/es/start', note: 'Empieza una LLC, corporación o elección S-Corp sin crear cuenta.' },
   { title: 'Guías', path: '/es/guides', note: 'Índice de guías en español.' },
   { title: 'Cómo formar una LLC en Florida', path: '/es/guides/how-to-form-an-llc-in-florida', note: 'Pasos, tarifas de la División de Corporaciones y qué hacer después de los Articles of Organization.' },
+  { title: 'Cómo formar una corporación en Florida', path: '/es/guides/how-to-form-a-florida-corporation', note: 'Pasos, tarifas de Sunbiz ($70 para formarla, $150 el reporte anual) y qué hacer después de los Articles of Incorporation. Alterna en inglés: /guides/how-to-form-a-florida-corporation.' },
   { title: 'Reporte anual de Florida', path: '/es/guides/florida-annual-report', note: 'Fecha (1 de enero al 1 de mayo), tarifas de LLC y corporación, y presentación tardía.' },
   { title: 'Agente registrado en Florida', path: '/es/guides/florida-registered-agent', note: 'Quién puede serlo, la regla de dirección física y las tarifas estatales para designar o cambiar al agente.' },
   { title: 'Acuerdo operativo de Florida', path: '/es/guides/florida-llc-operating-agreement', note: 'Para qué sirve un acuerdo operativo de LLC en Florida.' },

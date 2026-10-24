@@ -106,7 +106,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI (Beneficial Ownership Information)?',
-    a: "No. La regla final de FinCEN (agosto de 2026) exime a las empresas formadas en Estados Unidos del reporte de información de beneficiarios finales (BOI), así que una nueva LLC o Corporación de Florida no tiene nada que presentar. Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
+    a: "No. La regla final de FinCEN (11 de agosto de 2026) exime a las empresas formadas en Estados Unidos del reporte de información de beneficiarios finales (BOI), así que una nueva LLC o Corporación de Florida no tiene nada que presentar. Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
   },
   {
     q: '¿Y si mi nombre está tomado?',
@@ -228,7 +228,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Wyoming?',
-    a: "No. La regla final de FinCEN (agosto de 2026) exime a las empresas formadas en Estados Unidos, incluidas las LLC y Corporaciones de Wyoming, del reporte de información de beneficiarios finales (BOI). Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
+    a: "No. La regla final de FinCEN (11 de agosto de 2026) exime a las empresas formadas en Estados Unidos, incluidas las LLC y Corporaciones de Wyoming, del reporte de información de beneficiarios finales (BOI). Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
   },
   {
     q: '¿Una empresa o fideicomiso puede ser dueño de mi LLC de Wyoming?',
@@ -358,7 +358,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   {
     id: 'boi',
     q: '¿Necesito presentar un reporte BOI ante FinCEN para mi entidad de Delaware?',
-    a: "No. La regla final de FinCEN (agosto de 2026) exime a las empresas formadas en Estados Unidos, incluidas las LLC y Corporaciones de Delaware, del reporte de información de beneficiarios finales (BOI). Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
+    a: "No. La regla final de FinCEN (11 de agosto de 2026) exime a las empresas formadas en Estados Unidos, incluidas las LLC y Corporaciones de Delaware, del reporte de información de beneficiarios finales (BOI). Solo las empresas extranjeras registradas para operar en EE. UU. siguen reportando.",
   },
   {
     q: '¿Una empresa o holding puede ser dueño de mi LLC de Delaware?',

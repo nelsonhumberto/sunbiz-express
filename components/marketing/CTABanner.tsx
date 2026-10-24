@@ -32,7 +32,7 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const subhead =
     state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
   return (
-    <section data-marketing-state={state.code} className="py-16 md:py-24">
+    <section data-marketing-state={state.code} className="overflow-hidden py-16 md:py-24">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -41,9 +41,11 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
           transition={{ duration: 0.5 }}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary-hover to-primary-700 p-12 md:p-16 text-white max-w-6xl mx-auto"
         >
-          <div className="absolute inset-0 mesh-bg opacity-30" />
-          <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-accent/30 blur-3xl" />
-          <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary-300/30 blur-3xl" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl" aria-hidden="true">
+            <div className="absolute inset-0 mesh-bg opacity-30" />
+            <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-accent/30 blur-3xl" />
+            <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-primary-300/30 blur-3xl" />
+          </div>
 
           <div className="relative grid grid-cols-1 lg:grid-cols-2 items-center gap-8">
             <div>

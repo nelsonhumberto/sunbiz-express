@@ -16,7 +16,7 @@ export function Footer() {
       { label: tFooter('formAnLLC'), href: href('/start?entity=LLC') },
       { label: tFooter('formACorp'), href: href('/start?entity=CORP') },
       { label: tNav('pricing'), href: href('/pricing') },
-      { label: tFooter('registeredAgent'), href: href('/services#formation') },
+      { label: tFooter('registeredAgent'), href: href('/services#registered-agent') },
       { label: tFooter('complianceService'), href: href('/services#compliance') },
       { label: tFooter('statesWeServe'), href: href('/states') },
     ],
@@ -93,7 +93,7 @@ export function Footer() {
 function FooterColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-4">{title}</h4>
+      <p className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-4">{title}</p>
       <ul className="space-y-2.5">
         {links.map((link) => (
           <li key={link.href}>

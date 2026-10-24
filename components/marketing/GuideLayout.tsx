@@ -61,7 +61,7 @@ export async function GuideLayout({
         ])}
       />
 
-      <article className="container max-w-3xl py-12 md:py-16 prose prose-sm md:prose-base max-w-none prose-headings:font-display prose-headings:tracking-tight prose-h1:text-4xl md:prose-h1:text-5xl prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-lg prose-p:text-ink-muted prose-strong:text-ink prose-a:text-primary prose-li:text-ink-muted">
+      <article className="container max-w-3xl py-12 md:py-16 prose prose-sm md:prose-base prose-headings:font-display prose-headings:tracking-tight prose-h1:text-4xl md:prose-h1:text-5xl prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-lg prose-p:text-ink-muted prose-strong:text-ink prose-a:text-primary prose-li:text-ink-muted">
         <p className="not-prose flex flex-wrap items-center gap-4 text-xs uppercase tracking-wider text-ink-subtle mb-3">
           <Link
             href={localizedHref('/states', locale)}

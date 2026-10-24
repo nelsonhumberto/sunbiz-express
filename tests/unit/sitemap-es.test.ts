@@ -18,6 +18,11 @@ const ES_PATHS = [
   '/es/guides/florida-annual-report',
   '/es/guides/florida-registered-agent',
   '/es/guides/florida-llc-operating-agreement',
+  '/es/guides/llc-florida-sin-seguro-social',
+  '/es/guides/licencia-negocio-miami-dade',
+  '/es/guides/licencia-negocio-broward',
+  '/es/guides/llc-o-negocio-individual-florida',
+  '/es/guides/llc-para-tu-app-florida',
   '/es/terms',
   '/es/privacy',
   '/es/disclaimer',
@@ -55,6 +60,12 @@ describe('llms.txt Spanish URLs', () => {
     expect(text).toContain('https://launchforma.com/es/guides/how-to-form-an-llc-in-florida');
     expect(text).toContain('https://launchforma.com/es/guides/florida-annual-report');
     expect(text).toContain('https://launchforma.com/es/guides/florida-registered-agent');
+    expect(text).toContain('https://launchforma.com/es/guides/llc-florida-sin-seguro-social');
+    expect(text).toContain('https://launchforma.com/es/guides/licencia-negocio-miami-dade');
+    expect(text).toContain('https://launchforma.com/es/guides/licencia-negocio-broward');
+    expect(text).toContain('https://launchforma.com/es/guides/llc-o-negocio-individual-florida');
+    expect(text).toContain('https://launchforma.com/es/guides/llc-para-tu-app-florida');
+    expect(text).toContain('11 de agosto de 2026');
     expect(text).toContain('https://launchforma.com/es/states/florida');
     expect(text).toContain('Traducción en borrador');
   });

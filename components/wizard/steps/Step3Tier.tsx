@@ -108,6 +108,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                       t,
                       tierPriceParts(tierDef.slug, entityType, stateCode),
                       formationState.name,
+                      tierDef.slug,
                     )}
                   </p>
                   <p className="text-[11px] text-ink-subtle mt-0.5">{bestFor}</p>

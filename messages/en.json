@@ -232,7 +232,7 @@
     "pageHeadline": "How much does a {state} LLC cost?",
     "floridaBundledStateFees": "On Popular and Premium, the $160 shown with the Florida LLC price is the $125 state filing fee plus a certified copy ($30) and a certificate of status ($5). Every package includes the $125 state filing fee.",
     "subhead": "One clear price per package - Florida filing fee already included. No subscriptions, no surprise checkout fees.",
-    "footnote": "The total on each card is our service fee plus the {state} state fee, listed separately underneath. LaunchForma remits the state fee on your behalf.",
+    "footnote": "The total on each card is our service fee plus {state} state fees, listed separately underneath. On Popular and Premium, those state fees include a certified copy and a certificate of status. LaunchForma remits them on your behalf.",
     "allIn": "all-in",
     "filingFeeIncluded": "State filing fee included",
     "feeSplit": "Service fee {service} + {state} state fee {stateFee}",
@@ -273,7 +273,9 @@
     "feat_quarterly": "Quarterly compliance check-ins",
     "feat_everythingBasic": "Everything in Essential",
     "feat_everythingBankReady": "Everything in Popular",
-    "feat_scorpFiling": "S-Corp election filing"
+    "feat_scorpFiling": "S-Corp election filing",
+    "feeSplitWithCertificates": "Service fee {service} + {state} state fees {stateFee} (incl. certified copy & certificate of status)",
+    "feeSplitCorpWithCertificates": "Corporation: Service fee {service} + {state} state fees {stateFee} (incl. certified copy & certificate of status) ({total})"
   },
   "comparison": {
     "kicker": "Honest comparison",

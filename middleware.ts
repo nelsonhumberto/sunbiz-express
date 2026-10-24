@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LOCALE_COOKIE, locales, stripSpanishPrefix, type Locale } from '@/i18n/config';
 import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
@@ -80,6 +81,15 @@ export function middleware(request: NextRequest) {
       target.protocol = 'https:';
       return NextResponse.redirect(target, { status: 308 });
     }
+  }
+
+  // Delaware and Wyoming marketing URLs 308 to the Florida equivalent.
+  // next.config.js lists the same rules; this catches mixed-case paths.
+  const retiredTo = retiredStateDestination(pathname);
+  if (retiredTo) {
+    const url = request.nextUrl.clone();
+    url.pathname = retiredTo;
+    return NextResponse.redirect(url, 308);
   }
 
   // Capture locale *first* so the server render sees it. Priority:

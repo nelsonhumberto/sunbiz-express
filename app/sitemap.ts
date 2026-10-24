@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { ALL_MARKETING_STATES } from '@/lib/marketing-states';
 import { toSpanishUrl } from '@/lib/locale-paths';
+import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { contentLastModified } from '@/lib/sitemap-lastmod';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
@@ -42,12 +43,6 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.7,
   },
   {
-    path: '/guides/wyoming-llc-vs-delaware-corp',
-    file: 'app/(marketing)/guides/wyoming-llc-vs-delaware-corp/page.tsx',
-    changeFrequency: 'monthly',
-    priority: 0.7,
-  },
-  {
     path: '/guides/florida-llc-operating-agreement',
     file: 'app/(marketing)/guides/florida-llc-operating-agreement/page.tsx',
     changeFrequency: 'monthly',
@@ -75,9 +70,9 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  // Every indexable /states page, including Florida. Coming-soon slugs are
-  // noindex, so they stay out of the sitemap. Each English URL is mirrored
-  // under /es.
+  // Every indexable /states page. Coming-soon slugs are noindex, and
+  // Delaware / Wyoming URLs are excluded (they 308 to Florida). Each
+  // English URL is mirrored under /es.
   const statePages: PageDef[] = ALL_MARKETING_STATES.filter(
     (s) => s.availability === 'active',
   ).map((s) => ({
@@ -87,6 +82,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }));
 
-  const pages = [...STATIC_PAGES, ...statePages];
+  const pages = [...STATIC_PAGES, ...statePages].filter(
+    (page) => retiredStateDestination(page.path) == null,
+  );
   return [...pages.map((page) => toEntry(page, false)), ...pages.map((page) => toEntry(page, true))];
 }

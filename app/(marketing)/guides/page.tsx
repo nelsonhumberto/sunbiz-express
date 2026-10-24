@@ -25,11 +25,11 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: 'Guides - LLC, Corporation & Compliance Resources',
       description:
-        'Plain-English guides to forming a Florida LLC, the annual report, registered agents, operating agreements, Wyoming vs. Delaware, and the 2026 FinCEN BOI update.',
+        'Plain-English guides to forming a Florida LLC, the annual report, registered agents, operating agreements, and the 2026 FinCEN BOI update.',
       openGraph: {
         title: 'LaunchForma Guides',
         description:
-          'Plain-English guides to forming a Florida LLC, annual reports, registered agents, operating agreements, and Wyoming vs. Delaware.',
+          'Plain-English guides to forming a Florida LLC, annual reports, registered agents, and operating agreements.',
         type: 'website',
       },
     },
@@ -65,13 +65,6 @@ const GUIDES = [
     description:
       'What an operating agreement does, why Florida banks ask for it, and what to include - even for a single-member LLC.',
     readingMinutes: 9,
-  },
-  {
-    slug: 'wyoming-llc-vs-delaware-corp',
-    title: 'Wyoming LLC vs. Delaware Corporation',
-    description:
-      'Privacy, taxes, fees, and investor expectations compared - so you pick the right home state for your entity.',
-    readingMinutes: 10,
   },
   {
     slug: 'boi-filing-2026',
@@ -112,12 +105,6 @@ export default async function GuidesHubPage() {
           title: t('oaTitle'),
           description: t('oaDescription'),
           readingMinutes: 9,
-        },
-        {
-          slug: 'wyoming-llc-vs-delaware-corp',
-          title: t('wyTitle'),
-          description: t('wyDescription'),
-          readingMinutes: 10,
         },
       ]
     : GUIDES;

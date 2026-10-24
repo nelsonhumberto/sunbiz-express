@@ -12,6 +12,7 @@ import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { localizedHref } from '@/lib/locale-paths';
+import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,11 +34,11 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: 'States We Serve - LLC & Corporation Formation',
       description:
-        'LaunchForma files LLCs and Corporations in Florida, Wyoming, and Delaware today, with more states rolling out. Compare timing, state fees, and what is included by state.',
+        'LaunchForma files LLCs and Corporations in Florida today, with more states rolling out. Compare timing, the state fee, and what is included.',
       openGraph: {
         title: 'States We Serve - LaunchForma',
         description:
-          'Form a business in Florida, Wyoming, or Delaware - same all-in pricing, free Year-1 Registered Agent, transparent state fees.',
+          'Form a Florida business with all-in pricing, a free Year-1 Registered Agent, and a transparent state fee.',
         type: 'website',
       },
     },
@@ -67,7 +68,7 @@ export default async function StatesIndexPage() {
           <p className="mt-6 text-lg text-ink-muted leading-relaxed">
             {t
               ? t('intro')
-              : 'We file LLCs and Corporations in Florida, Wyoming, and Delaware today. Other US states are rolling out next - pick yours to join the waitlist.'}
+              : 'We file LLCs and Corporations in Florida today. Other US states are rolling out next - pick yours to join the waitlist.'}
           </p>
         </div>
       </section>
@@ -78,7 +79,7 @@ export default async function StatesIndexPage() {
             {t ? t('available') : 'Available today'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {ACTIVE_MARKETING_STATES.map((state) => {
+            {ACTIVE_MARKETING_STATES.filter((state) => !isRetiredStateSlug(state.slug)).map((state) => {
               const llcPrice = tierPackagePriceCents(
                 'BASIC',
                 'LLC',

@@ -12,7 +12,7 @@ describe('Spanish URL paths', () => {
   it('maps the homepage to /es and never back to /', () => {
     expect(toSpanishUrl('/')).toBe('/es');
     expect(toSpanishUrl('/about')).toBe('/es/about');
-    expect(toSpanishUrl('/states/delaware')).toBe('/es/states/delaware');
+    expect(toSpanishUrl('/states/florida')).toBe('/es/states/florida');
     expect(toSpanishUrl('/pricing?state=WY')).toBe('/es/pricing?state=WY');
     expect(toSpanishUrl('/?state=TX')).toBe('/es?state=TX');
   });
@@ -53,15 +53,31 @@ describe('hreflang alternates', () => {
   });
 
   it('self-canonicalizes each /es page and pairs state pages', () => {
-    const fromEnglish = localeAlternates('/states/wyoming', '/states/wyoming');
-    const fromSpanish = localeAlternates('/states/wyoming', '/es/states/wyoming');
-    expect(fromEnglish.canonical).toBe('/states/wyoming');
-    expect(fromSpanish.canonical).toBe('/es/states/wyoming');
-    expect(fromSpanish.languages?.es).toBe('/es/states/wyoming');
-    expect(fromSpanish.languages?.en).toBe('/states/wyoming');
-    expect(fromSpanish.languages?.['x-default']).toBe('/states/wyoming');
+    const fromEnglish = localeAlternates('/states/florida', '/states/florida');
+    const fromSpanish = localeAlternates('/states/florida', '/es/states/florida');
+    expect(fromEnglish.canonical).toBe('/states/florida');
+    expect(fromSpanish.canonical).toBe('/es/states/florida');
+    expect(fromSpanish.languages?.es).toBe('/es/states/florida');
+    expect(fromSpanish.languages?.en).toBe('/states/florida');
+    expect(fromSpanish.languages?.['x-default']).toBe('/states/florida');
     expect(isSpanishPublicPath('/es/guides')).toBe(true);
     expect(isSpanishPublicPath('/guides')).toBe(false);
+  });
+
+  it('gives /es/start its own canonical and an English alternate', () => {
+    const fromSpanish = localeAlternates('/start', '/es/start');
+    expect(fromSpanish.canonical).toBe('/es/start');
+    expect(fromSpanish.languages).toEqual({
+      en: '/start',
+      es: '/es/start',
+      'x-default': '/start',
+    });
+    const start = es as { startMeta: { title: string; description: string } };
+    expect(start.startMeta.title).toBe('Empieza a formar tu LLC en Florida');
+    expect(start.startMeta.description).toMatch(/Florida/);
+    expect(start.startMeta.description).not.toMatch(/\b(the|and|with|your|Form a)\b/);
+    expect(start.startMeta.title).not.toMatch(/—|–/);
+    expect(start.startMeta.description).not.toMatch(/—|–/);
   });
 });
 

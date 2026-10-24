@@ -24,8 +24,11 @@ describe('sitemap lastModified', () => {
   it('lists Florida, every active state page, and the new guides', () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(urls).toContain('https://launchforma.com/states/florida');
-    expect(urls).toContain('https://launchforma.com/states/delaware');
-    expect(urls).toContain('https://launchforma.com/states/wyoming');
+    expect(urls).not.toContain('https://launchforma.com/states/delaware');
+    expect(urls).not.toContain('https://launchforma.com/states/wyoming');
+    expect(urls).not.toContain('https://launchforma.com/es/states/delaware');
+    expect(urls).not.toContain('https://launchforma.com/es/states/wyoming');
+    expect(urls.some((url) => /delaware|wyoming/i.test(url))).toBe(false);
     expect(urls).toContain('https://launchforma.com/guides/how-to-form-an-llc-in-florida');
     expect(urls).toContain('https://launchforma.com/guides/florida-annual-report');
     expect(urls).toContain('https://launchforma.com/guides/florida-registered-agent');

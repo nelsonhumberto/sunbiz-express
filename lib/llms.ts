@@ -13,11 +13,12 @@
 
 import { ALL_MARKETING_STATES, FLORIDA, localizedStateName } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
+import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 const SUMMARY =
-  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida, Wyoming, and Delaware with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and submission within 1 business day.';
+  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and submission within 1 business day.';
 
 const ABOUT =
   'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. Every package includes the required state filing fee, free Year-1 Registered Agent service, and digital delivery of filed documents. Optional add-ons include Operating Agreements, S-Corp election (IRS Form 2553), managed annual reports, and compliance alerts. The company also files Florida annual reports. LaunchForma is not a law firm and does not provide legal advice.';
@@ -45,7 +46,6 @@ const GUIDES: LinkEntry[] = [
   { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
   { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
   { title: 'Florida Registered Agent', path: '/guides/florida-registered-agent', note: 'Who can serve, the street-address rule, and state fees to appoint or change an agent.' },
-  { title: 'Wyoming LLC vs Delaware Corp', path: '/guides/wyoming-llc-vs-delaware-corp', note: 'Compare Wyoming LLC and Delaware C-Corp for privacy, taxes, and fundraising.' },
   { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'Why and how to create a Florida LLC operating agreement.' },
   { title: 'BOI Reporting Update 2026', path: '/guides/boi-filing-2026', note: 'Redirects to the BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting.' },
 ];
@@ -67,15 +67,12 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final de agosto de 2026).' },
   { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },
   { title: 'Florida', path: '/es/states/florida', note: 'Formar una LLC o corporación en Florida.' },
-  { title: 'Delaware', path: '/es/states/delaware', note: 'Formar una LLC o corporación en Delaware.' },
-  { title: 'Wyoming', path: '/es/states/wyoming', note: 'Formar una LLC o corporación en Wyoming.' },
   { title: 'Empezar un trámite', path: '/es/start', note: 'Empieza una LLC, corporación o elección S-Corp sin crear cuenta.' },
   { title: 'Guías', path: '/es/guides', note: 'Índice de guías en español.' },
   { title: 'Cómo formar una LLC en Florida', path: '/es/guides/how-to-form-an-llc-in-florida', note: 'Pasos, tarifas de la División de Corporaciones y qué hacer después de los Articles of Organization.' },
   { title: 'Reporte anual de Florida', path: '/es/guides/florida-annual-report', note: 'Fecha (1 de enero al 1 de mayo), tarifas de LLC y corporación, y presentación tardía.' },
   { title: 'Agente registrado en Florida', path: '/es/guides/florida-registered-agent', note: 'Quién puede serlo, la regla de dirección física y las tarifas estatales para designar o cambiar al agente.' },
   { title: 'Acuerdo operativo de Florida', path: '/es/guides/florida-llc-operating-agreement', note: 'Para qué sirve un acuerdo operativo de LLC en Florida.' },
-  { title: 'Wyoming o Delaware', path: '/es/guides/wyoming-llc-vs-delaware-corp', note: 'Comparación entre una LLC de Wyoming y una corporación de Delaware.' },
   { title: 'Términos (borrador)', path: '/es/terms', note: 'Traducción en borrador. La versión en inglés es la que rige: /terms.' },
   { title: 'Privacidad (borrador)', path: '/es/privacy', note: 'Traducción en borrador. La versión en inglés es la que rige: /privacy.' },
   { title: 'Aviso legal (borrador)', path: '/es/disclaimer', note: 'Traducción en borrador. La versión en inglés es la que rige: /disclaimer.' },
@@ -87,7 +84,9 @@ function line(entry: LinkEntry): string {
 }
 
 function stateLines(): string[] {
-  const active = ALL_MARKETING_STATES.filter((s) => s.availability === 'active');
+  const active = ALL_MARKETING_STATES.filter(
+    (s) => s.availability === 'active' && !isRetiredStateSlug(s.slug),
+  );
   return active.map((s) => {
     return `- [${s.name} LLC & Corporation formation](${BASE_URL}/states/${s.slug}): File a ${s.name} LLC or Corporation with all-in pricing and free Year-1 Registered Agent.`;
   });
@@ -153,7 +152,7 @@ export function buildLlmsFullTxt(): string {
     .map((s) => localizedStateName(s, 'en'))
     .join(', ');
   parts.push(
-    `LaunchForma files today in Florida, Wyoming, and Delaware. Waitlists are open for other US states: ${coming}.`,
+    `LaunchForma files today in Florida. Waitlists are open for other US states: ${coming}.`,
   );
   parts.push('');
   return parts.join('\n');

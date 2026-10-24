@@ -25,6 +25,7 @@ import { getTranslations } from 'next-intl/server';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
+import { decideDraftNameResume } from '@/lib/start-draft';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
@@ -38,6 +39,8 @@ const StartSchema = z.object({
   tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
   // Business name seeded by the assistant (?name=) so the draft starts further along.
   businessName: z.string().max(100).optional(),
+  draftIntent: z.enum(['resume', 'new']).optional(),
+  draftId: z.string().optional(),
 });
 
 function resolveEntityChoice(choice: 'LLC' | 'CORP' | 'SCORP' | undefined): {
@@ -49,9 +52,18 @@ function resolveEntityChoice(choice: 'LLC' | 'CORP' | 'SCORP' | undefined): {
   return { entityType: 'LLC', taxElection: null };
 }
 
+export interface DraftNameChoice {
+  draftId: string;
+  existingName: string;
+  proposedName: string;
+  resumeHref: string;
+}
+
 export interface StartGuestResult {
   ok?: boolean;
   error?: string;
+  /** Existing draft uses a different name. The form asks which one to keep. */
+  choice?: DraftNameChoice;
 }
 
 /**
@@ -74,6 +86,8 @@ export async function startGuestFiling(
     entityType: formData.get('entityType') ?? undefined,
     tier: (formData.get('tier') as string)?.toUpperCase() || undefined,
     businessName: (formData.get('businessName') as string)?.trim() || undefined,
+    draftIntent: formData.get('draftIntent') || undefined,
+    draftId: (formData.get('draftId') as string) || undefined,
   });
   const t = await getTranslations('start');
   if (!parsed.success) {
@@ -167,14 +181,43 @@ export async function startGuestFiling(
 
   // Returning guest? Resume their existing draft instead of spawning a new one
   // on every /start submit (prevents draft sprawl + loses no progress).
-  if (existing) {
+  // A name from ?name= is written onto a blank draft, or the customer chooses
+  // when that draft already has a different name. "new" starts another filing.
+  if (existing && parsed.data.draftIntent !== 'new') {
     const draft = await prisma.filing.findFirst({
       where: { userId: guestUser.id, status: 'DRAFT' },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true },
+      select: { id: true, currentStep: true, businessName: true },
     });
-    if (draft) {
-      const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+    if (draft && (!parsed.data.draftId || parsed.data.draftId === draft.id)) {
+      const decision = decideDraftNameResume({
+        existingName: draft.businessName,
+        proposedName: parsed.data.draftIntent === 'resume' ? null : seededName,
+        currentStep: draft.currentStep,
+      });
+      if (decision.action === 'apply' && seededName) {
+        await prisma.filing.update({
+          where: { id: draft.id },
+          data: {
+            businessName: seededName,
+            nameAvailable: null,
+            nameCheckedAt: null,
+          },
+        });
+        redirect(`/wizard/${draft.id}/2`);
+      }
+      if (decision.action === 'choose' && seededName) {
+        const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+        return {
+          choice: {
+            draftId: draft.id,
+            existingName: draft.businessName?.trim() || '',
+            proposedName: seededName,
+            resumeHref: `/wizard/${draft.id}/${step}`,
+          },
+        };
+      }
+      const step = decision.action === 'resume' ? decision.step : 2;
       redirect(`/wizard/${draft.id}/${step}`);
     }
   }

@@ -4,8 +4,11 @@ import { NextRequest } from 'next/server';
 import { SunbizError, checkNameAvailability } from '@/lib/sunbiz';
 import { rateLimit } from '@/lib/rate-limit';
 import {
+  NAME_CHECK_DEBOUNCE_MS,
   NAME_CHECK_MAX_LENGTH,
   canonicalFiledName,
+  clearNameCheckCache,
+  isRateLimitError,
   NAME_TOO_SHORT_ERROR,
   nameCheckClientError,
   nameCheckDelayMs,
@@ -16,11 +19,16 @@ import {
   nameHasMinimumSubstance,
   normalizeNameCheckQuery,
   peelTypedSuffix,
+  readNameCheckCache,
   realNameCharacterCount,
   requestNameCheck,
   seededBusinessName,
   startHrefForNameCheck,
+  trailingAmbiguousSuffix,
+  writeNameCheckCache,
 } from '@/lib/name-check';
+import { TOTAL_STEPS } from '@/lib/wizard-constants';
+import { decideDraftNameResume } from '@/lib/start-draft';
 
 vi.mock('@/lib/rate-limit', () => ({
   rateLimit: vi.fn(() => ({ ok: true, remaining: 29, retryAfterSeconds: 0 })),
@@ -75,10 +83,11 @@ describe('seeded wizard name', () => {
   });
 
   it('checks the seeded name immediately and debounces later edits', () => {
+    expect(NAME_CHECK_DEBOUNCE_MS).toBe(600);
     expect(nameCheckDelayMs('Acme LLC', 'Acme LLC')).toBe(0);
-    expect(nameCheckDelayMs('Acme LL', 'Acme LLC')).toBe(400);
-    expect(nameCheckDelayMs('Acme LLC', '')).toBe(400);
-    expect(nameCheckDelayMs('A', 'A')).toBe(400);
+    expect(nameCheckDelayMs('Acme LL', 'Acme LLC')).toBe(600);
+    expect(nameCheckDelayMs('Acme LLC', '')).toBe(600);
+    expect(nameCheckDelayMs('A', 'A')).toBe(600);
   });
 });
 
@@ -114,10 +123,38 @@ describe('suffix stripping and real characters', () => {
     expect(peelTypedSuffix('Name Inc')).toBe('Name');
     expect(peelTypedSuffix('Name Corp')).toBe('Name');
     expect(peelTypedSuffix('Name LLC LLC')).toBe('Name');
+    expect(peelTypedSuffix('Name Corporation')).toBe('Name');
     expect(peelTypedSuffix('Acme ')).toBe('Acme ');
+    expect(peelTypedSuffix('Taco Co')).toBe('Taco Co');
+    expect(peelTypedSuffix('Taco Company')).toBe('Taco Company');
+    expect(peelTypedSuffix('Taco Co.')).toBe('Taco Co.');
     expect(canonicalFiledName('Name LLC LLC', 'LLC')).toBe('Name LLC');
     expect(canonicalFiledName('Name Inc LLC', 'LLC')).toBe('Name LLC');
     expect(canonicalFiledName('Atlantic Inc', 'CORP')).toBe('Atlantic Inc');
+    expect(canonicalFiledName('Taco Co', 'LLC')).toBe('Taco Co LLC');
+    expect(canonicalFiledName('Taco Co', 'CORP')).toBe('Taco Co');
+    expect(trailingAmbiguousSuffix('Taco Co')).toBe('co');
+    expect(trailingAmbiguousSuffix('Taco Company')).toBe('company');
+    expect(trailingAmbiguousSuffix('Taco Corp')).toBeNull();
+  });
+
+  it('caches a successful lookup per name and treats 429 as a rate limit', () => {
+    clearNameCheckCache();
+    const hit = {
+      query: 'Acme LLC',
+      available: true,
+      status: 'available' as const,
+      message: 'ok',
+      conflicts: [],
+      suggestions: [],
+    };
+    writeNameCheckCache('Acme LLC', 'LLC', hit);
+    expect(readNameCheckCache('acme llc', 'LLC')).toEqual(hit);
+    expect(readNameCheckCache('Acme LLC', 'CORP')).toBeNull();
+    expect(isRateLimitError('rate_limit')).toBe(true);
+    expect(isRateLimitError('http_429')).toBe(true);
+    expect(isRateLimitError('timeout')).toBe(false);
+    clearNameCheckCache();
   });
 
   it('requires two real characters after the ending is removed', () => {
@@ -287,6 +324,12 @@ describe('name check copy and wiring', () => {
     );
     expect(en.wizard.nameCheckRetry).toBe('Retry');
     expect(es.wizard.nameCheckRetry).toBe('Reintentar');
+    expect(en.wizard.nameCheckRateLimit).toBe('Too many checks, try again in a few seconds');
+    expect(en.wizard.nameSuffixCoHint).toContain('Co stays in the name');
+    expect(en.wizard.nameSuffixCompanyHint).toContain('Company stays in the name');
+    expect(en.hero.previewStep).toBe('Step {current} of {total} · Business Name');
+    expect(es.hero.previewStep).toBe('Paso {current} de {total} · Nombre de la empresa');
+    expect(TOTAL_STEPS).toBe(11);
     expect(en.wizard.namePlaceholderLLC).toBe('e.g., Sunshine Coast Ventures');
     expect(en.wizard.namePlaceholderCorp).toBe('e.g., Atlantic Holdings');
     expect(es.wizard.namePlaceholderLLC).not.toMatch(/LLC|Inc/);
@@ -330,6 +373,26 @@ describe('name check copy and wiring', () => {
     expect(widget).toContain("t('nameCheckRetry')");
     expect(widget).toContain('nameCheckErrorEvent');
     expect(widget).toContain('peelTypedSuffix');
+    expect(widget).toContain('readNameCheckCache');
+    expect(widget).toContain('fresh: bypassCache');
+    expect(widget).toContain("t('nameCheckRateLimit')");
+    expect(widget).toContain("t('nameSuffixCoHint')");
+    expect(widget).toContain('retryTokenRef');
+    const hero = readFileSync('components/marketing/Hero.tsx', 'utf8');
+    expect(hero).toContain('TOTAL_STEPS');
+    expect(hero).toContain("t('previewStep'");
+    expect(readFileSync('components/wizard/WizardShell.tsx', 'utf8')).toContain('total: TOTAL_STEPS');
+    expect(readFileSync('actions/guest-start.ts', 'utf8')).toContain('decideDraftNameResume');
+    expect(decideDraftNameResume({ existingName: null, proposedName: 'New LLC', currentStep: 4 })).toEqual({
+      action: 'apply',
+      step: 2,
+    });
+    expect(
+      decideDraftNameResume({ existingName: 'Old LLC', proposedName: 'New LLC', currentStep: 6 }),
+    ).toEqual({ action: 'choose' });
+    expect(
+      decideDraftNameResume({ existingName: 'Old LLC', proposedName: 'old llc', currentStep: 6 }),
+    ).toEqual({ action: 'resume', step: 6 });
     expect(step).toContain('nameHasMinimumSubstance');
     expect(step).toContain("t('nameTooShort')");
     expect(step).toContain('onBlocked');

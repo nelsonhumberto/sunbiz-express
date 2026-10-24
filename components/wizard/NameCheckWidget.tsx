@@ -32,15 +32,20 @@ import {
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import { trackEvent } from '@/lib/analytics';
 import {
+  isRateLimitError,
   nameCheckDelayMs,
   nameCheckErrorEvent,
   nameCheckRequestUrl,
   nameCheckResultEvent,
   nameCheckSubmittedEvent,
   peelTypedSuffix,
+  rateLimitCooldownUntil,
+  readNameCheckCache,
   realNameCharacterCount,
   requestNameCheck,
   seededBusinessName,
+  trailingAmbiguousSuffix,
+  writeNameCheckCache,
   type NameCheckResult,
 } from '@/lib/name-check';
 
@@ -111,10 +116,14 @@ export function NameCheckWidget({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [checkFailed, setCheckFailed] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const fetchIdRef = useRef(0);
-  const forceImmediateRef = useRef(false);
+  const retryTokenRef = useRef(0);
+  const consumedRetryRef = useRef(0);
+  const heldNameRef = useRef<string | null>(null);
 
   // A typed ending ("Name LLC" plus the LLC dropdown) is stripped so the
   // filed name is not "Name LLC LLC". Trailing spaces stay until an ending
@@ -126,6 +135,20 @@ export function NameCheckWidget({
 
   // The filed name already drops a typed ending. Warn while the field still
   // shows one, until blur moves it out of the input.
+  const ambiguousSuffix = trailingAmbiguousSuffix(baseName);
+  const retryLocked = cooldownUntil !== null && Date.now() < cooldownUntil;
+
+  useEffect(() => {
+    if (cooldownUntil === null) return;
+    const wait = cooldownUntil - Date.now();
+    if (wait <= 0) {
+      setCooldownUntil(null);
+      return;
+    }
+    const timer = setTimeout(() => setCooldownUntil(null), wait);
+    return () => clearTimeout(timer);
+  }, [cooldownUntil]);
+
   const baseHasSuffix = useMemo(() => {
     const raw = baseName.trim();
     if (!raw) return false;
@@ -170,6 +193,7 @@ export function NameCheckWidget({
     if (!baseIsSubstantive) {
       setResult(null);
       setCheckFailed(false);
+      setRateLimited(false);
       setLoading(false);
       return;
     }
@@ -210,20 +234,46 @@ export function NameCheckWidget({
     }
 
     // A seeded name checks immediately so the badge (or the failure note)
-    // is on screen when step 2 opens. Edits stay debounced. Retry skips it.
-    const immediate = forceImmediateRef.current;
-    forceImmediateRef.current = false;
-    const delay = immediate ? 0 : nameCheckDelayMs(combinedName, seededCombinedRef.current);
+    // is on screen when step 2 opens. Edits wait out the debounce.
+    // Retry bumps retryNonce. That token is consumed only when the request
+    // actually starts, so a fresh lookup still runs if a previous result is
+    // sitting in state or in the cache.
+    const bypassCache = retryNonce !== consumedRetryRef.current;
+    if (heldNameRef.current && heldNameRef.current !== combinedName) {
+      heldNameRef.current = null;
+    }
+    const heldForRetry =
+      heldNameRef.current !== null && heldNameRef.current === combinedName && !bypassCache;
+    if (heldForRetry) {
+      setLoading(false);
+      setCheckFailed(true);
+      setRateLimited(true);
+      return;
+    }
+    if (bypassCache) heldNameRef.current = null;
+    const delay = bypassCache ? 0 : nameCheckDelayMs(combinedName, seededCombinedRef.current);
     if (delay === 0) {
       setLoading(true);
     }
 
     debounceRef.current = setTimeout(async () => {
+      if (bypassCache) consumedRetryRef.current = retryNonce;
+      const cached = bypassCache ? null : readNameCheckCache(combinedName, entityType);
+      if (cached) {
+        setRateLimited(false);
+        setCheckFailed(false);
+        setResult(cached);
+        onChange(combinedName, cached, assessment);
+        setLoading(false);
+        return;
+      }
       const id = ++fetchIdRef.current;
       setLoading(true);
       const submitted = nameCheckSubmittedEvent('wizard');
       trackEvent(submitted.event, submitted.properties);
-      const outcome = await requestNameCheck(nameCheckRequestUrl(combinedName, entityType));
+      const outcome = await requestNameCheck(
+        nameCheckRequestUrl(combinedName, entityType, { fresh: bypassCache }),
+      );
       const recorded = nameCheckResultEvent({
         status: outcome.status,
         ms: outcome.ms,
@@ -242,11 +292,19 @@ export function NameCheckWidget({
       // A failed or timed-out lookup must not block Continue. Keep the
       // warning on screen, with Retry, instead of clearing the badge quietly.
       if (outcome.deferred || !outcome.result) {
+        const limited = isRateLimitError(outcome.error);
         setResult(null);
         setCheckFailed(true);
+        setRateLimited(limited);
+        if (limited) {
+          heldNameRef.current = combinedName;
+          setCooldownUntil(rateLimitCooldownUntil(Date.now()));
+        }
         setLoading(false);
         return;
       }
+      writeNameCheckCache(combinedName, entityType, outcome.result);
+      setRateLimited(false);
       setCheckFailed(false);
       setResult(outcome.result);
       onChange(combinedName, outcome.result, assessment);
@@ -260,7 +318,7 @@ export function NameCheckWidget({
     // the parent's perspective and we only want the effect to fire when the
     // typed name, entity type, or formation state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combinedName, entityType, formationState, assessment, retryNonce, baseIsSubstantive]);
+  }, [combinedName, entityType, formationState, assessment, retryNonce, baseIsSubstantive, cooldownUntil]);
 
   // Localized status banner - see previous version for rationale.
   const statusMessage = (() => {
@@ -328,7 +386,19 @@ export function NameCheckWidget({
           </div>
         </div>
 
-        {baseHasSuffix && (
+        {ambiguousSuffix === 'co' && (
+          <p className="text-xs text-ink-muted flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            {t('nameSuffixCoHint')}
+          </p>
+        )}
+        {ambiguousSuffix === 'company' && (
+          <p className="text-xs text-ink-muted flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            {t('nameSuffixCompanyHint')}
+          </p>
+        )}
+        {baseHasSuffix && !ambiguousSuffix && (
           <p className="text-xs text-warn flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" />
             {t('suffixDuplicateWarn')}
@@ -375,15 +445,17 @@ export function NameCheckWidget({
           role="status"
           className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-ink-muted leading-relaxed flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p>{t('nameCheckDeferred')}</p>
+          <p>{rateLimited ? t('nameCheckRateLimit') : t('nameCheckDeferred')}</p>
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="shrink-0"
+            disabled={retryLocked}
             onClick={() => {
-              forceImmediateRef.current = true;
-              setRetryNonce((n) => n + 1);
+              if (retryLocked) return;
+              retryTokenRef.current += 1;
+              setRetryNonce(retryTokenRef.current);
             }}
           >
             {t('nameCheckRetry')}

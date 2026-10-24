@@ -16,25 +16,115 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
+import { retrieveCheckoutSession } from '@/lib/retrieve-checkout-session';
+import {
+  checkoutFilingCandidates,
+  gateCheckoutSuccess,
+  readQueryParam,
+} from '@/lib/checkout-session-verification';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: { filing?: string };
+  searchParams: { filing?: string | string[]; session_id?: string | string[] };
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect('/sign-in');
-  if (!searchParams.filing) redirect('/dashboard');
-
-  const filing = await prisma.filing.findUnique({
-    where: { id: searchParams.filing },
-    include: { documents: true },
-  });
-  if (!filing || filing.userId !== session.user.id) redirect('/dashboard');
 
   const t = await getTranslations('checkoutSuccess');
+  const sessionId = readQueryParam(searchParams.session_id);
+  const urlFilingId = readQueryParam(searchParams.filing);
+
+  if (!sessionId) {
+    return (
+      <OrderNotice
+        pending
+        title={t('confirmingTitle')}
+        body={t('confirmingBody')}
+        dashboardLabel={t('goDashboard')}
+      />
+    );
+  }
+
+  const checkoutSession = await retrieveCheckoutSession(sessionId);
+  const candidateIds = checkoutFilingCandidates(checkoutSession, urlFilingId);
+  const [user, filings] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, stripeCustomerId: true },
+    }),
+    candidateIds.length
+      ? prisma.filing.findMany({
+          where: { id: { in: candidateIds }, userId: session.user.id },
+          include: { documents: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const gate = gateCheckoutSuccess({
+    sessionId,
+    session: checkoutSession,
+    owner: {
+      userId: session.user.id,
+      email: user?.email ?? session.user.email,
+      stripeCustomerId: user?.stripeCustomerId,
+      requestedFilingId: urlFilingId,
+      ownedFilingIds: filings.map((row) => row.id),
+    },
+  });
+
+  if (gate.status !== 'paid') {
+    return (
+      <OrderNotice
+        pending
+        title={t('confirmingTitle')}
+        body={t('confirmingBody')}
+        dashboardLabel={t('goDashboard')}
+      />
+    );
+  }
+
+  const filing = gate.filingId ? filings.find((row) => row.id === gate.filingId) ?? null : null;
+  const tracker = (
+    <CheckoutConversionTracker
+      userId={session.user.id}
+      filingId={filing?.id ?? gate.filingId}
+      amountCents={gate.amountCents}
+      currency={gate.currency}
+      state={filing?.state}
+      entityType={filing?.entityType}
+      tier={filing?.serviceTier}
+      utm={
+        filing
+          ? {
+              utmSource: filing.utmSource,
+              utmMedium: filing.utmMedium,
+              utmCampaign: filing.utmCampaign,
+              utmContent: filing.utmContent,
+              utmTerm: filing.utmTerm,
+              gclid: filing.gclid,
+              liFatId: filing.liFatId,
+            }
+          : undefined
+      }
+    />
+  );
+
+  if (!filing) {
+    return (
+      <>
+        {tracker}
+        <OrderNotice
+          title={t('confirmedTitle')}
+          body={t('confirmedBody')}
+          dashboardLabel={t('goDashboard')}
+        />
+      </>
+    );
+  }
+
   const stateRule = getFormationState(filing.state);
   const stateName = stateRule.name;
   const entityLabel =
@@ -44,23 +134,7 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="min-h-screen bg-surface">
-      <CheckoutConversionTracker
-        userId={session.user.id}
-        filingId={filing.id}
-        totalCents={filing.totalCents}
-        state={filing.state}
-        entityType={filing.entityType}
-        tier={filing.serviceTier}
-        utm={{
-          utmSource: filing.utmSource,
-          utmMedium: filing.utmMedium,
-          utmCampaign: filing.utmCampaign,
-          utmContent: filing.utmContent,
-          utmTerm: filing.utmTerm,
-          gclid: filing.gclid,
-          liFatId: filing.liFatId,
-        }}
-      />
+      {tracker}
       {/* Confetti-ish hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 mesh-bg" />
@@ -159,6 +233,49 @@ export default async function CheckoutSuccessPage({
               </span>
             }
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderNotice({
+  title,
+  body,
+  dashboardLabel,
+  pending,
+}: {
+  title: string;
+  body: string;
+  dashboardLabel: string;
+  pending?: boolean;
+}) {
+  return (
+    <div className="min-h-screen bg-surface">
+      <div className="container py-16 md:py-24">
+        <div className="max-w-xl mx-auto rounded-2xl border border-border bg-white p-8 md:p-10 text-center shadow-card">
+          <div
+            className={
+              pending
+                ? 'inline-flex h-16 w-16 items-center justify-center rounded-full bg-warn-subtle border border-warn/30 mb-6'
+                : 'inline-flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle border-2 border-success/30 mb-6'
+            }
+          >
+            {pending ? (
+              <Clock className="h-8 w-8 text-warn" />
+            ) : (
+              <CheckCircle2 className="h-8 w-8 text-success" strokeWidth={2.5} />
+            )}
+          </div>
+          <h1 className="font-display text-3xl md:text-4xl font-medium tracking-tight text-balance">
+            {title}
+          </h1>
+          <p className="mt-3 text-lg text-ink-muted">{body}</p>
+          <div className="mt-8">
+            <Button asChild size="lg">
+              <Link href="/dashboard">{dashboardLabel}</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

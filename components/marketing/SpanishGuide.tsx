@@ -6,12 +6,13 @@ import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { isSpanishPublicPath, PUBLIC_PATH_HEADER, toSpanishUrl } from '@/lib/locale-paths';
+import { spanishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
 
 /**
  * Spanish-only guide. The English path 308-redirects here so the sitemap
- * lists one URL. hreflang es and x-default both point at /es/guides/<slug>
- * because there is no English article to pair.
+ * lists one URL. hreflang is es and x-default only. Do not add en: it would
+ * point at that redirect.
  */
 function redirectUnlessSpanish(englishPath: string) {
   const requestPath = headers().get(PUBLIC_PATH_HEADER) ?? '';
@@ -30,13 +31,7 @@ export async function spanishGuideMetadata(
   return {
     title: pageTitle(t('metaTitle')),
     description: t('metaDescription'),
-    alternates: {
-      canonical: esPath,
-      languages: {
-        es: esPath,
-        'x-default': esPath,
-      },
-    },
+    alternates: spanishOnlyAlternates(esPath),
     openGraph: {
       title: t('ogTitle'),
       description: t('ogDescription'),

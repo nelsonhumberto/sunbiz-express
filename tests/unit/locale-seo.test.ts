@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localeAlternates } from '@/lib/locale-seo';
+import { localeAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
 import {
   isSpanishPublicPath,
   localizedHref,
@@ -62,6 +62,17 @@ describe('hreflang alternates', () => {
     expect(fromSpanish.languages?.['x-default']).toBe('/states/florida');
     expect(isSpanishPublicPath('/es/guides')).toBe(true);
     expect(isSpanishPublicPath('/guides')).toBe(false);
+  });
+
+  it('omits en on Spanish-only guides so hreflang does not point at a redirect', () => {
+    const esPath = '/es/guides/llc-para-tu-app-florida';
+    const alternates = spanishOnlyAlternates(esPath);
+    expect(alternates.canonical).toBe(esPath);
+    expect(alternates.languages).toEqual({
+      es: esPath,
+      'x-default': esPath,
+    });
+    expect(alternates.languages).not.toHaveProperty('en');
   });
 
   it('gives /es/start its own canonical and an English alternate', () => {

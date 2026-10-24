@@ -1,30 +1,26 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { sendEmail, type NotificationType } from '@/lib/email';
-import { runDraftRecovery } from '@/lib/draft-recovery';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-recovery';
 
 // Recovery + retention scheduler.
 //
-// Run on a daily cron (Vercel Cron, GitHub Actions, etc). The route is
-// idempotent - it inspects the EmailNotification table to make sure the same
-// (filing, type) combination is never sent twice. That keeps the implementation
-// safe to retry and easy to test by curling locally.
+// Vercel Hobby only allows a daily cron, so vercel.json stays at 14:00 UTC.
+// GitHub Actions calls this route every hour. Both callers are safe together:
+// EmailNotification is the record of which (filing, type) already went out,
+// so a later hour does not send that step or that renewal reminder again.
 //
-// What it sends:
+// What it sends (the jobs live in lib/draft-recovery.ts):
 //
-//   1. Abandoned-draft recovery - 24h, 72h, and 7d after the last update on a
-//      DRAFT filing. We pick the strongest single message in each window so a
-//      customer who's been gone 5 days only gets the 24h reminder once, then
-//      the 72h "name not reserved" nudge, then the 7d "need help?" message.
-//   2. Registered-agent renewal - 60 / 30 / 7 days before the active RA's
-//      renewalDate. The first-year service is included with every package, so
-//      the renewal cascade introduces the paid renewal upsell at the moment
-//      it's most relevant.
+//   1. Resume-order sequence (RESUME_DRIP_ENABLED, default off). About 1 hour,
+//      1 day, and 3 days after Filing.updatedAt on a DRAFT that is still
+//      unpaid. Replaces the old ABANDONED_24H / ABANDONED_72H / ABANDONED_7D
+//      cron. When the flag is off, none of those abandoned-draft emails send.
+//      runDraftRecovery still stamps abandonedAt only after a successful 7-day
+//      send. The last resume step stamps the same way when that email is sent.
+//   2. Registered-agent renewal at 60 / 30 / 7 days. The window is one calendar
+//      day wide and EmailNotification dedupes the type, so the hourly cron
+//      still sends each reminder once.
 //
-// Annual report reminders are handled separately - those rely on the
-// AnnualReport table and are emitted from the existing compliance flow.
+// Annual report reminders are handled separately.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 
@@ -49,77 +45,8 @@ export async function GET(request: Request) {
   }
 
   const now = Date.now();
-  const draftStats = await runDraftRecovery(now);
+  const draftStats = await runScheduledDraftRecovery(now);
   const raStats = await runRaRenewalReminders(now);
 
   return NextResponse.json({ ok: true, drafts: draftStats, raRenewals: raStats });
-}
-
-// ─── Registered-agent renewal reminders ───────────────────────────────────
-
-const RA_BUCKETS: Array<{
-  type: NotificationType;
-  minDays: number;
-  maxDays: number;
-}> = [
-  { type: 'RA_RENEWAL_60', minDays: 60, maxDays: 61 },
-  { type: 'RA_RENEWAL_30', minDays: 30, maxDays: 31 },
-  { type: 'RA_RENEWAL_7', minDays: 7, maxDays: 8 },
-];
-
-async function runRaRenewalReminders(now: number) {
-  const horizon = new Date(now + 62 * 24 * 60 * 60 * 1000);
-
-  const services = await prisma.registeredAgentService.findMany({
-    where: {
-      status: 'ACTIVE',
-      renewalDate: { gte: new Date(now), lte: horizon },
-      serviceProvider: 'INTERNAL',
-    },
-    include: {
-      filing: {
-        include: {
-          user: true,
-          payments: {
-            where: { status: 'SUCCEEDED' },
-            orderBy: { completedAt: 'desc' },
-            take: 1,
-            select: { cardLast4: true },
-          },
-        },
-      },
-    },
-  });
-
-  let sent = 0;
-  for (const svc of services) {
-    const days = Math.floor((svc.renewalDate.getTime() - now) / (24 * 60 * 60 * 1000));
-    const bucket = RA_BUCKETS.find((b) => days >= b.minDays && days < b.maxDays);
-    if (!bucket) continue;
-
-    const alreadySent = await prisma.emailNotification.findFirst({
-      where: { filingId: svc.filingId, notificationType: bucket.type },
-      select: { id: true },
-    });
-    if (alreadySent) continue;
-
-    await sendEmail({
-      type: bucket.type,
-      to: svc.filing.user.email,
-      filingId: svc.filingId,
-      userId: svc.filing.userId,
-      context: {
-        firstName: svc.filing.user.firstName,
-        businessName: svc.filing.businessName ?? undefined,
-        raAutoRenew: svc.autoRenew,
-        raRenewalPriceCents: svc.renewalPriceCents,
-        raRenewalDate: svc.renewalDate,
-        raCardLast4: svc.filing.payments[0]?.cardLast4 ?? undefined,
-        raRenewUrl: `${SITE_URL}/dashboard/filings/${svc.filingId}/registered-agent`,
-      },
-    });
-    sent++;
-  }
-
-  return { scanned: services.length, sent };
 }

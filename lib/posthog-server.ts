@@ -54,6 +54,76 @@ export function buildPurchaseCompletedCapture(
   };
 }
 
+export interface ResumeEmailSentCapture {
+  event: 'resume_email_sent';
+  distinct_id: string;
+  properties: {
+    step: string;
+    filingId: string;
+    locale: string;
+  };
+}
+
+/** Payload for one resume-order send. Empty ids are skipped. */
+export function buildResumeEmailSentCapture(input: {
+  step: string;
+  filingId: string;
+  locale: string;
+}): ResumeEmailSentCapture | null {
+  const step = input.step.trim();
+  const filingId = input.filingId.trim();
+  const locale = input.locale.trim();
+  if (!step || !filingId || !locale) return null;
+  return {
+    event: 'resume_email_sent',
+    distinct_id: filingId,
+    properties: { step, filingId, locale },
+  };
+}
+
+/**
+ * Server capture for a resume email that actually went out.
+ * No-ops when PostHog is not configured, and never throws.
+ */
+export async function captureResumeEmailSent(input: {
+  step: string;
+  filingId: string;
+  locale: string;
+}): Promise<void> {
+  try {
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    if (!key) return;
+    const body = buildResumeEmailSentCapture(input);
+    if (!body) return;
+    const host = (process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com').replace(/\/$/, '');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CAPTURE_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${host}/capture/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: key, ...body }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        logger.warn('posthog resume email capture failed', {
+          area: 'analytics',
+          tag: 'resume_email_sent',
+          status: res.status,
+        });
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    logger.warn('posthog resume email capture skipped', {
+      area: 'analytics',
+      tag: 'resume_email_sent',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 /**
  * Server-side purchase capture. Never throws — a PostHog outage must not
  * fail the Stripe webhook. Awaited with a short timeout so the request

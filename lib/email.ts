@@ -18,6 +18,10 @@ import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
+import { buildChecklistEmail, buildResumeEmail } from './drip-email';
+import type { ResumeStepId } from './drip-copy';
+import { decorateResumeEmailHtml } from './resume-utm';
+import { listUnsubscribeHeaders } from './unsubscribe';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -27,6 +31,10 @@ export type NotificationType =
   | 'ABANDONED_24H'
   | 'ABANDONED_72H'
   | 'ABANDONED_7D'
+  | 'RESUME_1H'
+  | 'RESUME_1D'
+  | 'RESUME_3D'
+  | 'CHECKLIST_DELIVERY'
   | 'DRAFT_REENGAGE'
   | 'RA_RENEWAL_60'
   | 'RA_RENEWAL_30'
@@ -68,6 +76,10 @@ interface EmailContext {
    * the abandoned-draft recovery emails so the CTA isn't a dead-end.
    */
   resumeUrl?: string;
+  /** en or es. Resume and checklist mail default to Spanish when this is missing. */
+  locale?: string;
+  /** Signed unsubscribe URL for marketing mail. */
+  unsubscribeUrl?: string;
   // ── Manual draft re-engagement ──
   /** State name shown next to the entity type (e.g. "Florida"). */
   stateName?: string;
@@ -118,6 +130,10 @@ export interface SendEmailArgs {
   filingId?: string;
   userId?: string;
   context?: EmailContext;
+  /** Set on the resume sequence. Other mail leaves Reply-To unset. */
+  replyTo?: string;
+  /** HTTPS unsubscribe URL. Adds List-Unsubscribe and the one-click POST header. */
+  listUnsubscribeUrl?: string;
 }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -238,6 +254,18 @@ const TEMPLATES: Record<
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
   }),
+  RESUME_1H: (ctx) => resumeDripTemplate('RESUME_1H', ctx),
+  RESUME_1D: (ctx) => resumeDripTemplate('RESUME_1D', ctx),
+  RESUME_3D: (ctx) => resumeDripTemplate('RESUME_3D', ctx),
+  CHECKLIST_DELIVERY: (ctx) => {
+    const built = buildChecklistEmail({
+      locale: ctx.locale,
+      firstName: ctx.firstName,
+      siteUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+    });
+    return { subject: built.subject, body: html`${built.inner}` };
+  },
   DRAFT_REENGAGE: ({
     firstName,
     businessName,
@@ -573,6 +601,20 @@ function wrap(inner: string) {
 </html>`;
 }
 
+function resumeDripTemplate(
+  step: ResumeStepId,
+  ctx: EmailContext,
+): { subject: string; body: string } {
+  const built = buildResumeEmail({
+    step,
+    locale: ctx.locale,
+    firstName: ctx.firstName,
+    resumeUrl: ctx.resumeUrl ?? `${siteUrl}/dashboard`,
+    unsubscribeUrl: ctx.unsubscribeUrl,
+  });
+  return { subject: built.subject, body: decorateResumeEmailHtml(html`${built.inner}`, step) };
+}
+
 // ─── Public helper - render a template without sending ────────────────────────
 
 export function renderTemplate(
@@ -601,6 +643,11 @@ export function renderTemplate(
 
 const FROM = process.env.EMAIL_FROM ?? 'LaunchForma <no-reply@launchforma.com>';
 
+interface DeliveryOptions {
+  replyTo?: string;
+  headers?: Record<string, string>;
+}
+
 export async function deliverEmailDirect(to: string, subject: string, html: string) {
   return deliverEmail(to, subject, html);
 }
@@ -609,6 +656,7 @@ async function deliverEmail(
   to: string,
   subject: string,
   html: string,
+  options?: DeliveryOptions,
 ): Promise<{ ok: true }> {
   // QA and end-to-end fixtures (local part qa+ or e2e+, any case) are not
   // handed to Resend or SMTP. Transactional, drip, and abandoned-cart mail
@@ -628,7 +676,14 @@ async function deliverEmail(
     // ── Option 1: Resend ──────────────────────────────────────────────────
     const { Resend } = await import('resend');
     const resend = new Resend(resendKey);
-    const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      html,
+      ...(options?.replyTo ? { replyTo: options.replyTo } : {}),
+      ...(options?.headers ? { headers: options.headers } : {}),
+    });
     if (error) {
       console.error('[email] Resend error:', error);
       throw new Error(`Email delivery failed: ${error.message}`);
@@ -645,7 +700,14 @@ async function deliverEmail(
       secure: process.env.SMTP_SECURE === 'true',
       auth: { user: smtpUser, pass: smtpPass },
     });
-    await transporter.sendMail({ from: FROM, to, subject, html });
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject,
+      html,
+      ...(options?.replyTo ? { replyTo: options.replyTo } : {}),
+      ...(options?.headers ? { headers: options.headers } : {}),
+    });
     return { ok: true };
   }
 
@@ -751,8 +813,13 @@ export async function sendEmail(args: SendEmailArgs) {
   // Attempt real delivery and record the true outcome. We deliberately await
   // so the status reflects reality; delivery errors are caught (not rethrown)
   // so a transient mail outage never breaks the calling user action.
+  const replyTo = args.replyTo?.trim() || undefined;
+  const headers = args.listUnsubscribeUrl
+    ? listUnsubscribeHeaders(args.listUnsubscribeUrl)
+    : undefined;
+
   try {
-    await deliverEmail(recipient, subject, body);
+    await deliverEmail(recipient, subject, body, { replyTo, headers });
     const sentAt = new Date();
     await prisma.emailNotification.update({
       where: { id: record.id },

@@ -4,6 +4,7 @@ import { Footer } from '@/components/marketing/Footer';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
 import { JsonLd, organizationJsonLd } from '@/components/seo/JsonLd';
+import { ChecklistSignupSection } from '@/components/marketing/ChecklistSignupSection';
 
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -18,6 +19,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <main id="main-content" tabIndex={-1} className="focus:outline-none">
         {children}
       </main>
+      <ChecklistSignupSection />
       <Footer />
       <ChatWidget />
     </>

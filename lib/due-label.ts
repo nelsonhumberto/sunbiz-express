@@ -1,28 +1,30 @@
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
+/**
+ * Locale for a long calendar date. Bare `es` uses es-US so the result is
+ * "24 de octubre de 2027". Bare `en` stays "October 24, 2027".
+ */
+export function longDateLocale(locale: string | null | undefined): string {
+  const value = (locale ?? '').trim();
+  if (!value || value === 'en') return 'en-US';
+  if (value === 'es') return 'es-US';
+  return value;
+}
 
 /**
- * "May 1, 2028" built from calendar parts. Avoids ICU date placeholders
- * named `{date}`, which next-intl can escape as "May \\ 1, 2028".
+ * Long date in the active locale. Built with Intl so Spanish is
+ * "24 de octubre de 2027", not an English month name inside Spanish copy.
  */
-export function formatLongDate(date: Date | string | null | undefined): string {
+export function formatLongDate(
+  date: Date | string | null | undefined,
+  locale: string = 'en-US',
+): string {
   if (!date) return '-';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return '-';
-  const month = MONTHS[d.getMonth()];
-  return `${month} ${d.getDate()}, ${d.getFullYear()}`;
+  return new Intl.DateTimeFormat(longDateLocale(locale), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d);
 }
 
 /** "Due May 1, 2028" with a single normal space and no stray backslash. */

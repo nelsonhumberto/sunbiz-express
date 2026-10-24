@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, X, Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -253,8 +253,27 @@ export function WizardActions({
 }) {
   const tCommon = useTranslations('common');
   const label = nextLabel ?? tCommon('continue');
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const publish = () => {
+      const height = Math.ceil(el.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--wizard-actions-height', `${height}px`);
+    };
+    publish();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish);
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      document.documentElement.style.removeProperty('--wizard-actions-height');
+    };
+  }, [error, pending, label]);
   return (
-    <div className="sticky bottom-0 z-20 mt-10 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border">
+    <div
+      ref={barRef}
+      className="sticky bottom-0 z-20 mt-10 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border"
+    >
       {error && (
         <p
           role="alert"

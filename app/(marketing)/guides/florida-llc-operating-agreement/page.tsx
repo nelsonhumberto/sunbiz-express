@@ -13,6 +13,7 @@ import {
   OA_GUIDE_PUBLISHED,
   POPULAR_START_HREF,
   oaGuideLead,
+  oaGuideMeta,
   type OaGuideCopy,
 } from '@/lib/oa-guide-copy';
 import { localizedHref } from '@/lib/locale-paths';
@@ -26,6 +27,8 @@ async function spanishCopy(): Promise<OaGuideCopy> {
   return {
     metaTitle: t('metaTitle'),
     metaDescription: t('metaDescription'),
+    metaTitleNeutral: t('metaTitleNeutral'),
+    metaDescriptionNeutral: t('metaDescriptionNeutral'),
     h1: t('title'),
     lead: t('description'),
     downloadLead: t('downloadLead'),
@@ -59,16 +62,18 @@ async function spanishCopy(): Promise<OaGuideCopy> {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  noStore();
   const locale = await getLocale();
   const copy = locale === 'es' ? await spanishCopy() : OA_GUIDE_EN;
+  const meta = oaGuideMeta(copy, oaTemplateDownloadEnabled());
   return withLocaleMeta(
     OA_GUIDE_PATH,
     {
-      title: { absolute: copy.metaTitle },
-      description: copy.metaDescription,
+      title: { absolute: meta.title },
+      description: meta.description,
       openGraph: {
-        title: copy.metaTitle,
-        description: copy.metaDescription,
+        title: meta.title,
+        description: meta.description,
         type: 'article',
         publishedTime: OA_GUIDE_PUBLISHED,
         modifiedTime: `${OA_GUIDE_MODIFIED}T00:00:00.000Z`,
@@ -121,7 +126,8 @@ export default async function FloridaOperatingAgreementGuide() {
   const lang = locale === 'es' ? 'es' : 'en';
   const copy = lang === 'es' ? await spanishCopy() : OA_GUIDE_EN;
   const downloadEnabled = oaTemplateDownloadEnabled();
-  const lead = oaGuideLead(copy);
+  const meta = oaGuideMeta(copy, downloadEnabled);
+  const lead = oaGuideLead(copy, downloadEnabled);
   const pageUrl = `${BASE_URL}${lang === 'es' ? '/es' : ''}${OA_GUIDE_PATH}`;
 
   return (
@@ -130,7 +136,7 @@ export default async function FloridaOperatingAgreementGuide() {
       <JsonLd
         data={webPageJsonLd({
           name: copy.h1,
-          description: copy.metaDescription,
+          description: meta.description,
           url: pageUrl,
           inLanguage: lang,
           dateModified: OA_GUIDE_MODIFIED,

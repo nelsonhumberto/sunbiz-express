@@ -14,8 +14,11 @@ export const OA_SITEMAP_LASTMOD = '2026-10-24T00:00:00.000Z';
 export const POPULAR_START_HREF = '/start?tier=STANDARD';
 
 export const OA_META_TITLE_EN = 'Florida LLC Operating Agreement: Free Sample & Guide';
+export const OA_META_TITLE_NEUTRAL_EN = 'Florida LLC Operating Agreement Guide';
 export const OA_META_DESCRIPTION_EN =
   'What a Florida LLC operating agreement is, what Chapter 605 says, single vs multi-member, and how to adopt one. Download a free sample template.';
+export const OA_META_DESCRIPTION_NEUTRAL_EN =
+  'What a Florida LLC operating agreement is, what Chapter 605 says, single vs multi-member, and how to adopt one.';
 
 export const ANNUAL_REPORT_TITLE = 'File Your Florida Annual Report Online | Due May 1';
 export const ANNUAL_REPORT_DESCRIPTION =
@@ -48,8 +51,12 @@ export interface OaDownloadCopy {
 }
 
 export interface OaGuideCopy {
+  /** Title and description used when the sample download is on. */
   metaTitle: string;
   metaDescription: string;
+  /** Title and description used when OA_TEMPLATE_DOWNLOAD_ENABLED is off. */
+  metaTitleNeutral: string;
+  metaDescriptionNeutral: string;
   h1: string;
   /** Intro without the download sentence. */
   lead: string;
@@ -106,6 +113,8 @@ export const OA_CONSENT_ES =
 export const OA_GUIDE_EN: OaGuideCopy = {
   metaTitle: OA_META_TITLE_EN,
   metaDescription: OA_META_DESCRIPTION_EN,
+  metaTitleNeutral: OA_META_TITLE_NEUTRAL_EN,
+  metaDescriptionNeutral: OA_META_DESCRIPTION_NEUTRAL_EN,
   h1: 'Florida LLC Operating Agreement: What It Is and How to Adopt One',
   lead: 'An operating agreement is the internal rulebook of your LLC. Florida does not ask you to file it with the state, but the law gives it real weight, and banks often ask to see it. This guide explains what it is, what Florida law says about it, and how to put one in place.',
   downloadLead: 'You can also download a free sample template below.',
@@ -235,6 +244,19 @@ Tax classification choices (for example an S corporation election) are a topic f
 - Florida Statutes Chapter 605 (Online Sunshine): http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&URL=0600-0699/0605/0605.html`,
 };
 
-export function oaGuideLead(copy: OaGuideCopy): string {
-  return `${copy.lead} ${copy.downloadLead}`;
+export function oaGuideMeta(
+  copy: OaGuideCopy,
+  downloadEnabled: boolean,
+): { title: string; description: string } {
+  if (downloadEnabled) {
+    return { title: copy.metaTitle, description: copy.metaDescription };
+  }
+  return { title: copy.metaTitleNeutral, description: copy.metaDescriptionNeutral };
+}
+
+/** The download sentence is part of the intro only while the sample is on. */
+export function oaGuideLead(copy: OaGuideCopy, downloadEnabled: boolean): string {
+  if (!downloadEnabled) return copy.lead;
+  const extra = copy.downloadLead.trim();
+  return extra ? `${copy.lead} ${extra}` : copy.lead;
 }

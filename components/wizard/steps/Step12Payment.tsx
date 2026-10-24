@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Lock,
   CreditCard,
@@ -54,6 +54,7 @@ export function Step12Payment({
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const locale = useLocale();
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const stateCode: StateCode = isActiveFormationState(filing.state)
@@ -171,7 +172,7 @@ export function Step12Payment({
 
   return (
     <>
-    <div className="space-y-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+    <div className="space-y-5 pb-[calc(var(--wizard-actions-height,5rem)+env(safe-area-inset-bottom))]">
       {testMode ? (
         <div
           role="status"
@@ -334,7 +335,7 @@ export function Step12Payment({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Card details</Label>
+            <Label>{t('cardDetails')}</Label>
             <StripeCardInput ref={cardRef} />
           </div>
         </div>
@@ -359,7 +360,7 @@ export function Step12Payment({
             <span className="mt-1 block text-xs text-ink-muted">
               {t('raAutoRenewMandate', {
                 price: formatCurrency(RA_RENEWAL_PRICE_CENTS),
-                renewalDate: formatLongDate(firstRenewalDate),
+                renewalDate: formatLongDate(firstRenewalDate, locale),
               })}
             </span>
           </span>

@@ -54,6 +54,28 @@ export function identifyUser(userId: string, traits?: Record<string, unknown>) {
   ph()?.identify(userId, traits);
 }
 
+/**
+ * Mark the current browser as internal traffic. `register` stamps later
+ * events. `identify` and `setPersonProperties` set the person property so
+ * the account can be filtered out.
+ */
+export function markInternalTraffic(userId: string, email?: string | null) {
+  const apply = () => {
+    const client = ph();
+    if (!client || !userId.trim()) return;
+    client.register({ is_internal: true });
+    const traits: Record<string, unknown> = { is_internal: true };
+    if (email?.trim()) traits.email = email.trim();
+    client.identify(userId, traits);
+    client.setPersonProperties?.({ is_internal: true });
+  };
+  if (ph()) {
+    apply();
+    return;
+  }
+  whenReady(() => Boolean(ph()), apply);
+}
+
 export function resetAnalytics() {
   ph()?.reset();
 }
@@ -70,6 +92,35 @@ export function trackTierSelected(tier: string, state: string, entityType: strin
 
 export function trackSignupStarted(extra?: Record<string, unknown>) {
   trackEvent('signup_started', extra);
+}
+
+/**
+ * Properties for the PostHog `purchase_completed` capture on checkout success.
+ * Amount and currency come from the verified Checkout Session (minor units
+ * for `revenue_cents`, major units for `value`).
+ */
+export function purchaseCompletedEventProperties(input: {
+  filingId?: string | null;
+  amountCents?: number | null;
+  currency?: string | null;
+  state?: string | null;
+  entityType?: string | null;
+  tier?: string | null;
+}): Record<string, string | number> {
+  const properties: Record<string, string | number> = {};
+  if (input.filingId) {
+    properties.filing_id = input.filingId;
+    properties.order_id = input.filingId;
+  }
+  if (typeof input.amountCents === 'number' && Number.isFinite(input.amountCents)) {
+    properties.revenue_cents = input.amountCents;
+    properties.value = input.amountCents / 100;
+  }
+  if (input.currency) properties.currency = input.currency;
+  if (input.state) properties.state = input.state;
+  if (input.entityType) properties.entity_type = input.entityType;
+  if (input.tier) properties.tier = input.tier;
+  return properties;
 }
 
 export function trackPurchaseCompleted(extra?: Record<string, unknown>) {

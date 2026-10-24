@@ -1,6 +1,5 @@
 'use server';
 
-import { z } from 'zod';
 import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
@@ -8,48 +7,38 @@ import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import {
   SERVICE_INQUIRY_LABELS,
-  SERVICE_INQUIRY_OPTIONS,
+  ServiceInquirySchema,
+  inquiryHoneypotTripped,
   type ServiceInquiryOption,
 } from '@/lib/service-inquiry';
 import { utmToPrismaFields } from '@/lib/utm';
 import { getServerUtmAttribution } from '@/lib/utm-server';
-
-const InquiryInput = z.object({
-  name: z.string().trim().min(1).max(120),
-  email: z.string().trim().toLowerCase().email().max(254),
-  phone: z
-    .string()
-    .trim()
-    .min(7)
-    .max(32)
-    .refine((value) => {
-      const digits = value.replace(/\D/g, '');
-      return digits.length >= 7 && digits.length <= 15 && /^[0-9+\-().\s]+$/.test(value);
-    }),
-  service: z.enum(SERVICE_INQUIRY_OPTIONS),
-  message: z.string().trim().max(2000).optional(),
-  locale: z.enum(['en', 'es']).optional(),
-  website: z.string().optional(),
-});
 
 export type SubmitServiceInquiryResult =
   | { ok: true; stored: boolean }
   | { ok: false; error: 'invalid' | 'generic' };
 
 export async function submitServiceInquiry(
-  input: z.input<typeof InquiryInput>,
+  input: unknown,
 ): Promise<SubmitServiceInquiryResult> {
-  if (input.website && input.website.trim().length > 0) {
+  const raw = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+  if (
+    inquiryHoneypotTripped({
+      lf_hp: typeof raw.lf_hp === 'string' ? raw.lf_hp : '',
+      website: typeof raw.website === 'string' ? raw.website : '',
+    })
+  ) {
     return { ok: true, stored: false };
   }
 
   const limited = checkActionRateLimit('service-inquiry', 5, 10 * 60 * 1000);
   if (limited) return { ok: false, error: 'generic' };
 
-  const parsed = InquiryInput.safeParse(input);
+  const parsed = ServiceInquirySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  const { name, email, phone, service, message, locale } = parsed.data;
+  const { name, phone, service, message, locale } = parsed.data;
+  const email = parsed.data.email?.trim() ? parsed.data.email.trim().toLowerCase() : null;
   const utm = getServerUtmAttribution();
   const attribution = utmToPrismaFields(utm);
   const safeLocale = locale === 'es' ? 'es' : 'en';
@@ -82,7 +71,7 @@ export async function submitServiceInquiry(
       to: INQUIRY_NOTIFY_EMAIL,
       context: {
         inquiryName: name,
-        inquiryEmail: email,
+        inquiryEmail: email ?? undefined,
         inquiryPhone: phone,
         inquiryService: SERVICE_INQUIRY_LABELS[service as ServiceInquiryOption],
         inquiryMessage: note ?? undefined,

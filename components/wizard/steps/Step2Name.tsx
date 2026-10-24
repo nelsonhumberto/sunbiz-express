@@ -27,6 +27,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
 export function Step2Name({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
@@ -34,6 +35,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
+  const [showNameError, setShowNameError] = useState(false);
   const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
   const formationState: StateCode = isActiveFormationState(filing.state)
@@ -41,12 +43,11 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
     : 'FL';
   const stateName = getFormationState(formationState).name;
 
-  // The name widget owns the suffix dropdown so the suffix is always valid;
-  // only gate Continue on (a) having an actual base name (>= 2 chars) and
-  // (b) the rule-based assessment not flagging a hard block (restricted-word
-  // groups configured to action: 'block').
+  // The legal ending does not count. "A LLC" is one real character and must
+  // not pass. A failed name lookup does not disable Continue.
   const isHardBlocked = assessment ? !assessment.valid : false;
-  const canContinue = name.trim().length >= 2 && !isHardBlocked;
+  const nameTooShort = !nameHasMinimumSubstance(name);
+  const canContinue = !nameTooShort && !isHardBlocked;
 
   const saveAndAdvance = () => {
     run(async () => {
@@ -74,7 +75,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   return (
     <div className="space-y-6">
       <NameCheckWidget
-        initialName={filing.businessName}
+        initialName={seededBusinessName(filing.businessName)}
         entityType={filing.entityType as 'LLC' | 'CORP'}
         formationState={formationState}
         onChange={(n, r, a) => {
@@ -104,6 +105,15 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
             </p>
           </div>
         </div>
+      )}
+
+      {nameTooShort && (showNameError || name.trim().length > 0) && (
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {t('nameTooShort')}
+        </p>
       )}
 
       {isHardBlocked && (
@@ -145,6 +155,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/1`}
         onNext={onContinue}
         nextDisabled={!canContinue}
+        onBlocked={() => setShowNameError(true)}
         pending={pending}
         error={error}
       />

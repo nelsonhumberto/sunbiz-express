@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRight } from 'lucide-react';
+import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { JsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import { localizedHref } from '@/lib/locale-paths';
+import { EN_GUIDES_INDEX_SPANISH_LINKS } from '@/lib/spanish-guide-links';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -190,6 +192,12 @@ export default async function GuidesHubPage() {
             </Link>
           ))}
         </div>
+
+        {locale === 'en' ? (
+          <div className="mt-12 max-w-3xl">
+            <EnEspanolLinks heading="Guías en español" links={EN_GUIDES_INDEX_SPANISH_LINKS} />
+          </div>
+        ) : null}
       </section>
     </>
   );

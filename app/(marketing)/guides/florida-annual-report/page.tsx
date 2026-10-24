@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { EN_FLORIDA_LICENSE_SPANISH_LINKS } from '@/lib/spanish-guide-links';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
@@ -107,6 +109,7 @@ export default async function FloridaAnnualReportGuide() {
           label: 'File your annual report',
         }}
       >
+        <EnEspanolLinks heading="En español" links={EN_FLORIDA_LICENSE_SPANISH_LINKS} />
         <h2>When is it due?</h2>
         <p>
           The filing window is January 1 through May 1. Your first annual report is due

@@ -14,8 +14,13 @@ import { trackEvent } from '@/lib/analytics';
 /** Pull the filing id out of a /wizard/{id}/{step} path, if present. */
 function filingIdFromPath(path: string | null): string | undefined {
   if (!path) return undefined;
-  const m = path.match(/^\/wizard\/([^/]+)\//);
+  const m = path.match(/^(?:\/es)?\/wizard\/([^/]+)\//);
   return m?.[1];
+}
+
+function isWizardPath(path: string | null): boolean {
+  if (!path) return false;
+  return /^(?:\/es)?\/wizard(\/|$)/.test(path);
 }
 
 interface ToolOutput {
@@ -45,6 +50,7 @@ export function ChatWidget() {
   );
 
   const filingId = filingIdFromPath(pathname);
+  const onWizard = isWizardPath(pathname);
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: '/api/assistant' }),
@@ -108,14 +114,22 @@ export function ChatWidget() {
           type="button"
           onClick={onOpen}
           aria-label={t('launcherLabel')}
-          className="fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2"
+          className={cn(
+            'fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2',
+            onWizard && 'max-md:hidden',
+          )}
         >
           <MessageCircle className="h-6 w-6" />
         </button>
       )}
 
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 flex h-[min(70vh,560px)] w-[min(92vw,400px)] flex-col rounded-2xl border border-border bg-white shadow-2xl">
+        <div
+          className={cn(
+            'fixed bottom-5 right-5 z-50 flex h-[min(70vh,560px)] w-[min(92vw,400px)] flex-col rounded-2xl border border-border bg-white shadow-2xl',
+            onWizard && 'max-md:hidden',
+          )}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { Hero } from '@/components/marketing/Hero';
 import { StatsBar } from '@/components/marketing/StatsBar';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
@@ -21,6 +22,7 @@ import { getMarketingFaq } from '@/lib/marketing-faq';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { EN_FLORIDA_LICENSE_SPANISH_LINKS } from '@/lib/spanish-guide-links';
 
 interface StateLandingPageProps {
   params: { slug: string };
@@ -136,6 +138,11 @@ export default async function StateLandingPage({
         <PricingTable state={state} />
         <ComparisonTable />
         <AnnualReportSection state={state} />
+        {locale === 'en' && state.slug === 'florida' ? (
+          <section className="container max-w-3xl pb-4">
+            <EnEspanolLinks heading="En español" links={EN_FLORIDA_LICENSE_SPANISH_LINKS} />
+          </section>
+        ) : null}
         <FAQSection state={state} suppressJsonLd />
         <CTABanner state={state} />
       </>

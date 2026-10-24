@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
+import { EN_FORM_LLC_SPANISH_LINKS } from '@/lib/spanish-guide-links';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
@@ -108,6 +110,7 @@ export default async function HowToFormFloridaLlcGuide() {
           label: 'Start a Florida LLC',
         }}
       >
+        <EnEspanolLinks heading="En español" links={EN_FORM_LLC_SPANISH_LINKS} />
         <h2>Step 1: Choose a name</h2>
         <p>Florida requires that your LLC name:</p>
         <ul>

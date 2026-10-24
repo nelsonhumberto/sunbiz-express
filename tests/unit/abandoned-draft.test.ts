@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  runDraftRecovery,
   shouldSkipSevenDayAbandoned,
   shouldStampAbandonedAt,
 } from '@/lib/draft-recovery';
@@ -19,8 +20,6 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/email', () => ({
   sendEmail,
 }));
-
-import { runDraftRecovery } from '@/app/api/cron/recovery/route';
 
 const NOW = Date.parse('2026-10-24T12:00:00.000Z');
 

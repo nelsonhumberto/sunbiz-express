@@ -881,7 +881,7 @@ export async function sendEmail(args: SendEmailArgs) {
       where: { id: record.id },
       data: { status: 'SENT', sentAt, subject, htmlBody: body, recipientEmail: recipient },
     });
-    return { ...record, status: 'SENT', sentAt };
+    return { ...record, status: 'SENT', sentAt, errorMessage: null as string | null };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[email] delivery failed:', errorMessage);

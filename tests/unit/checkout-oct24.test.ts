@@ -177,10 +177,11 @@ describe('review member title', () => {
 describe('payment sticky footer', () => {
   it('pads the payment fields on every width, including 390px', () => {
     const step = source('components/wizard/steps/Step12Payment.tsx');
-    expect(step).toContain('pb-[calc(8rem+env(safe-area-inset-bottom))]');
-    expect(step).not.toMatch(
-      /(sm|md|lg|xl):pb-\[calc\(8rem\+env\(safe-area-inset-bottom\)\)\]/,
+    expect(step).toContain(
+      'pb-[calc(var(--wizard-actions-height,5rem)+env(safe-area-inset-bottom))]',
     );
+    expect(step).not.toContain('8rem');
+    expect(step).not.toMatch(/(sm|md|lg|xl):pb-\[/);
   });
 });
 

@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { GuestAnnualReportForm } from '@/components/marketing/GuestAnnualReportForm';
 import { FL } from '@/lib/florida';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
-import { withBrand } from '@/lib/seo-title';
+import { pageTitle, withBrand } from '@/lib/seo-title';
 import { formatCurrency } from '@/lib/utils';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { CheckCircle2, X } from 'lucide-react';
@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return withLocaleMeta(
       '/file-annual-report',
       {
-        title: t('metaTitle'),
+        title: pageTitle(t('metaTitle')),
         description: t('metaDescription'),
         openGraph: {
           title: t('metaTitle'),

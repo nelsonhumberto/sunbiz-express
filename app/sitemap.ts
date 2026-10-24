@@ -14,6 +14,8 @@ interface PageDef {
   priority: number;
   /** Spanish-only article. The English path redirects to /es and stays out of the sitemap. */
   spanishOnly?: boolean;
+  /** Emit en, es, and x-default xhtml:link alternates on both URLs. */
+  hreflang?: boolean;
 }
 
 const STATIC_PAGES: PageDef[] = [
@@ -34,6 +36,13 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.7,
   },
   {
+    path: '/guides/how-to-form-a-florida-corporation',
+    file: 'app/(marketing)/guides/how-to-form-a-florida-corporation/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    hreflang: true,
+  },
+  {
     path: '/guides/florida-annual-report',
     file: 'app/(marketing)/guides/florida-annual-report/page.tsx',
     changeFrequency: 'monthly',
@@ -50,6 +59,7 @@ const STATIC_PAGES: PageDef[] = [
     file: 'app/(marketing)/guides/florida-llc-operating-agreement/page.tsx',
     changeFrequency: 'monthly',
     priority: 0.7,
+    hreflang: true,
   },
   {
     path: '/guides/llc-florida-sin-seguro-social',
@@ -108,12 +118,14 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
     changeFrequency: page.changeFrequency,
     priority: page.priority,
   };
-  if (page.path === OA_GUIDE_PATH) {
+  if (page.hreflang && !page.spanishOnly) {
+    const en = absoluteUrl(page.path);
+    const es = absoluteUrl(toSpanishUrl(page.path));
     entry.alternates = {
       languages: {
-        en: absoluteUrl(OA_GUIDE_PATH),
-        es: absoluteUrl(toSpanishUrl(OA_GUIDE_PATH)),
-        'x-default': absoluteUrl(OA_GUIDE_PATH),
+        en,
+        es,
+        'x-default': en,
       },
     };
   }

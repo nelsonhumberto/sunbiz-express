@@ -48,6 +48,13 @@ const GUIDES = [
     readingMinutes: 7,
   },
   {
+    slug: 'how-to-form-a-florida-corporation',
+    title: 'How to Form a Florida Corporation',
+    description:
+      'The steps to form a Florida corporation, the Sunbiz fees to file and for the annual report, and what to do after the state approves your filing.',
+    readingMinutes: 8,
+  },
+  {
     slug: 'florida-annual-report',
     title: 'Florida Annual Report: Deadline, Fees, and How to File',
     description:
@@ -89,6 +96,12 @@ export default async function GuidesHubPage() {
           title: t('formTitle'),
           description: t('formDescription'),
           readingMinutes: 7,
+        },
+        {
+          slug: 'how-to-form-a-florida-corporation',
+          title: t('corpTitle'),
+          description: t('corpDescription'),
+          readingMinutes: 8,
         },
         {
           slug: 'florida-annual-report',

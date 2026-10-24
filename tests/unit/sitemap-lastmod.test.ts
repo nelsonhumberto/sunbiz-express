@@ -30,6 +30,20 @@ describe('sitemap lastModified', () => {
     expect(urls).not.toContain('https://launchforma.com/es/states/wyoming');
     expect(urls.some((url) => /delaware|wyoming/i.test(url))).toBe(false);
     expect(urls).toContain('https://launchforma.com/guides/how-to-form-an-llc-in-florida');
+    expect(urls).toContain('https://launchforma.com/guides/how-to-form-a-florida-corporation');
+    const corp = sitemap().find(
+      (entry) => entry.url === 'https://launchforma.com/guides/how-to-form-a-florida-corporation',
+    );
+    const corpEs = sitemap().find(
+      (entry) => entry.url === 'https://launchforma.com/es/guides/how-to-form-a-florida-corporation',
+    );
+    const languages = {
+      en: 'https://launchforma.com/guides/how-to-form-a-florida-corporation',
+      es: 'https://launchforma.com/es/guides/how-to-form-a-florida-corporation',
+      'x-default': 'https://launchforma.com/guides/how-to-form-a-florida-corporation',
+    };
+    expect(corp?.alternates?.languages).toEqual(languages);
+    expect(corpEs?.alternates?.languages).toEqual(languages);
     expect(urls).toContain('https://launchforma.com/guides/florida-annual-report');
     expect(urls).toContain('https://launchforma.com/guides/florida-registered-agent');
     expect(urls).toContain('https://launchforma.com/guides/florida-llc-operating-agreement');
@@ -55,6 +69,8 @@ describe('llms.txt', () => {
   it('lists the new guides and the Florida state page', () => {
     const text = buildLlmsTxt();
     expect(text).toContain('/guides/how-to-form-an-llc-in-florida');
+    expect(text).toContain('/guides/how-to-form-a-florida-corporation');
+    expect(text).toContain('/es/guides/how-to-form-a-florida-corporation');
     expect(text).toContain('/guides/florida-annual-report');
     expect(text).toContain('/guides/florida-registered-agent');
     expect(text).toContain('/states/florida');

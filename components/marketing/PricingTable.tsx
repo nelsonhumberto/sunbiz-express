@@ -163,6 +163,16 @@ export function PricingTable({
                       })}
                     </p>
                   )}
+                  {formationState.code === 'FL' && tier.slug === 'BASIC' && prices.corpDiffers && (
+                    <p className="mt-1 text-xs leading-snug">
+                      <Link
+                        href={localizedHref('/guides/how-to-form-a-florida-corporation', locale)}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t('corpGuide')}
+                      </Link>
+                    </p>
+                  )}
                   <p className="mt-1.5 text-xs text-ink-subtle">
                     {t(`bestFor_${tier.slug}` as never)}
                   </p>

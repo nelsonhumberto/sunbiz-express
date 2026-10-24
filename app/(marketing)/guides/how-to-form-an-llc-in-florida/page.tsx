@@ -211,6 +211,10 @@ export default async function HowToFormFloridaLlcGuide() {
           LaunchForma is a private filing service, not a government agency and not a law
           firm. <a href="/pricing">See pricing</a> or <a href="/start">start a filing</a>.
         </p>
+        <p>
+          Forming a corporation instead? Read{' '}
+          <a href="/guides/how-to-form-a-florida-corporation">how to form a Florida corporation</a>.
+        </p>
 
         <h2>Questions</h2>
         {FAQ.map((item) => (

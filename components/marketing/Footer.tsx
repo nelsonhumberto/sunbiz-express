@@ -34,6 +34,7 @@ export function Footer() {
     ],
     resources: [
       { label: tFooter('howToFormFloridaLlc'), href: href('/guides/how-to-form-an-llc-in-florida') },
+      { label: tFooter('howToFormFloridaCorp'), href: href('/guides/how-to-form-a-florida-corporation') },
       { label: tFooter('floridaAnnualReportGuide'), href: href('/guides/florida-annual-report') },
       { label: tFooter('floridaRegisteredAgentGuide'), href: href('/guides/florida-registered-agent') },
       { label: tFooter('floridaLLCGuide'), href: href('/guides/florida-llc-operating-agreement') },

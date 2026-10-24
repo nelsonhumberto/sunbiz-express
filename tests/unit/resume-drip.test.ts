@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { allDripCopyText, checklistCopy, resumeStepCopy } from '@/lib/drip-copy';
+import { allDripCopyText, checklistCopy, emailShellCopy, resumeStepCopy } from '@/lib/drip-copy';
 import { buildResumeEmail } from '@/lib/drip-email';
+import { renderTemplate } from '@/lib/email';
 import { buildResumeEmailSentCapture } from '@/lib/posthog-server';
 import { decorateResumeEmailHtml, withResumeUtms } from '@/lib/resume-utm';
 import {
@@ -9,12 +10,22 @@ import {
   planResumeDrip,
   raRenewalTypeForDays,
   resolveDripLocale,
+  resumeDraftListArgs,
   resumeLinkPlan,
   shouldSkipDraftRecovery,
   wholeDaysUntil,
   wizardPathForDraft,
   type ResumeDripCandidate,
 } from '@/lib/draft-recovery';
+import {
+  RESUME_CLAIM_STALE_MS,
+  RESUME_DRIP_BATCH_SIZE,
+  RESUME_DRIP_MAX_ATTEMPTS,
+  isUniqueConflict,
+  planResumeClaim,
+  resumeDeliveryCountsAsSent,
+  type ResumeClaimRow,
+} from '@/lib/resume-drip-claim';
 import { isResumeDripEnabled, isSignupCaptureEnabled, resumeEmailReplyTo } from '@/lib/feature-flags';
 import {
   listUnsubscribeHeaders,
@@ -142,6 +153,9 @@ describe('qa and e2e skip', () => {
     expect(
       shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email: 'buyer+qa@example.com' } }),
     ).toBe(false);
+    expect(
+      shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email: 'A@Resend.dev' } }),
+    ).toBe(true);
     const skip = shouldSkipDraftRecovery({
       ...customer,
       user: { role: 'USER', email: 'qa+draft@gmail.com' },
@@ -174,8 +188,13 @@ describe('unsubscribe token', () => {
 });
 
 describe('resume copy and reply-to', () => {
-  it('defaults to Spanish, keeps the English reply line, and avoids em dashes', () => {
-    expect(resolveDripLocale(null, undefined)).toBe('es');
+  it('defaults to English unless the entry path is Spanish, and avoids em dashes', () => {
+    expect(resolveDripLocale(null, undefined)).toBe('en');
+    expect(resolveDripLocale(null, null, '/es')).toBe('es');
+    expect(resolveDripLocale(null, null, '/es/start')).toBe('es');
+    expect(resolveDripLocale(null, null, '/start')).toBe('en');
+    expect(resolveDripLocale('en', null, '/es/wizard')).toBe('en');
+    expect(resolveDripLocale(null, 'es-ES', '/')).toBe('es');
     expect(resolveDripLocale('en-US', 'es')).toBe('en');
     expect(resolveDripLocale(null, 'en')).toBe('en');
     const text = allDripCopyText();
@@ -195,12 +214,36 @@ describe('resume copy and reply-to', () => {
     expect(english.inner).toContain('Unsubscribe');
     const spanish = buildResumeEmail({
       step: 'RESUME_1H',
+      locale: 'es',
       firstName: 'Ana',
       resumeUrl: 'https://launchforma.com/resume?f=1&t=2',
       unsubscribeUrl: 'https://launchforma.com/unsubscribe?token=abc',
     });
     expect(spanish.subject).toBe('Tu pedido de LaunchForma está guardado');
     expect(spanish.inner).not.toContain('—');
+    const omitted = buildResumeEmail({
+      step: 'RESUME_1H',
+      firstName: 'Ana',
+      resumeUrl: 'https://launchforma.com/resume?f=1&t=2',
+    });
+    expect(omitted.subject).toBe('Your LaunchForma order is saved');
+    const shell = emailShellCopy('es');
+    const spanishHtml = renderTemplate('RESUME_1H', {
+      locale: 'es',
+      firstName: 'Ana',
+      resumeUrl: 'https://launchforma.com/resume?f=1&t=2',
+      unsubscribeUrl: 'https://launchforma.com/unsubscribe?token=abc',
+    }).html;
+    expect(spanishHtml).toContain('lang="es"');
+    expect(spanishHtml).toContain(shell.tagline);
+    expect(spanishHtml).toContain(shell.questions);
+    expect(spanishHtml).toContain(shell.preferences);
+    expect(spanishHtml).toContain(shell.notALawFirm);
+    expect(spanishHtml).not.toContain('Form your business the honest way');
+    expect(spanishHtml).not.toContain('Email preferences');
+    const englishHtml = renderTemplate('WELCOME', { firstName: 'Ana' }).html;
+    expect(englishHtml).toContain('lang="en"');
+    expect(englishHtml).toContain(emailShellCopy('en').tagline);
   });
 
   it('adds the resume campaign to every link in the email', () => {
@@ -300,7 +343,7 @@ describe('checklist signup gate', () => {
       { path: '/api/cron/recovery', schedule: '0 2 * * *' },
     ]);
     const workflow = readFileSync('.github/workflows/recovery-cron.yml', 'utf8');
-    expect(workflow).toContain('15 * * * *');
+    expect(workflow).toContain('37 * * * *');
     expect(workflow).toContain('workflow_dispatch');
     expect(workflow).toContain('https://launchforma.com/api/cron/recovery');
     expect(workflow).toContain('Authorization: Bearer ${CRON_SECRET}');
@@ -313,5 +356,78 @@ describe('checklist signup gate', () => {
     expect(route).toContain('runRaRenewalReminders');
     expect(route).not.toContain('searchParams');
     expect(route).not.toContain('request.url');
+  });
+});
+
+describe('resume drip claim and batch', () => {
+  const now = Date.parse('2026-10-24T12:00:00.000Z');
+
+  function row(overrides: Partial<ResumeClaimRow> = {}): ResumeClaimRow {
+    return {
+      id: 'ntf_1',
+      status: 'PENDING',
+      attemptCount: 1,
+      claimedAt: new Date(now),
+      createdAt: new Date(now),
+      ...overrides,
+    };
+  }
+
+  it('inserts when the slot is empty and skips a fresh or finished claim', () => {
+    expect(planResumeClaim(null, now)).toBe('insert');
+    expect(planResumeClaim(row({ status: 'SENT' }), now)).toBe('skip');
+    expect(planResumeClaim(row({ status: 'BOUNCED' }), now)).toBe('skip');
+    expect(planResumeClaim(row({ status: 'PENDING', claimedAt: new Date(now - 60_000) }), now)).toBe('skip');
+    expect(planResumeClaim(row({ status: 'QUEUED', claimedAt: new Date(now - 60_000) }), now)).toBe('skip');
+    expect(isUniqueConflict({ code: 'P2002' })).toBe(true);
+    expect(isUniqueConflict(new Error('nope'))).toBe(false);
+  });
+
+  it('reclaims a failed send until the attempt cap, and a stale pending row', () => {
+    expect(RESUME_DRIP_MAX_ATTEMPTS).toBe(3);
+    expect(planResumeClaim(row({ status: 'FAILED', attemptCount: 1 }), now)).toBe('reclaim');
+    expect(planResumeClaim(row({ status: 'FAILED', attemptCount: 2 }), now)).toBe('reclaim');
+    expect(planResumeClaim(row({ status: 'FAILED', attemptCount: 3 }), now)).toBe('skip');
+    expect(
+      planResumeClaim(
+        row({ status: 'PENDING', claimedAt: new Date(now - RESUME_CLAIM_STALE_MS) }),
+        now,
+      ),
+    ).toBe('reclaim');
+    expect(
+      planResumeClaim(
+        row({ status: 'QUEUED', claimedAt: null, createdAt: new Date(now - RESUME_CLAIM_STALE_MS) }),
+        now,
+      ),
+    ).toBe('reclaim');
+    expect(resumeDeliveryCountsAsSent('SENT')).toBe(true);
+    expect(resumeDeliveryCountsAsSent('FAILED')).toBe(false);
+    expect(resumeDeliveryCountsAsSent('PENDING')).toBe(false);
+  });
+
+  it('takes the oldest 50 drafts and skips abandoned or resend.dev mail', () => {
+    const args = resumeDraftListArgs(now);
+    expect(args.take).toBe(RESUME_DRIP_BATCH_SIZE);
+    expect(args.take).toBe(50);
+    expect(args.orderBy).toEqual({ updatedAt: 'asc' });
+    expect(args.where.abandonedAt).toBeNull();
+    expect(JSON.stringify(args.where)).toContain('@resend.dev');
+    const sql = readFileSync(
+      'prisma/migrations/20261024220000_resume_drip_send_claim/migration.sql',
+      'utf8',
+    );
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "EmailNotification_filingId_notificationType_step_key"',
+    );
+    expect(sql).toContain('("filingId", "notificationType", "step")');
+    expect(sql).not.toContain('CREATE TABLE');
+    const job = readFileSync('lib/draft-recovery.ts', 'utf8');
+    const body = job.slice(job.indexOf('async function runResumeDrip'));
+    const claim = body.indexOf('claimResumeSend');
+    const send = body.indexOf('notificationId: claim.id');
+    const counted = body.indexOf('resumeDeliveryCountsAsSent');
+    expect(claim).toBeGreaterThan(-1);
+    expect(claim).toBeLessThan(send);
+    expect(send).toBeLessThan(counted);
   });
 });

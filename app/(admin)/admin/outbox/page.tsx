@@ -27,6 +27,7 @@ function statusBadge(status: string) {
   if (status === 'SENT') return <Badge variant="success" size="sm">SENT</Badge>;
   if (status === 'FAILED') return <Badge variant="danger" size="sm">FAILED</Badge>;
   if (status === 'QUEUED') return <Badge variant="warn" size="sm">QUEUED</Badge>;
+  if (status === 'PENDING') return <Badge variant="warn" size="sm">PENDING</Badge>;
   return <Badge variant="secondary" size="sm">{status}</Badge>;
 }
 

@@ -22,7 +22,7 @@ import {
   userUtmCreateFields,
 } from '@/lib/utm-attribution';
 import { getTranslations } from 'next-intl/server';
-import { storedLocale } from '@/lib/stored-locale';
+import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
@@ -102,6 +102,8 @@ export async function startGuestFiling(
   const email = parsed.data.email.toLowerCase().trim();
   const locale = await storedLocale();
   const localeData = locale ? { locale } : {};
+  const entryPath = storedEntryPath();
+  const entryData = entryPath ? { entryPath } : {};
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
     return { error: t('errorStateUnavailable') };
@@ -121,6 +123,7 @@ export async function startGuestFiling(
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
         ...localeData,
+        ...entryData,
         ...filingUtmCreateFields(),
       },
     });
@@ -240,6 +243,7 @@ export async function startGuestFiling(
       currentStep: 2,
       completedSteps: JSON.stringify([1]),
       ...localeData,
+      ...entryData,
       ...filingUtmCreateFields(),
     },
   });

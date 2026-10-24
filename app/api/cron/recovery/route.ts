@@ -7,9 +7,11 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 // may be scheduled more than once. vercel.json lists this route four times:
 // 9am, 1pm, 6pm, and 10pm Eastern Daylight Time (13:00, 17:00, 22:00, and
 // 02:00 UTC). The query string is not read, so a slot parameter would not
-// change what is sent. GitHub Actions also calls the route every hour.
-// EmailNotification is the record of which (filing, type) already went out,
-// so another invocation does not send that step or renewal reminder again.
+// change what is sent. GitHub Actions also calls the route at minute 37.
+// A resume step is claimed (PENDING) before it is sent. A partial unique
+// index on EmailNotification (filingId, notificationType, step) stops two
+// runs from both sending. Registered-agent reminders still skip when any
+// EmailNotification row for that type already exists.
 //
 // What it sends (the jobs live in lib/draft-recovery.ts):
 //

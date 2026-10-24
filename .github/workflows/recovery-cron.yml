@@ -2,8 +2,8 @@ name: Recovery cron
 
 on:
   schedule:
-    # Hourly. Vercel also calls this route four times a day.
-    - cron: "15 * * * *"
+    # Minute 37 of every hour. Vercel also calls this route four times a day.
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 jobs:

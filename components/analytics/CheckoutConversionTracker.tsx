@@ -1,16 +1,25 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { identifyUser, trackPurchaseCompleted, trackGooglePurchase, trackLinkedInConversion } from '@/lib/analytics';
+import {
+  identifyUser,
+  purchaseCompletedEventProperties,
+  trackPurchaseCompleted,
+  trackGooglePurchase,
+  trackLinkedInConversion,
+} from '@/lib/analytics';
 import { utmToAnalyticsProps } from '@/lib/utm';
 
 interface CheckoutConversionTrackerProps {
   userId: string;
-  filingId: string;
-  totalCents: number;
-  state: string;
-  entityType: string;
-  tier: string;
+  filingId?: string | null;
+  /** Verified Checkout Session amount_total, in minor units. */
+  amountCents?: number | null;
+  /** Verified Checkout Session currency, uppercase ISO code. */
+  currency?: string | null;
+  state?: string | null;
+  entityType?: string | null;
+  tier?: string | null;
   utm?: {
     utmSource?: string | null;
     utmMedium?: string | null;
@@ -22,11 +31,16 @@ interface CheckoutConversionTrackerProps {
   };
 }
 
-/** Fire once on checkout success so PostHog can attribute revenue to campaigns. */
+/**
+ * Fire once after the server has verified a paid Checkout Session.
+ * The PostHog event is `purchase_completed` via trackPurchaseCompleted.
+ * Do not mount this component for a missing, invalid, or unpaid session.
+ */
 export function CheckoutConversionTracker({
   userId,
   filingId,
-  totalCents,
+  amountCents,
+  currency,
   state,
   entityType,
   tier,
@@ -54,22 +68,28 @@ export function CheckoutConversionTracker({
 
     identifyUser(userId, utmProps);
     trackPurchaseCompleted({
-      filing_id: filingId,
-      order_id: filingId,
-      revenue_cents: totalCents,
-      value: totalCents / 100,
-      currency: 'USD',
-      state,
-      entity_type: entityType,
-      tier,
+      ...purchaseCompletedEventProperties({
+        filingId,
+        amountCents,
+        currency,
+        state,
+        entityType,
+        tier,
+      }),
       ...utmProps,
     });
 
     // GA4 + Google Ads conversion (no-op when gtag/env not configured).
-    trackGooglePurchase({ transactionId: filingId, valueCents: totalCents });
+    if (filingId && typeof amountCents === 'number') {
+      trackGooglePurchase({
+        transactionId: filingId,
+        valueCents: amountCents,
+        ...(currency ? { currency } : {}),
+      });
+    }
     // LinkedIn purchase conversion (no-op until the conversion ID is set).
     trackLinkedInConversion('purchase');
-  }, [userId, filingId, totalCents, state, entityType, tier, utm]);
+  }, [userId, filingId, amountCents, currency, state, entityType, tier, utm]);
 
   return null;
 }

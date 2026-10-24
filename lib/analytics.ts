@@ -72,6 +72,35 @@ export function trackSignupStarted(extra?: Record<string, unknown>) {
   trackEvent('signup_started', extra);
 }
 
+/**
+ * Properties for the PostHog `purchase_completed` capture on checkout success.
+ * Amount and currency come from the verified Checkout Session (minor units
+ * for `revenue_cents`, major units for `value`).
+ */
+export function purchaseCompletedEventProperties(input: {
+  filingId?: string | null;
+  amountCents?: number | null;
+  currency?: string | null;
+  state?: string | null;
+  entityType?: string | null;
+  tier?: string | null;
+}): Record<string, string | number> {
+  const properties: Record<string, string | number> = {};
+  if (input.filingId) {
+    properties.filing_id = input.filingId;
+    properties.order_id = input.filingId;
+  }
+  if (typeof input.amountCents === 'number' && Number.isFinite(input.amountCents)) {
+    properties.revenue_cents = input.amountCents;
+    properties.value = input.amountCents / 100;
+  }
+  if (input.currency) properties.currency = input.currency;
+  if (input.state) properties.state = input.state;
+  if (input.entityType) properties.entity_type = input.entityType;
+  if (input.tier) properties.tier = input.tier;
+  return properties;
+}
+
 export function trackPurchaseCompleted(extra?: Record<string, unknown>) {
   trackEvent('purchase_completed', extra);
 }

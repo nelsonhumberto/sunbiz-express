@@ -10,6 +10,7 @@ import { AuthError } from 'next-auth';
 import { userUtmCreateFields } from '@/lib/utm-attribution';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { safeRedirectPath } from '@/lib/utils';
+import { getTranslations } from 'next-intl/server';
 
 const SignUpSchema = z
   .object({
@@ -101,6 +102,14 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
   redirect('/dashboard');
 }
 
+let dummyHashPromise: Promise<string> | null = null;
+
+/** Compare against a throwaway hash when the email is unknown so we never call NextAuth. */
+function dummyPasswordCompare(password: string): Promise<boolean> {
+  if (!dummyHashPromise) dummyHashPromise = bcrypt.hash('launchforma-not-a-user', 8);
+  return dummyHashPromise.then((hash) => bcrypt.compare(password, hash));
+}
+
 export async function signInAction(_: ActionResult, formData: FormData): Promise<ActionResult> {
   // Throttle credential attempts to blunt credential-stuffing.
   const limited = checkActionRateLimit('sign-in', 10, 5 * 60 * 1000);
@@ -117,6 +126,23 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
     return { error: 'Please check your input.', fieldErrors };
   }
 
+  const email = parsed.data.email.toLowerCase().trim();
+  // Check the password here. NextAuth's signIn() from a server action can sit
+  // for ~30s on a bad password (it waits on its own callback route) before
+  // the form ever shows an error.
+  const [account, t] = await Promise.all([
+    prisma.user.findUnique({ where: { email } }),
+    getTranslations('auth'),
+  ]);
+  if (!account) {
+    await dummyPasswordCompare(parsed.data.password);
+    return { error: t('errorInvalid') };
+  }
+  const passwordOk = await bcrypt.compare(parsed.data.password, account.passwordHash);
+  if (!passwordOk) {
+    return { error: t('errorInvalid') };
+  }
+
   try {
     await signIn('credentials', {
       email: parsed.data.email,
@@ -125,22 +151,20 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
     });
   } catch (err) {
     if (err instanceof AuthError) {
-      return { error: 'Invalid email or password.' };
+      return { error: t('errorInvalid') };
     }
     // NEXT_REDIRECT errors are OK
     if ((err as Error)?.message?.includes('NEXT_REDIRECT')) throw err;
-    return { error: 'Something went wrong. Try again.' };
+    const digest = (err as { digest?: string } | null)?.digest ?? '';
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw err;
+    return { error: t('errorGeneric') };
   }
 
   // Redirect admins straight to the admin panel. Honor an optional `next`
   // param (e.g. when we sent the user to /sign-in mid-checkout) so they
   // land back where they were trying to go. Restrict to same-origin paths.
   const safeNext = safeRedirectPath(String(formData.get('next') ?? ''));
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
-    select: { role: true },
-  });
-  if (user?.role === 'ADMIN') {
+  if (account.role === 'ADMIN') {
     redirect('/admin');
   }
   redirect(safeNext ?? '/dashboard');

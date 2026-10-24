@@ -2,8 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations, useLocale } from 'next-intl';
-import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   Lock,
   CreditCard,
@@ -20,12 +19,14 @@ import {
 import { processCheckout } from '@/actions/payments';
 import { validateCoupon, type CouponValidationResult } from '@/actions/coupons';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   computeCost,
+  RA_AUTORENEW_CHECKED_BY_DEFAULT,
   RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
@@ -34,6 +35,7 @@ import {
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
+import { formatLongDate } from '@/lib/due-label';
 import type { WizardFiling } from '../types';
 import {
   getFormationState,
@@ -44,13 +46,15 @@ import {
 export function Step12Payment({
   filing,
   isTester = false,
+  testMode = false,
 }: {
   filing: WizardFiling;
   isTester?: boolean;
+  /** Server-computed: not production, or the publishable key is pk_test_. */
+  testMode?: boolean;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
-  const locale = useLocale();
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const stateCode: StateCode = isActiveFormationState(filing.state)
@@ -85,9 +89,9 @@ export function Step12Payment({
   const usesOurRa = registeredAgent?.useOurService === true;
 
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
-  // Default the auto-renew mandate to on, with the full terms shown inline so
-  // it's affirmative, informed consent (not a hidden pre-check).
-  const [autoRenewRa, setAutoRenewRa] = useState(true);
+  // Unchecked until the customer opts in. The mandate still shows the price,
+  // the renewal date, and that they can cancel.
+  const [autoRenewRa, setAutoRenewRa] = useState(RA_AUTORENEW_CHECKED_BY_DEFAULT);
   // First renewal charge date - one year out. Computed once so SSR and the
   // client render the same string (no hydration mismatch).
   const [firstRenewalDate] = useState(() => {
@@ -95,7 +99,7 @@ export function Step12Payment({
     d.setFullYear(d.getFullYear() + 1);
     return d;
   });
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
   const cardRef = useRef<StripeCardHandle>(null);
 
@@ -129,7 +133,8 @@ export function Step12Payment({
   };
 
   const onPay = () => {
-    start(async () => {
+    // Longer than the other steps so a real card confirm is not a false timeout.
+    run(async () => {
       let paymentIntentId: string;
 
       if (isTester) {
@@ -137,8 +142,7 @@ export function Step12Payment({
         paymentIntentId = 'TESTER_BYPASS';
       } else {
         if (!cardholderName.trim()) {
-          toast.error(t('errorCardholder'));
-          return;
+          return { ok: false, error: t('errorCardholder') };
         }
         const result = await cardRef.current!.confirm({
           amountCents: finalTotal,
@@ -146,8 +150,7 @@ export function Step12Payment({
           filingId: filing.id,
         });
         if ('error' in result) {
-          toast.error(result.error);
-          return;
+          return { ok: false, error: result.error };
         }
         paymentIntentId = result.paymentIntentId;
       }
@@ -161,15 +164,23 @@ export function Step12Payment({
         autoRenewRa: usesOurRa && autoRenewRa,
       });
       if (res.error) {
-        toast.error(res.error);
-        return;
+        return { ok: false, error: res.error };
       }
       if (res.redirectTo) router.push(res.redirectTo);
-    });
+      return { ok: true };
+    }, 45_000);
   };
 
   return (
     <div className="space-y-5">
+      {testMode ? (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-950"
+        >
+          {t('testModeBadge')}
+        </div>
+      ) : null}
       {/* Order Summary - single all-in package + selected add-ons. */}
       <div className="rounded-lg border border-border bg-white p-5">
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
@@ -349,11 +360,7 @@ export function Step12Payment({
             <span className="mt-1 block text-xs text-ink-muted">
               {t('raAutoRenewMandate', {
                 price: formatCurrency(RA_RENEWAL_PRICE_CENTS),
-                date: new Intl.DateTimeFormat(locale, {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                }).format(firstRenewalDate),
+                renewalDate: formatLongDate(firstRenewalDate),
               })}
             </span>
           </span>
@@ -376,6 +383,7 @@ export function Step12Payment({
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
         pending={pending}
+        error={error}
         nextLabel={t('pay', {
           amount: formatCurrency(finalTotal, { showZero: true }),
         })}

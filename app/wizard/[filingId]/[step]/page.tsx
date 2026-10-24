@@ -42,6 +42,7 @@ import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
+import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,6 +127,10 @@ export default async function WizardStepPage({ params }: PageProps) {
     actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
   }
   const actorEmail = actor?.email ?? undefined;
+  const testMode = isCheckoutTestMode({
+    vercelEnv: process.env.VERCEL_ENV,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  });
 
   return (
     <>
@@ -152,7 +157,9 @@ export default async function WizardStepPage({ params }: PageProps) {
         {stepNum === 8 && <Step9Optional filing={filing} />}
         {stepNum === 9 && <Step10Review filing={filing} />}
         {stepNum === 10 && <Step11AddOns filing={filing} />}
-        {stepNum === 11 && <Step12Payment filing={filing} isTester={isTester} />}
+        {stepNum === 11 && (
+          <Step12Payment filing={filing} isTester={isTester} testMode={testMode} />
+        )}
       </WizardShell>
 
       {/* Guest-only popup: appears after Step 1 (entity choice) so we have
@@ -162,6 +169,7 @@ export default async function WizardStepPage({ params }: PageProps) {
         <GuestAccountPrompt
           firstName={actor.firstName}
           email={actor.email}
+          filingId={filing.id}
         />
       )}
     </>

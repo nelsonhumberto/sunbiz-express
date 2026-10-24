@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Check, Minus, Sparkles } from 'lucide-react';
-import { saveStep3 } from '@/actions/wizard';
+import { saveStep3, upgradeTier } from '@/actions/wizard';
+import { withActionTimeout } from '@/lib/action-timeout';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type EntityType, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
@@ -19,16 +21,36 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('pricing');
   const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
+  const persistGen = useRef(0);
+  const desiredTier = useRef<TierSlug>(filing.serviceTier as TierSlug);
   const stateCode: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
   const entityType = (filing.entityType as EntityType) || 'LLC';
   const formationState = getFormationState(stateCode);
 
+  const persistTier = (next: TierSlug) => {
+    desiredTier.current = next;
+    const gen = ++persistGen.current;
+    void (async () => {
+      try {
+        await withActionTimeout(upgradeTier({ filingId: filing.id, tier: next }));
+      } catch {
+        // Continue still writes the selection. A failed background save must
+        // not leave the button spinning.
+        return;
+      }
+      // A slower click can land after a newer one. Write the latest choice again.
+      if (gen !== persistGen.current && desiredTier.current !== next) {
+        persistTier(desiredTier.current);
+      }
+    })();
+  };
+
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
       await saveStep3({ filingId: filing.id, tier });
       router.push(`/wizard/${filing.id}/4`);
     });
@@ -57,6 +79,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                 setTier(tierDef.slug);
                 setTierPreview(tierDef.slug);
                 trackTierSelected(tierDef.slug, stateCode, entityType, 'wizard');
+                persistTier(tierDef.slug);
               }}
               className={cn(
                 'relative text-left rounded-2xl border-2 p-5 transition-all flex flex-col',
@@ -133,6 +156,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
         prevHref={`/wizard/${filing.id}/2`}
         onNext={onContinue}
         pending={pending}
+        error={error}
       />
     </div>
   );

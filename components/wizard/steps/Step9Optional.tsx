@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { saveStep9 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -225,7 +226,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
     stored?.foreignRegistrationInterest ?? false,
   );
 
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   let dateError: string | undefined;
@@ -370,7 +371,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
       }
       return;
     }
-    start(async () => {
+    run(async () => {
       const res = await saveStep9({
         filingId: filing.id,
         effectiveDate: effectiveDate || undefined,
@@ -412,11 +413,8 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         processingOption,
         foreignRegistrationInterest: foreignInterest,
       });
-      if (!res.ok) {
-        toast.error(res.error ?? 'Could not save');
-        return;
-      }
-      router.push(`/wizard/${filing.id}/9`);
+      if (res.ok) router.push(`/wizard/${filing.id}/9`);
+      return res;
     });
   };
 
@@ -1060,6 +1058,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         onNext={onContinue}
         nextDisabled={!valid}
         pending={pending}
+        error={error}
       />
     </div>
   );

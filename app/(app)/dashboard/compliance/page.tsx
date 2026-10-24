@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDateLong, cn } from '@/lib/utils';
+import { formatDueLabel } from '@/lib/due-label';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,7 @@ export default async function CompliancePage() {
                           </div>
                           <p className="text-sm text-ink-muted mt-1">
                             {report.reportYear} Annual Report ·{' '}
-                            <strong>Due {formatDateLong(report.dueDate)}</strong>
+                            <strong>{formatDueLabel('Due', report.dueDate)}</strong>
                           </p>
                           <p className="text-xs text-ink-subtle mt-1">
                             State fee: {formatCurrency(report.filingFeeCents)} ·{' '}

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
 import { Info, MapPin } from 'lucide-react';
 import { saveStep4 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { AddressForm, type AddressValue } from '../AddressForm';
 import { safeParseJson } from '@/lib/utils';
 import {
@@ -32,7 +32,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   });
   const [address, setAddress] = useState<AddressValue>(initial);
   const [showMissing, setShowMissing] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   const principalRequired = addressRules.principalAddressRequired;
@@ -51,12 +51,9 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   const isOutOfState = !!address.street1.trim() && principalState !== filingState;
 
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
       const res = await saveStep4({ filingId: filing.id, address });
-      if (!res.ok) {
-        toast.error(res.error ?? 'Could not save');
-        return;
-      }
+      if (!res.ok) return { ok: false, error: res.error };
       router.push(`/wizard/${filing.id}/5`);
     });
   };
@@ -104,6 +101,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
         nextDisabled={!valid}
         onBlocked={() => setShowMissing(true)}
         pending={pending}
+        error={error}
       />
     </div>
   );

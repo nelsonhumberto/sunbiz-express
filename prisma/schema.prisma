@@ -92,6 +92,9 @@ model Filing {
   mailingAddress           String?  // JSON or "SAME_AS_PRINCIPAL"
   registeredAgent          String?  // JSON {type, name, email, phone, street1, street2, city, state, zip, signature, signedAt, useOurService}
   correspondenceContact    String?  // JSON {email, phone}
+  // Optional contact phone from the wizard review/contact section. Also
+  // copied onto User.phone when the customer enters one.
+  contactPhone             String?
   optionalDetails          String?  // JSON {effectiveDate, authorizedShares, professionalPurpose, businessPurpose}
 
   // Step 10

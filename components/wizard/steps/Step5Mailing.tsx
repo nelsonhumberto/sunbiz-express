@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { Check, MapPin } from 'lucide-react';
 import { saveStep5 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { AddressForm, type AddressValue } from '../AddressForm';
 import { Label } from '@/components/ui/label';
 import { cn, safeParseJson } from '@/lib/utils';
@@ -33,7 +33,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
   const [sameAsPrincipal, setSame] = useState(initialSame);
   const [address, setAddress] = useState<AddressValue>(initialAddress);
   const [showMissing, setShowMissing] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   const valid = !!(
@@ -42,17 +42,14 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
   );
 
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
       const res = await saveStep5({
         filingId: filing.id,
         sameAsPrincipal,
         address: sameAsPrincipal ? undefined : address,
       });
-      if (!res.ok) {
-        toast.error(res.error ?? 'Could not save');
-        return;
-      }
-      router.push(`/wizard/${filing.id}/6`);
+      if (res.ok) router.push(`/wizard/${filing.id}/6`);
+      return res;
     });
   };
 
@@ -123,6 +120,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
         nextDisabled={!valid}
         onBlocked={() => setShowMissing(true)}
         pending={pending}
+        error={error}
       />
     </div>
   );

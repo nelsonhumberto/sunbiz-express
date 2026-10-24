@@ -22,6 +22,8 @@ import {
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
+import { useWizardSubmit } from '../useWizardSubmit';
+import { withActionTimeout } from '@/lib/action-timeout';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -85,7 +87,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   initialSelected.add('registered_agent');
 
   const [selected, setSelected] = useState<Set<string>>(initialSelected);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const [upgrading, startUpgrade] = useTransition();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -139,7 +141,15 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const onUpgrade = () => {
     if (!upgradeTarget) return;
     startUpgrade(async () => {
-      const res = await upgradeTier({ filingId: filing.id, tier: upgradeTarget });
+      let res: { ok: boolean };
+      try {
+        res = await withActionTimeout(
+          upgradeTier({ filingId: filing.id, tier: upgradeTarget }),
+        );
+      } catch {
+        toast.error(t('errorTimeout'));
+        return;
+      }
       if (!res.ok) {
         toast.error(t('errorSaveGeneric'));
         return;
@@ -171,16 +181,13 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   };
 
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
         addOnSlugs: Array.from(selected),
       });
-      if (!res.ok) {
-        toast.error(t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/11`);
+      if (res.ok) router.push(`/wizard/${filing.id}/11`);
+      return res;
     });
   };
 
@@ -189,16 +196,13 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const onSkip = () => {
     const baseline = new Set<string>(['registered_agent']);
     tierBundledAddOns(tier).forEach((slug) => baseline.add(slug));
-    start(async () => {
+    run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
         addOnSlugs: Array.from(baseline),
       });
-      if (!res.ok) {
-        toast.error(t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/11`);
+      if (res.ok) router.push(`/wizard/${filing.id}/11`);
+      return res;
     });
   };
 
@@ -397,6 +401,11 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
         })}
       </div>
 
+      {error ? (
+        <p role="alert" className="mt-6 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       <div className="mt-10 pt-6 border-t border-border flex items-center justify-between gap-4">
         <Link
           href={`/wizard/${filing.id}/9`}

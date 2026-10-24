@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency, formatDate, formatRelative, safeParseJson } from '@/lib/utils';
+import { formatDueLabel } from '@/lib/due-label';
 import {
   TOTAL_DISPLAYED_STEPS,
   displayStepNumber,
@@ -207,8 +208,7 @@ export default async function DashboardPage() {
                       {report.filing.businessName} · {t('annualReport')}
                     </p>
                     <p className="text-xs text-ink-muted">
-                      {t('due')}{' '}
-                      {formatDate(report.dueDate, { month: 'long', day: 'numeric', year: 'numeric' })}{' '}
+                      {formatDueLabel(t('due'), report.dueDate)}{' '}
                       · ${(report.filingFeeCents / 100).toFixed(2)}
                     </p>
                   </div>

@@ -11,7 +11,7 @@ export const metadata = { title: 'Sign in' };
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { reset?: string; claimed?: string; email?: string; next?: string };
+  searchParams: { reset?: string; claimed?: string; email?: string; next?: string; from?: string };
 }) {
   const nextPath = safeRedirectPath(searchParams.next);
   const session = await auth();
@@ -22,6 +22,7 @@ export default async function SignInPage({
 
   const claimed = searchParams.claimed === '1';
   const claimedEmail = searchParams.email ?? '';
+  const fromStart = searchParams.from === 'start';
 
   return (
     <div className="space-y-6">
@@ -29,6 +30,12 @@ export default async function SignInPage({
         <div className="rounded-md bg-success/10 border border-success/20 px-4 py-3 text-sm text-success flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           Password updated successfully. Sign in with your new password.
+        </div>
+      )}
+
+      {fromStart && (
+        <div className="rounded-md bg-primary/5 border border-primary/20 px-4 py-3 text-sm text-ink leading-relaxed">
+          {t('fromStartNotice')}
         </div>
       )}
 
@@ -57,7 +64,7 @@ export default async function SignInPage({
         </p>
       </div>
 
-      <SignInForm defaultEmail={claimedEmail} nextHref={nextPath ?? ''} />
+      <SignInForm defaultEmail={searchParams.email ?? claimedEmail} nextHref={nextPath ?? ''} />
     </div>
   );
 }

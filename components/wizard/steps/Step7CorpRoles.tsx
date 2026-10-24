@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { saveStep7 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -175,7 +176,7 @@ export function Step7CorpRoles({
   const [roles, setRoles] = useState<CorpRole[]>(initialRoles);
   const [showTitleHelp, setShowTitleHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   // Pull address sources from earlier wizard steps so officer cards
@@ -276,7 +277,7 @@ export function Step7CorpRoles({
       toast.error(t('errorCorpSecretaryRequired'));
       return;
     }
-    start(async () => {
+    run(async () => {
       const res = await saveStep7({
         filingId: filing.id,
         members: roles.map((r) => ({
@@ -289,11 +290,8 @@ export function Step7CorpRoles({
           ownerType: 'individual' as const,
         })),
       });
-      if (!res.ok) {
-        toast.error(res.error ?? t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/8`);
+      if (res.ok) router.push(`/wizard/${filing.id}/8`);
+      return res;
     });
   };
 
@@ -550,6 +548,7 @@ export function Step7CorpRoles({
           onContinue();
         }}
         pending={pending}
+        error={error}
       />
     </div>
   );

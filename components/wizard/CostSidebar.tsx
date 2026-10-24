@@ -74,16 +74,20 @@ export function CostSidebar({
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
             {t('filingPackage')}
           </p>
-          {breakdown.lines
-            .filter((l) => l.category === 'package')
-            .map((line) => (
-              <CostRow
-                key={line.key}
-                label={labelFor(line)}
-                cents={line.cents}
-                sublabel={detailFor(line) ?? undefined}
-              />
-            ))}
+          {packageSelected ? (
+            breakdown.lines
+              .filter((l) => l.category === 'package')
+              .map((line) => (
+                <CostRow
+                  key={line.key}
+                  label={labelFor(line)}
+                  cents={line.cents}
+                  sublabel={detailFor(line) ?? undefined}
+                />
+              ))
+          ) : (
+            <p className="text-sm text-ink-subtle">{t('packageNotChosen')}</p>
+          )}
         </div>
 
         {breakdown.lines.some((l) => l.category === 'addon') && (

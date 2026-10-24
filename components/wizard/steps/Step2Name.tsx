@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
 import { saveStep2 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import {
   NameCheckWidget,
   type NameCheckResult,
@@ -34,7 +34,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
@@ -49,16 +49,13 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   const canContinue = name.trim().length >= 2 && !isHardBlocked;
 
   const saveAndAdvance = () => {
-    start(async () => {
+    run(async () => {
       const res = await saveStep2({
         filingId: filing.id,
         businessName: name,
         available: result?.available ?? undefined,
       });
-      if (!res.ok) {
-        toast.error(res.error ?? t('errorSaveGeneric'));
-        return;
-      }
+      if (!res.ok) return { ok: false, error: res.error };
       router.push(`/wizard/${filing.id}/3`);
     });
   };
@@ -149,6 +146,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         onNext={onContinue}
         nextDisabled={!canContinue}
         pending={pending}
+        error={error}
       />
 
       <Dialog open={showUnavailable} onOpenChange={setShowUnavailable}>

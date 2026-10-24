@@ -86,7 +86,11 @@ export function WizardShell({
             <SaveIndicator saved={saved} />
             <LanguageSwitcher />
             {isGuest && guestEmail ? (
-              <GuestSaveExitDialog email={guestEmail} label={t('saveAndExit')} />
+              <GuestSaveExitDialog
+                email={guestEmail}
+                label={t('saveAndExit')}
+                filingId={filingId}
+              />
             ) : (
               <Link
                 href="/dashboard"
@@ -232,6 +236,7 @@ export function WizardActions({
   nextLabel,
   nextDisabled,
   pending,
+  error,
   onNext,
   onBlocked,
   isSubmit,
@@ -241,6 +246,8 @@ export function WizardActions({
   nextLabel?: string;
   nextDisabled?: boolean;
   pending?: boolean;
+  /** Visible save failure. The button stays enabled so the customer can retry. */
+  error?: string | null;
   onNext?: () => void;
   /** Called when Continue is clicked while `nextDisabled` - use to highlight missing fields. */
   onBlocked?: () => void;
@@ -251,6 +258,14 @@ export function WizardActions({
   const label = nextLabel ?? tCommon('continue');
   return (
     <div className="sticky bottom-0 z-20 mt-10 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border">
+      {error && (
+        <p
+          role="alert"
+          className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3">
         {prevHref && !hideBack ? (
           <Link

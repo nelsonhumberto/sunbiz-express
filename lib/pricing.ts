@@ -222,6 +222,8 @@ export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
  * customers (grandfathering is intentional).
  */
 export const RA_RENEWAL_PRICE_CENTS = 15_000; // $150.00
+/** Checkout add-on starts off. The customer opts in; the price does not change. */
+export const RA_AUTORENEW_CHECKED_BY_DEFAULT = false;
 
 // ─── Add-on services ──────────────────────────────────────────────────────
 

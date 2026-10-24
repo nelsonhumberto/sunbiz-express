@@ -1,15 +1,16 @@
 'use server';
 
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
-import { auth } from '@/lib/auth';
-import { newGuestToken, setGuestCookie, GUEST_COOKIE, getGuestUser } from '@/lib/guest';
+import { auth, signIn } from '@/lib/auth';
+import { newGuestToken, setGuestCookie, clearGuestCookie, getGuestUser } from '@/lib/guest';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { isRedirectError, withActionTimeout } from '@/lib/action-timeout';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
@@ -113,7 +114,10 @@ export async function startGuestFiling(
   // Block reuse of an existing ACTIVE account from this entry path.
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing && existing.accountStatus !== 'GUEST') {
-    redirect(`/sign-in?email=${encodeURIComponent(email)}&from=start`);
+    const next = encodeURIComponent('/dashboard');
+    redirect(
+      `/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`,
+    );
   }
 
   // Create a fresh GUEST user (or reuse if the same email already started).
@@ -124,7 +128,7 @@ export async function startGuestFiling(
     // We MUST satisfy the non-null `passwordHash` constraint. Use a random
     // unguessable hash that the credentials provider can never validate.
     const placeholderPassword = await bcrypt.hash(
-      crypto.randomBytes(32).toString('hex'),
+      randomBytes(32).toString('hex'),
       10,
     );
     guestUser = await prisma.user.create({
@@ -201,19 +205,30 @@ export async function startGuestFiling(
 
 const ClaimSchema = z.object({
   email: z.string().email(),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100)
+    .regex(/[A-Z]/, 'Include at least one uppercase letter')
+    .regex(/[0-9]/, 'Include at least one number'),
+  filingId: z.string().optional(),
 });
 
 export interface ClaimResult {
   ok?: boolean;
   error?: string;
   message?: string;
+  /** Wizard (or dashboard) path that still has this draft. */
+  resumeHref?: string;
+  signedIn?: boolean;
+  fieldErrors?: Record<string, string>;
 }
 
 /**
- * Convert the current GUEST user into an ACTIVE account. Generates a random
- * password, sets it on the user, emails them the credentials, clears the
- * guest token, and keeps them in the wizard. The user can change the email
- * (e.g. they signed up with a typo) - if changed we re-check for collisions.
+ * Convert the current GUEST user into an ACTIVE account. The customer sets
+ * the password in the form. We keep them a guest until sign-in succeeds so a
+ * failed sign-in does not dump them on /sign-in without the draft. The welcome
+ * email does not include a temporary password.
  */
 export async function claimGuestAccount(
   _prev: ClaimResult,
@@ -221,11 +236,22 @@ export async function claimGuestAccount(
 ): Promise<ClaimResult> {
   const parsed = ClaimSchema.safeParse({
     email: formData.get('email'),
+    password: formData.get('password'),
+    filingId: (formData.get('filingId') as string) || undefined,
   });
   if (!parsed.success) {
-    return { error: 'Please enter a valid email.' };
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const k = String(issue.path[0] ?? '');
+      if (!fieldErrors[k]) fieldErrors[k] = issue.message;
+    }
+    return {
+      error: fieldErrors.password ?? fieldErrors.email ?? 'Please check your details.',
+      fieldErrors,
+    };
   }
   const newEmail = parsed.data.email.toLowerCase().trim();
+  const password = parsed.data.password;
 
   const guest = await getGuestUser();
   if (!guest) return { error: 'Your guest session has expired. Please start again.' };
@@ -242,40 +268,67 @@ export async function claimGuestAccount(
     }
   }
 
-  const tempPassword = generateReadablePassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const resumeHref = await draftResumeHref(guest.id, parsed.data.filingId);
 
+  // Set the password they chose, but stay a GUEST until sign-in succeeds.
+  // Clearing the guest session first is what dropped people on /sign-in and
+  // detached the browser from the draft.
+  const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.update({
     where: { id: guest.id },
     data: {
       email: newEmail,
       passwordHash,
-      accountStatus: 'ACTIVE',
-      emailVerified: false,
-      guestToken: null,
     },
   });
 
-  // Send credentials via the regular email pipeline. The user can sign in
-  // immediately or keep filing as is - both paths work because the wizard
-  // already has a draft attached to this user.
-  let emailDelivered = true;
+  let signedIn = false;
   try {
-    const result = await sendEmail({
-      type: 'WELCOME',
-      to: newEmail,
-      userId: guest.id,
-      context: {
-        firstName: guest.firstName,
-        tempPassword,
-        loginEmail: newEmail,
+    await withActionTimeout(
+      signIn('credentials', {
+        email: newEmail,
+        password,
+        redirect: false,
+      }),
+      8_000,
+    );
+    signedIn = true;
+  } catch (err) {
+    if (isRedirectError(err)) {
+      signedIn = true;
+    } else {
+      logger.error(
+        'guest account claim: sign-in failed',
+        { area: 'guest', entityId: guest.id, tag: 'claim-signin' },
+        err,
+      );
+    }
+  }
+
+  if (signedIn) {
+    await prisma.user.update({
+      where: { id: guest.id },
+      data: {
+        accountStatus: 'ACTIVE',
+        emailVerified: false,
+        guestToken: null,
       },
     });
-    emailDelivered = result.status === 'SENT';
+    clearGuestCookie();
+  }
+
+  // Welcome email has no temporary password. Don't block the draft on delivery.
+  try {
+    await withActionTimeout(
+      sendEmail({
+        type: 'WELCOME',
+        to: newEmail,
+        userId: guest.id,
+        context: { firstName: guest.firstName },
+      }),
+      4_000,
+    );
   } catch (err) {
-    // Never block the conversion on email delivery - but don't claim success
-    // we can't verify. Log it and tell the user honestly.
-    emailDelivered = false;
     logger.error(
       'guest account claim: welcome email failed',
       { area: 'guest', entityId: guest.id, tag: 'claim-email' },
@@ -283,34 +336,33 @@ export async function claimGuestAccount(
     );
   }
 
-  // Clear guest cookie - they now have a real account they can sign in with.
-  cookies().delete(GUEST_COOKIE);
-
   return {
     ok: true,
-    message: emailDelivered
-      ? `Account created. Sign-in details have been emailed to ${newEmail}.`
-      : `Account created for ${newEmail}. We couldn't send the email just now - use "Forgot password" on the sign-in page to set your password.`,
+    signedIn,
+    resumeHref,
+    message: signedIn
+      ? 'Account created. Your draft is saved to this account.'
+      : 'Password saved. Your draft is still open — continue it below or sign in with that password.',
   };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────
-
-/**
- * Build a short, readable, sufficiently-strong password that we can email
- * to a freshly-converted guest. 14 characters across 4 character classes is
- * comfortably above OWASP minimums.
- */
-function generateReadablePassword(): string {
-  const lower = 'abcdefghjkmnpqrstuvwxyz';
-  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const digits = '23456789';
-  const symbols = '!@#$%^&*';
-  const all = lower + upper + digits + symbols;
-  const pick = (set: string) => set[crypto.randomInt(0, set.length)];
-  const required = [pick(lower), pick(upper), pick(digits), pick(symbols)];
-  const rest = Array.from({ length: 10 }, () => pick(all));
-  return [...required, ...rest]
-    .sort(() => crypto.randomInt(0, 2) - 0.5)
-    .join('');
+async function draftResumeHref(userId: string, filingId?: string): Promise<string> {
+  if (filingId) {
+    const owned = await prisma.filing.findFirst({
+      where: { id: filingId, userId, status: 'DRAFT' },
+      select: { id: true, currentStep: true },
+    });
+    if (owned) {
+      const step = owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2;
+      return `/wizard/${owned.id}/${step}`;
+    }
+  }
+  const draft = await prisma.filing.findFirst({
+    where: { userId, status: 'DRAFT' },
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true, currentStep: true },
+  });
+  if (!draft) return '/dashboard';
+  const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+  return `/wizard/${draft.id}/${step}`;
 }

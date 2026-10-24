@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { cn } from '@/lib/utils';
 import {
   ACTIVE_FORMATION_STATES,
@@ -33,7 +34,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
       ? filing.state
       : 'FL') as StateCode,
   );
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
   const stateRule = FORMATION_STATES[stateCode];
 
@@ -65,7 +66,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
   const onContinue = () => {
     const entityType = selected === 'SCORP' ? sCorpEntity : selected;
     const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
-    start(async () => {
+    run(async () => {
       await saveStep1({ filingId: filing.id, entityType, state: stateCode, taxElection });
       router.push(`/wizard/${filing.id}/2`);
     });
@@ -230,7 +231,7 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
 
       <EntityDecisionCard stateName={stateRule.name} />
 
-      <WizardActions onNext={onContinue} pending={pending} />
+      <WizardActions onNext={onContinue} pending={pending} error={error} />
     </div>
   );
 }

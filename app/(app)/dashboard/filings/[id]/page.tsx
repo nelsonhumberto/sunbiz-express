@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
+import { fillDueMessage } from '@/lib/due-label';
 import {
   ADD_ON_BY_SLUG,
   filingHasOperatingAgreement,
@@ -404,7 +405,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               title={t('nextAnnualReport')}
               detail={
                 filing.annualReports[0]
-                  ? t('dueDateOn', { date: formatDateLong(filing.annualReports[0].dueDate) })
+                  ? fillDueMessage(t.raw('dueDateOn'), filing.annualReports[0].dueDate)
                   : t('annualReportEstimate')
               }
               done={false}

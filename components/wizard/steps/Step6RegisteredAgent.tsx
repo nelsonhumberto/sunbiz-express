@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import {
   ShieldCheck,
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { saveStep6 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { AddressForm, type AddressValue } from '../AddressForm';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,7 +71,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   );
   const [showRAHelp, setShowRAHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   const externalValid =
@@ -109,7 +109,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   };
 
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
       const payload = useOurService
         ? {
             filingId: filing.id,
@@ -138,11 +138,8 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             signature: externalSignature,
           };
       const res = await saveStep6(payload);
-      if (!res.ok) {
-        toast.error(res.error ?? t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/7`);
+      if (res.ok) router.push(`/wizard/${filing.id}/7`);
+      return res;
     });
   };
 
@@ -425,6 +422,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
         nextDisabled={!canContinue}
         onBlocked={() => setShowMissing(true)}
         pending={pending}
+        error={error}
       />
     </div>
   );

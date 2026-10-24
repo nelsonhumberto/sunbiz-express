@@ -25,6 +25,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
+import { parseOptionalPhone } from '@/lib/phone';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -892,11 +893,17 @@ const Step10Schema = z.object({
   filingId: z.string(),
   signature: z.string().min(2).max(255),
   confirmAccurate: z.boolean(),
+  /** Optional contact phone. Blank is valid. */
+  phone: z.string().max(40).optional(),
 });
 
 export async function saveStep10(input: z.infer<typeof Step10Schema>) {
   const data = Step10Schema.parse(input);
   if (!data.confirmAccurate) return { ok: false, error: 'You must confirm the information is accurate.' };
+  const phoneParsed = parseOptionalPhone(data.phone);
+  if (!phoneParsed.ok) {
+    return { ok: false, error: 'Enter a valid phone number, or leave it blank.' };
+  }
   const { filing, actor } = await getFilingForUser(data.filingId);
 
   // Final safety net: ensure the correspondence email is populated before
@@ -907,9 +914,24 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
     actor.email,
   );
 
+  const fresh = await prisma.filing.findUnique({
+    where: { id: filing.id },
+    select: { correspondenceContact: true },
+  });
+  const prevContact =
+    safeParseJson<{ email?: string; phone?: string; source?: string } | null>(
+      fresh?.correspondenceContact ?? filing.correspondenceContact,
+      null,
+    ) ?? {};
+  const nextContact: { email?: string; phone?: string; source?: string } = { ...prevContact };
+  if (phoneParsed.value) nextContact.phone = phoneParsed.value;
+  else delete nextContact.phone;
+
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
+      contactPhone: phoneParsed.value,
+      correspondenceContact: JSON.stringify(nextContact),
       incorporatorSignature: data.signature,
       incorporatorSignedAt: new Date(),
       confirmationAccepted: true,
@@ -917,6 +939,13 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
       completedSteps: markStepComplete(filing.completedSteps, 9),
     },
   });
+
+  if (phoneParsed.value) {
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { phone: phoneParsed.value },
+    });
+  }
   return { ok: true };
 }
 

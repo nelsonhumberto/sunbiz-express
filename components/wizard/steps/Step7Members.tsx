@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { saveStep7 } from '@/actions/wizard';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { Step7CorpRoles } from './Step7CorpRoles';
 import { WizardActions } from '../WizardShell';
 import { Input } from '@/components/ui/input';
@@ -174,7 +175,7 @@ export function Step7Members({
   const [members, setMembers] = useState<Member[]>(initial);
   const [showTitleHelp, setShowTitleHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
-  const [pending, start] = useTransition();
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   // OA entitlement drives whether ownership percentages are collected.
@@ -332,7 +333,7 @@ export function Step7Members({
       toast.error(t('ownershipMustTotal', { total: totalOwnership.toFixed(2) }));
       return;
     }
-    start(async () => {
+    run(async () => {
       const res = await saveStep7({
         filingId: filing.id,
         managementType: isLLC ? managementType : undefined,
@@ -343,11 +344,8 @@ export function Step7Members({
         })),
         includeMembersOnArticles: isDelawareLlc ? includeMembersOnArticles : undefined,
       });
-      if (!res.ok) {
-        toast.error(res.error ?? t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/8`);
+      if (res.ok) router.push(`/wizard/${filing.id}/8`);
+      return res;
     });
   };
 
@@ -777,6 +775,7 @@ export function Step7Members({
           else if (!ownershipOk) toast.error(t('ownershipMustTotal', { total: totalOwnership.toFixed(2) }));
         }}
         pending={pending}
+        error={error}
       />
     </div>
   );

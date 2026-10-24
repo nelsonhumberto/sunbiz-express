@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useState } from 'react';
 import { Sparkles, ShieldCheck, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -15,34 +15,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { claimGuestAccount, type ClaimResult } from '@/actions/guest-start';
 import { getClientUtmAttribution } from '@/lib/utm-client';
+import {
+  ActionTimeoutError,
+  isRedirectError,
+  redirectHrefFromError,
+  withActionTimeout,
+  WIZARD_ACTION_TIMEOUT_MS,
+} from '@/lib/action-timeout';
 
 const DISMISS_KEY = 'lf_guest_prompt_seen';
-const initial: ClaimResult = {};
 
 interface Props {
   firstName: string;
   email: string;
+  filingId: string;
 }
 
 /**
- * One-time popup shown to guest visitors asking whether they want to convert
- * their guest session into a real account. The popup persists its dismissed
- * state in localStorage so we never nag returning users.
+ * One-time popup asking a guest to set a password and keep the draft.
+ * Dismissal is stored in localStorage. A failed sign-in does not send them
+ * to /sign-in; the guest cookie still opens this filing.
  */
-export function GuestAccountPrompt({ firstName, email }: Props) {
+export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
+  const t = useTranslations('wizard');
   const [open, setOpen] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
   const [editableEmail, setEditableEmail] = useState(email);
-  const [state, formAction] = useFormState(claimGuestAccount, initial);
-  const [waiting, startWait] = useTransition();
+  const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<ClaimResult>({});
+
+  const resumeHref = state.resumeHref || `/wizard/${filingId}`;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const seen = window.localStorage.getItem(DISMISS_KEY);
     if (seen) return;
-    // Cold paid-ad traffic (has a `lf_utm` cookie) is here to buy, not to set
-    // up an account. Hold the prompt much longer so it never interrupts the
-    // early intake; non-ad visitors still see it quickly.
     const isAdTraffic = !!getClientUtmAttribution();
     const delay = isAdTraffic ? 45_000 : 1_200;
     const timer = setTimeout(() => setOpen(true), delay);
@@ -56,14 +64,42 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
     setOpen(false);
   }
 
-  // Auto-close on successful claim, with a short pause to show the message.
   useEffect(() => {
-    if (state.ok) {
-      startWait(() => {
-        setTimeout(() => dismiss(), 1500);
-      });
+    if (!state.ok || !state.signedIn || !state.resumeHref) return;
+    const timer = window.setTimeout(() => {
+      window.location.assign(state.resumeHref!);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [state.ok, state.signedIn, state.resumeHref]);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (pending) return;
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setState({ error: t('saveExitPasswordInvalid') });
+      return;
     }
-  }, [state.ok]);
+    setPending(true);
+    setState({});
+    const fd = new FormData(e.currentTarget);
+    try {
+      const result = await withActionTimeout(claimGuestAccount({}, fd), WIZARD_ACTION_TIMEOUT_MS);
+      setState(result);
+    } catch (err) {
+      const href = redirectHrefFromError(err);
+      if (href) {
+        window.location.assign(href);
+        return;
+      }
+      if (!isRedirectError(err)) {
+        setState({
+          error: err instanceof ActionTimeoutError ? t('errorTimeout') : t('errorSaveGeneric'),
+        });
+      }
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : dismiss())}>
@@ -71,28 +107,26 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Save your draft with a free LaunchForma account?
+            {t('saveExitTitle')}
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Create a free account so we can save your filing progress and email you a link to
-            resume it later.
-          </DialogDescription>
+          <DialogDescription className="sr-only">{t('saveExitBody')}</DialogDescription>
         </DialogHeader>
 
         {state.ok ? (
           <div className="space-y-3 text-sm">
             <p className="rounded-md bg-success/10 border border-success/20 px-3 py-2 text-success">
-              {state.message}
+              {state.signedIn
+                ? t('saveExitSuccessBody', { email: editableEmail })
+                : t('saveExitSuccessGuest', { email: editableEmail })}
             </p>
-            <p className="text-ink-muted">
-              You can keep filing right where you left off. We&apos;ll get you out of the way.
-            </p>
+            <Button asChild className="w-full">
+              <a href={resumeHref}>{t('saveExitResume')}</a>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4 text-sm">
             <p className="text-ink-muted leading-relaxed">
-              Hi {firstName || 'there'} - you&apos;re continuing as a guest. Creating a free
-              account gets you:
+              {t('saveExitBody')}
             </p>
             <ul className="space-y-2">
               <Benefit icon={<ShieldCheck className="h-4 w-4 text-primary" />}>
@@ -102,7 +136,7 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
                 Email confirmations, document downloads, and compliance reminders.
               </Benefit>
               <Benefit icon={<KeyRound className="h-4 w-4 text-primary" />}>
-                Secure access - we&apos;ll email you a temporary password you can change anytime.
+                {t('saveExitPasswordHint')}
               </Benefit>
             </ul>
 
@@ -112,10 +146,11 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
               </p>
             )}
 
-            <form action={formAction} className="space-y-3 pt-2">
+            <form onSubmit={onSubmit} className="space-y-3 pt-2">
+              <input type="hidden" name="filingId" value={filingId} />
               {showEmailEditor ? (
                 <div className="space-y-1.5">
-                  <Label htmlFor="claim-email">Email for your account</Label>
+                  <Label htmlFor="claim-email">{t('saveExitEmailLabel')}</Label>
                   <Input
                     id="claim-email"
                     name="email"
@@ -124,16 +159,35 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
                     value={editableEmail}
                     onChange={(e) => setEditableEmail(e.target.value)}
                   />
-                  <p className="text-[11px] text-ink-subtle">
-                    We&apos;ll email your sign-in credentials here.
-                  </p>
                 </div>
               ) : (
                 <input type="hidden" name="email" value={editableEmail} />
               )}
 
+              <div className="space-y-1.5">
+                <Label htmlFor="claim-password">{t('saveExitPasswordLabel')}</Label>
+                <Input
+                  id="claim-password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <ClaimButton label={`Yes, create my account`} />
+                <Button type="submit" size="sm" disabled={pending} className="text-xs">
+                  {pending ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {t('saveExitSigningIn')}
+                    </>
+                  ) : (
+                    t('saveExitConfirm')
+                  )}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -141,7 +195,7 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
                   onClick={() => setShowEmailEditor((v) => !v)}
                   className="text-xs"
                 >
-                  {showEmailEditor ? 'Use original email' : 'Change email'}
+                  {showEmailEditor ? t('saveExitChangeEmail') : t('saveExitChangeEmail')}
                 </Button>
                 <Button
                   type="button"
@@ -150,17 +204,12 @@ export function GuestAccountPrompt({ firstName, email }: Props) {
                   onClick={dismiss}
                   className="text-xs"
                 >
-                  No, continue as guest
+                  {t('saveExitKeepGoing')}
                 </Button>
               </div>
               <p className="text-[11px] text-ink-subtle text-center">
-                You can always create an account later from any wizard step.
+                {firstName ? `${firstName}, you` : 'You'} can keep filing as a guest and create an account later.
               </p>
-              {waiting && (
-                <p className="flex items-center justify-center gap-2 text-xs text-ink-muted">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Closing…
-                </p>
-              )}
             </form>
           </div>
         )}
@@ -175,21 +224,5 @@ function Benefit({ icon, children }: { icon: React.ReactNode; children: React.Re
       <span className="mt-0.5 shrink-0">{icon}</span>
       <span className="text-ink-muted leading-snug">{children}</span>
     </li>
-  );
-}
-
-function ClaimButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="sm" disabled={pending} className="text-xs">
-      {pending ? (
-        <>
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Creating…
-        </>
-      ) : (
-        label
-      )}
-    </Button>
   );
 }

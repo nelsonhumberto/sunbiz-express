@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { startGuestFiling, type StartGuestResult } from '@/actions/guest-start';
 import { ACTIVE_FORMATION_STATES } from '@/lib/formation-states';
@@ -22,6 +21,13 @@ import { getClientUtmAttribution } from '@/lib/utm-client';
 import { utmToAnalyticsProps } from '@/lib/utm';
 import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 import { cn } from '@/lib/utils';
+import {
+  ActionTimeoutError,
+  isRedirectError,
+  redirectHrefFromError,
+  withActionTimeout,
+  WIZARD_ACTION_TIMEOUT_MS,
+} from '@/lib/action-timeout';
 
 const initial: StartGuestResult = {};
 
@@ -43,13 +49,15 @@ export function GuestStartForm({
 }) {
   const t = useTranslations('start');
   const locale = useLocale();
-  const [state, formAction] = useFormState(startGuestFiling, initial);
-  const [entity, setEntity] = useState<EntityChoice>(defaultEntity);
-  const [filingState, setFilingState] = useState<'FL' | 'WY' | 'DE'>(defaultState);
+  const router = useRouter();
+  const [entity, setEntity] = useState<EntityChoice>(defaultEntity || 'LLC');
+  const [filingState, setFilingState] = useState<'FL' | 'WY' | 'DE'>(defaultState || 'FL');
   const [showMissing, setShowMissing] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [pending, setPending] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const entityLabel = useMemo(() => {
     if (entity === 'SCORP') return t('entitySCorp');
@@ -65,6 +73,42 @@ export function GuestStartForm({
   const firstMissing = showMissing && !firstName.trim();
   const lastMissing = showMissing && !lastName.trim();
   const emailMissing = showMissing && !email.trim();
+  const stateMissing = showMissing && !filingState;
+  const entityMissing = showMissing && !entity;
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !filingState || !entity) {
+      setShowMissing(true);
+      return;
+    }
+    if (pending) return;
+    setPending(true);
+    setFormError(null);
+    const utm = getClientUtmAttribution();
+    trackSignupStarted({ entry: 'guest_start', ...utmToAnalyticsProps(utm) });
+    const fd = new FormData(e.currentTarget);
+    try {
+      const result = await withActionTimeout(
+        startGuestFiling(initial, fd),
+        WIZARD_ACTION_TIMEOUT_MS,
+      );
+      if (result?.error) {
+        setFormError(result.error);
+        setPending(false);
+        return;
+      }
+    } catch (err) {
+      const href = redirectHrefFromError(err);
+      if (href) {
+        router.push(href);
+        return;
+      }
+      if (isRedirectError(err)) return;
+      setFormError(err instanceof ActionTimeoutError ? t('errorTimeout') : t('errorStart'));
+      setPending(false);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -80,19 +124,7 @@ export function GuestStartForm({
 
       <Card>
         <CardContent className="p-6 md:p-8">
-          <form
-            action={formAction}
-            onSubmit={(e) => {
-              if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-                e.preventDefault();
-                setShowMissing(true);
-                return;
-              }
-              const utm = getClientUtmAttribution();
-              trackSignupStarted({ entry: 'guest_start', ...utmToAnalyticsProps(utm) });
-            }}
-            className="space-y-5"
-          >
+          <form onSubmit={onSubmit} className="space-y-5">
             {defaultTier && <input type="hidden" name="tier" value={defaultTier} />}
             {defaultBusinessName && (
               <input type="hidden" name="businessName" value={defaultBusinessName} />
@@ -100,9 +132,12 @@ export function GuestStartForm({
             {/* Radix Select is not a native form control - mirror values into hidden inputs. */}
             <input type="hidden" name="entityType" value={entity} />
             <input type="hidden" name="state" value={filingState} />
-            {state.error && (
-              <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {state.error}
+            {formError && (
+              <p
+                role="alert"
+                className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              >
+                {formError}
               </p>
             )}
             {showMissing && (firstMissing || lastMissing || emailMissing) && (
@@ -119,8 +154,8 @@ export function GuestStartForm({
                 <Input
                   id="firstName"
                   name="firstName"
-                  required
                   autoComplete="given-name"
+                  aria-required
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   aria-invalid={firstMissing}
@@ -129,6 +164,7 @@ export function GuestStartForm({
                       'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive',
                   )}
                 />
+                {firstMissing ? <p className="text-xs text-destructive">{t('fieldRequired')}</p> : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="lastName" className={lastMissing ? 'text-destructive' : undefined}>
@@ -137,8 +173,8 @@ export function GuestStartForm({
                 <Input
                   id="lastName"
                   name="lastName"
-                  required
                   autoComplete="family-name"
+                  aria-required
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   aria-invalid={lastMissing}
@@ -147,6 +183,7 @@ export function GuestStartForm({
                       'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive',
                   )}
                 />
+                {lastMissing ? <p className="text-xs text-destructive">{t('fieldRequired')}</p> : null}
               </div>
             </div>
 
@@ -158,8 +195,8 @@ export function GuestStartForm({
                 id="email"
                 name="email"
                 type="email"
-                required
                 autoComplete="email"
+                aria-required
                 placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -169,18 +206,24 @@ export function GuestStartForm({
                     'border-destructive focus-visible:ring-destructive/30 focus-visible:border-destructive',
                 )}
               />
-              <p className="text-[11px] text-ink-subtle">{t('emailHint')}</p>
+              {emailMissing ? (
+                <p className="text-xs text-destructive">{t('fieldRequired')}</p>
+              ) : (
+                <p className="text-[11px] text-ink-subtle">{t('emailHint')}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="state">{t('state')}</Label>
+                <Label htmlFor="state" className={stateMissing ? 'text-destructive' : undefined}>
+                  {t('state')}
+                </Label>
                 <Select
                   value={filingState}
                   onValueChange={(v) => setFilingState(v as 'FL' | 'WY' | 'DE')}
                 >
-                  <SelectTrigger id="state">
-                    <SelectValue />
+                  <SelectTrigger id="state" aria-required aria-invalid={stateMissing}>
+                    <span className="truncate">{stateName}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {ACTIVE_MARKETING_STATES.filter((s) =>
@@ -192,13 +235,19 @@ export function GuestStartForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-ink-subtle">{t('stateHint')}</p>
+                {stateMissing ? (
+                  <p className="text-xs text-destructive">{t('fieldRequired')}</p>
+                ) : (
+                  <p className="text-[11px] text-ink-subtle">{t('stateHint')}</p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="entityType">{t('entityType')}</Label>
+                <Label htmlFor="entityType" className={entityMissing ? 'text-destructive' : undefined}>
+                  {t('entityType')}
+                </Label>
                 <Select value={entity} onValueChange={(v) => setEntity(v as EntityChoice)}>
-                  <SelectTrigger id="entityType">
-                    <SelectValue />
+                  <SelectTrigger id="entityType" aria-required aria-invalid={entityMissing}>
+                    <span className="truncate">{entityLabel}</span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="LLC">{t('entityLLC')}</SelectItem>
@@ -206,33 +255,26 @@ export function GuestStartForm({
                     <SelectItem value="SCORP">{t('entitySCorp')}</SelectItem>
                   </SelectContent>
                 </Select>
+                {entityMissing ? <p className="text-xs text-destructive">{t('fieldRequired')}</p> : null}
               </div>
             </div>
 
-            <SubmitButton />
+            <Button type="submit" size="lg" className="w-full group" disabled={pending}>
+              {pending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('starting')}
+                </>
+              ) : (
+                <>
+                  {t('continue')}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </Button>
           </form>
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function SubmitButton() {
-  const t = useTranslations('start');
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="lg" className="w-full group" disabled={pending}>
-      {pending ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t('starting')}
-        </>
-      ) : (
-        <>
-          {t('continue')}
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </>
-      )}
-    </Button>
   );
 }

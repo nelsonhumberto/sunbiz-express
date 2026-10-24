@@ -1,0 +1,27 @@
+/** i18n keys under `wizard.*` for member/officer title codes. */
+const TITLE_MESSAGE_KEYS: Record<string, string> = {
+  AMBR: 'titleAuthorizedMember',
+  MGRM: 'titleManagingMember',
+  AP: 'titleAuthorizedPerson',
+  MGR: 'titleManager',
+  OFFICER: 'titleOfficer',
+  DIRECTOR: 'titleDirector',
+  PRESIDENT: 'titlePresident',
+  TREASURER: 'titleTreasurer',
+  SECRETARY: 'titleSecretary',
+};
+
+export function memberTitleMessageKey(title: string | null | undefined): string | null {
+  if (!title) return null;
+  return TITLE_MESSAGE_KEYS[title] ?? null;
+}
+
+/** Display label kept separate from the person's name (never "AMBRQa Tester"). */
+export function memberTitleLabel(
+  title: string | null | undefined,
+  translate: (key: string) => string,
+): string {
+  const key = memberTitleMessageKey(title);
+  if (key) return translate(key);
+  return title?.trim() || '';
+}

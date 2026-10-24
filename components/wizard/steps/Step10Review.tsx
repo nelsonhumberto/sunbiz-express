@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { Pencil, ShieldAlert } from 'lucide-react';
 import { saveStep10 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
+import { useWizardSubmit } from '../useWizardSubmit';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,13 +25,16 @@ import {
 } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 import type { AddressValue } from '../AddressForm';
+import { parseOptionalPhone } from '@/lib/phone';
+import { memberTitleLabel } from '@/lib/member-title';
+import { serviceTierDisplayName } from '@/lib/tier-display';
 
 type ManagementType = 'member-managed' | 'manager-managed';
 
 export function Step10Review({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
-  const tDocs = useTranslations('documentTypes');
   const tCommon = useTranslations('common');
+  const tPricing = useTranslations('pricing');
   const filingStateCode: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
@@ -79,7 +82,8 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
 
   const [signature, setSignature] = useState(filing.incorporatorSignature ?? '');
   const [confirmed, setConfirmed] = useState(filing.confirmationAccepted);
-  const [pending, start] = useTransition();
+  const [phone, setPhone] = useState(filing.contactPhone ?? correspondence?.phone ?? '');
+  const { pending, error, run } = useWizardSubmit();
   const router = useRouter();
 
   const valid = signature.trim().length >= 2 && confirmed;
@@ -97,17 +101,19 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
     });
 
   const onContinue = () => {
-    start(async () => {
+    run(async () => {
+      const parsedPhone = parseOptionalPhone(phone);
+      if (!parsedPhone.ok) {
+        return { ok: false, error: t('phoneInvalid') };
+      }
       const res = await saveStep10({
         filingId: filing.id,
         signature,
         confirmAccurate: confirmed,
+        phone: parsedPhone.value ?? '',
       });
-      if (!res.ok) {
-        toast.error(res.error ?? t('errorSaveGeneric'));
-        return;
-      }
-      router.push(`/wizard/${filing.id}/10`);
+      if (res.ok) router.push(`/wizard/${filing.id}/10`);
+      return res;
     });
   };
 
@@ -143,7 +149,10 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
           }
         />
         <Row label={t('businessNameLabel')} value={filing.businessName ?? '-'} mono />
-        <Row label={t('serviceTier')} value={filing.serviceTier} />
+        <Row
+          label={t('serviceTier')}
+          value={serviceTierDisplayName(filing.serviceTier, (key) => tPricing(key as 'tier_BASIC'))}
+        />
         {filing.taxElection === 'S_CORP' && (
           <Row label={t('taxElectionLabel')} value={t('taxElectionSCorp')} />
         )}
@@ -175,27 +184,47 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
           <Row label={t('managementLabel')} value={managementLabel} />
         )}
         <ul className="text-sm space-y-1">
-          {filing.managersMembers.map((m) => (
+          {filing.managersMembers.map((m) => {
+            const titleLabel = memberTitleLabel(m.title, (key) => t(key as 'titleAuthorizedMember'));
+            return (
             <li
               key={m.id}
               className="flex items-baseline justify-between gap-3 py-1 border-b border-border last:border-b-0"
             >
-              <span>
-                <span className="text-ink-subtle text-xs uppercase tracking-wider mr-2">
-                  {m.title}
-                </span>
-                <span className="font-medium">{m.name}</span>
+              <span className="min-w-0">
+                <span className="block font-medium">{m.name}</span>
+                {titleLabel ? (
+                  <span className="block text-xs text-ink-muted">{titleLabel}</span>
+                ) : null}
               </span>
               {oaEntitled && m.ownershipPercentage != null && (
                 <span className="text-xs text-ink-muted">{m.ownershipPercentage.toFixed(1)}%</span>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       </ReviewSection>
 
       <ReviewSection title={t('correspondenceEmail')} stepHref={null} editLabel={tCommon('edit')}>
         <Row label={t('emailAccountLabel')} value={correspondence?.email ?? '-'} mono />
+        <div className="space-y-1.5 pt-2">
+          <Label htmlFor="contactPhone">
+            {t('phone')}{' '}
+            <span className="text-ink-subtle font-normal">({tCommon('optional')})</span>
+          </Label>
+          <Input
+            id="contactPhone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder={t('phonePlaceholder')}
+            maxLength={40}
+          />
+          <p className="text-xs text-ink-muted">{t('phoneHint')}</p>
+        </div>
         <p className="text-xs text-ink-muted">
           {t.rich('accountSettingsBlurb', {
             link: (chunks) => (
@@ -315,6 +344,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         onNext={onContinue}
         nextDisabled={!valid}
         pending={pending}
+        error={error}
       />
     </div>
   );

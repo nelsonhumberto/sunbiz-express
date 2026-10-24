@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { X, Loader2, Mail, CheckCircle2, ArrowRight } from 'lucide-react';
 import {
@@ -15,27 +14,70 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { claimGuestAccount, type ClaimResult } from '@/actions/guest-start';
-
-const initial: ClaimResult = {};
+import {
+  ActionTimeoutError,
+  isRedirectError,
+  redirectHrefFromError,
+  withActionTimeout,
+  WIZARD_ACTION_TIMEOUT_MS,
+} from '@/lib/action-timeout';
 
 /**
- * Guest-facing "Save & exit" control. Instead of bouncing a guest to the
- * sign-in wall, we offer the lowest-friction account creation: confirm (or
- * edit) the email they already gave us, then save their progress and email a
- * temporary password so they can return any time.
+ * Guest "Save & exit". The customer sets a password here, stays signed in,
+ * and gets a link back to the same draft. No temporary password is emailed.
  */
 export function GuestSaveExitDialog({
   email,
   label,
+  filingId,
 }: {
   email: string;
   label: string;
+  filingId: string;
 }) {
   const t = useTranslations('wizard');
   const [open, setOpen] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
   const [editableEmail, setEditableEmail] = useState(email);
-  const [state, formAction] = useFormState(claimGuestAccount, initial);
+  const [password, setPassword] = useState('');
+  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<ClaimResult>({});
+
+  const resumeHref = state.resumeHref || `/wizard/${filingId}`;
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (pending) return;
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setState({ error: t('saveExitPasswordInvalid'), fieldErrors: { password: t('saveExitPasswordInvalid') } });
+      return;
+    }
+    setPending(true);
+    setState({});
+    const fd = new FormData(e.currentTarget);
+    try {
+      const result = await withActionTimeout(claimGuestAccount({}, fd), WIZARD_ACTION_TIMEOUT_MS);
+      setState(result);
+      if (result.ok && result.signedIn && result.resumeHref) {
+        window.setTimeout(() => {
+          window.location.assign(result.resumeHref!);
+        }, 1200);
+      }
+    } catch (err) {
+      const href = redirectHrefFromError(err);
+      if (href) {
+        window.location.assign(href);
+        return;
+      }
+      if (!isRedirectError(err)) {
+        setState({
+          error: err instanceof ActionTimeoutError ? t('errorTimeout') : t('errorSaveGeneric'),
+        });
+      }
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <>
@@ -64,10 +106,14 @@ export function GuestSaveExitDialog({
             <div className="space-y-4 text-sm">
               <p className="rounded-md bg-success/10 border border-success/20 px-3 py-2.5 text-success inline-flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{t('saveExitSuccessBody', { email: editableEmail })}</span>
+                <span>
+                  {state.signedIn
+                    ? t('saveExitSuccessBody', { email: editableEmail })
+                    : t('saveExitSuccessGuest', { email: editableEmail })}
+                </span>
               </p>
               <Button asChild className="w-full">
-                <a href="/">{t('saveExitDone')}</a>
+                <a href={resumeHref}>{t('saveExitResume')}</a>
               </Button>
             </div>
           ) : (
@@ -80,7 +126,8 @@ export function GuestSaveExitDialog({
                 </p>
               )}
 
-              <form action={formAction} className="space-y-3">
+              <form onSubmit={onSubmit} className="space-y-3">
+                <input type="hidden" name="filingId" value={filingId} />
                 {showEmailEditor ? (
                   <div className="space-y-1.5">
                     <Label htmlFor="save-exit-email">{t('saveExitEmailLabel')}</Label>
@@ -109,7 +156,33 @@ export function GuestSaveExitDialog({
                   </>
                 )}
 
-                <SaveButton label={t('saveExitConfirm')} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="save-exit-password">{t('saveExitPasswordLabel')}</Label>
+                  <Input
+                    id="save-exit-password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <p className="text-[11px] text-ink-subtle">{t('saveExitPasswordHint')}</p>
+                </div>
+
+                <Button type="submit" disabled={pending} className="w-full">
+                  {pending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t('saveExitSigningIn')}
+                    </>
+                  ) : (
+                    <>
+                      {t('saveExitConfirm')}
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -123,24 +196,5 @@ export function GuestSaveExitDialog({
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function SaveButton({ label }: { label: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {label}
-        </>
-      ) : (
-        <>
-          {label}
-          <ArrowRight className="h-4 w-4" />
-        </>
-      )}
-    </Button>
   );
 }

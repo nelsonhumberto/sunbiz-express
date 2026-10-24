@@ -259,7 +259,7 @@ export async function submitFilingToState(
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
     contactName: filing.incorporatorSignature ?? actorEmail ?? 'Authorized Person',
     contactEmail: correspondence?.email ?? actorEmail ?? '',
-    contactPhone: correspondence?.phone ?? null,
+    contactPhone: filing.contactPhone ?? correspondence?.phone ?? null,
     totalFeeCents: filing.stateFeeCents, // government remittance only
     certificateOfStatus: wantsCertStatus,
     certifiedCopy: wantsCertCopy,

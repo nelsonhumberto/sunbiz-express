@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   FileText,
   ArrowRight,
-  Sparkles,
   Mail,
   Clock,
   ShieldCheck,
@@ -93,7 +92,9 @@ export default async function CheckoutSuccessPage({
               <DetailRow label={t('entityType')} value={entityLabel} />
               <DetailRow label={t('trackingNumber')} value={filing.sunbizTrackingNumber ?? '-'} mono />
               <DetailRow label={t('pin')} value={filing.sunbizPin ?? '-'} mono />
-              <DetailRow label={t('filingNumber')} value={filing.sunbizFilingNumber ?? '-'} mono />
+              {filing.sunbizFilingNumber ? (
+                <DetailRow label={t('filingNumber')} value={filing.sunbizFilingNumber} mono />
+              ) : null}
               <DetailRow
                 label={t('totalPaid')}
                 value={formatCurrency(filing.totalCents, { showZero: true })}
@@ -145,12 +146,6 @@ export default async function CheckoutSuccessPage({
             title={t('bankTitle')}
             body={t('bankBody')}
             timing={t('bankTime')}
-          />
-          <NextStep
-            icon={<Sparkles className="h-5 w-5 text-accent" />}
-            title={t('openBank')}
-            body={t('openBankBody')}
-            timing={t('whenApproved')}
           />
           <NextStep
             icon={<Clock className="h-5 w-5 text-warn" />}

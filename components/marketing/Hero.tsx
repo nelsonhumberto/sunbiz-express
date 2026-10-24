@@ -15,6 +15,7 @@ import { formatCurrency } from '@/lib/utils';
 import { trackCtaClicked, trackEvent } from '@/lib/analytics';
 import { localizedHref } from '@/lib/locale-paths';
 import { nameCheckSubmittedEvent, startHrefForNameCheck } from '@/lib/name-check';
+import { TOTAL_STEPS } from '@/lib/wizard-constants';
 
 interface HeroProps {
   /**
@@ -223,7 +224,7 @@ function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           <div className="md:col-span-2 p-8 md:p-10 border-r border-border">
             <Badge variant="secondary" className="mb-4">
-              {t('previewStep')}
+              {t('previewStep', { current: 2, total: TOTAL_STEPS })}
             </Badge>
             <h3 className="font-display text-2xl font-medium mb-2">{t('previewQuestion')}</h3>
             <p className="text-sm text-ink-muted leading-relaxed">{t('previewSubtitle')}</p>

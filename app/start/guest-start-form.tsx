@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import { startGuestFiling, type StartGuestResult } from '@/actions/guest-start';
+import { startGuestFiling, type DraftNameChoice, type StartGuestResult } from '@/actions/guest-start';
 import { ACTIVE_FORMATION_STATES } from '@/lib/formation-states';
 import { trackSignupStarted } from '@/lib/analytics';
 import { getClientUtmAttribution } from '@/lib/utm-client';
@@ -58,6 +58,8 @@ export function GuestStartForm({
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [choice, setChoice] = useState<DraftNameChoice | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const entityLabel = useMemo(() => {
     if (entity === 'SCORP') return t('entitySCorp');
@@ -76,27 +78,25 @@ export function GuestStartForm({
   const stateMissing = showMissing && !filingState;
   const entityMissing = showMissing && !entity;
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !filingState || !entity) {
-      setShowMissing(true);
-      return;
-    }
+  async function runStart(fd: FormData) {
     if (pending) return;
     setPending(true);
     setFormError(null);
     const utm = getClientUtmAttribution();
     trackSignupStarted({ entry: 'guest_start', ...utmToAnalyticsProps(utm) });
-    const fd = new FormData(e.currentTarget);
     try {
       const result = await withActionTimeout(
         startGuestFiling(initial, fd),
         WIZARD_ACTION_TIMEOUT_MS,
       );
+      if (result?.choice) {
+        setChoice(result.choice);
+        setPending(false);
+        return;
+      }
       if (result?.error) {
         setFormError(result.error);
         setPending(false);
-        return;
       }
     } catch (err) {
       const href = redirectHrefFromError(err);
@@ -108,6 +108,25 @@ export function GuestStartForm({
       setFormError(err instanceof ActionTimeoutError ? t('errorTimeout') : t('errorStart'));
       setPending(false);
     }
+  }
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !filingState || !entity) {
+      setShowMissing(true);
+      return;
+    }
+    const fd = new FormData(e.currentTarget);
+    await runStart(fd);
+  }
+
+  function submitChoice(intent: 'resume' | 'new') {
+    const form = formRef.current;
+    if (!form || !choice) return;
+    const fd = new FormData(form);
+    fd.set('draftIntent', intent);
+    fd.set('draftId', choice.draftId);
+    void runStart(fd);
   }
 
   return (
@@ -124,7 +143,7 @@ export function GuestStartForm({
 
       <Card>
         <CardContent className="p-6 md:p-8">
-          <form onSubmit={onSubmit} className="space-y-5">
+          <form ref={formRef} onSubmit={onSubmit} className="space-y-5">
             {defaultTier && <input type="hidden" name="tier" value={defaultTier} />}
             {defaultBusinessName && (
               <input type="hidden" name="businessName" value={defaultBusinessName} />
@@ -132,6 +151,39 @@ export function GuestStartForm({
             {/* Radix Select is not a native form control - mirror values into hidden inputs. */}
             <input type="hidden" name="entityType" value={entity} />
             <input type="hidden" name="state" value={filingState} />
+            {choice && (
+              <div
+                role="status"
+                className="rounded-md border border-border bg-muted/40 px-3 py-3 text-sm text-ink space-y-3"
+              >
+                <p className="font-medium">{t('existingDraftTitle')}</p>
+                <p className="text-ink-muted leading-relaxed">
+                  {t('existingDraftBody', {
+                    existing: choice.existingName,
+                    proposed: choice.proposedName,
+                  })}
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="sm:flex-1"
+                    disabled={pending}
+                    onClick={() => submitChoice('resume')}
+                  >
+                    {t('existingDraftContinue')}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="sm:flex-1"
+                    disabled={pending}
+                    onClick={() => submitChoice('new')}
+                  >
+                    {t('existingDraftStartNew')}
+                  </Button>
+                </div>
+              </div>
+            )}
             {formError && (
               <p
                 role="alert"
@@ -259,19 +311,21 @@ export function GuestStartForm({
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full group" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('starting')}
-                </>
-              ) : (
-                <>
-                  {t('continue')}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </>
-              )}
-            </Button>
+            {!choice && (
+              <Button type="submit" size="lg" className="w-full group" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('starting')}
+                  </>
+                ) : (
+                  <>
+                    {t('continue')}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>

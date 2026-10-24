@@ -6,11 +6,13 @@
  * while available is false is not a successful check.
  */
 
-import { joinEntityName, splitEntityName } from '@/lib/florida';
+import { joinEntityName } from '@/lib/florida';
 
 export const NAME_CHECK_MAX_LENGTH = 100;
 export const NAME_CHECK_CLIENT_TIMEOUT_MS = 15_000;
-export const NAME_CHECK_DEBOUNCE_MS = 400;
+export const NAME_CHECK_DEBOUNCE_MS = 600;
+/** How long Retry stays disabled after a 429. */
+export const NAME_CHECK_RATE_LIMIT_COOLDOWN_MS = 8_000;
 
 export interface NameCheckResult {
   query: string;
@@ -87,8 +89,50 @@ export function nameCheckDelayMs(name: string, seededName: string): number {
   return NAME_CHECK_DEBOUNCE_MS;
 }
 
-export function nameCheckRequestUrl(name: string, entityType: 'LLC' | 'CORP'): string {
-  return `/api/sunbiz/name-check?name=${encodeURIComponent(name)}&type=${entityType}`;
+export function nameCheckRequestUrl(
+  name: string,
+  entityType: 'LLC' | 'CORP',
+  options?: { fresh?: boolean },
+): string {
+  const params = new URLSearchParams({ name, type: entityType });
+  if (options?.fresh) params.set('fresh', String(Date.now()));
+  return `/api/sunbiz/name-check?${params.toString()}`;
+}
+
+const nameCheckCache = new Map<string, NameCheckResult>();
+
+export function nameCheckCacheKey(name: string, entityType: 'LLC' | 'CORP'): string {
+  return `${entityType}:${name.trim().toLowerCase()}`;
+}
+
+export function readNameCheckCache(
+  name: string,
+  entityType: 'LLC' | 'CORP',
+): NameCheckResult | null {
+  return nameCheckCache.get(nameCheckCacheKey(name, entityType)) ?? null;
+}
+
+export function writeNameCheckCache(
+  name: string,
+  entityType: 'LLC' | 'CORP',
+  result: NameCheckResult,
+): void {
+  nameCheckCache.set(nameCheckCacheKey(name, entityType), result);
+}
+
+export function clearNameCheckCache(): void {
+  nameCheckCache.clear();
+}
+
+export function isRateLimitError(error: string | undefined): boolean {
+  return error === 'rate_limit' || error === 'http_429';
+}
+
+export function rateLimitCooldownUntil(
+  now: number,
+  cooldownMs = NAME_CHECK_RATE_LIMIT_COOLDOWN_MS,
+): number {
+  return now + cooldownMs;
 }
 
 export function nameCheckSubmittedEvent(source: 'hero' | 'wizard') {
@@ -131,9 +175,27 @@ export function nameCheckErrorEvent(input: {
 const NAME_SUFFIX_PEEL_LIMIT = 4;
 
 /**
- * Drop a trailing legal ending (LLC, L.L.C., Inc, Corp, and the same family)
- * from a name the customer typed. Leaves the string unchanged when no ending
- * matches, including trailing spaces, so typing is not interrupted.
+ * Endings that can only be a legal suffix. Co and Company are excluded:
+ * they stay in the typed name and the widget shows a hint.
+ */
+const UNAMBIGUOUS_SUFFIXES = [
+  'Limited Liability Company',
+  'L.L.C.',
+  'L.L.C',
+  'Corporation',
+  'Incorporated',
+  'LLC',
+  'Inc',
+  'Corp',
+] as const;
+
+const LLC_UNAMBIGUOUS = ['Limited Liability Company', 'L.L.C.', 'L.L.C', 'LLC'] as const;
+const CORP_UNAMBIGUOUS = ['Corporation', 'Incorporated', 'Inc', 'Corp'] as const;
+
+/**
+ * Drop an unambiguous trailing ending (LLC, L.L.C., Inc, Corp, Corporation,
+ * and the long forms). Co and Company stay. Leaves the string unchanged when
+ * nothing matches, including trailing spaces, so typing is not interrupted.
  * Repeats so "Name LLC LLC" becomes "Name".
  */
 export function peelTypedSuffix(name: string): string {
@@ -141,23 +203,37 @@ export function peelTypedSuffix(name: string): string {
   let current = original.trim();
   let peeled = false;
   for (let i = 0; i < NAME_SUFFIX_PEEL_LIMIT; i++) {
-    const next = peelOneSuffix(current);
-    if (next === null) break;
-    current = next;
+    const next = peelOneUnambiguousSuffix(current);
+    if (!next) break;
+    current = next.base;
     peeled = true;
   }
   return peeled ? current : original;
 }
 
-function peelOneSuffix(name: string): string | null {
+export type AmbiguousSuffix = 'co' | 'company';
+
+/** Co or Company at the end of the typed name. Company wins over Co. */
+export function trailingAmbiguousSuffix(name: string): AmbiguousSuffix | null {
+  const trimmed = (name ?? '').trim();
+  if (/(?:,\s*|\s+)company\.?$/i.test(trimmed)) return 'company';
+  if (/(?:,\s*|\s+)co\.?$/i.test(trimmed)) return 'co';
+  return null;
+}
+
+function peelOneUnambiguousSuffix(
+  name: string,
+): { base: string; suffix: string } | null {
   const trimmed = name.trim();
   if (!trimmed) return null;
-  const matches = (['LLC', 'CORP'] as const)
-    .map((entityType) => splitEntityName(trimmed, entityType))
-    .filter((split) => split.matched && split.base.length < trimmed.length)
-    .sort((a, b) => a.base.length - b.base.length);
-  if (!matches.length) return null;
-  return matches[0].base.trim();
+  const sorted = [...UNAMBIGUOUS_SUFFIXES].sort((a, b) => b.length - a.length);
+  for (const suffix of sorted) {
+    const escaped = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:,\\s*|\\s+)${escaped}\\.?\\s*$`, 'i');
+    if (!re.test(trimmed)) continue;
+    return { base: trimmed.replace(re, '').trim(), suffix };
+  }
+  return null;
 }
 
 /** Letters and numbers that remain after legal endings are removed. */
@@ -178,23 +254,26 @@ export function nameHasMinimumSubstance(name: string): boolean {
 export function canonicalFiledName(name: string, entityType: 'LLC' | 'CORP'): string {
   const trimmed = (name ?? '').trim();
   if (!trimmed) return '';
+  const allowed = entityType === 'LLC' ? LLC_UNAMBIGUOUS : CORP_UNAMBIGUOUS;
   let current = trimmed;
   let keptSuffix: string | null = null;
   for (let i = 0; i < NAME_SUFFIX_PEEL_LIMIT; i++) {
-    const sameType = splitEntityName(current, entityType);
-    const otherType = splitEntityName(current, entityType === 'LLC' ? 'CORP' : 'LLC');
-    const matches = [sameType, otherType]
-      .filter((split) => split.matched && split.base.length < current.length)
-      .sort((a, b) => a.base.length - b.base.length);
-    if (!matches.length) break;
-    const best = matches[0];
-    if (sameType.matched && sameType.base === best.base && sameType.suffix === best.suffix) {
-      keptSuffix = best.suffix;
-    }
-    current = best.base.trim();
+    const peeled = peelOneUnambiguousSuffix(current);
+    if (!peeled) break;
+    const sameType = allowed.some((suffix) => suffix.toLowerCase() === peeled.suffix.toLowerCase());
+    if (sameType) keptSuffix = peeled.suffix;
+    current = peeled.base;
+    if (!current) break;
   }
   if (!current) return '';
-  const suffix = keptSuffix ?? (entityType === 'LLC' ? 'LLC' : 'Corp');
+  if (keptSuffix) {
+    return joinEntityName(current, keptSuffix).slice(0, NAME_CHECK_MAX_LENGTH);
+  }
+  // Co / Company are a real corp ending. Keep them instead of appending Corp.
+  if (entityType === 'CORP' && trailingAmbiguousSuffix(current)) {
+    return current.slice(0, NAME_CHECK_MAX_LENGTH);
+  }
+  const suffix = entityType === 'LLC' ? 'LLC' : 'Corp';
   return joinEntityName(current, suffix).slice(0, NAME_CHECK_MAX_LENGTH);
 }
 
@@ -274,7 +353,10 @@ export async function requestNameCheck(
       typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
         ? AbortSignal.timeout(timeoutMs)
         : undefined;
-    const res = await fetchImpl(url, signal ? { signal } : undefined);
+    const res = await fetchImpl(url, {
+      ...(signal ? { signal } : {}),
+      cache: 'no-store',
+    });
     let body: unknown = null;
     try {
       body = await res.json();

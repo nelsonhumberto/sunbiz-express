@@ -143,7 +143,7 @@
     "noCreditCard": "Sin tarjeta de crédito al iniciar",
     "filedIn1Day": "Presentado en 1 día hábil",
     "rating": "Agente Registrado gratis el Año 1",
-    "previewStep": "Paso 2 de 11 · Nombre de la empresa",
+    "previewStep": "Paso {current} de {total} · Nombre de la empresa",
     "previewQuestion": "¿Cuál es el nombre de tu empresa?",
     "previewSubtitle": "Haremos una búsqueda preliminar de nombre en el registro público de empresas de Florida. No garantiza la aprobación.",
     "previewHint": "Verifica un nombre arriba. Lo confirmamos con el estado antes de presentar.",
@@ -435,7 +435,11 @@
     "errorInvalid": "Revisa tus datos e inténtalo de nuevo.",
     "errorStateUnavailable": "Ese estado aún no está disponible.",
     "errorTimeout": "Tardó demasiado. Inténtalo de nuevo.",
-    "errorStart": "No pudimos crear tu borrador. Inténtalo de nuevo."
+    "errorStart": "No pudimos crear tu borrador. Inténtalo de nuevo.",
+    "existingDraftTitle": "Ya tienes un borrador",
+    "existingDraftBody": "Este correo ya tiene un trámite para {existing}. Continúa ese borrador o empieza uno nuevo para {proposed}.",
+    "existingDraftContinue": "Continuar el borrador",
+    "existingDraftStartNew": "Empezar un trámite nuevo"
   },
   "auth": {
     "signUpTitle": "Crea tu cuenta",
@@ -767,6 +771,8 @@
     "suffixWarnCorp": "Los nombres de corporación en {state} deben terminar en Corp, Corporation, Inc, Incorporated, Co o Company.",
     "suffixLabel": "Terminación legal",
     "suffixDuplicateWarn": "No incluyas la terminación legal aquí - el menú ya la añade por ti.",
+    "nameSuffixCoHint": "Co se queda en el nombre. El menú añade la terminación legal aparte. Quítalo aquí si solo lo querías como terminación.",
+    "nameSuffixCompanyHint": "Company se queda en el nombre. El menú añade la terminación legal aparte. Quítalo aquí si solo lo querías como terminación.",
     "namePreviewLabel": "Tu nombre presentado será:",
     "conflictsHeader": "Entidades en conflicto en el registro",
     "tryInstead": "Prueba con estas",
@@ -777,6 +783,7 @@
     "nameStatusError": "No pudimos consultar el registro estatal en este momento. Vuelve a intentarlo en un momento.",
     "nameCheckDeferred": "No pudimos verificar este nombre ahora. Lo revisamos antes de presentar.",
     "nameCheckRetry": "Reintentar",
+    "nameCheckRateLimit": "Demasiadas verificaciones. Inténtalo de nuevo en unos segundos.",
     "nameTooShort": "Escribe al menos 2 letras o números. La terminación legal no cuenta.",
     "nameLockUrgency": "{state} no reserva este nombre hasta que presentes tu trámite. Asegúralo continuando ahora - enviamos en 1 día hábil.",
     "nameTipsTitle": "Tips para un nombre fuerte",

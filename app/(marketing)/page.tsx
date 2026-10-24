@@ -17,6 +17,7 @@ import {
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
+import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { homeTitlePhrase, pageTitle, withBrand } from '@/lib/seo-title';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
@@ -50,10 +51,11 @@ export async function generateMetadata({
     const description = tMeta
       ? tMeta('description', { state: stateName })
       : `Start your ${state.name} LLC or Corporation online in minutes. We prepare and file with the state on your behalf within 1 business day. Free Year-1 Registered Agent and transparent all-in pricing. A private filing service, not a government agency. No hidden fees.`;
-    // Consolidate WY/DE: the ?state= homepage variant points its canonical at
-    // the dedicated /states/{slug} page so search engines don't index two URLs
-    // for the same content.
-    const englishPath = state.code === 'FL' ? '/' : `/states/${state.slug}`;
+    // Florida is the self-canonical homepage. A retired state slug (Delaware,
+    // Wyoming) points at the Florida state page those URLs 308 to, so the
+    // canonical does not name a redirect source.
+    const dedicated = state.code === 'FL' ? '/' : `/states/${state.slug}`;
+    const englishPath = retiredStateDestination(dedicated) ?? dedicated;
     return withLocaleMeta(
       englishPath,
       {

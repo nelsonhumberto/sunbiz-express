@@ -22,6 +22,20 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
+  if (locale === 'es') {
+    const t = await getTranslations('startMeta');
+    const title = t('title');
+    const description = t('description');
+    return withLocaleMeta(
+      '/start',
+      {
+        title,
+        description,
+        openGraph: { title, description, type: 'website' },
+      },
+      locale,
+    );
+  }
   return withLocaleMeta(
     '/start',
     {

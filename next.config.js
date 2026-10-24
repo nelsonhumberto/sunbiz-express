@@ -1,4 +1,5 @@
 const createNextIntlPlugin = require('next-intl/plugin');
+const { RETIRED_STATE_REDIRECTS } = require('./lib/retired-state-redirects.cjs');
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
@@ -81,6 +82,9 @@ const nextConfig = {
     // 301s to its modern canonical so we preserve any link equity that
     // remains and stop wasting crawl budget on dead URLs.
     return [
+      // Delaware and Wyoming marketing URLs. LaunchForma sells Florida.
+      // statusCode 308 (permanent: true is also 308, but keep it explicit).
+      ...RETIRED_STATE_REDIRECTS,
       { source: '/wizard', destination: '/start', permanent: true },
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/why-us', destination: '/about#why', permanent: true },

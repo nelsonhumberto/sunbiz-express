@@ -1395,6 +1395,10 @@
     "processing": "Procesando…",
     "submit": "Enviar y pagar: {total}"
   },
+  "startMeta": {
+    "title": "Empieza a formar tu LLC en Florida",
+    "description": "Empieza tu LLC o corporación en Florida sin crear una cuenta. Preparamos el trámite y nuestro equipo lo presenta ante el estado. Servicio privado, no una agencia del gobierno."
+  },
   "homeMeta": {
     "titleFl": "Forma una LLC en Florida en línea, tarifa estatal incluida",
     "titleState": "Forma una LLC en {state} en línea",
@@ -1491,13 +1495,13 @@
   },
   "statesPage": {
     "metaTitle": "Estados donde trabajamos: formación de LLC y corporaciones",
-    "metaDescription": "Hoy LaunchForma presenta LLC y corporaciones en Florida, Wyoming y Delaware, y pronto habrá más estados. Compara tiempos, tarifas estatales y lo que incluye cada estado.",
+    "metaDescription": "Hoy LaunchForma presenta LLC y corporaciones en Florida, y pronto habrá más estados. Compara tiempos, la tarifa estatal y lo que incluye el paquete.",
     "ogTitle": "Estados donde trabajamos: LaunchForma",
-    "ogDescription": "Forma una empresa en Florida, Wyoming o Delaware. El mismo precio todo incluido, Agente Registrado gratis el primer año y tarifas estatales transparentes.",
+    "ogDescription": "Forma una empresa en Florida. Precio todo incluido, Agente Registrado gratis el primer año y tarifa estatal transparente.",
     "kicker": "Estados donde trabajamos",
     "titleBefore": "Forma tu empresa en",
     "titleEm": "tu estado.",
-    "intro": "Hoy presentamos LLC y corporaciones en Florida, Wyoming y Delaware. Los demás estados de EE. UU. van en camino. Elige el tuyo para entrar a la lista de espera.",
+    "intro": "Hoy presentamos LLC y corporaciones en Florida. Los demás estados de EE. UU. van en camino. Elige el tuyo para entrar a la lista de espera.",
     "available": "Disponibles hoy",
     "live": "Activo",
     "cardBody": "Forma una LLC o corporación en {state} con precio todo incluido.",
@@ -1562,9 +1566,9 @@
   },
   "guidesPage": {
     "metaTitle": "Guías: recursos de LLC, corporaciones y cumplimiento",
-    "metaDescription": "Guías en lenguaje claro para formar una LLC en Florida, el reporte anual, el agente registrado, los acuerdos operativos, Wyoming frente a Delaware y la actualización BOI de FinCEN de 2026.",
+    "metaDescription": "Guías en lenguaje claro para formar una LLC en Florida, el reporte anual, el agente registrado, los acuerdos operativos y la actualización BOI de FinCEN de 2026.",
     "ogTitle": "Guías de LaunchForma",
-    "ogDescription": "Guías en lenguaje claro para formar una LLC en Florida, reportes anuales, agentes registrados, acuerdos operativos y Wyoming frente a Delaware.",
+    "ogDescription": "Guías en lenguaje claro para formar una LLC en Florida, reportes anuales, agentes registrados y acuerdos operativos.",
     "listName": "Guías de LaunchForma",
     "home": "Inicio",
     "guides": "Guías",

@@ -17,6 +17,7 @@ import {
   type MarketingState,
 } from '@/lib/marketing-states';
 import { trackStateSwitched } from '@/lib/analytics';
+import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
 import { cn } from '@/lib/utils';
 
 interface StateSwitcherProps {
@@ -34,6 +35,7 @@ interface StateSwitcherProps {
  * Behavior:
  *   - Clicking a state writes the cookie via {@link setPreferredStateAction}
  *     and routes to "/" (Florida) or "/states/<slug>" (others).
+ *   - Delaware and Wyoming are not linked. Those marketing URLs 308 to Florida.
  *   - The current state shows a check mark.
  */
 export function StateSwitcher({
@@ -93,7 +95,7 @@ export function StateSwitcher({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[180px]">
-        {ACTIVE_MARKETING_STATES.map((state) => (
+        {ACTIVE_MARKETING_STATES.filter((state) => !isRetiredStateSlug(state.slug)).map((state) => (
           <DropdownMenuItem
             key={state.code}
             onClick={() => switchTo(state)}

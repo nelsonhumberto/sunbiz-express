@@ -12,14 +12,11 @@ const ES_PATHS = [
   '/es/file-annual-report',
   '/es/states',
   '/es/states/florida',
-  '/es/states/delaware',
-  '/es/states/wyoming',
   '/es/boi-reporting',
   '/es/guides',
   '/es/guides/how-to-form-an-llc-in-florida',
   '/es/guides/florida-annual-report',
   '/es/guides/florida-registered-agent',
-  '/es/guides/wyoming-llc-vs-delaware-corp',
   '/es/guides/florida-llc-operating-agreement',
   '/es/terms',
   '/es/privacy',
@@ -34,6 +31,9 @@ describe('Spanish sitemap URLs', () => {
       expect(urls).toContain(`https://launchforma.com${path}`);
     }
     expect(urls).not.toContain('https://launchforma.com/es/');
+    for (const url of urls) {
+      expect(url.toLowerCase()).not.toMatch(/delaware|wyoming/);
+    }
     const spanish = urls.filter((url) => new URL(url).pathname === '/es' || new URL(url).pathname.startsWith('/es/'));
     expect(spanish.length).toBe(ES_PATHS.length);
     for (const url of spanish) {
@@ -48,7 +48,9 @@ describe('llms.txt Spanish URLs', () => {
   it('lists the Spanish pages and marks legal copy as a draft', () => {
     const text = buildLlmsTxt();
     expect(text).toContain('https://launchforma.com/es/services');
-    expect(text).toContain('https://launchforma.com/es/states/delaware');
+    expect(text).not.toContain('https://launchforma.com/es/states/delaware');
+    expect(text).not.toContain('https://launchforma.com/es/states/wyoming');
+    expect(text).not.toContain('/guides/wyoming-llc-vs-delaware-corp');
     expect(text).toContain('https://launchforma.com/es/guides/florida-llc-operating-agreement');
     expect(text).toContain('https://launchforma.com/es/guides/how-to-form-an-llc-in-florida');
     expect(text).toContain('https://launchforma.com/es/guides/florida-annual-report');

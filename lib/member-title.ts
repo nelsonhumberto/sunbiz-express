@@ -25,3 +25,11 @@ export function memberTitleLabel(
   if (key) return translate(key);
   return title?.trim() || '';
 }
+
+/** Title and name with a space between them. Never "AMBRE2E TestOct24". */
+export function reviewMemberText(name: string, titleLabel: string): string {
+  const person = name.trim();
+  const title = titleLabel.trim();
+  if (title && person) return `${title} ${person}`;
+  return person || title;
+}

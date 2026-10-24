@@ -80,7 +80,7 @@ export async function GET() {
       status: d.status,
       user_archived_at: d.userArchivedAt?.toISOString() ?? '',
       current_step_route: stepRoute,
-      current_step_display: stepDisplay ?? 'bonus',
+      current_step_display: stepDisplay,
       current_step_title: stepTitle,
       sections_completed: visibleCompleted,
       sections_total: TOTAL_DISPLAYED_STEPS,

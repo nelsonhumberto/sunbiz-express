@@ -20,6 +20,7 @@ import { formatCurrency, formatDate, formatRelative, safeParseJson } from '@/lib
 import { formatDueLabel } from '@/lib/due-label';
 import {
   TOTAL_DISPLAYED_STEPS,
+  TOTAL_STEPS,
   displayStepNumber,
 } from '@/lib/wizard-constants';
 import { StartFilingButton } from './start-filing-button';
@@ -127,11 +128,9 @@ export default async function DashboardPage() {
                 </h2>
                 <p className="text-sm text-ink-muted mt-1">
                   {t('resumeStepHint', {
-                    current:
-                      displayStepNumber(latestDraft.currentStep ?? 1) ??
-                      TOTAL_DISPLAYED_STEPS,
-                    total: TOTAL_DISPLAYED_STEPS,
-                    completed: Math.min(latestDraftCompleted, TOTAL_DISPLAYED_STEPS),
+                    current: displayStepNumber(latestDraft.currentStep ?? 1),
+                    total: TOTAL_STEPS,
+                    completed: Math.min(latestDraftCompleted, TOTAL_STEPS),
                   })}
                 </p>
                 <p className="text-sm text-primary font-medium mt-1.5 inline-flex items-center gap-1.5">
@@ -313,8 +312,7 @@ async function DraftCard({ filing }: { filing: any }) {
   const visibleCompleted = Math.min(completedSteps.length, TOTAL_DISPLAYED_STEPS);
   const progress = (visibleCompleted / TOTAL_DISPLAYED_STEPS) * 100;
   const stepRoute = filing.currentStep ?? 1;
-  const visibleCurrent =
-    displayStepNumber(filing.currentStep ?? 1) ?? TOTAL_DISPLAYED_STEPS;
+  const visibleCurrent = displayStepNumber(stepRoute);
 
   return (
     <Card className="hover:shadow-card transition-shadow group">
@@ -334,7 +332,7 @@ async function DraftCard({ filing }: { filing: any }) {
         <div className="space-y-1.5 mb-4">
           <div className="flex justify-between text-xs">
             <span className="text-ink-muted">
-              {t('step', { current: visibleCurrent, total: TOTAL_DISPLAYED_STEPS })}
+              {t('step', { current: visibleCurrent, total: TOTAL_STEPS })}
             </span>
             <span className="text-ink-muted">{Math.round(progress)}%</span>
           </div>

@@ -26,7 +26,7 @@ import {
 import type { WizardFiling } from '../types';
 import type { AddressValue } from '../AddressForm';
 import { parseOptionalPhone } from '@/lib/phone';
-import { memberTitleLabel } from '@/lib/member-title';
+import { memberTitleLabel, reviewMemberText } from '@/lib/member-title';
 import { serviceTierDisplayName } from '@/lib/tier-display';
 
 type ManagementType = 'member-managed' | 'manager-managed';
@@ -192,10 +192,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
               className="flex items-baseline justify-between gap-3 py-1 border-b border-border last:border-b-0"
             >
               <span className="min-w-0">
-                <span className="block font-medium">{m.name}</span>
-                {titleLabel ? (
-                  <span className="block text-xs text-ink-muted">{titleLabel}</span>
-                ) : null}
+                <span className="block font-medium">{reviewMemberText(m.name, titleLabel)}</span>
               </span>
               {oaEntitled && m.ownershipPercentage != null && (
                 <span className="text-xs text-ink-muted">{m.ownershipPercentage.toFixed(1)}%</span>

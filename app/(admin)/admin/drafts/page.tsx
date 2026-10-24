@@ -10,6 +10,7 @@ import { formatRelative, safeParseJson } from '@/lib/utils';
 import {
   STEP_NAMES,
   TOTAL_DISPLAYED_STEPS,
+  TOTAL_STEPS,
   displayStepNumber,
 } from '@/lib/wizard-constants';
 
@@ -89,7 +90,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
           label="Top drop-off step"
           value={
             topStuckSteps[0]
-              ? `${displayStepNumber(topStuckSteps[0][0]) ?? '-'} · ${topStuckSteps[0][1]} draft${topStuckSteps[0][1] === 1 ? '' : 's'}`
+              ? `${displayStepNumber(topStuckSteps[0][0])} · ${topStuckSteps[0][1]} draft${topStuckSteps[0][1] === 1 ? '' : 's'}`
               : '-'
           }
         />
@@ -111,7 +112,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
                     className="rounded-lg border border-border p-3 bg-surface"
                   >
                     <p className="text-xs text-ink-subtle">
-                      {display ? `Step ${display} of ${TOTAL_DISPLAYED_STEPS}` : 'Bonus step'}
+                      {`Step ${display} of ${TOTAL_STEPS}`}
                     </p>
                     <p className="font-medium text-sm mt-0.5">
                       {meta?.title ?? `Step ${step}`}
@@ -226,9 +227,7 @@ export default async function AdminDraftsPage({ searchParams }: AdminDraftsPageP
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm">
-                          {stepDisplay
-                            ? `Step ${stepDisplay} of ${TOTAL_DISPLAYED_STEPS}`
-                            : 'Bonus step'}
+                          {`Step ${stepDisplay} of ${TOTAL_STEPS}`}
                         </p>
                         <p className="text-xs text-ink-subtle truncate max-w-[24ch]">
                           {stepMeta?.title ?? `Step ${stepRoute}`}

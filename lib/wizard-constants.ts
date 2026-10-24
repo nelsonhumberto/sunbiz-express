@@ -11,22 +11,35 @@
 export const TOTAL_STEPS = 11;
 
 /**
- * Customer-facing step count. Add-ons are framed as an optional offer
- * between Review and Payment, so the wizard advertises "10 steps" to the
- * customer instead of 11. The progress bar, the "Step X of Y" counter, and
- * the dashboard "resume" widget all use this number.
+ * Customer-facing progress cap used by the bar and "sections complete"
+ * copy. The step number printed in the wizard matches the URL instead
+ * (see {@link displayStepNumber}).
  */
 export const TOTAL_DISPLAYED_STEPS = 10;
 
 /** The route step that hosts the bonus add-ons offer. */
 export const BONUS_STEP = 10;
 
-/** Returns the displayed step number for a route step (or null on bonus). */
-export function displayStepNumber(step: number): number | null {
-  if (step < 1) return 1;
-  if (step <= 9) return step;
-  if (step === BONUS_STEP) return null;
-  return TOTAL_DISPLAYED_STEPS; // payment is the last visible step
+/**
+ * Step number shown on screen. It is the same integer as
+ * `/wizard/:id/:step`, including add-ons (10) and payment (11).
+ */
+export function displayStepNumber(step: number): number {
+  if (!Number.isFinite(step) || step < 1) return 1;
+  if (step > TOTAL_STEPS) return TOTAL_STEPS;
+  return Math.trunc(step);
+}
+
+/**
+ * Path `/resume` redirects to. The segment is the filing's currentStep so
+ * existing resume links keep opening the step the customer was on.
+ */
+export function resumeWizardPath(
+  filingId: string,
+  currentStep: number | null | undefined,
+): string {
+  const step = currentStep && currentStep >= 1 ? Math.trunc(currentStep) : 2;
+  return `/wizard/${filingId}/${step}`;
 }
 
 /** True for the bonus add-ons step (so the UI can swap the counter chip). */

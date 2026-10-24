@@ -30,7 +30,6 @@ import {
   RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
-  TIER_BY_SLUG,
 } from '@/lib/pricing';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { lineFeeSplit } from '@/components/marketing/fee-split';
@@ -79,7 +78,6 @@ export function Step12Payment({
     state: stateCode,
     processingOptionId,
   });
-  const tier = TIER_BY_SLUG[filing.serviceTier as TierSlug];
 
   // Registered Agent auto-renew: only offer it when the customer chose our RA.
   const registeredAgent = safeParseJson<{ useOurService?: boolean } | null>(
@@ -172,7 +170,8 @@ export function Step12Payment({
   };
 
   return (
-    <div className="space-y-5">
+    <>
+    <div className="space-y-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
       {testMode ? (
         <div
           role="status"
@@ -329,7 +328,7 @@ export function Step12Payment({
             <Input
               value={cardholderName}
               onChange={(e) => setCardholderName(e.target.value)}
-              placeholder={tier?.name ?? ''}
+              placeholder={t('cardholderPlaceholder')}
               autoComplete="cc-name"
             />
           </div>
@@ -378,6 +377,7 @@ export function Step12Payment({
         <span>·</span>
         <span>{t('refundPolicy')}</span>
       </div>
+    </div>
 
       <WizardActions
         prevHref={`/wizard/${filing.id}/10`}
@@ -388,7 +388,7 @@ export function Step12Payment({
           amount: formatCurrency(finalTotal, { showZero: true }),
         })}
       />
-    </div>
+    </>
   );
 }
 

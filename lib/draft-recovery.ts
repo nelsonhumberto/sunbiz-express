@@ -13,7 +13,9 @@ import { captureResumeEmailSent } from './posthog-server';
 import {
   claimResumeSend,
   isResendDevAddress,
+  RESUME_CLAIM_STALE_MS,
   RESUME_DRIP_BATCH_SIZE,
+  RESUME_DRIP_MAX_ATTEMPTS,
   resumeDeliveryCountsAsSent,
   resumeSendBlocksAnotherAttempt,
 } from './resume-drip-claim';
@@ -314,12 +316,42 @@ export async function runScheduledDraftRecovery(now: number) {
   return { ...stats, disabled: false as const };
 }
 
-/** Oldest idle drafts first, capped so one run cannot walk the whole backlog. */
+/**
+ * A row that already owns this step: sent, bounced, out of attempts, or a
+ * fresh PENDING/QUEUED claim. FAILED under the attempt cap and a stale claim
+ * do not match, so those drafts stay eligible.
+ */
+function blockingResumeNotification(type: ResumeDripType, nowMs: number) {
+  const freshAfter = new Date(nowMs - RESUME_CLAIM_STALE_MS);
+  return {
+    notificationType: type,
+    OR: [
+      { status: { in: ['SENT', 'BOUNCED'] as string[] } },
+      { attemptCount: { gte: RESUME_DRIP_MAX_ATTEMPTS } },
+      {
+        AND: [
+          { status: { in: ['PENDING', 'QUEUED'] as string[] } },
+          { attemptCount: { lt: RESUME_DRIP_MAX_ATTEMPTS } },
+          {
+            OR: [
+              { claimedAt: { gt: freshAfter } },
+              { AND: [{ claimedAt: null }, { createdAt: { gt: freshAfter } }] },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Oldest drafts that still have a step to send. A draft waiting between
+ * steps, or stuck on a fresh claim or a maxed failure, is not in this set,
+ * so it cannot fill the page ahead of a newer 1h draft.
+ * `take` is the page size. The job keeps reading pages until it has attempted
+ * RESUME_DRIP_BATCH_SIZE sends or the window is empty.
+ */
 export function resumeDraftListArgs(now: number) {
-  const oldestHours = RESUME_DRIP_STEPS[RESUME_DRIP_STEPS.length - 1]!.maxHours;
-  const newestHours = RESUME_DRIP_STEPS[0]!.minHours;
-  const oldestCutoff = new Date(now - oldestHours * 60 * 60 * 1000);
-  const newestCutoff = new Date(now - newestHours * 60 * 60 * 1000);
   return {
     where: {
       status: 'DRAFT' as const,
@@ -327,7 +359,6 @@ export function resumeDraftListArgs(now: number) {
       adminArchivedAt: null,
       userArchivedAt: null,
       abandonedAt: null,
-      updatedAt: { gte: oldestCutoff, lte: newestCutoff },
       payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
         role: { not: 'ADMIN' as const },
@@ -339,6 +370,13 @@ export function resumeDraftListArgs(now: number) {
           { NOT: { email: { endsWith: '@resend.dev', mode: 'insensitive' as const } } },
         ],
       },
+      OR: RESUME_DRIP_STEPS.map((step) => ({
+        updatedAt: {
+          gt: new Date(now - step.maxHours * 60 * 60 * 1000),
+          lte: new Date(now - step.minHours * 60 * 60 * 1000),
+        },
+        notifications: { none: blockingResumeNotification(step.type, now) },
+      })),
     },
     orderBy: { updatedAt: 'asc' as const },
     take: RESUME_DRIP_BATCH_SIZE,
@@ -348,17 +386,71 @@ export function resumeDraftListArgs(now: number) {
 async function runResumeDrip(now: number) {
   const stepTypes = RESUME_DRIP_STEPS.map((step) => step.type);
   const listArgs = resumeDraftListArgs(now);
+  const include = {
+    user: true,
+    payments: { where: { status: 'SUCCEEDED' as const }, select: { id: true }, take: 1 },
+  };
 
-  const drafts = await prisma.filing.findMany({
-    ...listArgs,
-    include: {
-      user: true,
-      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
-    },
-  });
-
+  let scanned = 0;
   let sent = 0;
-  for (const draft of drafts) {
+  let attempted = 0;
+  let skip = 0;
+
+  while (attempted < RESUME_DRIP_BATCH_SIZE) {
+    const drafts = await prisma.filing.findMany({
+      where: listArgs.where,
+      orderBy: listArgs.orderBy,
+      take: listArgs.take,
+      skip,
+      include,
+    });
+    if (drafts.length === 0) break;
+
+    for (const draft of drafts) {
+      if (attempted >= RESUME_DRIP_BATCH_SIZE) break;
+      scanned++;
+      const didAttempt = await attemptResumeDraft(draft, now, stepTypes);
+      if (didAttempt === 'sent') {
+        attempted++;
+        sent++;
+      } else if (didAttempt === 'attempted') {
+        attempted++;
+      }
+    }
+
+    if (drafts.length < listArgs.take || attempted >= RESUME_DRIP_BATCH_SIZE) break;
+    skip += drafts.length;
+  }
+
+  return { scanned, sent };
+}
+
+async function attemptResumeDraft(
+  draft: {
+    id: string;
+    userId: string;
+    status: string;
+    updatedAt: Date;
+    currentStep: number;
+    businessName: string | null;
+    locale: string | null;
+    entryPath: string | null;
+    payments: { id: string }[];
+    isTest: boolean;
+    adminArchivedAt: Date | null;
+    userArchivedAt: Date | null;
+    user: {
+      email: string;
+      firstName: string | null;
+      role: string;
+      accountStatus: string;
+      guestToken: string | null;
+      locale: string | null;
+    };
+  },
+  now: number,
+  stepTypes: ResumeDripType[],
+): Promise<'sent' | 'attempted' | 'skipped'> {
     try {
       const prior = await prisma.emailNotification.findMany({
         where: { filingId: draft.id, notificationType: { in: stepTypes } },
@@ -386,7 +478,7 @@ async function runResumeDrip(now: number) {
         deleted: draft.user.accountStatus === 'DELETED',
         skip: shouldSkipDraftRecovery(draft),
       });
-      if (!decision.send) continue;
+      if (!decision.send) return 'skipped';
 
       const wizardPath = wizardPathForDraft(draft.id, draft.currentStep);
       const linkKind = resumeLinkPlan(draft.user);
@@ -403,7 +495,7 @@ async function runResumeDrip(now: number) {
       );
       const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
       const context = {
-        firstName: draft.user.firstName,
+        firstName: draft.user.firstName ?? undefined,
         businessName: draft.businessName ?? undefined,
         resumeUrl,
         unsubscribeUrl,
@@ -419,7 +511,7 @@ async function runResumeDrip(now: number) {
         htmlBody: rendered.html,
         nowMs: now,
       });
-      if (!claim.ok) continue;
+      if (!claim.ok) return 'skipped';
 
       const delivery = await sendEmail({
         type: decision.send,
@@ -432,9 +524,8 @@ async function runResumeDrip(now: number) {
         context,
       });
 
-      if (!resumeDeliveryCountsAsSent(delivery.status)) continue;
+      if (!resumeDeliveryCountsAsSent(delivery.status)) return 'attempted';
 
-      sent++;
       await captureResumeEmailSent({
         step: decision.send,
         filingId: draft.id,
@@ -446,12 +537,11 @@ async function runResumeDrip(now: number) {
           data: { abandonedAt: new Date(now) },
         });
       }
+      return 'sent';
     } catch (err) {
       console.error('[recovery] resume drip failed', draft.id, err);
+      return 'skipped';
     }
-  }
-
-  return { scanned: drafts.length, sent };
 }
 
 async function createLoginLink(userId: string, wizardPath: string): Promise<string> {

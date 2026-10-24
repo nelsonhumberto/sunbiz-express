@@ -36,6 +36,10 @@ import {
 
 const DAY = 24 * 60 * 60 * 1000;
 
+function testEnv(values: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  return values as unknown as NodeJS.ProcessEnv;
+}
+
 const ready: ResumeDripCandidate = {
   enabled: true,
   ageHours: 2,
@@ -69,10 +73,10 @@ describe('resume drip schedule', () => {
   });
 
   it('sends nothing when the flag is off', () => {
-    expect(isResumeDripEnabled({} as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: 'false' } as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: '0' } as NodeJS.ProcessEnv)).toBe(false);
-    expect(isResumeDripEnabled({ RESUME_DRIP_ENABLED: 'true' } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isResumeDripEnabled(testEnv())).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: 'false' }))).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: '0' }))).toBe(false);
+    expect(isResumeDripEnabled(testEnv({ RESUME_DRIP_ENABLED: 'true' }))).toBe(true);
     expect(planResumeDrip({ ...ready, enabled: false }).reason).toBe('disabled');
     expect(planResumeDrip({ ...ready, enabled: false, ageHours: 80 }).send).toBeNull();
   });
@@ -299,8 +303,8 @@ describe('resume copy and reply-to', () => {
   });
 
   it('defaults Reply-To to admin@launchforma.com', () => {
-    expect(resumeEmailReplyTo({} as NodeJS.ProcessEnv)).toBe('admin@launchforma.com');
-    expect(resumeEmailReplyTo({ EMAIL_REPLY_TO: ' help@launchforma.com ' } as NodeJS.ProcessEnv)).toBe(
+    expect(resumeEmailReplyTo(testEnv())).toBe('admin@launchforma.com');
+    expect(resumeEmailReplyTo(testEnv({ EMAIL_REPLY_TO: ' help@launchforma.com ' }))).toBe(
       'help@launchforma.com',
     );
   });
@@ -318,8 +322,8 @@ describe('resume copy and reply-to', () => {
 
 describe('checklist signup gate', () => {
   it('stays off unless the flag is on, and the consent box is not prechecked', () => {
-    expect(isSignupCaptureEnabled({} as NodeJS.ProcessEnv)).toBe(false);
-    expect(isSignupCaptureEnabled({ SIGNUP_CAPTURE_ENABLED: 'yes' } as NodeJS.ProcessEnv)).toBe(true);
+    expect(isSignupCaptureEnabled(testEnv())).toBe(false);
+    expect(isSignupCaptureEnabled(testEnv({ SIGNUP_CAPTURE_ENABLED: 'yes' }))).toBe(true);
     const form = readFileSync('components/marketing/ChecklistSignupForm.tsx', 'utf8');
     expect(form).toContain('type="checkbox"');
     expect(form).not.toContain('defaultChecked');
@@ -412,6 +416,8 @@ describe('resume drip claim and batch', () => {
     expect(args.orderBy).toEqual({ updatedAt: 'asc' });
     expect(args.where.abandonedAt).toBeNull();
     expect(JSON.stringify(args.where)).toContain('@resend.dev');
+    expect(JSON.stringify(args.where)).toContain('RESUME_1H');
+    expect(JSON.stringify(args.where)).toContain('"none"');
     const sql = readFileSync(
       'prisma/migrations/20261024220000_resume_drip_send_claim/migration.sql',
       'utf8',

@@ -10,7 +10,6 @@ import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { Progress } from '@/components/ui/progress';
 import {
-  TOTAL_DISPLAYED_STEPS,
   TOTAL_STEPS,
   displayStepNumber,
   isBonusStep,
@@ -115,12 +114,10 @@ export function WizardShell({
               >
                 {bonus ? t('bonusStepLabel') : phaseLabel}
               </span>
-              {bonus
-                ? t('bonusStepCounter')
-                : t('stepOf', {
-                    current: displayed ?? TOTAL_DISPLAYED_STEPS,
-                    total: TOTAL_DISPLAYED_STEPS,
-                  })}{' '}
+              {t('stepOf', {
+                current: displayed,
+                total: TOTAL_STEPS,
+              })}{' '}
               · <span className="text-primary font-semibold">{title}</span>
             </span>
             <span className="text-ink-subtle">{Math.round(progress)}%</span>

@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { isTestPayment } from '@/lib/payment-test';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
+import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,14 @@ export const dynamic = 'force-dynamic';
 // the account + signs in). We give that flow a grace window before the webhook
 // acts, so the backstop only fires when the normal flow genuinely failed.
 const BACKSTOP_GRACE_MS = 3 * 60 * 1000;
+
+function logStripeWebhook(type: string, id: string, outcome: string) {
+  // One line per delivery. The formatter drops secrets and addresses.
+  logger.info(formatStripeWebhookLog({ type, id, outcome }), {
+    area: 'stripe',
+    tag: 'webhook',
+  });
+}
 
 /**
  * Stripe webhook - reliability backstop for "paid but not submitted".
@@ -36,6 +45,7 @@ export async function POST(request: NextRequest) {
   if (!secret) {
     // Not configured yet. Acknowledge so Stripe doesn't pile up retries, but
     // never act on an unverified event.
+    logStripeWebhook('unknown', 'none', 'skipped_no_secret');
     return NextResponse.json({ received: true, skipped: 'no_webhook_secret' });
   }
 
@@ -45,39 +55,35 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(body, sig, secret);
-  } catch (err) {
-    logger.error(
-      'stripe webhook signature verification failed',
-      { area: 'stripe', tag: 'webhook-verify' },
-      err,
-    );
+  } catch {
+    logStripeWebhook('unknown', 'none', 'invalid_signature');
     return NextResponse.json({ error: 'invalid signature' }, { status: 400 });
   }
 
+  let outcome = 'ignored';
   try {
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
       // Analytics only. capturePurchaseCompletedServer never throws, and a
       // failure here must not change the webhook outcome.
       await capturePurchaseCompletedServer(pi);
-      const outcome = await reconcilePaidFiling(pi);
-      if (outcome === 'defer') {
+      const reconciled = await reconcilePaidFiling(pi);
+      if (reconciled === 'defer') {
         // Too soon - let the client checkout finish. Non-2xx makes Stripe
         // redeliver later; by then processCheckout has either completed
         // (webhook no-ops) or genuinely failed (webhook finalizes).
+        logStripeWebhook(event.type, event.id, 'deferred');
         return NextResponse.json({ deferred: true }, { status: 425 });
       }
+      outcome = reconciled === 'done' ? 'reconciled' : 'noop';
     }
-  } catch (err) {
-    logger.error(
-      'stripe webhook handler error',
-      { area: 'stripe', tag: 'webhook-handler' },
-      err,
-    );
-    // 500 → Stripe retries with backoff.
+  } catch {
+    logStripeWebhook(event.type, event.id, 'error');
+    // 500 → Stripe retries with backoff. The error object stays off the log.
     return NextResponse.json({ error: 'handler error' }, { status: 500 });
   }
 
+  logStripeWebhook(event.type, event.id, outcome);
   return NextResponse.json({ received: true });
 }
 

@@ -128,6 +128,9 @@ model Filing {
   addOnsTotalCents         Int      @default(0)
   discountCents            Int      @default(0)
   totalCents               Int      @default(0)
+  // Open checkout PaymentIntent. Reused across Pay clicks and reloads while
+  // Stripe still accepts an amount update, so drafts do not collect orphans.
+  checkoutPaymentIntentId  String?
 
   // Coupon applied at checkout
   couponCode               String?

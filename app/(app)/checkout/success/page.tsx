@@ -16,6 +16,11 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
+import {
+  filingShowsOperatingAgreement,
+  visibleSuccessDocuments,
+} from '@/lib/success-documents';
+import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,11 +35,25 @@ export default async function CheckoutSuccessPage({
 
   const filing = await prisma.filing.findUnique({
     where: { id: searchParams.filing },
-    include: { documents: true },
+    include: {
+      documents: true,
+      filingAdditionalServices: {
+        include: { service: { select: { serviceSlug: true } } },
+      },
+    },
   });
   if (!filing || filing.userId !== session.user.id) redirect('/dashboard');
 
   const t = await getTranslations('checkoutSuccess');
+  const tDocs = await getTranslations('documentTypes');
+  const showOperatingAgreement = filingShowsOperatingAgreement({
+    entityType: filing.entityType,
+    tier: filing.serviceTier as TierSlug,
+    addOnSlugs: filing.filingAdditionalServices.map(
+      (row) => row.service.serviceSlug as AddOnSlug,
+    ),
+  });
+  const downloads = visibleSuccessDocuments(filing.documents, showOperatingAgreement);
   const stateRule = getFormationState(filing.state);
   const stateName = stateRule.name;
   const entityLabel =
@@ -138,8 +157,30 @@ export default async function CheckoutSuccessPage({
           <NextStep
             icon={<FileText className="h-5 w-5 text-primary" />}
             title={t('documentsReady')}
-            body={t('documentsReadyBody')}
+            body={
+              showOperatingAgreement
+                ? t('documentsReadyBodyWithAgreement')
+                : t('documentsReadyBody')
+            }
             timing={t('availableNow')}
+            footer={
+              downloads.length > 0 ? (
+                <ul className="mt-3 space-y-1">
+                  {downloads.map((doc) => (
+                    <li key={doc.id}>
+                      <Link
+                        href={`/api/documents/${doc.id}`}
+                        className="text-sm font-semibold text-primary hover:underline"
+                      >
+                        {SUCCESS_DOCUMENT_LABELS.has(doc.documentType)
+                          ? tDocs(doc.documentType as 'RECEIPT')
+                          : doc.documentType}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null
+            }
           />
           <NextStep
             icon={<Landmark className="h-5 w-5 text-primary" />}
@@ -164,6 +205,15 @@ export default async function CheckoutSuccessPage({
     </div>
   );
 }
+
+const SUCCESS_DOCUMENT_LABELS = new Set([
+  'ARTICLES_ORG',
+  'ARTICLES_INC',
+  'OPERATING_AGREEMENT',
+  'CERT_STATUS',
+  'CERT_COPY',
+  'RECEIPT',
+]);
 
 function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (

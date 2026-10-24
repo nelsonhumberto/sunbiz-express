@@ -10,6 +10,7 @@ import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import {
   computeCost,
+  RA_AUTORENEW_CHECKED_BY_DEFAULT,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
@@ -210,17 +211,24 @@ export async function processCheckout(input: {
     },
   });
 
-  // Merge auto-renew consent into optionalDetails so submitFilingToState (which
-  // creates the RA service) can read it. Untouched when no consent was given.
+  // Server default matches the checkout checkbox: off unless this request
+  // explicitly opts in. Omitted or false never enrolls the customer.
+  const autoRenewRa =
+    typeof input.autoRenewRa === 'boolean'
+      ? input.autoRenewRa
+      : RA_AUTORENEW_CHECKED_BY_DEFAULT;
   const existingOptional =
     safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null) ?? {};
-  const optionalDetailsUpdate = input.autoRenewRa
-    ? JSON.stringify({
-        ...existingOptional,
-        autoRenewRa: true,
-        autoRenewConsentAt: new Date().toISOString(),
-      })
-    : filing.optionalDetails;
+  const nextOptional: Record<string, unknown> = {
+    ...existingOptional,
+    autoRenewRa,
+  };
+  if (autoRenewRa) {
+    nextOptional.autoRenewConsentAt = new Date().toISOString();
+  } else {
+    delete nextOptional.autoRenewConsentAt;
+  }
+  const optionalDetailsUpdate = JSON.stringify(nextOptional);
 
   await prisma.filing.update({
     where: { id: filing.id },

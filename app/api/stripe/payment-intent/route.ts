@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type Stripe from 'stripe';
 import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
@@ -29,6 +30,11 @@ import {
   posthogPersistenceCookieName,
   sanitizeDistinctId,
 } from '@/lib/posthog-distinct-id';
+import {
+  isReusablePaymentIntentStatus,
+  planCheckoutPaymentIntent,
+  checkoutPaymentIntentIdempotencyKey,
+} from '@/lib/checkout-payment-intent';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -85,6 +91,7 @@ export async function POST(request: NextRequest) {
     // When tied to a filing: verify ownership and bound the amount to the
     // server-computed total so the client can't mint arbitrary charges.
     let verifiedFilingId: string | undefined;
+    let storedCheckoutPaymentIntentId: string | null = null;
     let attributionFiling: {
       utmSource: string | null;
       utmMedium: string | null;
@@ -142,6 +149,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
       }
       verifiedFilingId = filing.id;
+      storedCheckoutPaymentIntentId = filing.checkoutPaymentIntentId;
       attributionFiling = filing;
     }
 
@@ -190,9 +198,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    const intentParams = {
       amount: amountCents,
-      currency: 'usd',
+      currency: 'usd' as const,
       // Attach the Customer AND flag the card for future off-session reuse so
       // Registered Agent renewals (and other post-checkout charges) can bill
       // the saved method. Guests have no Customer, and Stripe rejects
@@ -213,6 +221,14 @@ export async function POST(request: NextRequest) {
           posthogDistinctId: sanitizeDistinctId(posthogDistinctId) ?? cookieDistinctId,
         }),
       },
+    };
+
+    const paymentIntent = await resolveCheckoutPaymentIntent({
+      stripe,
+      filingId: verifiedFilingId,
+      storedPaymentIntentId: storedCheckoutPaymentIntentId,
+      amountCents,
+      intentParams,
     });
 
     return NextResponse.json({
@@ -223,4 +239,70 @@ export async function POST(request: NextRequest) {
     logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
     return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
   }
+}
+
+/**
+ * Reuse the filing's open PaymentIntent when Stripe still accepts it, updating
+ * the amount if the total changed. Otherwise create one, keyed by filing id
+ * and amount so a retry does not mint a second intent.
+ */
+async function resolveCheckoutPaymentIntent(input: {
+  stripe: Stripe;
+  filingId?: string;
+  storedPaymentIntentId: string | null;
+  amountCents: number;
+  intentParams: Stripe.PaymentIntentCreateParams;
+}): Promise<Stripe.PaymentIntent> {
+  const { stripe, filingId, amountCents, intentParams } = input;
+
+  if (filingId && input.storedPaymentIntentId) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(input.storedPaymentIntentId);
+      const plan = planCheckoutPaymentIntent({
+        filingId,
+        amountCents,
+        storedPaymentIntentId: existing.id,
+        storedStatus: existing.status,
+        storedAmount: existing.amount,
+      });
+      if (plan.action === 'reuse') {
+        if (!plan.updateAmount) return existing;
+        return await stripe.paymentIntents.update(existing.id, { amount: amountCents });
+      }
+    } catch {
+      logger.warn('checkout payment intent reuse failed', {
+        area: 'stripe',
+        tag: 'pi-reuse',
+        entityId: filingId,
+      });
+    }
+  }
+
+  const idempotencyKey = filingId
+    ? checkoutPaymentIntentIdempotencyKey(
+        filingId,
+        amountCents,
+        input.storedPaymentIntentId,
+      )
+    : undefined;
+
+  let created = await stripe.paymentIntents.create(
+    intentParams,
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+
+  // A repeat of the same filing and amount can replay a finished intent.
+  if (filingId && !isReusablePaymentIntentStatus(created.status)) {
+    created = await stripe.paymentIntents.create(intentParams, {
+      idempotencyKey: checkoutPaymentIntentIdempotencyKey(filingId, amountCents, created.id),
+    });
+  }
+
+  if (filingId) {
+    await prisma.filing.update({
+      where: { id: filingId },
+      data: { checkoutPaymentIntentId: created.id },
+    });
+  }
+  return created;
 }

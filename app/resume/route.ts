@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { GUEST_COOKIE } from '@/lib/guest';
+import { resumeWizardPath } from '@/lib/wizard-constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,9 @@ export async function GET(request: NextRequest) {
   // will route appropriately.
   if (filing.status !== 'DRAFT') return fail();
 
-  const step = filing.currentStep && filing.currentStep >= 1 ? filing.currentStep : 2;
-  const res = NextResponse.redirect(new URL(`/wizard/${filing.id}/${step}`, request.url));
+  const res = NextResponse.redirect(
+    new URL(resumeWizardPath(filing.id, filing.currentStep), request.url),
+  );
   res.cookies.set(GUEST_COOKIE, token, {
     httpOnly: true,
     secure: true,

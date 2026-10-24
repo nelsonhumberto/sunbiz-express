@@ -20,6 +20,7 @@ import { LinkedInInsight } from '@/components/analytics/LinkedInInsight';
 import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
 import { openAiPixelBootstrap } from '@/lib/openai-pixel';
 import { openAiPixelId } from '@/lib/tracking-ids';
+import { HtmlLang } from '@/components/i18n/HtmlLang';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -91,6 +92,7 @@ export default async function RootLayout({
         className={cn(poppins.variable, 'font-sans')}
         suppressHydrationWarning
       >
+        <HtmlLang />
         {loadOpenAiPixel && openAiId ? (
           <Script id="openai-ads-pixel" strategy="beforeInteractive">
             {openAiPixelBootstrap(openAiId)}

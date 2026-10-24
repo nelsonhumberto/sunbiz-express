@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import { captureMarketingLead } from '@/actions/marketing-leads';
+import { HoneypotField } from '@/components/marketing/HoneypotField';
 import { Button } from '@/components/ui/button';
 import { localizedStateName, type MarketingState } from '@/lib/marketing-states';
 import { cn } from '@/lib/utils';
@@ -46,7 +47,7 @@ export function StateWaitlistForm({
       locale,
       source,
       campaign,
-      website: String(formData.get('website') ?? ''),
+      hp_field: String(formData.get('hp_field') ?? ''),
     };
 
     if (!payload.email) {
@@ -125,17 +126,7 @@ export function StateWaitlistForm({
         </div>
       )}
 
-      {/* Honeypot - hidden from real users via aria + style. */}
-      <label className="sr-only" aria-hidden="true">
-        <input
-          type="text"
-          name="website"
-          tabIndex={-1}
-          autoComplete="off"
-          defaultValue=""
-          style={{ position: 'absolute', left: '-9999px', height: 0, width: 0 }}
-        />
-      </label>
+      <HoneypotField />
 
       <label className="block text-xs font-semibold uppercase tracking-wider text-ink-subtle mb-2">
         {t('emailLabel')}

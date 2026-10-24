@@ -1,5 +1,35 @@
 import { stripSpanishPrefix, type Locale } from '@/i18n/config';
 
+/** `/es` and `/es/*` are Spanish. Every other path is English. */
+export function localeFromPublicPath(pathname: string): Locale {
+  return isSpanishPublicPath(pathname) ? 'es' : 'en';
+}
+
+/**
+ * Move an explicit `?lang=` onto the path. The cookie is not involved.
+ * Returns null when the path already matches the requested language.
+ */
+export function localeQueryRedirect(
+  pathname: string,
+  searchParams: { get(name: string): string | null; toString(): string },
+): { pathname: string; search: string } | null {
+  const lang = (searchParams.get('lang') ?? '').toLowerCase();
+  if (lang !== 'en' && lang !== 'es') return null;
+  const spanish = isSpanishPublicPath(pathname);
+  if ((lang === 'es' && spanish) || (lang === 'en' && !spanish)) return null;
+
+  const next = new URLSearchParams(searchParams.toString());
+  next.delete('lang');
+  const search = next.toString();
+  const path =
+    lang === 'es'
+      ? pathname === '/'
+        ? '/es'
+        : `/es${pathname.startsWith('/') ? pathname : `/${pathname}`}`
+      : englishPathname(pathname);
+  return { pathname: path, search };
+}
+
 /** Original browser pathname, including a leading /es when present. */
 export const PUBLIC_PATH_HEADER = 'x-lf-public-path';
 /** Locale chosen for this request (en or es), set by middleware. */

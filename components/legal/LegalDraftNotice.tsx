@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { LocaleLink } from '@/components/i18n/LocaleLink';
 
 /** Shown on Spanish legal pages. The English page remains the governing text. */
 export async function LegalDraftNotice({ englishHref }: { englishHref: string }) {
@@ -12,9 +12,9 @@ export async function LegalDraftNotice({ englishHref }: { englishHref: string })
       <p className="font-semibold">{t('title')}</p>
       <p className="mt-1 text-ink-muted leading-relaxed">
         {t('body')}{' '}
-        <Link href={englishHref} className="font-medium text-primary underline">
+        <LocaleLink href={englishHref} hrefLang="en" className="font-medium text-primary underline">
           {t('englishLink')}
-        </Link>
+        </LocaleLink>
       </p>
     </aside>
   );

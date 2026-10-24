@@ -138,7 +138,7 @@ export const OA_GUIDE_EN: OaGuideCopy = {
     privacyHref: '/privacy',
     consentText: OA_CONSENT_EN,
     button: 'Send me the template',
-    success: "Check your inbox. Confirm your email and we'll send your download link.",
+    success: "Check your inbox. Confirm your email and we'll send your download links.",
     note: 'The sample is general information, not legal advice. Have an attorney review it before you use it.',
     comingSoon: 'Free sample template coming soon.',
     sampleHeader:

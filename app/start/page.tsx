@@ -17,6 +17,7 @@ import { filingUtmCreateFields } from '@/lib/utm-attribution';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { pageTitle } from '@/lib/seo-title';
+import { normalizeNameCheckQuery } from '@/lib/name-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       ? requested
       : 'FL') as StateCode;
     const { entityType, taxElection } = resolveEntityParam(searchParams?.entity);
-    const seededName = searchParams?.name?.trim().slice(0, 100) || null;
+    const seededName = normalizeNameCheckQuery(searchParams?.name) || null;
     const serviceTier = resolveTier(searchParams?.tier);
     const filing = await prisma.filing.create({
       data: {
@@ -93,17 +94,16 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         taxElection,
         state: stateCode,
         serviceTier,
-        // Step 1 (entity + state) is implicitly complete because /start already
-        // collected both. If the assistant also passed a business name, seed it
-        // and skip to step 3.
+        // Step 1 (entity + state) is already done. A name from ?name= is
+        // saved so step 2 can check it on arrival instead of skipping ahead.
         businessName: seededName,
-        currentStep: seededName ? 3 : 2,
-        completedSteps: JSON.stringify(seededName ? [1, 2] : [1]),
+        currentStep: 2,
+        completedSteps: JSON.stringify([1]),
         ...filingUtmCreateFields(),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/${seededName ? 3 : 2}`);
+    redirect(`/wizard/${filing.id}/2`);
   }
 
   const t = await getTranslations('start');
@@ -132,7 +132,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           defaultState={stateCode}
           defaultEntity={entityChoice}
           defaultTier={resolveTier(searchParams?.tier)}
-          defaultBusinessName={searchParams?.name?.trim().slice(0, 100) || undefined}
+          defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

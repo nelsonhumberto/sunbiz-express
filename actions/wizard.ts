@@ -26,6 +26,7 @@ import {
 } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
+import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -228,22 +229,36 @@ const Step2Schema = z.object({
 });
 
 export async function saveStep2(input: z.infer<typeof Step2Schema>) {
-  const data = Step2Schema.parse(input);
+  const parsed = Step2Schema.safeParse(input);
+  if (!parsed.success) {
+    const tooLong = parsed.error.issues.some((issue) => issue.code === 'too_big');
+    return {
+      ok: false as const,
+      error: tooLong ? 'Name is too long (maximum 100 characters).' : NAME_TOO_SHORT_ERROR,
+    };
+  }
+  const data = parsed.data;
   const { filing } = await getFilingForUser(data.filingId);
+  const entityType = filing.entityType as 'LLC' | 'CORP';
+  const businessName = canonicalFiledName(data.businessName, entityType);
+
+  if (!nameHasMinimumSubstance(businessName)) {
+    return { ok: false as const, error: NAME_TOO_SHORT_ERROR };
+  }
 
   const validation = validateBusinessName(
-    data.businessName,
-    filing.entityType as 'LLC' | 'CORP',
+    businessName,
+    entityType,
     asStateCode(filing.state),
   );
   if (!validation.valid) {
-    return { ok: false, error: validation.error };
+    return { ok: false, error: validation.error ?? NAME_TOO_SHORT_ERROR };
   }
 
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      businessName: data.businessName.trim(),
+      businessName,
       nameAvailable: data.available ?? null,
       nameCheckedAt: new Date(),
       currentStep: Math.max(filing.currentStep, 3),

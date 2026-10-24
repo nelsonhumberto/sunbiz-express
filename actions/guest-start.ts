@@ -24,6 +24,7 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
+import { normalizeNameCheckQuery } from '@/lib/name-check';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
@@ -82,9 +83,7 @@ export async function startGuestFiling(
   const { firstName, lastName } = parsed.data;
   const { entityType, taxElection } = resolveEntityChoice(parsed.data.entityType);
   const serviceTier = parsed.data.tier ?? 'STANDARD';
-  const seededName = parsed.data.businessName?.trim().slice(0, 100) || null;
-  const seededStep = seededName ? 3 : 2;
-  const seededCompleted = JSON.stringify(seededName ? [1, 2] : [1]);
+  const seededName = normalizeNameCheckQuery(parsed.data.businessName) || null;
   const email = parsed.data.email.toLowerCase().trim();
   const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
   if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
@@ -102,13 +101,13 @@ export async function startGuestFiling(
         state: stateCode,
         serviceTier,
         businessName: seededName,
-        currentStep: seededStep,
-        completedSteps: seededCompleted,
+        currentStep: 2,
+        completedSteps: JSON.stringify([1]),
         ...filingUtmCreateFields(),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/${seededStep}`);
+    redirect(`/wizard/${filing.id}/2`);
   }
 
   // Block reuse of an existing ACTIVE account from this entry path.
@@ -180,9 +179,8 @@ export async function startGuestFiling(
     }
   }
 
-  // Spin up a draft filing for them. Step 1 (entity + state) is implicitly
-  // complete because /start already collected both, so we drop them at the
-  // name step instead of re-asking.
+  // Spin up a draft filing. Step 1 is already done, so we open step 2.
+  // A name from ?name= is prefilled there and checked on arrival.
   const filing = await prisma.filing.create({
     data: {
       userId: guestUser.id,
@@ -191,14 +189,14 @@ export async function startGuestFiling(
       state: stateCode,
       serviceTier,
       businessName: seededName,
-      currentStep: seededStep,
-      completedSteps: seededCompleted,
+      currentStep: 2,
+      completedSteps: JSON.stringify([1]),
       ...filingUtmCreateFields(),
     },
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
 
-  redirect(`/wizard/${filing.id}/${seededStep}`);
+  redirect(`/wizard/${filing.id}/2`);
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────
@@ -342,7 +340,7 @@ export async function claimGuestAccount(
     resumeHref,
     message: signedIn
       ? 'Account created. Your draft is saved to this account.'
-      : 'Password saved. Your draft is still open — continue it below or sign in with that password.',
+      : 'Password saved. Your draft is still open. Continue it below or sign in with that password.',
   };
 }
 

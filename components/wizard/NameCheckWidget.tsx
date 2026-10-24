@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -29,20 +30,28 @@ import {
   type BusinessNameAssessment,
 } from '@/lib/formation-validation';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
+import { trackEvent } from '@/lib/analytics';
+import {
+  nameCheckDelayMs,
+  nameCheckErrorEvent,
+  nameCheckRequestUrl,
+  nameCheckResultEvent,
+  nameCheckSubmittedEvent,
+  peelTypedSuffix,
+  realNameCharacterCount,
+  requestNameCheck,
+  seededBusinessName,
+  type NameCheckResult,
+} from '@/lib/name-check';
 
-export interface NameCheckResult {
-  query: string;
-  available: boolean;
-  status: 'available' | 'exact_conflict' | 'similar_conflict' | 'restricted';
-  message: string;
-  conflicts: { name: string; documentNumber: string; status: string; filingDate: string }[];
-  suggestions: string[];
-}
+export type { NameCheckResult };
 
 export type { BusinessNameAssessment };
 
 interface NameCheckWidgetProps {
   initialName?: string | null;
+  /** Name passed in from /start (?name=) when the filing row is still blank. */
+  defaultBusinessName?: string | null;
   entityType: 'LLC' | 'CORP';
   /** Formation state code; controls suffix list + whether live name search runs. */
   formationState?: StateCode;
@@ -64,6 +73,7 @@ interface NameCheckWidgetProps {
 
 export function NameCheckWidget({
   initialName,
+  defaultBusinessName,
   entityType,
   formationState = 'FL',
   onChange,
@@ -76,12 +86,17 @@ export function NameCheckWidget({
     [entityType, formationState],
   );
 
-  const initialSplit = useMemo(
-    () => splitEntityName(initialName ?? '', entityType),
-    [initialName, entityType],
-  );
+  const seededName = seededBusinessName(initialName, defaultBusinessName);
+  const initialSplit = useMemo(() => {
+    const split = splitEntityName(seededName, entityType);
+    return { base: peelTypedSuffix(split.base).trim(), suffix: split.suffix };
+  }, [seededName, entityType]);
   const [baseName, setBaseName] = useState(initialSplit.base);
   const [suffix, setSuffix] = useState<string>(initialSplit.suffix);
+  const seededCombinedRef = useRef(
+    initialSplit.base.trim() ? joinEntityName(initialSplit.base, initialSplit.suffix) : '',
+  );
+  const editedRef = useRef(false);
 
   // If the user toggles entity type elsewhere (rare - Step 1) we may end up
   // with a suffix that no longer belongs to this entity type. Snap back to
@@ -95,31 +110,52 @@ export function NameCheckWidget({
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<NameCheckResult | null>(null);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const fetchIdRef = useRef(0);
+  const forceImmediateRef = useRef(false);
 
-  const trimmedBase = baseName.trim();
-  // When the base is empty we emit an empty combined name. That keeps the
-  // parent's `name.trim().length >= 2` gate honest - a bare suffix like
-  // "LLC" should never count as a valid business name.
-  const combinedName = trimmedBase ? joinEntityName(baseName, suffix) : '';
+  // A typed ending ("Name LLC" plus the LLC dropdown) is stripped so the
+  // filed name is not "Name LLC LLC". Trailing spaces stay until an ending
+  // actually matches.
+  const peeledBase = peelTypedSuffix(baseName);
+  const trimmedBase = peeledBase.trim();
+  const combinedName = trimmedBase ? joinEntityName(trimmedBase, suffix) : '';
+  const baseIsSubstantive = realNameCharacterCount(trimmedBase) >= 2;
 
-  // Surface a soft warning when the user typed a suffix into the base field
-  // (e.g. "Acme LLC" with the LLC dropdown) so the canonical name doesn't
-  // double up ("Acme LLC LLC").
+  // The filed name already drops a typed ending. Warn while the field still
+  // shows one, until blur moves it out of the input.
   const baseHasSuffix = useMemo(() => {
-    if (!trimmedBase) return false;
-    return splitEntityName(trimmedBase, entityType).matched;
-  }, [trimmedBase, entityType]);
+    const raw = baseName.trim();
+    if (!raw) return false;
+    return (
+      splitEntityName(raw, entityType).matched ||
+      splitEntityName(raw, entityType === 'LLC' ? 'CORP' : 'LLC').matched
+    );
+  }, [baseName, entityType]);
 
   // Assess the combined name against the state-specific rules (manual-review
   // patterns, restricted-word groups, subjective-review notes). This runs
   // client-side and is independent of the live name search - even Florida
   // names need this to surface restricted-word warnings.
   const assessment: BusinessNameAssessment | null = useMemo(() => {
-    if (!combinedName || trimmedBase.length < 2) return null;
+    if (!combinedName || !baseIsSubstantive) return null;
     return assessBusinessName(combinedName, entityType, formationState);
-  }, [combinedName, trimmedBase, entityType, formationState]);
+  }, [combinedName, baseIsSubstantive, entityType, formationState]);
+
+  // Adopt a seeded name that arrives after mount, until the visitor edits.
+  useEffect(() => {
+    if (editedRef.current) return;
+    const nextSeed = seededBusinessName(initialName, defaultBusinessName);
+    if (!nextSeed) return;
+    const split = splitEntityName(nextSeed, entityType);
+    const base = peelTypedSuffix(split.base).trim();
+    const combined = base ? joinEntityName(base, split.suffix) : '';
+    seededCombinedRef.current = combined;
+    setBaseName((current) => (current === base ? current : base));
+    setSuffix((current) => (current === split.suffix ? current : split.suffix));
+  }, [initialName, defaultBusinessName, entityType]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -131,8 +167,10 @@ export function NameCheckWidget({
     // stale, which is the original "button stays grayed out" bug.
     onChange(combinedName, null, assessment);
 
-    if (trimmedBase.length < 2) {
+    if (!baseIsSubstantive) {
       setResult(null);
+      setCheckFailed(false);
+      setLoading(false);
       return;
     }
 
@@ -142,6 +180,8 @@ export function NameCheckWidget({
     // run the official search themselves, since it's the most accurate way
     // to spot conflicts before submission.
     if (!stateRule.hasLiveNameSearch) {
+      setCheckFailed(false);
+      setLoading(false);
       const baseMessage =
         stateRule.code === 'WY'
           ? `We'll verify availability with the Wyoming Secretary of State at submission. We strongly recommend running the WyoBiz "Contains" search yourself first - see the link below.`
@@ -169,30 +209,49 @@ export function NameCheckWidget({
       return;
     }
 
+    // A seeded name checks immediately so the badge (or the failure note)
+    // is on screen when step 2 opens. Edits stay debounced. Retry skips it.
+    const immediate = forceImmediateRef.current;
+    forceImmediateRef.current = false;
+    const delay = immediate ? 0 : nameCheckDelayMs(combinedName, seededCombinedRef.current);
+    if (delay === 0) {
+      setLoading(true);
+    }
+
     debounceRef.current = setTimeout(async () => {
       const id = ++fetchIdRef.current;
       setLoading(true);
-      try {
-        const url = `/api/sunbiz/name-check?name=${encodeURIComponent(combinedName)}&type=${entityType}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          // Server signalled an error. We deliberately do NOT block the
-          // wizard's Continue button - server-side validation will still
-          // run on submit. Just clear the local availability badge.
-          if (id === fetchIdRef.current) setResult(null);
-          return;
-        }
-        const data = (await res.json()) as NameCheckResult;
-        if (id === fetchIdRef.current) {
-          setResult(data);
-          onChange(combinedName, data, assessment);
-        }
-      } catch {
-        if (id === fetchIdRef.current) setResult(null);
-      } finally {
-        if (id === fetchIdRef.current) setLoading(false);
+      const submitted = nameCheckSubmittedEvent('wizard');
+      trackEvent(submitted.event, submitted.properties);
+      const outcome = await requestNameCheck(nameCheckRequestUrl(combinedName, entityType));
+      const recorded = nameCheckResultEvent({
+        status: outcome.status,
+        ms: outcome.ms,
+        error: outcome.error,
+      });
+      trackEvent(recorded.event, recorded.properties);
+      if (outcome.deferred || !outcome.result) {
+        const failed = nameCheckErrorEvent({
+          source: 'wizard',
+          error: outcome.error,
+          ms: outcome.ms,
+        });
+        trackEvent(failed.event, failed.properties);
       }
-    }, 400);
+      if (id !== fetchIdRef.current) return;
+      // A failed or timed-out lookup must not block Continue. Keep the
+      // warning on screen, with Retry, instead of clearing the badge quietly.
+      if (outcome.deferred || !outcome.result) {
+        setResult(null);
+        setCheckFailed(true);
+        setLoading(false);
+        return;
+      }
+      setCheckFailed(false);
+      setResult(outcome.result);
+      onChange(combinedName, outcome.result, assessment);
+      setLoading(false);
+    }, delay);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -201,7 +260,7 @@ export function NameCheckWidget({
     // the parent's perspective and we only want the effect to fire when the
     // typed name, entity type, or formation state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combinedName, entityType, formationState, assessment]);
+  }, [combinedName, entityType, formationState, assessment, retryNonce, baseIsSubstantive]);
 
   // Localized status banner - see previous version for rationale.
   const statusMessage = (() => {
@@ -225,7 +284,14 @@ export function NameCheckWidget({
             <Input
               id="businessName"
               value={baseName}
-              onChange={(e) => setBaseName(e.target.value)}
+              onChange={(e) => {
+                editedRef.current = true;
+                setBaseName(e.target.value);
+              }}
+              onBlur={() => {
+                const peeled = peelTypedSuffix(baseName).trim();
+                if (peeled !== baseName) setBaseName(peeled);
+              }}
               placeholder={
                 entityType === 'LLC'
                   ? t('namePlaceholderLLC')
@@ -237,7 +303,13 @@ export function NameCheckWidget({
             />
           </div>
           <div className="sm:w-64 shrink-0">
-            <Select value={suffix} onValueChange={setSuffix}>
+            <Select
+              value={suffix}
+              onValueChange={(value) => {
+                editedRef.current = true;
+                setSuffix(value);
+              }}
+            >
               <SelectTrigger
                 id="businessSuffix"
                 aria-label={t('suffixLabel')}
@@ -297,6 +369,27 @@ export function NameCheckWidget({
           </div>
         </div>
       </div>
+
+      {checkFailed && (
+        <div
+          role="status"
+          className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-ink-muted leading-relaxed flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p>{t('nameCheckDeferred')}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              forceImmediateRef.current = true;
+              setRetryNonce((n) => n + 1);
+            }}
+          >
+            {t('nameCheckRetry')}
+          </Button>
+        </div>
+      )}
 
       {result && (
         <div
@@ -363,6 +456,7 @@ export function NameCheckWidget({
                       key={s}
                       type="button"
                       onClick={() => {
+                        editedRef.current = true;
                         setBaseName(split.base);
                         if (split.matched) setSuffix(split.suffix);
                       }}

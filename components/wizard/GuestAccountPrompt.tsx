@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles, ShieldCheck, Mail, KeyRound, Loader2 } from 'lucide-react';
+import { Sparkles, ShieldCheck, FolderOpen, KeyRound, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -130,10 +130,10 @@ export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
             </p>
             <ul className="space-y-2">
               <Benefit icon={<ShieldCheck className="h-4 w-4 text-primary" />}>
-                A personal dashboard to resume your filing on any device.
+                {t('saveExitBenefitDashboard')}
               </Benefit>
-              <Benefit icon={<Mail className="h-4 w-4 text-primary" />}>
-                Email confirmations, document downloads, and compliance reminders.
+              <Benefit icon={<FolderOpen className="h-4 w-4 text-primary" />}>
+                {t('saveExitBenefitDocuments')}
               </Benefit>
               <Benefit icon={<KeyRound className="h-4 w-4 text-primary" />}>
                 {t('saveExitPasswordHint')}

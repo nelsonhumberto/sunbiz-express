@@ -63,9 +63,9 @@ const GUIDES = [
   },
   {
     slug: 'florida-llc-operating-agreement',
-    title: 'Florida LLC Operating Agreement: Why You Need One',
+    title: 'Florida LLC Operating Agreement: What It Is and How to Adopt One',
     description:
-      'What an operating agreement does, why Florida banks ask for it, and what to include - even for a single-member LLC.',
+      'What a Florida LLC operating agreement is, what Chapter 605 says, and how to adopt one.',
     readingMinutes: 9,
   },
   {

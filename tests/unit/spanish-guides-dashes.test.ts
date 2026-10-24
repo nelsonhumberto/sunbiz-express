@@ -50,11 +50,13 @@ describe('Spanish guide copy', () => {
     const messages = es as Record<string, { body?: string; disclaimer?: string; badge?: string }>;
     expect(messages.guideFlAnnual.body).toContain('tarifas de reactivación (reinstatement)');
     expect(messages.guideFlAnnual.body).not.toContain('reinstalación');
-    expect(messages.guideOa.disclaimer).toContain('esta guía no es asesoría legal ni fiscal.');
+    expect(messages.guideOa.disclaimer).toContain('no asesoría legal');
+    expect(messages.guideOa.disclaimer).not.toContain('asesoría legal ni fiscal');
     expect(messages.guideFlForm.body).toContain(
       'Articles of Organization (acta de constitución de la LLC)',
     );
-    expect(messages.guideOa.body).toContain('corporación tipo C (C-Corp)');
+    expect(messages.guideOa.body).toContain('capítulo 605');
+    expect(messages.guideOa.body).not.toContain('C-Corp');
     expect(messages.boiPage.badge).toContain('11 de agosto de 2026');
     expect(readFileSync('components/marketing/GuideLayout.tsx', 'utf8')).not.toContain('max-w-none');
     expect(readFileSync('tailwind.config.ts', 'utf8')).toContain('@tailwindcss/typography');

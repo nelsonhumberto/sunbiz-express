@@ -32,6 +32,16 @@ describe('sitemap lastModified', () => {
     expect(urls).toContain('https://launchforma.com/guides/how-to-form-an-llc-in-florida');
     expect(urls).toContain('https://launchforma.com/guides/florida-annual-report');
     expect(urls).toContain('https://launchforma.com/guides/florida-registered-agent');
+    expect(urls).toContain('https://launchforma.com/guides/florida-llc-operating-agreement');
+    const oa = sitemap().find(
+      (entry) => entry.url === 'https://launchforma.com/guides/florida-llc-operating-agreement',
+    );
+    const oaEs = sitemap().find(
+      (entry) =>
+        entry.url === 'https://launchforma.com/es/guides/florida-llc-operating-agreement',
+    );
+    expect(new Date(oa?.lastModified as Date).toISOString()).toBe('2026-10-24T00:00:00.000Z');
+    expect(new Date(oaEs?.lastModified as Date).toISOString()).toBe('2026-10-24T00:00:00.000Z');
     expect(urls.some((url) => url.includes('/states/texas'))).toBe(false);
 
     const stamps = sitemap().map((entry) =>

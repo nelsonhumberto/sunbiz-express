@@ -3,7 +3,16 @@ import type { MetadataRoute } from 'next';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 // Private surfaces that should never be crawled by any agent.
-const DISALLOW = ['/admin/', '/dashboard/', '/wizard/', '/api/', '/sign-in', '/sign-up'];
+const DISALLOW = [
+  '/admin/',
+  '/dashboard/',
+  '/wizard/',
+  '/api/',
+  '/sign-in',
+  '/sign-up',
+  '/guides/florida-llc-operating-agreement/download',
+  '/es/guides/florida-llc-operating-agreement/download',
+];
 
 // AI / LLM crawlers we explicitly welcome for Generative Engine Optimization
 // (GEO). Listing them individually (rather than relying only on `*`) makes

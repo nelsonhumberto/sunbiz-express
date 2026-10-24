@@ -41,12 +41,34 @@ export interface RecoveryDraft {
   user: { role: string; email: string };
 }
 
+/** Exact mailboxes the recovery jobs never mail. Compared after trim and lowercasing. */
+export const RECOVERY_SKIP_EMAILS = ['nelsonhumberto@gmail.com'] as const;
+
+/**
+ * Exact domains the recovery jobs never mail.
+ * admin@ and social@ on launchforma.com are included. A subdomain or a
+ * lookalike host is not.
+ */
+export const RECOVERY_SKIP_DOMAINS = ['launchforma.com', 'intelepeer.ai', 'aqurio.com'] as const;
+
+function mailboxDomain(email: string): string {
+  const at = email.lastIndexOf('@');
+  if (at < 1 || at === email.length - 1) return '';
+  return email.slice(at + 1);
+}
+
+export function isRecoverySkipAddress(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  if ((RECOVERY_SKIP_EMAILS as readonly string[]).includes(normalized)) return true;
+  return (RECOVERY_SKIP_DOMAINS as readonly string[]).includes(mailboxDomain(normalized));
+}
+
 export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
   if (draft.isTest) return true;
   if (draft.adminArchivedAt || draft.userArchivedAt) return true;
   if (draft.user.role === 'ADMIN') return true;
   const email = draft.user.email.trim().toLowerCase();
-  if (email.endsWith('@launchforma.com')) return true;
+  if (isRecoverySkipAddress(email)) return true;
   if (isResendDevAddress(email)) return true;
   if (isQaOrE2eRecipient(email)) return true;
   return false;
@@ -154,21 +176,28 @@ export interface ResumeDripStep {
   type: ResumeDripType;
   /** Inclusive, hours since the draft last changed. */
   minHours: number;
-  /** Exclusive. */
+  /**
+   * Hours since the draft last changed. Exclusive, except the final step,
+   * which includes this instant.
+   */
   maxHours: number;
   /** The last email. The cron stamps Filing.abandonedAt when this one is sent. */
   final: boolean;
 }
 
+/** Nothing older than 3 days since updatedAt is eligible for any resume step. */
+export const RESUME_DRIP_MAX_AGE_HOURS = 72;
+
 /**
  * About 1 hour, 1 day, and 3 days after a draft goes idle.
- * Hourly cron: each step stays open until the next one starts, and the
- * last step stays open for 24 hours so a single missed run still sends it.
+ * Each step stays open until the next one starts. The last step matches only
+ * the exact 3 day mark. A draft older than that is closed, so an old backlog
+ * cannot receive the 1 hour email.
  */
 export const RESUME_DRIP_STEPS: readonly ResumeDripStep[] = [
   { type: 'RESUME_1H', minHours: 1, maxHours: 24, final: false },
   { type: 'RESUME_1D', minHours: 24, maxHours: 72, final: false },
-  { type: 'RESUME_3D', minHours: 72, maxHours: 96, final: true },
+  { type: 'RESUME_3D', minHours: RESUME_DRIP_MAX_AGE_HOURS, maxHours: RESUME_DRIP_MAX_AGE_HOURS, final: true },
 ];
 
 export type ResumeDripReason =
@@ -213,9 +242,16 @@ export function planResumeDrip(candidate: ResumeDripCandidate): ResumeDripDecisi
     return STOPPED;
   }
 
-  const step = RESUME_DRIP_STEPS.find(
-    (item) => candidate.ageHours >= item.minHours && candidate.ageHours < item.maxHours,
-  );
+  if (candidate.ageHours > RESUME_DRIP_MAX_AGE_HOURS) {
+    return { send: null, final: false, reason: 'window-closed' };
+  }
+
+  const step = RESUME_DRIP_STEPS.find((item) => {
+    if (candidate.ageHours < item.minHours) return false;
+    return item.final
+      ? candidate.ageHours <= item.maxHours
+      : candidate.ageHours < item.maxHours;
+  });
   if (!step) {
     const first = RESUME_DRIP_STEPS[0];
     if (first && candidate.ageHours < first.minHours) {
@@ -344,14 +380,25 @@ function blockingResumeNotification(type: ResumeDripType, nowMs: number) {
   };
 }
 
+function resumeStepUpdatedAt(step: ResumeDripStep, now: number) {
+  const oldest = new Date(now - step.maxHours * 60 * 60 * 1000);
+  const newest = new Date(now - step.minHours * 60 * 60 * 1000);
+  // The final step is the exact 3 day mark. An earlier updatedAt is older than 3 days.
+  if (step.final) return { gte: oldest, lte: newest };
+  return { gt: oldest, lte: newest };
+}
+
 /**
  * Oldest drafts that still have a step to send. A draft waiting between
  * steps, or stuck on a fresh claim or a maxed failure, is not in this set,
  * so it cannot fill the page ahead of a newer 1h draft.
+ * updatedAt is the last-activity clock. Anything older than 3 days is out,
+ * including the old backlog that used to look like a late 1 hour send.
  * `take` is the page size. The job keeps reading pages until it has attempted
  * RESUME_DRIP_BATCH_SIZE sends or the window is empty.
  */
 export function resumeDraftListArgs(now: number) {
+  const oldestActivity = new Date(now - RESUME_DRIP_MAX_AGE_HOURS * 60 * 60 * 1000);
   return {
     where: {
       status: 'DRAFT' as const,
@@ -359,22 +406,25 @@ export function resumeDraftListArgs(now: number) {
       adminArchivedAt: null,
       userArchivedAt: null,
       abandonedAt: null,
+      updatedAt: { gte: oldestActivity },
       payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
         role: { not: 'ADMIN' as const },
         accountStatus: { not: 'DELETED' as const },
         AND: [
-          { NOT: { email: { endsWith: '@launchforma.com', mode: 'insensitive' as const } } },
+          ...RECOVERY_SKIP_DOMAINS.map((domain) => ({
+            NOT: { email: { endsWith: `@${domain}`, mode: 'insensitive' as const } },
+          })),
+          ...RECOVERY_SKIP_EMAILS.map((email) => ({
+            NOT: { email: { equals: email, mode: 'insensitive' as const } },
+          })),
           { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' as const } } },
           { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' as const } } },
           { NOT: { email: { endsWith: '@resend.dev', mode: 'insensitive' as const } } },
         ],
       },
       OR: RESUME_DRIP_STEPS.map((step) => ({
-        updatedAt: {
-          gt: new Date(now - step.maxHours * 60 * 60 * 1000),
-          lte: new Date(now - step.minHours * 60 * 60 * 1000),
-        },
+        updatedAt: resumeStepUpdatedAt(step, now),
         notifications: { none: blockingResumeNotification(step.type, now) },
       })),
     },

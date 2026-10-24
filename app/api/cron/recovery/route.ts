@@ -7,7 +7,7 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 // may be scheduled more than once. vercel.json lists this route four times:
 // 9am, 1pm, 6pm, and 10pm Eastern Daylight Time (13:00, 17:00, 22:00, and
 // 02:00 UTC). The query string is not read, so a slot parameter would not
-// change what is sent. GitHub Actions also calls the route at minute 37.
+// change what is sent. Those four Vercel crons are the only schedule.
 // A resume step is claimed (PENDING) before it is sent. A partial unique
 // index on EmailNotification (filingId, notificationType, step) stops two
 // runs from both sending. Registered-agent reminders still skip when any
@@ -22,8 +22,8 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 //      runDraftRecovery still stamps abandonedAt only after a successful 7-day
 //      send. The last resume step stamps the same way when that email is sent.
 //   2. Registered-agent renewal at 60 / 30 / 7 days. The window is one calendar
-//      day wide and EmailNotification dedupes the type, so the hourly cron
-//      still sends each reminder once.
+//      day wide and EmailNotification dedupes the type, so a later run the
+//      same day still sends each reminder once.
 //
 // Annual report reminders are handled separately.
 

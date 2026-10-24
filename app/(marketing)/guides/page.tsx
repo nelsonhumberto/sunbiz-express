@@ -169,6 +169,13 @@ export default async function GuidesHubPage() {
               ? t('intro')
               : 'Plain-English answers to the questions founders actually ask - written by the LaunchForma compliance team.'}
           </p>
+          {t ? (
+            <p className="mt-6 text-base">
+              <Link href="/es/business-services" className="font-medium text-primary hover:underline">
+                {t('businessServicesLink')}
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -172,8 +172,8 @@ export function UtmBuilder() {
 
   const setLangAndCampaign = (nextLang: string) => {
     setLang(nextLang);
-    // Keep campaign prefix aligned with language so middleware can also
-    // infer locale from utm_campaign=es-* even without ?lang=.
+    // Keep the campaign prefix aligned with the language. Spanish pages use
+    // an /es path. A campaign name alone does not change the locale.
     setCampaign((prev) => {
       const rest = prev.replace(/^(en|es)[-_]/i, '');
       const body = rest || 'fl-llc';

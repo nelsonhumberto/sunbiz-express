@@ -34,8 +34,9 @@ const LeadInput = z.object({
   locale: z.string().trim().min(2).max(8).optional(),
   source: z.string().trim().max(64).optional(),
   campaign: z.string().trim().max(64).optional(),
-  // Honeypot field; real users never fill this. Keep param last so legitimate
-  // form submissions never accidentally collide with it.
+  // Honeypot. Real users never fill this. The rendered name is hp_field.
+  hp_field: z.string().optional(),
+  /** Old honeypot name. Still dropped when a stale client sends it. */
   website: z.string().optional(),
 });
 
@@ -46,12 +47,16 @@ export type CaptureLeadResult =
       error: 'invalid-email' | 'invalid-state' | 'duplicate' | 'generic';
     };
 
+function honeypotFilled(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export async function captureMarketingLead(
   input: z.input<typeof LeadInput>,
 ): Promise<CaptureLeadResult> {
-  // Drop honeypot submissions silently - bots see a 200, real users do not
-  // hit this branch because the field is `display: none` and unlabelled.
-  if (input.website && input.website.trim().length > 0) {
+  // Drop honeypot submissions silently. Bots see success. Real users never
+  // fill the off-screen field.
+  if (honeypotFilled(input.hp_field) || honeypotFilled(input.website)) {
     return { ok: true };
   }
 

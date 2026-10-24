@@ -21,6 +21,7 @@ type GuideCopy = {
   description?: string;
   body?: string;
   intro?: string;
+  businessServicesLink?: string;
   formTitle?: string;
   arTitle?: string;
   raTitle?: string;
@@ -69,6 +70,8 @@ describe('Spanish guide pages', () => {
     expect(index.raTitle).toMatch(/agente registrado en Florida/i);
     expect(index.oaTitle).toMatch(/Acuerdo operativo/);
     expect(JSON.stringify(index)).not.toMatch(/wyoming-llc-vs-delaware-corp/);
+    expect(index.businessServicesLink).toBe('Servicios para empresas ya formadas');
+    expect(index.businessServicesLink).not.toMatch(/—|–/);
   });
 
   it('renders those namespaces instead of the English page body', () => {
@@ -84,6 +87,9 @@ describe('Spanish guide pages', () => {
       expect(source, file).toContain("locale === 'es'");
       expect(source, file).toContain(`getTranslations('${namespace}')`);
     }
+    const guidesIndex = readFileSync('app/(marketing)/guides/page.tsx', 'utf8');
+    expect(guidesIndex).toContain('href="/es/business-services"');
+    expect(guidesIndex).toContain("t('businessServicesLink')");
     const boi = readFileSync('app/(marketing)/guides/boi-filing-2026/page.tsx', 'utf8');
     expect(boi).toContain('permanentRedirect');
     expect(boi).toContain("'/es/boi-reporting'");

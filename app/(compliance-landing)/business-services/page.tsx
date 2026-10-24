@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { LocaleLink } from '@/components/i18n/LocaleLink';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { BusinessServicesHeroCta } from '@/components/marketing/BusinessServicesHeroCta';
@@ -46,6 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function BusinessServicesPage() {
   const t = await getTranslations('businessServices');
   const tDisc = await getTranslations('disclosure');
+  const locale = await getLocale();
 
   // Registered-agent year 1 is $0 only inside a formation package. This page
   // sells the service on its own, at the renewal price.
@@ -80,6 +82,17 @@ export default async function BusinessServicesPage() {
           <h1 className="font-display text-[1.65rem] leading-[1.2] md:text-6xl md:leading-[1.05] font-medium tracking-tight text-balance">
             {t('headline', { price: plansFrom })}
           </h1>
+          {locale === 'en' ? (
+            <p className="mt-4 text-sm">
+              <LocaleLink
+                href="/es/business-services"
+                hrefLang="es"
+                className="font-medium text-primary hover:underline"
+              >
+                En español
+              </LocaleLink>
+            </p>
+          ) : null}
           <BusinessServicesHeroCta
             primaryLabel={t('primaryCta')}
             callLabel={BUSINESS_PHONE ? t('callCta', { phone: BUSINESS_PHONE }) : ''}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { submitServiceInquiry } from '@/actions/service-inquiry';
 import { trackEvent } from '@/lib/analytics';
+import { HoneypotField } from '@/components/marketing/HoneypotField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -138,12 +139,7 @@ export function ServiceInquiryForm() {
       autoComplete="on"
       data-testid="service-inquiry-form"
     >
-      <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
-        <label>
-          Company
-          <input name="lf_hp" tabIndex={-1} autoComplete="off" defaultValue="" />
-        </label>
-      </div>
+      <HoneypotField name="lf_hp" />
 
       <Field
         label={t('nameLabel')}

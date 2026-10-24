@@ -53,6 +53,14 @@ describe('ads conversion CSP', () => {
       expect(img).toContain(host);
     }
 
+    for (const host of [
+      'https://analytics.google.com',
+      'https://*.google-analytics.com',
+      'https://*.analytics.google.com',
+    ]) {
+      expect(connect).toContain(host);
+    }
+
     expect(script).toContain('https://bzrcdn.openai.com');
     expect(connect).toContain('https://bzr.openai.com');
     expect(connect).toContain('https://bzrcdn.openai.com');

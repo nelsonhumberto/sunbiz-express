@@ -21,10 +21,10 @@ export const localeFlags: Record<Locale, string> = {
 export const LOCALE_COOKIE = 'NEXT_LOCALE';
 
 /**
- * `/es` and `/es/...` are Spanish entry URLs for ads. The app otherwise keeps
- * flat routes and stores the locale in a cookie (`?lang=es` still works).
- * Returns the unprefixed pathname to rewrite to, or null when the path is not
- * a Spanish prefix.
+ * `/es` and `/es/...` are Spanish entry URLs. Every other path is English.
+ * The NEXT_LOCALE cookie does not select the language. `?lang=es` is redirected
+ * onto the `/es` path. Returns the unprefixed pathname to rewrite to, or null
+ * when the path is not a Spanish prefix.
  */
 export function stripSpanishPrefix(pathname: string): string | null {
   if (pathname === '/es' || pathname === '/es/') return '/';

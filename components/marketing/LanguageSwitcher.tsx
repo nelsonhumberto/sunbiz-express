@@ -27,6 +27,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: Props) {
 
   const switchLocale = (locale: Locale) => {
     if (locale === currentLocale) return;
+    document.documentElement.lang = locale;
     const params = new URLSearchParams(window.location.search);
     params.delete('lang');
     const qs = params.toString();

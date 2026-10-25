@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { checklistCopy } from '@/lib/drip-copy';
@@ -19,6 +20,7 @@ import {
 } from '@/lib/feature-flags';
 import {
   newsletterSendKey,
+  claimStatusAfterSend,
   planMarketingClaim,
   postFormationSendKey,
 } from '@/lib/marketing-send-claim';
@@ -42,7 +44,14 @@ import {
   certificateCtaUrl,
   LOCALE_PRESERVING_CERTIFICATE_LINKS,
 } from '@/lib/post-formation-email';
-import { readUnsubscribeToken, signUnsubscribeToken, unsubscribeLink } from '@/lib/unsubscribe';
+import {
+  readUnsubscribeToken,
+  signUnsubscribeToken,
+  unsubscribeLink,
+  unsubscribeSigningSecret,
+  UNSUBSCRIBE_LEGACY_UNTIL_MS,
+  UNSUBSCRIBE_TOKEN_TTL_MS,
+} from '@/lib/unsubscribe';
 
 const SECRET = 'test-unsubscribe-secret';
 const SITE = 'https://launchforma.com';
@@ -182,17 +191,43 @@ describe('checklist confirm token', () => {
 });
 
 describe('unsubscribe', () => {
-  it('confirms in one click and refreshes the same row when repeated', () => {
+  it('shows a confirm page on GET and unsubscribes only on POST, including one-click', () => {
     const route = readFileSync('app/unsubscribe/route.ts', 'utf8');
     const getStart = route.indexOf('export async function GET');
     const postStart = route.indexOf('export async function POST');
-    expect(route.slice(getStart, postStart)).toContain('recordOptOut');
+    const getBody = route.slice(getStart, postStart);
+    expect(getBody).not.toContain('recordOptOut');
+    expect(getBody).toContain('confirmPage');
+    expect(route).toContain('method="post"');
+    expect(route.slice(postStart)).toContain('recordOptOut');
+    expect(route.slice(postStart)).toContain('List-Unsubscribe');
     expect(route).toContain('prisma.marketingOptOut.upsert');
     expect(route).toContain("update: { source: 'unsubscribe' }");
     expect(route).not.toContain('update: {}');
-    const link = unsubscribeLink(SITE, 'Ada@Example.com', SECRET);
+    const link = unsubscribeLink(SITE, 'Ada@Example.com', SECRET, 'es');
+    expect(link).toContain('locale=es');
     const token = new URL(link).searchParams.get('token') ?? '';
     expect(readUnsubscribeToken(token, SECRET)).toBe('ada@example.com');
+  });
+
+  it('expires new tokens after a year and keeps older links until the legacy cutoff', () => {
+    const issued = Date.parse('2026-01-01T00:00:00.000Z');
+    const token = signUnsubscribeToken('Ada@Example.com', SECRET, issued);
+    expect(readUnsubscribeToken(token, SECRET, issued + UNSUBSCRIBE_TOKEN_TTL_MS)).toBe('ada@example.com');
+    expect(readUnsubscribeToken(token, SECRET, issued + UNSUBSCRIBE_TOKEN_TTL_MS + 1)).toBeNull();
+
+    const payload = Buffer.from('ada@example.com', 'utf8').toString('base64url');
+    const sig = createHmac('sha256', SECRET).update('lf-unsub-v1:ada@example.com').digest('base64url');
+    const legacy = `${payload}.${sig}`;
+    expect(readUnsubscribeToken(legacy, SECRET, Date.parse('2027-01-01T00:00:00.000Z'))).toBe('ada@example.com');
+    expect(readUnsubscribeToken(legacy, SECRET, UNSUBSCRIBE_LEGACY_UNTIL_MS)).toBeNull();
+
+    expect(() => unsubscribeSigningSecret({ NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toThrow(
+      /UNSUBSCRIBE_SECRET/,
+    );
+    expect(
+      unsubscribeSigningSecret({ NODE_ENV: 'production', NEXTAUTH_SECRET: 'prod-secret' } as NodeJS.ProcessEnv),
+    ).toBe('prod-secret');
   });
 
   it('puts a signed unsubscribe link in the checklist, series, and newsletter', () => {
@@ -307,7 +342,18 @@ describe('marketing send idempotency', () => {
     expect(planMarketingClaim({ status: 'SKIPPED_TEST', claimedAt: fresh }, now)).toBe('skip');
     expect(planMarketingClaim({ status: 'PENDING', claimedAt: fresh }, now)).toBe('skip');
     expect(planMarketingClaim({ status: 'PENDING', claimedAt: stale }, now)).toBe('reclaim');
-    expect(planMarketingClaim({ status: 'FAILED', claimedAt: fresh }, now)).toBe('reclaim');
+    expect(planMarketingClaim({ status: 'FAILED', claimedAt: fresh, attemptCount: 2 }, now)).toBe('reclaim');
+    expect(planMarketingClaim({ status: 'FAILED', claimedAt: fresh, attemptCount: 3 }, now)).toBe('skip');
+    expect(planMarketingClaim({ status: 'SUPPRESSED', claimedAt: fresh, attemptCount: 1 }, now)).toBe('skip');
+    expect(planMarketingClaim({ status: 'OPTED_OUT', claimedAt: fresh }, now)).toBe('skip');
+    expect(planMarketingClaim({ status: 'PENDING', claimedAt: stale, attemptCount: 3 }, now)).toBe('skip');
+    expect(claimStatusAfterSend({ deliveryStatus: 'SENT' })).toBe('SENT');
+    expect(
+      claimStatusAfterSend({
+        deliveryStatus: 'FAILED',
+        errorMessage: 'Recipient is on the suppression list.',
+      }),
+    ).toBe('SUPPRESSED');
     expect(postFormationSendKey('fil_1', 'DAY_3')).toBe('fil_1:DAY_3');
     expect(newsletterSendKey('Ada@Example.com', '001')).toBe('ada@example.com:001');
     expect(newsletterSendKey('Ada@Example.com', '002')).not.toBe(newsletterSendKey('ada@example.com', '001'));
@@ -397,6 +443,21 @@ describe('approved copy', () => {
     expect(english.pageTitle).toBe('Starting Your LLC: A One-Page Checklist');
     expect(english.sections[0]?.items[0]).toContain('Pick your state of formation');
     expect(english.closerCta).toBe('Start your LLC at LaunchForma');
+    expect(english.thanksBody).toBe(
+      "Check your inbox and click the link to confirm, then we'll send your checklist.",
+    );
+    expect(checklistCopy('es').thanksBody).toBe(
+      'Revisa tu correo y toca el enlace para confirmar; luego te enviamos la lista.',
+    );
+    expect(newsletterIssueCopy('001', 'es').intro).toContain('Te damos la bienvenida');
+    expect(newsletterIssueCopy('001', 'es').intro).toContain('Dos cosas rápidas y sigues con tu negocio');
+    expect(newsletterIssueCopy('001', 'es').intro).not.toContain('Bienvenido');
+    expect(newsletterIssueCopy('002', 'es').intro).toContain('sigues con tu negocio');
+    expect(readFileSync('app/(marketing)/checklist/page.tsx', 'utf8')).toContain('NEXT_PUBLIC_SITE_URL');
+    expect(readFileSync('lib/checklist-lead.ts', 'utf8')).toContain('checklistSentAt: null');
+    expect(readFileSync('lib/email.ts', 'utf8')).toContain('sharedSmtpTransport');
+    expect(readFileSync('lib/newsletter-job.ts', 'utf8')).toContain('waitBetweenMarketingSends');
+    expect(readFileSync('app/api/cron/recovery/route.ts', 'utf8')).toContain('seriesErrors');
     expect(checklistCopy('es').pageTitle.length).toBeGreaterThan(0);
     expect(checklistCopy('es').sections).toHaveLength(4);
 

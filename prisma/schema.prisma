@@ -607,10 +607,11 @@ model NewsletterSend {
   issueNumber String
   email       String
   locale      String
-  status      String    @default("PENDING")
-  claimedAt   DateTime  @default(now())
-  sentAt      DateTime?
-  createdAt   DateTime  @default(now())
+  status       String    @default("PENDING")
+  attemptCount Int       @default(0)
+  claimedAt    DateTime  @default(now())
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
 
   @@unique([issueNumber, email])
   @@index([email])
@@ -623,10 +624,11 @@ model PostFormationSend {
   step      String
   email     String
   locale    String
-  status    String    @default("PENDING")
-  claimedAt DateTime  @default(now())
-  sentAt    DateTime?
-  createdAt DateTime  @default(now())
+  status       String    @default("PENDING")
+  attemptCount Int       @default(0)
+  claimedAt    DateTime  @default(now())
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
 
   @@unique([filingId, step])
   @@index([email])

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import type { DripLocale } from '@/lib/drip-copy';
 import { normalizeEmail } from '@/lib/email-address';
 import { sendEmail } from '@/lib/email';
-import { EMAIL_STATUS_SKIPPED_TEST, isRecordedEmailStatus } from '@/lib/email-status';
+import { isRecordedEmailStatus } from '@/lib/email-status';
 import { logger } from '@/lib/logger';
 import { unsubscribeLink, unsubscribeSigningSecret } from '@/lib/unsubscribe';
 import {
@@ -34,20 +34,22 @@ async function deliverChecklist(lead: {
   email: string;
   locale: string;
 }): Promise<boolean> {
-  const already = await prisma.emailNotification.findFirst({
-    where: {
-      recipientEmail: lead.email,
-      notificationType: 'CHECKLIST_DELIVERY',
-      status: { in: ['SENT', EMAIL_STATUS_SKIPPED_TEST] },
-    },
-    select: { id: true },
+  // One confirm click wins. A second click in the same moment sees the
+  // timestamp and does not send another checklist.
+  const claimedAt = new Date();
+  const claimed = await prisma.checklistSignup.updateMany({
+    where: { id: lead.id, checklistSentAt: null },
+    data: { checklistSentAt: claimedAt, confirmedAt: claimedAt },
   });
-  if (!already) {
+  if (claimed.count !== 1) return true;
+
+  try {
     const user = await prisma.user.findUnique({
       where: { email: lead.email },
       select: { id: true, firstName: true },
     });
-    const unsubscribeUrl = unsubscribeLink(SITE_URL, lead.email);
+    const locale = asLocale(lead.locale);
+    const unsubscribeUrl = unsubscribeLink(SITE_URL, lead.email, undefined, locale);
     const sent = await sendEmail({
       type: 'CHECKLIST_DELIVERY',
       to: lead.email,
@@ -55,17 +57,25 @@ async function deliverChecklist(lead: {
       listUnsubscribeUrl: unsubscribeUrl,
       context: {
         firstName: user?.firstName,
-        locale: asLocale(lead.locale),
+        locale,
         unsubscribeUrl,
       },
     });
-    if (!isRecordedEmailStatus(sent.status)) return false;
+    if (!isRecordedEmailStatus(sent.status)) {
+      await prisma.checklistSignup.updateMany({
+        where: { id: lead.id, checklistSentAt: claimedAt },
+        data: { checklistSentAt: null },
+      });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    await prisma.checklistSignup.updateMany({
+      where: { id: lead.id, checklistSentAt: claimedAt },
+      data: { checklistSentAt: null },
+    });
+    throw error;
   }
-  await prisma.checklistSignup.update({
-    where: { id: lead.id },
-    data: { checklistSentAt: new Date(), confirmedAt: new Date() },
-  });
-  return true;
 }
 
 /**
@@ -125,7 +135,7 @@ export async function savePendingChecklistLead(input: {
     where: { email },
     select: { id: true, firstName: true },
   });
-  const unsubscribeUrl = unsubscribeLink(SITE_URL, email);
+  const unsubscribeUrl = unsubscribeLink(SITE_URL, email, undefined, input.locale);
   const sent = await sendEmail({
     type: 'CHECKLIST_CONFIRM',
     to: email,

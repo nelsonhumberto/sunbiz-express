@@ -174,8 +174,7 @@ const CHECKLIST_EN: ChecklistCopy = {
   consentLink: 'Privacy Policy',
   consentAfter: '.',
   thanksTitle: 'Thanks, you are all set!',
-  thanksBody:
-    'Your checklist is on its way to your inbox. If you do not see it in a few minutes, check your spam or promotions folder.',
+  thanksBody: "Check your inbox and click the link to confirm, then we'll send your checklist.",
   errorEmail: 'Please enter a valid email address.',
   errorConsent: 'Please check the box to receive the checklist.',
   errorGeneric: 'Something went wrong. Please try again.',
@@ -260,8 +259,7 @@ const CHECKLIST_ES: ChecklistCopy = {
   consentLink: 'Política de privacidad',
   consentAfter: '.',
   thanksTitle: 'Gracias, ya quedó todo listo.',
-  thanksBody:
-    'Tu lista va en camino a tu bandeja. Si no la ves en unos minutos, revisa la carpeta de spam o promociones.',
+  thanksBody: 'Revisa tu correo y toca el enlace para confirmar; luego te enviamos la lista.',
   errorEmail: 'Escribe un correo válido.',
   errorConsent: 'Marca la casilla para recibir la lista.',
   errorGeneric: 'Algo salió mal. Inténtalo de nuevo.',

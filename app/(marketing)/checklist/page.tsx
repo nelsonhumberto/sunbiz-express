@@ -4,7 +4,7 @@ import { ChecklistBoard } from '@/components/marketing/ChecklistBoard';
 import { checklistCopy } from '@/lib/drip-copy';
 import { withLocaleMeta } from '@/lib/locale-seo';
 
-const START_URL = 'https://launchforma.com';
+const START_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com').replace(/\/$/, '');
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

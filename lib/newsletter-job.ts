@@ -2,11 +2,15 @@ import 'server-only';
 
 import { prisma } from '@/lib/db';
 import { normalizeEmail } from '@/lib/email-address';
-import { sendEmail } from '@/lib/email';
+import { sendEmail, waitBetweenMarketingSends } from '@/lib/email';
 import { isRecordedEmailStatus } from '@/lib/email-status';
 import { isWeeklyNewsletterEnabled } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
-import { planMarketingClaim } from '@/lib/marketing-send-claim';
+import {
+  claimStatusAfterSend,
+  MARKETING_FINAL_STATUSES,
+  planMarketingClaim,
+} from '@/lib/marketing-send-claim';
 import {
   isEtWeekdayMorning,
   isNewsletterRecipient,
@@ -30,7 +34,9 @@ async function claimIssue(input: {
     where: { issueNumber_email: { issueNumber: input.issueNumber, email: input.email } },
   });
   const plan = planMarketingClaim(
-    existing ? { status: existing.status, claimedAt: existing.claimedAt } : null,
+    existing
+      ? { status: existing.status, claimedAt: existing.claimedAt, attemptCount: existing.attemptCount }
+      : null,
     input.now.getTime(),
   );
   if (plan === 'skip') return 'skip';
@@ -42,6 +48,7 @@ async function claimIssue(input: {
           email: input.email,
           locale: input.locale,
           status: 'PENDING',
+          attemptCount: 1,
           claimedAt: input.now,
         },
       });
@@ -58,7 +65,11 @@ async function claimIssue(input: {
       status: existing?.status,
       claimedAt: existing?.claimedAt,
     },
-    data: { status: 'PENDING', claimedAt: input.now },
+    data: {
+      status: 'PENDING',
+      claimedAt: input.now,
+      attemptCount: (existing?.attemptCount ?? 0) + 1,
+    },
   });
   return updated.count === 1 ? 'go' : 'skip';
 }
@@ -113,6 +124,13 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
       })
     : [];
   const optedOut = new Set(optOuts.map((row) => normalizeEmail(row.email)));
+  const suppressions = emails.length
+    ? await prisma.emailSuppression.findMany({
+        where: { email: { in: emails } },
+        select: { email: true },
+      })
+    : [];
+  const suppressed = new Set(suppressions.map((row) => normalizeEmail(row.email)));
   const prior = emails.length
     ? await prisma.newsletterSend.findMany({
         where: { email: { in: emails } },
@@ -123,15 +141,24 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  let paced = false;
 
   for (const row of subscribers) {
     const email = normalizeEmail(row.email);
+    if (optedOut.has(email)) {
+      await prisma.newsletterSend.updateMany({
+        where: { email, status: { notIn: [...MARKETING_FINAL_STATUSES] } },
+        data: { status: 'OPTED_OUT' },
+      });
+      skipped += 1;
+      continue;
+    }
     if (
       !isNewsletterRecipient({
         email,
         confirmedAt: row.confirmedAt,
         isTest: row.isTest,
-        unsubscribed: optedOut.has(email),
+        unsubscribed: false,
       }) ||
       !row.confirmedAt
     ) {
@@ -156,13 +183,27 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
     }
 
     const locale = row.locale === 'en' ? 'en' : 'es';
+    if (suppressed.has(email)) {
+      await prisma.newsletterSend.updateMany({
+        where: {
+          email,
+          issueNumber: issue,
+          status: { notIn: [...MARKETING_FINAL_STATUSES] },
+        },
+        data: { status: 'SUPPRESSED' },
+      });
+      skipped += 1;
+      continue;
+    }
     const claimed = await claimIssue({ issueNumber: issue, email, locale, now });
     if (claimed === 'skip') {
       skipped += 1;
       continue;
     }
-    const unsubscribeUrl = unsubscribeLink(SITE_URL, email);
+    const unsubscribeUrl = unsubscribeLink(SITE_URL, email, undefined, locale);
     try {
+      if (paced) await waitBetweenMarketingSends();
+      paced = true;
       const result = await sendEmail({
         type: 'WEEKLY_NEWSLETTER',
         to: email,
@@ -170,23 +211,20 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
         listUnsubscribeUrl: unsubscribeUrl,
         context: { locale, unsubscribeUrl, newsletterIssue: issue },
       });
-      if (isRecordedEmailStatus(result.status)) {
-        await prisma.newsletterSend.update({
-          where: { issueNumber_email: { issueNumber: issue, email } },
-          data: {
-            status: result.status,
-            sentAt: result.status === 'SENT' ? new Date() : null,
-            locale,
-          },
-        });
-        sent += 1;
-      } else {
-        await prisma.newsletterSend.update({
-          where: { issueNumber_email: { issueNumber: issue, email } },
-          data: { status: 'FAILED' },
-        });
-        failed += 1;
-      }
+      const outcome = claimStatusAfterSend({
+        deliveryStatus: result.status,
+        errorMessage: result.errorMessage,
+      });
+      await prisma.newsletterSend.update({
+        where: { issueNumber_email: { issueNumber: issue, email } },
+        data: {
+          status: outcome,
+          sentAt: outcome === 'SENT' ? new Date() : null,
+          locale,
+        },
+      });
+      if (outcome === 'SENT' || outcome === 'SKIPPED_TEST') sent += 1;
+      else failed += 1;
     } catch (err) {
       logger.error('weekly newsletter send failed', { area: 'cron', tag: 'newsletter' }, err);
       await prisma.newsletterSend.update({

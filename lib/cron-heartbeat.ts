@@ -58,22 +58,47 @@ function skippedCount(job: CronJobCounts, disabledFloor: boolean): number {
   return fromCounts;
 }
 
+function asCounts(job?: Partial<CronJobCounts> | null): CronJobCounts {
+  return {
+    scanned: job?.scanned ?? 0,
+    sent: job?.sent ?? 0,
+    skipped: job?.skipped,
+    failed: job?.failed,
+    disabled: job?.disabled,
+  };
+}
+
 export function buildRecoveryCronRun(input: {
   startedAt: Date;
   finishedAt: Date;
   drafts: CronJobCounts;
   ra: CronJobCounts;
+  postFormation?: Partial<CronJobCounts> | null;
+  newsletter?: Partial<CronJobCounts> | null;
+  error?: string | null;
 }): CronRunWrite {
+  const postFormation = asCounts(input.postFormation);
+  const newsletter = asCounts(input.newsletter);
   const disabled = input.drafts.disabled === true;
+  const seriesError = input.error?.trim() ? input.error.trim().slice(0, 500) : null;
   return {
     job: RECOVERY_CRON_JOB,
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
-    eligibleCount: input.drafts.scanned + input.ra.scanned,
-    sentCount: input.drafts.sent + input.ra.sent,
-    skippedCount: skippedCount(input.drafts, disabled) + skippedCount(input.ra, false),
-    failedCount: (input.drafts.failed ?? 0) + (input.ra.failed ?? 0),
-    error: disabled ? 'disabled' : null,
+    eligibleCount:
+      input.drafts.scanned + input.ra.scanned + postFormation.scanned + newsletter.scanned,
+    sentCount: input.drafts.sent + input.ra.sent + postFormation.sent + newsletter.sent,
+    skippedCount:
+      skippedCount(input.drafts, disabled) +
+      skippedCount(input.ra, false) +
+      skippedCount(postFormation, false) +
+      skippedCount(newsletter, false),
+    failedCount:
+      (input.drafts.failed ?? 0) +
+      (input.ra.failed ?? 0) +
+      (postFormation.failed ?? 0) +
+      (newsletter.failed ?? 0),
+    error: seriesError ?? (disabled ? 'disabled' : null),
   };
 }
 
@@ -82,6 +107,9 @@ export function buildRecoveryCronFailure(input: {
   finishedAt: Date;
   drafts?: CronJobCounts;
   ra?: CronJobCounts;
+  postFormation?: Partial<CronJobCounts> | null;
+  newsletter?: Partial<CronJobCounts> | null;
+  seriesError?: string | null;
   error: unknown;
 }): CronRunWrite {
   const drafts = input.drafts ?? { scanned: 0, sent: 0 };
@@ -91,11 +119,15 @@ export function buildRecoveryCronFailure(input: {
     finishedAt: input.finishedAt,
     drafts,
     ra,
+    postFormation: input.postFormation,
+    newsletter: input.newsletter,
   });
+  const thrown = sanitizeCronError(input.error);
+  const prior = input.seriesError?.trim();
   return {
     ...base,
     failedCount: base.failedCount + 1,
-    error: sanitizeCronError(input.error),
+    error: (prior ? `${prior}; ${thrown}` : thrown).slice(0, 500),
   };
 }
 

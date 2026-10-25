@@ -260,7 +260,7 @@ const ISSUE_001_ES: NewsletterIssueCopy = {
   preview: 'Separa el dinero del negocio y el personal, y anota una fecha que conviene guardar.',
   greeting: 'Hola,',
   intro:
-    'Bienvenido a la nota de esta semana para quienes están por emprender o acaban de empezar. Dos cosas rápidas, y vuelves a construir.',
+    'Te damos la bienvenida a la nota de esta semana para quienes están por emprender o acaban de empezar. Dos cosas rápidas y sigues con tu negocio.',
   sections: [
     {
       title: 'El consejo de la semana: separa el dinero del negocio',
@@ -301,7 +301,7 @@ const ISSUE_002_ES: NewsletterIssueCopy = {
   preview:
     'Una forma fácil de anotar los gastos del negocio, y el plazo del reporte anual de Florida para el calendario.',
   greeting: 'Hola,',
-  intro: 'Qué bueno tenerte de vuelta. Aquí van dos cosas rápidas para esta semana, y luego vuelves a construir.',
+  intro: 'Qué bueno tenerte de vuelta. Aquí van dos cosas rápidas para esta semana, y luego sigues con tu negocio.',
   sections: [
     {
       title: 'El consejo de la semana: anota los gastos sobre la marcha',

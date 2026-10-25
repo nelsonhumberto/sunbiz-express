@@ -846,6 +846,43 @@ export function renderTemplate(
 
 const FROM = process.env.EMAIL_FROM ?? 'LaunchForma <no-reply@launchforma.com>';
 
+/** Pause between marketing sends in one cron run so SMTP is not flooded. */
+export const MARKETING_SEND_GAP_MS = 200;
+
+export function waitBetweenMarketingSends(ms = MARKETING_SEND_GAP_MS): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type SmtpSender = {
+  sendMail: (message: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
+  }) => Promise<unknown>;
+};
+
+/** One SMTP connection for the life of this server instance (one cron run). */
+let smtpTransportPromise: Promise<SmtpSender> | null = null;
+
+async function sharedSmtpTransport(host: string, user: string, pass: string): Promise<SmtpSender> {
+  if (!smtpTransportPromise) {
+    const nodemailer = await import('nodemailer');
+    smtpTransportPromise = Promise.resolve(
+      nodemailer.createTransport({
+        host,
+        port: Number(process.env.SMTP_PORT ?? 587),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user, pass },
+      }),
+    );
+  }
+  return smtpTransportPromise;
+}
+
 interface DeliveryOptions {
   replyTo?: string;
   headers?: Record<string, string>;
@@ -900,13 +937,9 @@ async function deliverEmail(
 
   if (smtpHost && smtpUser && smtpPass) {
     // ── Option 2: SMTP (Google Workspace, etc.) ───────────────────────────
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user: smtpUser, pass: smtpPass },
-    });
+    // Reuse one transport for every message in this process, including a
+    // cron run that sends the newsletter and the post-formation series.
+    const transporter = await sharedSmtpTransport(smtpHost, smtpUser, smtpPass);
     await transporter.sendMail({
       from: FROM,
       to,

@@ -3,12 +3,11 @@ import 'server-only';
 import { prisma } from '@/lib/db';
 import { resolveDripLocale } from '@/lib/draft-recovery';
 import { normalizeEmail } from '@/lib/email-address';
-import { sendEmail, type NotificationType } from '@/lib/email';
-import { isRecordedEmailStatus } from '@/lib/email-status';
+import { sendEmail, waitBetweenMarketingSends, type NotificationType } from '@/lib/email';
 import { isPostFormationSeriesEnabled } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
-import { planMarketingClaim } from '@/lib/marketing-send-claim';
-import { evaluatePostFormation, type PostFormationStepId } from '@/lib/post-formation';
+import { claimStatusAfterSend, MARKETING_FINAL_STATUSES, planMarketingClaim } from '@/lib/marketing-send-claim';
+import { duePostFormationSteps, evaluatePostFormation, type PostFormationStepId } from '@/lib/post-formation';
 import { isUniqueConflict } from '@/lib/resume-drip-claim';
 import { unsubscribeLink } from '@/lib/unsubscribe';
 
@@ -40,7 +39,9 @@ async function claimStep(input: {
     where: { filingId_step: { filingId: input.filingId, step: input.step } },
   });
   const plan = planMarketingClaim(
-    existing ? { status: existing.status, claimedAt: existing.claimedAt } : null,
+    existing
+      ? { status: existing.status, claimedAt: existing.claimedAt, attemptCount: existing.attemptCount }
+      : null,
     input.now.getTime(),
   );
   if (plan === 'skip') return 'skip';
@@ -53,6 +54,7 @@ async function claimStep(input: {
           email: input.email,
           locale: input.locale,
           status: 'PENDING',
+          attemptCount: 1,
           claimedAt: input.now,
         },
       });
@@ -69,7 +71,11 @@ async function claimStep(input: {
       status: existing?.status,
       claimedAt: existing?.claimedAt,
     },
-    data: { status: 'PENDING', claimedAt: input.now },
+    data: {
+      status: 'PENDING',
+      claimedAt: input.now,
+      attemptCount: (existing?.attemptCount ?? 0) + 1,
+    },
   });
   return updated.count === 1 ? 'go' : 'skip';
 }
@@ -117,6 +123,13 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
       })
     : [];
   const optedOut = new Set(optOuts.map((row) => normalizeEmail(row.email)));
+  const suppressions = emails.length
+    ? await prisma.emailSuppression.findMany({
+        where: { email: { in: emails } },
+        select: { email: true },
+      })
+    : [];
+  const suppressed = new Set(suppressions.map((row) => normalizeEmail(row.email)));
   const prior = filings.length
     ? await prisma.postFormationSend.findMany({
         where: { filingId: { in: filings.map((filing) => filing.id) }, status: 'SENT' },
@@ -127,6 +140,7 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  let paced = false;
 
   for (const filing of filings) {
     const email = normalizeEmail(filing.user.email);
@@ -144,19 +158,50 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
       now,
     );
     if (!decision.ok) {
+      if (decision.reason === 'unsubscribed' && filing.sunbizApprovedAt) {
+        const steps = duePostFormationSteps(
+          filing.sunbizApprovedAt,
+          now,
+          prior.filter((row) => row.filingId === filing.id).map((row) => row.step),
+        );
+        if (steps.length > 0) {
+          await prisma.postFormationSend.updateMany({
+            where: {
+              filingId: filing.id,
+              step: { in: steps },
+              status: { notIn: [...MARKETING_FINAL_STATUSES] },
+            },
+            data: { status: 'OPTED_OUT' },
+          });
+        }
+      }
       skipped += 1;
       continue;
     }
 
     const locale = resolveDripLocale(filing.locale, filing.user.locale, filing.entryPath);
     for (const step of decision.steps) {
+      if (suppressed.has(email)) {
+        await prisma.postFormationSend.updateMany({
+          where: {
+            filingId: filing.id,
+            step,
+            status: { notIn: [...MARKETING_FINAL_STATUSES] },
+          },
+          data: { status: 'SUPPRESSED' },
+        });
+        skipped += 1;
+        continue;
+      }
       const claimed = await claimStep({ filingId: filing.id, step, email, locale, now });
       if (claimed === 'skip') {
         skipped += 1;
         continue;
       }
-      const unsubscribeUrl = unsubscribeLink(SITE_URL, email);
+      const unsubscribeUrl = unsubscribeLink(SITE_URL, email, undefined, locale);
       try {
+        if (paced) await waitBetweenMarketingSends();
+        paced = true;
         const result = await sendEmail({
           type: STEP_TYPE[step],
           to: email,
@@ -172,23 +217,20 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
             linkFilingId: filing.id,
           },
         });
-        if (isRecordedEmailStatus(result.status)) {
-          await prisma.postFormationSend.update({
-            where: { filingId_step: { filingId: filing.id, step } },
-            data: {
-              status: result.status,
-              sentAt: result.status === 'SENT' ? new Date() : null,
-              locale,
-            },
-          });
-          sent += 1;
-        } else {
-          await prisma.postFormationSend.update({
-            where: { filingId_step: { filingId: filing.id, step } },
-            data: { status: 'FAILED' },
-          });
-          failed += 1;
-        }
+        const outcome = claimStatusAfterSend({
+          deliveryStatus: result.status,
+          errorMessage: result.errorMessage,
+        });
+        await prisma.postFormationSend.update({
+          where: { filingId_step: { filingId: filing.id, step } },
+          data: {
+            status: outcome,
+            sentAt: outcome === 'SENT' ? new Date() : null,
+            locale,
+          },
+        });
+        if (outcome === 'SENT' || outcome === 'SKIPPED_TEST') sent += 1;
+        else failed += 1;
       } catch (err) {
         logger.error('post-formation send failed', { area: 'cron', tag: 'post-formation', entityId: filing.id }, err);
         await prisma.postFormationSend.update({

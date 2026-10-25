@@ -10,6 +10,7 @@ const ES_PATHS = [
   '/es/services',
   '/es/about',
   '/es/contacto',
+  '/es/llc-para/estilistas-barberos',
   '/es/file-annual-report',
   '/es/states',
   '/es/states/florida',

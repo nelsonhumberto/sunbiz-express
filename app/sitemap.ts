@@ -34,6 +34,13 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.6,
     hreflang: true,
   },
+  {
+    path: '/llc-for/stylists-barbers',
+    file: 'app/(marketing)/llc-for/stylists-barbers/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    hreflang: true,
+  },
   { path: '/file-annual-report', file: 'app/(marketing)/file-annual-report/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/states', file: 'app/(marketing)/states/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/boi-reporting', file: 'app/(marketing)/boi-reporting/page.tsx', changeFrequency: 'monthly', priority: 0.8 },

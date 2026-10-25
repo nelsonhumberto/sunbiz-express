@@ -36,6 +36,7 @@ const CORE_PAGES: LinkEntry[] = [
   { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, annual reports, and timelines.' },
   { title: 'About', path: '/about', note: 'Company mission: transparent, all-in business formation.' },
   { title: 'Contact', path: '/contact', note: 'Phone, mailing address, and the service inquiry form.' },
+  { title: 'LLC for Hair Stylists and Barbers', path: '/llc-for/stylists-barbers', note: 'Florida LLC formation for hair stylists and barbers. Essential is $149 and includes the $125 state fee. Spanish alternate: /es/llc-para/estilistas-barberos.' },
   { title: 'File an Annual Report', path: '/file-annual-report', note: 'Florida annual report filing service and deadlines.' },
   { title: 'BOI Reporting', path: '/boi-reporting', note: 'BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting (August 2026 final rule).' },
   { title: 'States', path: '/states', note: 'States where LaunchForma files and coming-soon states.' },
@@ -68,6 +69,7 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Preguntas frecuentes', path: '/es/faq', note: 'Preguntas sobre formación, agente registrado y reportes anuales.' },
   { title: 'Nosotros', path: '/es/about', note: 'Qué es LaunchForma y cómo trabajamos.' },
   { title: 'Contacto', path: '/es/contacto', note: 'Teléfono, dirección postal y el formulario de servicios.' },
+  { title: 'LLC para estilistas y barberos', path: '/es/llc-para/estilistas-barberos', note: 'LLC en Florida para estilistas y barberos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Alterna en inglés: /llc-for/stylists-barbers.' },
   { title: 'Reporte anual', path: '/es/file-annual-report', note: 'Presentación del reporte anual de Florida.' },
   { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final del 11 de agosto de 2026, fincen.gov/boi).' },
   { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },
@@ -95,6 +97,10 @@ function line(entry: LinkEntry): string {
   return `- [${entry.title}](${BASE_URL}${entry.path}): ${entry.note}`;
 }
 
+function published(entries: LinkEntry[]): string[] {
+  return entries.map(line);
+}
+
 function stateLines(): string[] {
   const active = ALL_MARKETING_STATES.filter(
     (s) => s.availability === 'active' && !isRetiredStateSlug(s.slug),
@@ -114,22 +120,22 @@ export function buildLlmsTxt(): string {
   parts.push(ABOUT);
   parts.push('');
   parts.push('## Core pages');
-  parts.push(...CORE_PAGES.map(line));
+  parts.push(...published(CORE_PAGES));
   parts.push('');
   parts.push('## Guides');
-  parts.push(...GUIDES.map(line));
+  parts.push(...published(GUIDES));
   parts.push('');
   parts.push('## States');
   parts.push(...stateLines());
   parts.push('');
   parts.push('## Legal');
-  parts.push(...LEGAL.map(line));
+  parts.push(...published(LEGAL));
   parts.push('');
   parts.push('## Español');
   parts.push(
     'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Los términos, el aviso legal y la política de reembolso en español siguen en borrador y rige la versión en inglés.',
   );
-  parts.push(...SPANISH_PAGES.map(line));
+  parts.push(...published(SPANISH_PAGES));
   parts.push('');
   parts.push('## Optional');
   parts.push(

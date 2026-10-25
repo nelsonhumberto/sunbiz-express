@@ -661,7 +661,7 @@ model ServiceInquiry {
   // Optional: the public form collects phone/WhatsApp, not email.
   email       String?
   phone       String
-  service     String   // registered_agent | operating_agreement | compliance_alerts | other
+  service     String   // registered_agent | operating_agreement | compliance_alerts | llc_reinstatement | late_annual_report | other
   message     String?
   locale      String   @default("en")
   utmSource   String?

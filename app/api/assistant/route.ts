@@ -21,7 +21,8 @@ import { buildSystemPrompt } from '@/lib/assistant/system-prompt';
 import { summarizeFiling } from '@/lib/assistant/redact';
 import { buildAssistantTools, type AssistantActor } from '@/lib/assistant/tools';
 import { assistantMaxOutputTokens } from '@/lib/assistant/limits';
-import { assistantConversationCapResponse } from '@/lib/assistant/conversation-cap';
+import { prepareAssistantTurn } from '@/lib/assistant/conversation-cap';
+import { attachAssistantSession } from '@/lib/assistant/chat-cookie';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Per-IP throttle - keeps cost + abuse bounded. In-memory, per instance.
+  // Fast per-IP throttle. In-memory, per instance. A database count of recent
+  // user messages is the cross-instance backstop inside prepareAssistantTurn.
   const ip = clientIp();
   const limit = rateLimit(`assistant:${ip}`, 30, 60 * 1000);
   if (!limit.ok) {
@@ -82,22 +84,21 @@ export async function POST(request: Request) {
     : null;
 
   const locale = body.locale === 'es' ? 'es' : 'en';
-  const conversationId =
-    typeof body.conversationId === 'string' ? body.conversationId.trim() : '';
+  const recent = body.messages.slice(-20);
+  const lastUserText = messageText([...recent].reverse().find((m) => m.role === 'user'));
 
-  // Turn cap uses stored user rows for this actor's conversation. A missing
-  // id, or an id this actor does not own, continues as before. A brand-new
-  // id is also counted against a small per-IP creation limit so rotating
-  // ids cannot skip the turn cap. Neither path calls the model when blocked.
-  if (conversationId) {
-    const capped = await assistantConversationCapResponse({
-      conversationId,
-      actor,
-      locale,
-      ip,
-    });
-    if (capped) return capped;
-  }
+  // The server assigns the conversation id. A missing id, an unknown id, and
+  // an id this caller does not own never select someone else's row. The user
+  // turn is stored before the model runs.
+  const prepared = await prepareAssistantTurn({
+    requestedId: body.conversationId,
+    actor,
+    locale,
+    ip,
+    userText: lastUserText,
+  });
+  if (prepared.kind === 'deny') return prepared.response;
+  const conversationId = prepared.conversationId;
 
   // Resolve + verify the active filing (ownership) so tools can read/write it.
   let filingId: string | null = null;
@@ -145,12 +146,8 @@ export async function POST(request: Request) {
     onWrite: () => {},
   });
 
-  // Keep cost bounded: only the most recent turns.
-  const recent = body.messages.slice(-20);
-  const lastUserText = messageText([...recent].reverse().find((m) => m.role === 'user'));
-  const modelMessages = await convertToModelMessages(recent);
-
   try {
+    const modelMessages = await convertToModelMessages(recent);
     const result = streamText({
       model: assistantModel,
       system,
@@ -158,36 +155,26 @@ export async function POST(request: Request) {
       tools,
       maxOutputTokens: assistantMaxOutputTokens(),
       stopWhen: stepCountIs(6),
-      onFinish: async ({ text }) => {
-        // Best-effort transcript persistence for handoff context + KB tuning.
-        if (!conversationId) return;
+      onFinish: async ({ text, finishReason, steps }) => {
+        if (finishReason === 'length' || steps.some((step) => step.finishReason === 'length')) {
+          logger.warn('assistant output length', { area: 'assistant', tag: 'length' });
+        }
+        const assistantText = text?.trim();
+        if (!assistantText) return;
         try {
-          await prisma.assistantConversation.upsert({
+          await prisma.assistantConversation.update({
             where: { id: conversationId },
-            create: {
-              id: conversationId,
-              actorId: actor?.id ?? null,
-              actorKind: actor?.kind ?? null,
-              filingId,
-              locale,
-            },
-            update: { updatedAt: new Date(), filingId },
+            data: { updatedAt: new Date(), filingId },
           });
-          const rows = [
-            ...(lastUserText ? [{ role: 'user', content: lastUserText }] : []),
-            ...(text?.trim() ? [{ role: 'assistant', content: text.trim() }] : []),
-          ];
-          if (rows.length) {
-            await prisma.assistantMessage.createMany({
-              data: rows.map((r) => ({ conversationId, ...r })),
-            });
-          }
+          await prisma.assistantMessage.create({
+            data: { conversationId, role: 'assistant', content: assistantText },
+          });
         } catch (err) {
           logger.error('assistant transcript persist failed', { area: 'assistant', tag: 'persist' }, err);
         }
       },
     });
-    return result.toUIMessageStreamResponse();
+    return attachAssistantSession(result.toUIMessageStreamResponse(), conversationId);
   } catch (err) {
     logger.error('assistant stream failed', { area: 'assistant', tag: 'stream' }, err);
     return NextResponse.json({ error: 'The assistant had a problem. Please try again.' }, { status: 500 });

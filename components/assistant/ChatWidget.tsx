@@ -43,17 +43,26 @@ export function ChatWidget() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const handledWrites = useRef<Set<string>>(new Set());
-  const conversationId = useRef<string>(
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2),
-  );
+  // The server assigns the id, returns it on x-assistant-conversation-id,
+  // and stores the signed value in the LF_CHAT cookie. This ref only echoes
+  // an id the server already issued.
+  const conversationId = useRef<string | undefined>(undefined);
 
   const filingId = filingIdFromPath(pathname);
   const onWizard = isWizardPath(pathname);
 
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: '/api/assistant' }),
+    () =>
+      new DefaultChatTransport({
+        api: '/api/assistant',
+        credentials: 'same-origin',
+        fetch: async (input, init) => {
+          const response = await globalThis.fetch(input, init);
+          const assigned = response.headers.get('x-assistant-conversation-id');
+          if (assigned) conversationId.current = assigned;
+          return response;
+        },
+      }),
     [],
   );
   const { messages, sendMessage, status } = useChat({ transport });
@@ -67,7 +76,13 @@ export function ChatWidget() {
     trackEvent('assistant_message_sent', { inWizard: !!filingId });
     void sendMessage(
       { text: trimmed },
-      { body: { filingId, locale, conversationId: conversationId.current } },
+      {
+        body: {
+          filingId,
+          locale,
+          ...(conversationId.current ? { conversationId: conversationId.current } : {}),
+        },
+      },
     );
   };
 

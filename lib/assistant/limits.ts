@@ -13,24 +13,39 @@ import { rateLimit } from '@/lib/rate-limit';
  * 1500 is too tight for that default. Published sweeps of deepseek-v4-pro at
  * high effort returned an empty answer at 2048 tokens and a finished answer
  * at 3072, and the model spends more of a larger budget on reasoning.
- * 4096 leaves room for a high-effort thought plus a short answer or a tool
+ * 6144 leaves room for a high-effort thought plus a short answer or a tool
  * call, and is still far under the 64K thinking default. Each streamText
  * step gets this budget. stopWhen stays stepCountIs(6).
  */
-export const DEFAULT_ASSISTANT_MAX_OUTPUT_TOKENS = 4096;
+export const DEFAULT_ASSISTANT_MAX_OUTPUT_TOKENS = 6144;
 
 /** Prior stored user turns allowed on one owned conversation. */
 export const DEFAULT_ASSISTANT_MAX_TURNS_PER_CONVERSATION = 20;
 
 /**
- * New conversation ids accepted per IP per window. The chat widget mints a
- * new id on each mount, so this has to allow a few refreshes, while stopping
- * a client from rotating ids to dodge the turn cap.
+ * New conversations accepted per IP per window on this instance. The server
+ * assigns the id. A few refreshes still fit, and rotating chats cannot skip
+ * the turn cap. The database hour count is the cross-instance backstop.
  */
 export const DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_IP = 12;
 
-/** Fixed window for the new-conversation limiter. In-memory, per instance. */
+/** Fixed window for the new-conversation limiter. */
 export const ASSISTANT_NEW_CONVERSATION_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * AssistantConversation rows allowed in the last hour, across instances.
+ * Counted from createdAt. There is no IP column, so anonymous chats share
+ * this ceiling. Logged-in and guest users also have a per-actor count.
+ */
+export const DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR = 120;
+
+/**
+ * User messages stored in the last minute, across every chat and instance.
+ * The in-memory 30/minute limit per IP stays in front of this.
+ */
+export const DEFAULT_ASSISTANT_MAX_USER_MESSAGES_PER_MINUTE = 180;
+
+export const ASSISTANT_MESSAGE_RATE_WINDOW_MS = 60 * 1000;
 
 const recentNewConversationIds = new Map<string, number>();
 
@@ -64,6 +79,20 @@ export function assistantMaxNewConversationsPerIp(): number {
   );
 }
 
+export function assistantMaxNewConversationsPerHour(): number {
+  return readPositiveInt(
+    process.env.ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR,
+    DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR,
+  );
+}
+
+export function assistantMaxUserMessagesPerMinute(): number {
+  return readPositiveInt(
+    process.env.ASSISTANT_MAX_USER_MESSAGES_PER_MINUTE,
+    DEFAULT_ASSISTANT_MAX_USER_MESSAGES_PER_MINUTE,
+  );
+}
+
 export function conversationOwnedBy(
   conversation: { actorId: string | null; actorKind: string | null },
   actor: { id: string; kind: string } | null,
@@ -82,13 +111,14 @@ function sweepRecentNewConversations(now: number) {
 }
 
 /**
- * Allow a conversation id that is not in the database yet.
- * The same id from the same IP inside the window counts once, so a retry
- * does not burn another slot. A different id does.
+ * Fast first gate before a server-assigned conversation is created.
+ * The same id from the same IP inside the window counts once. A different
+ * id consumes another slot.
  *
- * Limits: the bucket is in-memory on this server instance only. It resets
- * on a cold start and is not shared across instances. A request with no
- * conversation id is not a new conversation (the route does not create one).
+ * The bucket lives on this server instance only. It resets on a cold start
+ * and is not shared across instances. The route also counts
+ * AssistantConversation.createdAt in the last hour so another instance
+ * cannot skip the ceiling.
  */
 export function allowNewAssistantConversation(ip: string, conversationId: string): boolean {
   const now = Date.now();

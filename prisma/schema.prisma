@@ -557,16 +557,25 @@ model EinApplication {
 // Someone who checked the checklist opt-in. consent stays true and
 // consentAt is when they agreed. The row is not written unless they check
 // the box. consentText is the sentence they saw, including the policy URL.
+// confirmedAt stays null until they click the signed confirm link.
+// isTest marks qa+, e2e+, and @launchforma.com. Those rows are kept and
+// are never counted as subscribers.
 model ChecklistSignup {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  locale      String   @default("es")
-  consent     Boolean
-  consentAt   DateTime
-  consentText String
-  createdAt   DateTime @default(now())
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  locale                String    @default("es")
+  consent               Boolean
+  consentAt             DateTime
+  consentText           String
+  confirmedAt           DateTime?
+  confirmTokenHash      String?   @unique
+  confirmTokenExpiresAt DateTime?
+  isTest                Boolean   @default(false)
+  checklistSentAt       DateTime?
+  createdAt             DateTime  @default(now())
 
   @@index([createdAt])
+  @@index([isTest, confirmedAt])
 }
 
 // Marketing opt-out keyed by mailbox. The resume sequence and the checklist
@@ -577,6 +586,50 @@ model MarketingOptOut {
   email     String   @unique
   source    String   @default("unsubscribe")
   createdAt DateTime @default(now())
+  // Moves on every unsubscribe so a later checklist opt-in can be told
+  // apart from an unsubscribe that happened after that request.
+  updatedAt DateTime @updatedAt
+}
+
+// Approved weekly issues 001 and 002. English text from the copy files.
+// Sending uses lib/newsletter.ts so Spanish does not need a database read.
+model NewsletterIssue {
+  id        String   @id
+  subject   String
+  preview   String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+// One row per subscriber per issue. The unique pair is the send key.
+model NewsletterSend {
+  id          String    @id @default(cuid())
+  issueNumber String
+  email       String
+  locale      String
+  status      String    @default("PENDING")
+  claimedAt   DateTime  @default(now())
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([issueNumber, email])
+  @@index([email])
+}
+
+// One row per filing per post-formation step (DAY_3, DAY_14, DAY_30).
+model PostFormationSend {
+  id        String    @id @default(cuid())
+  filingId  String
+  step      String
+  email     String
+  locale    String
+  status    String    @default("PENDING")
+  claimedAt DateTime  @default(now())
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([filingId, step])
+  @@index([email])
 }
 
 // Email + state lead captured from non-Florida marketing pages so we can

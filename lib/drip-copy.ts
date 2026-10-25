@@ -115,9 +115,9 @@ export function resumeFrameCopy(locale: DripLocale): ResumeFrameCopy {
   return locale === 'en' ? FRAME_EN : FRAME_ES;
 }
 
-export interface ChecklistItem {
+export interface ChecklistSection {
   title: string;
-  body: string;
+  items: readonly string[];
 }
 
 export interface ChecklistCopy {
@@ -149,7 +149,16 @@ export interface ChecklistCopy {
   address: string;
   pageTitle: string;
   pageIntro: string;
-  items: readonly ChecklistItem[];
+  sections: readonly ChecklistSection[];
+  closerTitle: string;
+  closerBody: string;
+  closerCta: string;
+  pageDisclaimer: string;
+  confirmSubject: string;
+  confirmPreview: string;
+  confirmBody: string;
+  confirmCta: string;
+  confirmExpiry: string;
 }
 
 const CHECKLIST_EN: ChecklistCopy = {
@@ -184,43 +193,58 @@ const CHECKLIST_EN: ChecklistCopy = {
     'This checklist is for general information only and is not legal advice. LaunchForma is not a law firm.',
   unsubscribe: 'Unsubscribe',
   address: DRIP_MAILING_ADDRESS,
-  pageTitle: 'Starting your LLC',
+  pageTitle: 'Starting Your LLC: A One-Page Checklist',
   pageIntro:
-    'A simple, step by step list of what to have ready before you form your LLC. This is general information, not legal advice.',
-  items: [
+    'A simple list to help you go from idea to up-and-running. Check each box as you go.',
+  sections: [
     {
-      title: 'Business name',
-      body: 'The name you want for the company, plus one backup in case the state does not accept it.',
+      title: 'Plan',
+      items: [
+        'Pick your state of formation (often the state where you live and do business)',
+        'Choose a business name and check that it is available in your state',
+        'Check if a matching domain and social handles are free',
+        'Decide who the members are and how ownership is split',
+      ],
     },
     {
-      title: 'Entity type',
-      body: 'Whether you are forming an LLC or a corporation.',
+      title: 'Form',
+      items: [
+        'Choose a registered agent with a physical address in your state',
+        'File your Articles of Organization (some states call it a Certificate of Formation)',
+        'Write an Operating Agreement, even if you are the only member',
+        'Get an EIN from the IRS (free at irs.gov)',
+      ],
     },
     {
-      title: 'Addresses',
-      body: 'A principal address and a mailing address.',
+      title: 'Set up',
+      items: [
+        'Open a business bank account and keep business money separate',
+        'Check which local, state, or industry licenses and permits you need',
+        'Register for state taxes if you sell taxable goods or hire employees',
+        'Set up simple bookkeeping from day one',
+      ],
     },
     {
-      title: 'Owners and managers',
-      body: 'Who owns the company, who manages it, and how ownership is split.',
-    },
-    {
-      title: 'Registered agent',
-      body: 'A person or company with a street address in the formation state who can receive legal mail.',
-    },
-    {
-      title: 'Organizer',
-      body: 'The person who will sign the formation documents.',
-    },
-    {
-      title: 'EIN',
-      body: 'Whether you want a federal tax ID, and who the responsible party will be.',
-    },
-    {
-      title: 'Payment',
-      body: 'How you will pay the state fee and the service fee.',
+      title: 'Stay in good standing',
+      items: [
+        "Put your state's annual report or annual fee date on your calendar",
+        'Keep your registered agent and business address up to date',
+        'Store your formation documents, EIN letter, and agreements in one safe place',
+        'Review your filings once a year',
+      ],
     },
   ],
+  closerTitle: 'Want the forms handled for you?',
+  closerBody:
+    'LaunchForma files your LLC online, step by step, so you can focus on your business.',
+  closerCta: 'Start your LLC at LaunchForma',
+  pageDisclaimer: 'This checklist is general information, not legal or tax advice.',
+  confirmSubject: 'Confirm your email for the checklist',
+  confirmPreview: 'One click and we will send your free Starting your LLC checklist.',
+  confirmBody:
+    'Please confirm your email so we can send your free "Starting your LLC" checklist.',
+  confirmCta: 'Confirm my email',
+  confirmExpiry: 'This link expires in 48 hours. If you did not ask for this, you can ignore this email.',
 };
 
 const CHECKLIST_ES: ChecklistCopy = {
@@ -256,43 +280,57 @@ const CHECKLIST_ES: ChecklistCopy = {
     'Esta lista es solo información general y no es asesoría legal. LaunchForma no es un bufete de abogados.',
   unsubscribe: 'Cancelar suscripción',
   address: DRIP_MAILING_ADDRESS,
-  pageTitle: 'Cómo empezar tu LLC',
+  pageTitle: 'Cómo empezar tu LLC: una lista de una página',
   pageIntro:
-    'Una lista sencilla, paso a paso, de lo que debes tener listo antes de formar tu LLC. Es información general, no asesoría legal.',
-  items: [
+    'Una lista sencilla para pasar de la idea a tener el negocio en marcha. Marca cada casilla a medida que avanzas.',
+  sections: [
     {
-      title: 'Nombre del negocio',
-      body: 'El nombre que quieres para la empresa y uno de respaldo por si el estado no lo acepta.',
+      title: 'Planear',
+      items: [
+        'Elige el estado donde vas a formar la empresa (muchas veces el estado donde vives y trabajas)',
+        'Elige el nombre del negocio y confirma que esté disponible en tu estado',
+        'Revisa si el dominio y los nombres en redes sociales están libres',
+        'Decide quiénes son los miembros y cómo se reparte la propiedad',
+      ],
     },
     {
-      title: 'Tipo de entidad',
-      body: 'Si vas a formar una LLC o una corporación.',
+      title: 'Formar',
+      items: [
+        'Elige un agente registrado con dirección física en tu estado',
+        'Presenta los artículos de organización (en algunos estados se llaman certificado de formación)',
+        'Escribe un acuerdo operativo, aunque seas el único miembro',
+        'Obtén un EIN del IRS (gratis en irs.gov)',
+      ],
     },
     {
-      title: 'Direcciones',
-      body: 'Una dirección principal y una dirección postal.',
+      title: 'Poner en marcha',
+      items: [
+        'Abre una cuenta bancaria del negocio y separa el dinero de la empresa',
+        'Revisa qué licencias y permisos locales, estatales o de tu industria necesitas',
+        'Regístrate para impuestos estatales si vendes bienes gravados o contratas empleados',
+        'Lleva una contabilidad simple desde el primer día',
+      ],
     },
     {
-      title: 'Dueños y administradores',
-      body: 'Quién es dueño, quién administra y cómo se reparte la propiedad.',
-    },
-    {
-      title: 'Agente registrado',
-      body: 'Una persona o empresa con dirección física en el estado de formación que pueda recibir correspondencia legal.',
-    },
-    {
-      title: 'Organizador',
-      body: 'La persona que firmará los documentos de formación.',
-    },
-    {
-      title: 'EIN',
-      body: 'Si quieres un número de identificación fiscal federal y quién será la parte responsable.',
-    },
-    {
-      title: 'Pago',
-      body: 'Cómo pagarás la tarifa del estado y la tarifa del servicio.',
+      title: 'Mantenerte al día',
+      items: [
+        'Anota en tu calendario la fecha del reporte anual o de la cuota anual de tu estado',
+        'Mantén al día el agente registrado y la dirección del negocio',
+        'Guarda en un solo lugar seguro los documentos de formación, la carta del EIN y los acuerdos',
+        'Revisa tus presentaciones una vez al año',
+      ],
     },
   ],
+  closerTitle: '¿Quieres que nosotros nos encarguemos de los formularios?',
+  closerBody:
+    'LaunchForma presenta tu LLC en línea, paso a paso, para que tú te concentres en el negocio.',
+  closerCta: 'Empieza tu LLC en LaunchForma',
+  pageDisclaimer: 'Esta lista es información general, no asesoría legal ni fiscal.',
+  confirmSubject: 'Confirma tu correo para recibir la lista',
+  confirmPreview: 'Un clic y te enviamos la lista gratis para empezar tu LLC.',
+  confirmBody: 'Confirma tu correo para que te enviemos la lista gratis "Cómo empezar tu LLC".',
+  confirmCta: 'Confirmar mi correo',
+  confirmExpiry: 'Este enlace vence en 48 horas. Si no pediste esta lista, ignora este correo.',
 };
 
 export function checklistCopy(locale: DripLocale): ChecklistCopy {
@@ -373,7 +411,16 @@ export function allDripCopyText(): string {
       list.disclaimer,
       list.pageTitle,
       list.pageIntro,
-      ...list.items.flatMap((item) => [item.title, item.body]),
+      list.closerTitle,
+      list.closerBody,
+      list.closerCta,
+      list.pageDisclaimer,
+      list.confirmSubject,
+      list.confirmPreview,
+      list.confirmBody,
+      list.confirmCta,
+      list.confirmExpiry,
+      ...list.sections.flatMap((section) => [section.title, ...section.items]),
     );
   }
   return chunks.join('\n');

@@ -40,7 +40,7 @@ async function recordOptOut(email: string) {
   await prisma.marketingOptOut.upsert({
     where: { email: normalized },
     create: { email: normalized, source: 'unsubscribe' },
-    update: {},
+    update: { source: 'unsubscribe' },
   });
 }
 

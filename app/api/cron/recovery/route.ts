@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { buildRecoveryCronFailure, buildRecoveryCronRun, writeCronRun } from '@/lib/cron-heartbeat';
 import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-recovery';
+import { isPostFormationSeriesEnabled, isWeeklyNewsletterEnabled } from '@/lib/feature-flags';
+import { logger } from '@/lib/logger';
 
 // Recovery + retention scheduler.
 //
@@ -31,6 +33,12 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 // job stores the error text with secrets removed. The insert is swallowed if
 // it fails, so the heartbeat cannot change the cron result.
 //
+// When POST_FORMATION_SERIES_ENABLED is on, the same runs send the day 3,
+// day 14, and day 30 notes. When WEEKLY_NEWSLETTER_ENABLED is on, the
+// 13:00 UTC run (morning Eastern) sends issue 001 and 002. Both flags
+// default off. The other three daily runs are outside the morning window,
+// so the newsletter job records a skip and does not send.
+//
 // Annual report reminders are handled separately.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
@@ -59,9 +67,29 @@ export async function GET(request: Request) {
   const now = startedAt.getTime();
   let draftStats: Awaited<ReturnType<typeof runScheduledDraftRecovery>> | undefined;
   let raStats: Awaited<ReturnType<typeof runRaRenewalReminders>> | undefined;
+  let postFormation: { disabled?: boolean; sent?: number; failed?: number } = { disabled: true };
+  let newsletter: { disabled?: boolean; sent?: number; failed?: number } = { disabled: true };
   try {
     draftStats = await runScheduledDraftRecovery(now);
     raStats = await runRaRenewalReminders(now);
+    if (isPostFormationSeriesEnabled()) {
+      try {
+        const { runPostFormationSeries } = await import('@/lib/post-formation-job');
+        postFormation = await runPostFormationSeries(now);
+      } catch (error) {
+        logger.error('post-formation series failed', { area: 'cron', tag: 'post-formation' }, error);
+        postFormation = { disabled: false, failed: 1 };
+      }
+    }
+    if (isWeeklyNewsletterEnabled()) {
+      try {
+        const { runWeeklyNewsletter } = await import('@/lib/newsletter-job');
+        newsletter = await runWeeklyNewsletter(now);
+      } catch (error) {
+        logger.error('weekly newsletter failed', { area: 'cron', tag: 'newsletter' }, error);
+        newsletter = { disabled: false, failed: 1 };
+      }
+    }
     await writeCronRun(
       buildRecoveryCronRun({
         startedAt,
@@ -70,7 +98,13 @@ export async function GET(request: Request) {
         ra: raStats,
       }),
     );
-    return NextResponse.json({ ok: true, drafts: draftStats, raRenewals: raStats });
+    return NextResponse.json({
+      ok: true,
+      drafts: draftStats,
+      raRenewals: raStats,
+      postFormation,
+      newsletter,
+    });
   } catch (error) {
     await writeCronRun(
       buildRecoveryCronFailure({

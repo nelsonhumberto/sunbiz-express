@@ -19,7 +19,11 @@ import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
-import { buildChecklistEmail, buildResumeEmail } from './drip-email';
+import { buildChecklistConfirmEmail, buildChecklistEmail, buildResumeEmail } from './drip-email';
+import { buildNewsletterEmail } from './newsletter-email';
+import { buildPostFormationEmail } from './post-formation-email';
+import type { NewsletterIssueNumber } from './newsletter';
+import type { PostFormationStepId } from './post-formation';
 import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
 import { isResumeDripType, RESUME_DRIP_MAX_ATTEMPTS } from './resume-drip-claim';
@@ -36,7 +40,12 @@ export type NotificationType =
   | 'RESUME_1H'
   | 'RESUME_1D'
   | 'RESUME_3D'
+  | 'CHECKLIST_CONFIRM'
   | 'CHECKLIST_DELIVERY'
+  | 'POST_FORMATION_DAY_3'
+  | 'POST_FORMATION_DAY_14'
+  | 'POST_FORMATION_DAY_30'
+  | 'WEEKLY_NEWSLETTER'
   | 'DRAFT_REENGAGE'
   | 'RA_RENEWAL_60'
   | 'RA_RENEWAL_30'
@@ -84,6 +93,12 @@ interface EmailContext {
   locale?: string;
   /** Signed unsubscribe URL for marketing mail. */
   unsubscribeUrl?: string;
+  /** Signed confirm link for the checklist double opt-in. */
+  checklistConfirmUrl?: string;
+  /** Weekly issue. Defaults to 001 when missing. */
+  newsletterIssue?: NewsletterIssueNumber;
+  /** Filing id used in post-formation certificate links. */
+  linkFilingId?: string;
   // ── Manual draft re-engagement ──
   /** State name shown next to the entity type (e.g. "Florida"). */
   stateName?: string;
@@ -149,6 +164,8 @@ export interface SendEmailArgs {
    * The resume drip claims the row (PENDING) before delivery.
    */
   notificationId?: string;
+  /** Stored on EmailNotification.step. The weekly issue number uses this. */
+  step?: string;
 }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -328,6 +345,21 @@ const TEMPLATES: Record<
   RESUME_1H: (ctx) => resumeDripTemplate('RESUME_1H', ctx),
   RESUME_1D: (ctx) => resumeDripTemplate('RESUME_1D', ctx),
   RESUME_3D: (ctx) => resumeDripTemplate('RESUME_3D', ctx),
+  CHECKLIST_CONFIRM: (ctx) => {
+    const built = buildChecklistConfirmEmail({
+      locale: ctx.locale,
+      firstName: ctx.firstName,
+      confirmUrl: ctx.checklistConfirmUrl ?? `${siteUrl}/checklist`,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+    });
+    return {
+      subject: built.subject,
+      body: wrap(built.inner, {
+        locale: dripShellLocale(ctx.locale),
+        preferencesUrl: ctx.unsubscribeUrl,
+      }),
+    };
+  },
   CHECKLIST_DELIVERY: (ctx) => {
     const built = buildChecklistEmail({
       locale: ctx.locale,
@@ -337,7 +369,27 @@ const TEMPLATES: Record<
     });
     return {
       subject: built.subject,
-      body: wrap(built.inner, { locale: dripShellLocale(ctx.locale) }),
+      body: wrap(built.inner, {
+        locale: dripShellLocale(ctx.locale),
+        preferencesUrl: ctx.unsubscribeUrl,
+      }),
+    };
+  },
+  POST_FORMATION_DAY_3: (ctx) => postFormationTemplate('DAY_3', ctx),
+  POST_FORMATION_DAY_14: (ctx) => postFormationTemplate('DAY_14', ctx),
+  POST_FORMATION_DAY_30: (ctx) => postFormationTemplate('DAY_30', ctx),
+  WEEKLY_NEWSLETTER: (ctx) => {
+    const issue: NewsletterIssueNumber = ctx.newsletterIssue === '002' ? '002' : '001';
+    const locale = dripShellLocale(ctx.locale);
+    const built = buildNewsletterEmail({
+      issue,
+      locale,
+      siteUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl ?? `${siteUrl}/unsubscribe`,
+    });
+    return {
+      subject: built.subject,
+      body: wrap(built.inner, { locale, preferencesUrl: ctx.unsubscribeUrl }),
     };
   },
   DRAFT_REENGAGE: ({
@@ -729,6 +781,26 @@ function wrap(
 </html>`;
 }
 
+function postFormationTemplate(
+  step: PostFormationStepId,
+  ctx: EmailContext,
+): { subject: string; body: string } {
+  const locale = dripShellLocale(ctx.locale);
+  const built = buildPostFormationEmail({
+    step,
+    locale,
+    firstName: ctx.firstName,
+    businessName: ctx.businessName,
+    filingId: ctx.linkFilingId ?? '',
+    siteUrl,
+    unsubscribeUrl: ctx.unsubscribeUrl ?? `${siteUrl}/unsubscribe`,
+  });
+  return {
+    subject: built.subject,
+    body: wrap(built.inner, { locale, preferencesUrl: ctx.unsubscribeUrl }),
+  };
+}
+
 function resumeDripTemplate(
   step: ResumeStepId,
   ctx: EmailContext,
@@ -893,7 +965,11 @@ export async function sendEmail(args: SendEmailArgs) {
         notificationType: args.type,
         filingId: args.filingId,
         userId: args.userId,
-        ...(isResumeDripType(args.type) ? { step: args.type } : {}),
+        ...(args.step
+          ? { step: args.step }
+          : isResumeDripType(args.type)
+            ? { step: args.type }
+            : {}),
       },
     });
   }

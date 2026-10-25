@@ -60,7 +60,7 @@ const CHANNELS: Record<string, ChannelPreset> = {
     source: 'linkedin',
     medium: 'paid-social',
     dynamic: '(set the campaign name in the URL)',
-    note: 'LinkedIn appends li_fat_id on click. The site stores it with the other attribution fields. Use /business-services for registered-agent, document, and reminder campaigns.',
+    note: 'Use /business-services for registered-agent, document, and reminder campaigns.',
   },
   chatgpt: {
     label: 'ChatGPT ads',
@@ -400,7 +400,7 @@ export function UtmBuilder() {
           Tip: keep <code>utm_campaign</code> values lowercase and hyphenated (e.g.{' '}
           <code>es-fl-latinofounder</code>). Campaigns starting with <code>es-</code> or{' '}
           <code>en-</code> auto-set the site language (in addition to <code>?lang=</code>).
-          Prefer <code>/start</code> for formation campaigns. LinkedIn (<code>linkedin</code> / <code>paid-social</code>) and ChatGPT ads (<code>chatgpt</code> / <code>cpc</code>) for registered-agent, document, and reminder services should use <code>/business-services</code> or <code>/es/business-services</code>. Google appends <code>gclid</code> and LinkedIn appends <code>li_fat_id</code>; both are stored with the UTM cookie.
+          Prefer <code>/start</code> for formation campaigns. LinkedIn (<code>linkedin</code> / <code>paid-social</code>) and ChatGPT ads (<code>chatgpt</code> / <code>cpc</code>) for registered-agent, document, and reminder services should use <code>/business-services</code> or <code>/es/business-services</code>. Google appends <code>gclid</code>, which is stored with the UTM cookie.
         </p>
       </section>
     </div>

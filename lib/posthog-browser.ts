@@ -139,12 +139,13 @@ if (typeof window !== 'undefined') {
 }
 if (typeof window !== 'undefined' && POSTHOG_KEY && POSTHOG_ENV === 'production') {
   if (!posthog.__loaded) {
+    replayStoppedByRoute = isSessionReplayBlockedPath(window.location.pathname);
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
       person_profiles: 'identified_only',
       capture_pageview: 'history_change',
       capture_pageleave: true,
-      disable_session_recording: isSessionReplayBlockedPath(window.location.pathname),
+      disable_session_recording: replayStoppedByRoute,
       session_recording: {
         maskAllInputs: sessionRecordingPrivacy.maskAllInputs,
         maskTextSelector: sessionRecordingPrivacy.maskTextSelector,

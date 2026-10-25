@@ -13,7 +13,7 @@ export const UTM_PARAMS = [
 ] as const;
 
 /** Click identifiers appended by ad platforms. Kept beside UTMs in `lf_utm`. */
-export const CLICK_ID_PARAMS = ['gclid', 'li_fat_id'] as const;
+export const CLICK_ID_PARAMS = ['gclid'] as const;
 
 export type UtmParam = (typeof UTM_PARAMS)[number];
 export type ClickIdParam = (typeof CLICK_ID_PARAMS)[number];
@@ -23,7 +23,7 @@ export type UtmData = Partial<Record<AttributionParam, string>>;
 export const UTM_COOKIE = 'lf_utm';
 export const UTM_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const UTM_VALUE_MAX = 128;
-/** `li_fat_id` is longer than a typical UTM value. */
+/** Click IDs can be longer than a typical UTM value. */
 const CLICK_ID_MAX = 512;
 
 const ATTRIBUTION_PARAMS: readonly AttributionParam[] = [...UTM_PARAMS, ...CLICK_ID_PARAMS];
@@ -70,8 +70,8 @@ export function utmFromSearchParams(
 
 /**
  * Last-touch UTMs replace the previous utm_* keys. Click IDs overlay: a later
- * URL without `gclid` / `li_fat_id` keeps the ones already stored, and a new
- * click ID replaces only that key.
+ * URL without `gclid` keeps the one already stored, and a new click ID
+ * replaces only that key.
  */
 export function mergeAttribution(existing: UtmData | null, incoming: UtmData): UtmData {
   const next: UtmData = { ...(existing ?? {}) };
@@ -114,7 +114,6 @@ export function utmToPrismaFields(utm: UtmData | null | undefined) {
     utmContent: utm.utm_content ?? null,
     utmTerm: utm.utm_term ?? null,
     gclid: utm.gclid ?? null,
-    liFatId: utm.li_fat_id ?? null,
   };
 }
 
@@ -127,7 +126,6 @@ export function utmToAnalyticsProps(utm: UtmData | null | undefined) {
     utm_content: utm.utm_content,
     utm_term: utm.utm_term,
     gclid: utm.gclid,
-    li_fat_id: utm.li_fat_id,
   };
 }
 

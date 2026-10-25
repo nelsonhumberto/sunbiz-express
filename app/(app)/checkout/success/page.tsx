@@ -115,7 +115,6 @@ export default async function CheckoutSuccessPage({
               utmContent: filing.utmContent,
               utmTerm: filing.utmTerm,
               gclid: filing.gclid,
-              liFatId: filing.liFatId,
             }
           : undefined
       }

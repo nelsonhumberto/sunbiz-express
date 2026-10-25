@@ -6,23 +6,12 @@
  * Conversion IDs have no fallback — those events stay no-ops until set.
  */
 
-export const LINKEDIN_PARTNER_ID_FALLBACK = '9874554';
 export const OPENAI_PIXEL_ID_FALLBACK = 'HLuEiBiKzL32aoTo43Z5BV';
 
 export function publicEnvOrFallback(value: string | undefined, fallback: string): string | null {
   if (value === undefined) return fallback;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-/** LinkedIn Insight Tag partner ID. Digits only, so it is safe to inline. */
-export function linkedInPartnerId(): string | null {
-  const id = publicEnvOrFallback(
-    process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID,
-    LINKEDIN_PARTNER_ID_FALLBACK,
-  );
-  if (!id || !/^\d{1,12}$/.test(id)) return null;
-  return id;
 }
 
 /** OpenAI Ads Measurement Pixel ID. */

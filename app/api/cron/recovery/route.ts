@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildRecoveryCronFailure, buildRecoveryCronRun, writeCronRun } from '@/lib/cron-heartbeat';
 import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-recovery';
 
 // Recovery + retention scheduler.
@@ -25,6 +26,11 @@ import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-re
 //      day wide and EmailNotification dedupes the type, so a later run the
 //      same day still sends each reminder once.
 //
+// Each invocation writes one CronRun heartbeat after the jobs finish, including
+// a skipped row with error "disabled" when RESUME_DRIP_ENABLED is off. A thrown
+// job stores the error text with secrets removed. The insert is swallowed if
+// it fails, so the heartbeat cannot change the cron result.
+//
 // Annual report reminders are handled separately.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
@@ -49,9 +55,32 @@ export async function GET(request: Request) {
     }
   }
 
-  const now = Date.now();
-  const draftStats = await runScheduledDraftRecovery(now);
-  const raStats = await runRaRenewalReminders(now);
-
-  return NextResponse.json({ ok: true, drafts: draftStats, raRenewals: raStats });
+  const startedAt = new Date();
+  const now = startedAt.getTime();
+  let draftStats: Awaited<ReturnType<typeof runScheduledDraftRecovery>> | undefined;
+  let raStats: Awaited<ReturnType<typeof runRaRenewalReminders>> | undefined;
+  try {
+    draftStats = await runScheduledDraftRecovery(now);
+    raStats = await runRaRenewalReminders(now);
+    await writeCronRun(
+      buildRecoveryCronRun({
+        startedAt,
+        finishedAt: new Date(),
+        drafts: draftStats,
+        ra: raStats,
+      }),
+    );
+    return NextResponse.json({ ok: true, drafts: draftStats, raRenewals: raStats });
+  } catch (error) {
+    await writeCronRun(
+      buildRecoveryCronFailure({
+        startedAt,
+        finishedAt: new Date(),
+        drafts: draftStats,
+        ra: raStats,
+        error,
+      }),
+    );
+    throw error;
+  }
 }

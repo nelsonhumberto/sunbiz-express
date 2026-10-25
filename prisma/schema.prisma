@@ -736,6 +736,23 @@ model Lead {
   @@map("leads")
 }
 
+// One row per /api/cron/recovery invocation. The write is best-effort:
+// a failure here must not stop the cron. RLS is on and there are no
+// policies; Prisma connects as the table owner.
+model CronRun {
+  id            String    @id @default(cuid())
+  job           String
+  startedAt     DateTime
+  finishedAt    DateTime?
+  eligibleCount Int       @default(0)
+  sentCount     Int       @default(0)
+  skippedCount  Int       @default(0)
+  failedCount   Int       @default(0)
+  error         String?
+
+  @@index([job, startedAt])
+}
+
 model AssistantMessage {
   id             String                @id @default(cuid())
   conversationId String

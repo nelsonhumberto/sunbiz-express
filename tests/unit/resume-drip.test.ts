@@ -217,8 +217,14 @@ describe('qa and e2e skip', () => {
       'admin@launchforma.com',
       'social@LaunchForma.com',
       'NelsonHumberto@Gmail.com',
+      'NelsonHumberto+x@Gmail.com',
+      'nelsonhumberto+tag+more@gmail.com',
+      'x@mail.launchforma.com',
+      'social+news@Mail.LaunchForma.com',
       'dev@Intelepeer.ai',
+      'a@sub.intelepeer.ai',
       'qa@Aqurio.com',
+      'person+alias@a.b.aqurio.com',
       'A@Resend.dev',
       'qa+draft@gmail.com',
       'e2e+signup@example.com',
@@ -230,11 +236,13 @@ describe('qa and e2e skip', () => {
     }
     const kept = [
       'buyer@example.com',
-      'ada@sub.launchforma.com',
+      'buyer+qa@example.com',
       'ada@launchforma.com.evil',
+      'ada@notlaunchforma.com',
       'dev@intelepeer.ai.evil',
       'qa@aqurio.com.evil',
       'nelsonhumberto@gmail.com.evil',
+      'not-nelsonhumberto+x@gmail.com',
       'not-nelsonhumberto@gmail.com',
     ];
     for (const email of kept) {
@@ -244,7 +252,11 @@ describe('qa and e2e skip', () => {
     }
     const json = JSON.stringify(resumeDraftListArgs(Date.parse('2026-10-24T12:00:00.000Z')).where);
     expect(json).toContain('@launchforma.com');
+    expect(json).toContain('.launchforma.com');
+    expect(json).toContain('.intelepeer.ai');
+    expect(json).toContain('.aqurio.com');
     expect(json).toContain('nelsonhumberto@gmail.com');
+    expect(json).toContain('nelsonhumberto+');
     expect(json).toContain('@intelepeer.ai');
     expect(json).toContain('@aqurio.com');
     expect(json).toContain('@resend.dev');

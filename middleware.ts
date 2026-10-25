@@ -17,7 +17,14 @@ import {
   AD_OPT_OUT_GPC_VALUE,
   adOptOutCookieSecure,
   gpcCookieDecision,
+  isAdMeasurementOptedOut,
 } from '@/lib/ad-opt-out';
+import {
+  AFFILIATE_COOKIE,
+  AFFILIATE_MAX_AGE_SECONDS,
+  affiliateEnabled,
+  referralCookieValue,
+} from '@/lib/affiliate';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
 
@@ -96,6 +103,35 @@ export function middleware(request: NextRequest) {
     return response;
   };
 
+  // ?ref= is first-party partner attribution, not ad measurement.
+  // The flag defaults off, and then this writes nothing.
+  // Opt-out still stores the code alone (no click time, no localStorage).
+  const finish = (response: NextResponse): NextResponse => {
+    const withGpc = withGpcOptOut(response);
+    if (!affiliateEnabled()) return withGpc;
+    const ref = searchParams.get('ref');
+    if (!ref) return withGpc;
+    const optedOut = isAdMeasurementOptedOut({
+      cookie: request.cookies.get(AD_OPT_OUT_COOKIE)?.value ?? null,
+      secGpc: request.headers.get('sec-gpc'),
+    });
+    const value = referralCookieValue({
+      enabled: true,
+      optedOut,
+      code: ref,
+      capturedAtMs: Date.now(),
+    });
+    if (!value) return withGpc;
+    withGpc.cookies.set(AFFILIATE_COOKIE, value, {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: AFFILIATE_MAX_AGE_SECONDS,
+      secure: adOptOutCookieSecure(),
+      httpOnly: false,
+    });
+    return withGpc;
+  };
+
   // ── Canonical host enforcement ─────────────────────────────────────────
   // Forward any request landing on a non-canonical host (the old
   // sunbiz-express.vercel.app checkout host, raw preview URLs, etc.) to
@@ -115,7 +151,7 @@ export function middleware(request: NextRequest) {
       const target = request.nextUrl.clone();
       target.host = PRIMARY_CANONICAL_HOST;
       target.protocol = 'https:';
-      return withGpcOptOut(NextResponse.redirect(target, { status: 308 }));
+      return finish(NextResponse.redirect(target, { status: 308 }));
     }
   }
 
@@ -125,7 +161,7 @@ export function middleware(request: NextRequest) {
   if (unprefixed) {
     const url = request.nextUrl.clone();
     url.pathname = unprefixed;
-    return withGpcOptOut(NextResponse.redirect(url, 308));
+    return finish(NextResponse.redirect(url, 308));
   }
 
   // Delaware and Wyoming marketing URLs 308 to the Florida equivalent.
@@ -134,7 +170,7 @@ export function middleware(request: NextRequest) {
   if (retiredTo) {
     const url = request.nextUrl.clone();
     url.pathname = retiredTo;
-    return withGpcOptOut(NextResponse.redirect(url, 308));
+    return finish(NextResponse.redirect(url, 308));
   }
 
   // Localized slugs (`/contact` vs `/es/contacto`). Non-canonical URLs 308
@@ -143,7 +179,7 @@ export function middleware(request: NextRequest) {
   if (slugTo) {
     const url = request.nextUrl.clone();
     url.pathname = slugTo;
-    return withGpcOptOut(NextResponse.redirect(url, 308));
+    return finish(NextResponse.redirect(url, 308));
   }
 
   // `?lang=` moves onto the path. This response does not set NEXT_LOCALE.
@@ -152,7 +188,7 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = localeJump.pathname;
     url.search = localeJump.search ? `?${localeJump.search}` : '';
-    return withGpcOptOut(NextResponse.redirect(url, 308));
+    return finish(NextResponse.redirect(url, 308));
   }
 
   const strippedPath = stripSpanishPrefix(pathname);
@@ -165,7 +201,7 @@ export function middleware(request: NextRequest) {
   if (appPath === '/wizard') {
     const url = request.nextUrl.clone();
     url.pathname = localeFromPublicPath(pathname) === 'es' ? '/es/start' : '/start';
-    return withGpcOptOut(NextResponse.redirect(url, 308));
+    return finish(NextResponse.redirect(url, 308));
   }
   // Forward the public path into this render. `headers()` in the root layout
   // reads `x-lf-pathname` so the ad landing page can omit the rest of the
@@ -229,7 +265,7 @@ export function middleware(request: NextRequest) {
   // No geo-redirect: every visitor lands on the homepage (or whatever path
   // they requested). State preference is honored via the StateSwitcher
   // dropdown + `preferred_state` cookie.
-  return withGpcOptOut(response);
+  return finish(response);
 }
 
 export const config = {

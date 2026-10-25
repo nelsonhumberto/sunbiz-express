@@ -33,6 +33,16 @@ import {
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe-client';
 import { getAnalyticsDistinctId } from '@/lib/analytics';
+import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import { readLocalReferral } from '@/lib/affiliate-browser';
+
+/** Opt-out keeps the cookie and does not send the localStorage click. */
+function storedReferralPayload(): { storedReferral?: { code: string; capturedAt: number } } {
+  if (isClientAdMeasurementOptedOut()) return {};
+  const stored = readLocalReferral();
+  if (!stored) return {};
+  return { storedReferral: { code: stored.code, capturedAt: stored.capturedAtMs } };
+}
 
 // ── Public API exposed via ref ─────────────────────────────────────────────
 
@@ -103,6 +113,7 @@ const InnerCard = forwardRef(function InnerCard(
           ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
+          ...storedReferralPayload(),
         }),
       });
       const json = await res.json();

@@ -12,6 +12,10 @@ import { isTestPayment } from '@/lib/payment-test';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
+import {
+  applyAffiliateCommissionForFiling,
+  reverseAffiliateCommission,
+} from '@/lib/affiliate-order';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +69,14 @@ export async function POST(request: NextRequest) {
   try {
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
+      if (pi.metadata?.filingId) {
+        await applyAffiliateCommissionForFiling(pi.metadata.filingId, {
+          purpose: pi.metadata.purpose,
+          product: pi.metadata.product,
+          addOnSlug: pi.metadata.addOnSlug,
+          ref: pi.metadata.ref,
+        });
+      }
       const reconciled = await reconcilePaidFiling(pi);
       if (reconciled === 'defer') {
         // Too soon - let the client checkout finish. Non-2xx makes Stripe
@@ -74,6 +86,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ deferred: true }, { status: 425 });
       }
       outcome = reconciled === 'done' ? 'reconciled' : 'noop';
+    } else if (event.type === 'charge.refunded' || event.type === 'refund.created') {
+      const reversed = await reverseAffiliateFromEvent(event);
+      outcome = reversed ? 'affiliate_reversed' : 'ignored';
+    } else if (event.type === 'payment_intent.canceled') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const reversed = await reverseAffiliateCommission({
+        paymentIntentId: pi.id,
+        purpose: pi.metadata?.purpose ?? null,
+        filingId: pi.metadata?.filingId ?? null,
+      });
+      outcome = reversed ? 'affiliate_reversed' : 'ignored';
     }
   } catch {
     logStripeWebhook(event.type, event.id, 'error');
@@ -231,6 +254,32 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   }
 
   return 'done';
+}
+
+async function reverseAffiliateFromEvent(event: Stripe.Event): Promise<boolean> {
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId =
+      typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+    if (!paymentIntentId) return false;
+    return reverseAffiliateCommission({
+      paymentIntentId,
+      purpose: charge.metadata?.purpose ?? null,
+      filingId: charge.metadata?.filingId ?? null,
+    });
+  }
+  if (event.type === 'refund.created') {
+    const refund = event.data.object as Stripe.Refund;
+    const paymentIntentId =
+      typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
+    if (!paymentIntentId) return false;
+    return reverseAffiliateCommission({
+      paymentIntentId,
+      purpose: refund.metadata?.purpose ?? null,
+      filingId: refund.metadata?.filingId ?? null,
+    });
+  }
+  return false;
 }
 
 function generateTempPassword(): string {

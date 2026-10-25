@@ -14,6 +14,7 @@ import {
 import { ServiceInquirySchema, inquiryHoneypotTripped } from '@/lib/service-inquiry';
 import { utmToPrismaFields } from '@/lib/utm';
 import { getServerUtmAttribution } from '@/lib/utm-server';
+import { referralDataForCapture } from '@/lib/affiliate-order';
 
 export type SubmitServiceInquiryResult =
   | { ok: true; stored: boolean }
@@ -52,6 +53,17 @@ export async function submitServiceInquiry(
   });
   const companyFields = inquiryCompanyFieldValues({ service, documentNumber, companyName });
 
+  let referral: Awaited<ReturnType<typeof referralDataForCapture>> = null;
+  try {
+    referral = await referralDataForCapture();
+  } catch (err) {
+    logger.warn('service inquiry referral skipped', {
+      area: 'affiliate',
+      tag: 'inquiry',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   try {
     await prisma.serviceInquiry.create({
       data: {
@@ -62,6 +74,7 @@ export async function submitServiceInquiry(
         message: note,
         locale: safeLocale,
         ...attribution,
+        ...(referral ?? {}),
       },
     });
   } catch (err) {

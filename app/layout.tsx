@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { ReferralCapture } from '@/components/affiliate/ReferralCapture';
+import { affiliateEnabled } from '@/lib/affiliate';
 import { Poppins } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
@@ -114,6 +116,9 @@ export default async function RootLayout({
           <SpeedInsights />
           <Suspense fallback={null}>
             <AdMeasurementGate serverGpc={serverGpc} serverCookie={serverCookie} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <ReferralCapture enabled={affiliateEnabled()} />
           </Suspense>
         </PostHogProvider>
       </body>

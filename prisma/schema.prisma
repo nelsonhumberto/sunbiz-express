@@ -153,6 +153,15 @@ model Filing {
   // Deprecated. Left in place so existing rows are not dropped. Do not read or write.
   liFatId                  String?
 
+  // Invite-only affiliate attribution. Null when the order has no partner.
+  referralPartnerId        String?
+  referralPartner          Partner?  @relation(fields: [referralPartnerId], references: [id], onDelete: SetNull)
+  referralCode             String?
+  referralSource           ReferralSource?
+  referralCapturedAt       DateTime?
+  commissionCents          Int?
+  commissionStatus         CommissionStatus?
+
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
   submittedAt              DateTime?
@@ -191,6 +200,8 @@ model Filing {
   einApplication           EinApplication?
 
   @@index([userId, status, createdAt])
+  @@index([referralPartnerId])
+  @@index([commissionStatus])
 }
 
 model FilingStep {
@@ -672,10 +683,23 @@ model ServiceInquiry {
   gclid       String?
   // Deprecated. Left in place so existing rows are not dropped. Do not read or write.
   liFatId     String?
+
+  // Same nullable referral columns as Filing. Guest reinstatement requests
+  // land here, separate from a formation Filing. Commission stays null
+  // until a paid order is tied to the inquiry.
+  referralPartnerId   String?
+  referralPartner     Partner?          @relation(fields: [referralPartnerId], references: [id], onDelete: SetNull)
+  referralCode        String?
+  referralSource      ReferralSource?
+  referralCapturedAt  DateTime?
+  commissionCents     Int?
+  commissionStatus    CommissionStatus?
+
   createdAt   DateTime @default(now())
 
   @@index([email, createdAt])
   @@index([service, createdAt])
+  @@index([referralPartnerId])
 }
 
 // Password reset tokens — expire after 1 hour, single-use
@@ -704,6 +728,41 @@ model LoginLinkToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+enum PartnerStatus {
+  ACTIVE
+  PAUSED
+  REMOVED
+}
+
+enum ReferralSource {
+  LINK
+  PROMO_CODE
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  REVERSED
+}
+
+// Invite-only affiliate partner. PayPal payouts are recorded by hand.
+model Partner {
+  id                    String        @id @default(cuid())
+  code                  String        @unique
+  name                  String
+  email                 String
+  paypalEmail           String?
+  // Existing Stripe Promotion Code id (promo_...). Entered by hand.
+  stripePromotionCodeId String?       @unique
+  status                PartnerStatus @default(ACTIVE)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  filings               Filing[]
+  serviceInquiries      ServiceInquiry[]
 }
 
 // Discount / promo codes managed from /admin/coupons

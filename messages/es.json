@@ -817,7 +817,7 @@
     "entityCompareLlcTitle": "Elige LLC",
     "entityCompareLlcBody": "La mayoría de los negocios pequeños. Tributación de traspaso por defecto (las ganancias se gravan una vez, en tu declaración personal), administración flexible, cumplimiento más simple y buena protección del patrimonio. Sirve para quien trabaja por su cuenta, bienes raíces, consultoría y la mayoría de los negocios de servicios en {state}.",
     "entityCompareCorpTitle": "Elige corporación",
-    "entityCompareCorpBody": "Conviene si piensas buscar capital de riesgo, emitir acciones para el equipo o manejar un negocio regulado que exige una corporación. Las C-Corp tienen doble tributación por defecto. La elección S-Corp (ofrecemos esa presentación) puede reducir el impuesto de autoempleo en negocios rentables que dirige su equipo.",
+    "entityCompareCorpBody": "Conviene si piensas buscar capital de riesgo, emitir acciones para el equipo o manejar un negocio regulado que exige una corporación. Las C-Corp tienen doble tributación por defecto. La elección S-Corp (ofrecemos esa presentación) puede reducir el impuesto de autoempleo en negocios rentables que dirigen sus dueños.",
     "entityCompareDisclaimer": "LaunchForma no es un bufete y esto es orientación general, no asesoría fiscal ni legal. En situaciones complejas (varios socios con intereses distintos, capital externo, licencias profesionales), habla con un contador o un abogado antes de presentar.",
     "businessName": "Nombre de la empresa",
     "namePlaceholderLLC": "ej., Sunshine Coast Ventures",

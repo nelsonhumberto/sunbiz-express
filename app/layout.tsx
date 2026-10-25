@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
-import { headers } from 'next/headers';
-import Script from 'next/script';
+import { cookies, headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { messagesForPath } from '@/i18n/config';
@@ -14,11 +13,9 @@ import { cn } from '@/lib/utils';
 import { auth } from '@/lib/auth';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
-import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
+import { AdMeasurementGate } from '@/components/analytics/AdMeasurementGate';
 import { LinkedInInsight } from '@/components/analytics/LinkedInInsight';
-import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
-import { openAiPixelBootstrap } from '@/lib/openai-pixel';
-import { openAiPixelId } from '@/lib/tracking-ids';
+import { AD_OPT_OUT_COOKIE } from '@/lib/ad-opt-out';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
 
@@ -79,10 +76,10 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const session = await auth();
-  const pathname = headers().get('x-lf-pathname') ?? '';
-  const openAiId = openAiPixelId();
-  // Token URLs stay out of ad pixels. /es/... is rewritten before this header is set.
-  const loadOpenAiPixel = Boolean(openAiId) && pathname !== '/reset-password';
+  const headerStore = headers();
+  const pathname = headerStore.get('x-lf-pathname') ?? '';
+  const serverGpc = headerStore.get('sec-gpc') === '1';
+  const serverCookie = cookies().get(AD_OPT_OUT_COOKIE)?.value ?? null;
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -92,11 +89,6 @@ export default async function RootLayout({
       >
         <HtmlLang />
         <ChunkReload />
-        {loadOpenAiPixel && openAiId ? (
-          <Script id="openai-ads-pixel" strategy="beforeInteractive">
-            {openAiPixelBootstrap(openAiId)}
-          </Script>
-        ) : null}
         <PostHogProvider>
           <InternalTrafficFlag
             userId={session?.user?.id}
@@ -117,9 +109,8 @@ export default async function RootLayout({
           <Analytics />
           <SpeedInsights />
           <Suspense fallback={null}>
-            <GoogleAnalytics />
+            <AdMeasurementGate serverGpc={serverGpc} serverCookie={serverCookie} />
             <LinkedInInsight />
-            <OpenAiPixel />
           </Suspense>
         </PostHogProvider>
       </body>

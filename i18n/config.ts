@@ -86,6 +86,7 @@ export function messagesForPath(
         privacy: pickString(footer, 'privacy'),
         refundPolicy: pickString(footer, 'refundPolicy'),
         disclaimer: pickString(footer, 'disclaimer'),
+        doNotSell: pickString(footer, 'doNotSell'),
       },
     };
   }

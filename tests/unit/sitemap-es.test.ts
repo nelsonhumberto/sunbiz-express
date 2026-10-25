@@ -27,6 +27,7 @@ const ES_PATHS = [
   '/es/guides/llc-para-tu-app-florida',
   '/es/terms',
   '/es/privacy',
+  '/es/privacy-choices',
   '/es/disclaimer',
   '/es/refund-policy',
 ];

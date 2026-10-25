@@ -114,6 +114,12 @@ const STATIC_PAGES: PageDef[] = [
   },
   { path: '/terms', file: 'app/(legal)/terms/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/privacy', file: 'app/(legal)/privacy/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
+  {
+    path: '/privacy-choices',
+    file: 'app/(legal)/privacy-choices/page.tsx',
+    changeFrequency: 'yearly',
+    priority: 0.2,
+  },
   { path: '/disclaimer', file: 'app/(legal)/disclaimer/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/refund-policy', file: 'app/(legal)/refund-policy/page.tsx', changeFrequency: 'yearly', priority: 0.4 },
 ];

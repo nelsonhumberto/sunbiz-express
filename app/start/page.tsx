@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
@@ -120,7 +121,10 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         </p>
       </main>
 
-      <footer className="container py-6 text-center">
+      <footer className="container py-6 text-center space-y-2">
+        <p className="text-xs text-ink-subtle">
+          <DoNotSellLink className="underline hover:text-ink-muted" />
+        </p>
         <p className="text-xs text-ink-subtle">© {COPYRIGHT_YEAR} LaunchForma</p>
       </footer>
     </div>

@@ -4,6 +4,7 @@
  * calls are safe no-ops so the app never breaks without analytics configured.
  */
 
+import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import { definedAttributionProps } from '@/lib/utm';
 
 let posthog: typeof import('posthog-js').default | null = null;
@@ -163,6 +164,7 @@ export function trackGooglePurchase(input: {
   valueCents: number;
   currency?: string;
 }) {
+  if (isClientAdMeasurementOptedOut()) return;
   const g = gtag();
   if (!g) return;
 
@@ -191,11 +193,13 @@ export function trackGooglePurchase(input: {
 
 /** GA4 generate_lead, plus a Google Ads conversion when a lead label is set. */
 export function trackGoogleLead(input?: { service?: string }) {
+  if (isClientAdMeasurementOptedOut()) return;
   const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
   const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_LEAD;
   whenReady(
     () => typeof window.gtag === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.gtag('event', 'generate_lead', input?.service ? { service: input.service } : {});
       if (adsId && label) {
         window.gtag('event', 'conversion', {
@@ -227,9 +231,11 @@ export function trackLinkedInConversion(kind: 'purchase' | 'lead') {
 
 /** OpenAI Ads `lead_created` on the business-services thank-you page. */
 export function trackOpenAiLead() {
+  if (isClientAdMeasurementOptedOut()) return;
   whenReady(
     () => typeof window.oaiq === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.oaiq?.('measure', 'lead_created', { type: 'customer_action' });
     },
     10000,
@@ -238,10 +244,12 @@ export function trackOpenAiLead() {
 
 /** SPA page view after the pixel's init call, which already measures the first view. */
 export function trackOpenAiPageView(path: string) {
+  if (isClientAdMeasurementOptedOut()) return;
   const id = path.slice(0, 128) || 'page';
   whenReady(
     () => typeof window.oaiq === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.oaiq?.('measure', 'page_viewed', {
         type: 'contents',
         contents: [{ id, name: id, content_type: 'page' }],

@@ -55,7 +55,8 @@ const GUIDES: LinkEntry[] = [
 
 const LEGAL: LinkEntry[] = [
   { title: 'Terms', path: '/terms', note: 'Terms of service.' },
-  { title: 'Privacy Policy', path: '/privacy', note: 'How LaunchForma handles data; no data sales.' },
+  { title: 'Privacy Policy', path: '/privacy', note: 'How LaunchForma handles data, ad measurement, and the Do Not Sell or Share choice. Effective October 25, 2026.' },
+  { title: 'Do Not Sell or Share', path: '/privacy-choices', note: 'Opt out of Google and OpenAI ad measurement. Global Privacy Control is honored.' },
   { title: 'Disclaimer', path: '/disclaimer', note: 'Not-a-law-firm disclaimer.' },
   { title: 'Refund Policy', path: '/refund-policy', note: 'Refund terms.' },
 ];
@@ -84,7 +85,8 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'LLC o negocio individual', path: '/es/guides/llc-o-negocio-individual-florida', note: 'Cómo define el IRS cada figura y qué cobra Sunbiz por la LLC, el reporte anual y el nombre ficticio.' },
   { title: 'LLC para tu app', path: '/es/guides/llc-para-tu-app-florida', note: 'Qué piden Apple y Google para una cuenta de organización, y cómo encaja una LLC de Florida.' },
   { title: 'Términos (borrador)', path: '/es/terms', note: 'Traducción en borrador. La versión en inglés es la que rige: /terms.' },
-  { title: 'Privacidad (borrador)', path: '/es/privacy', note: 'Traducción en borrador. La versión en inglés es la que rige: /privacy.' },
+  { title: 'Política de privacidad', path: '/es/privacy', note: 'Qué recopilamos, con quién lo compartimos y cómo excluirte de la medición de anuncios. Vigente desde el 25 de octubre de 2026.' },
+  { title: 'No vender ni compartir', path: '/es/privacy-choices', note: 'Exclusión de la medición de anuncios de Google y OpenAI. Se respeta Global Privacy Control.' },
   { title: 'Aviso legal (borrador)', path: '/es/disclaimer', note: 'Traducción en borrador. La versión en inglés es la que rige: /disclaimer.' },
   { title: 'Reembolsos (borrador)', path: '/es/refund-policy', note: 'Traducción en borrador. La versión en inglés es la que rige: /refund-policy.' },
 ];
@@ -125,7 +127,7 @@ export function buildLlmsTxt(): string {
   parts.push('');
   parts.push('## Español');
   parts.push(
-    'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Las páginas legales en español son una traducción en borrador y rige la versión en inglés.',
+    'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Los términos, el aviso legal y la política de reembolso en español siguen en borrador y rige la versión en inglés.',
   );
   parts.push(...SPANISH_PAGES.map(line));
   parts.push('');

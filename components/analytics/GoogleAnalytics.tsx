@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -29,18 +30,30 @@ export function GoogleAnalytics() {
   // every client-side navigation (and once on mount).
   useEffect(() => {
     if (!GA_MEASUREMENT_ID || untracked) return;
-    if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
-
-    let url = pathname;
-    if (searchParams?.toString()) url += `?${searchParams.toString()}`;
-
-    window.gtag('event', 'page_view', {
-      page_path: url,
-      page_location: window.location.origin + url,
-    });
+    let cancelled = false;
+    const start = Date.now();
+    const tick = () => {
+      if (cancelled || isClientAdMeasurementOptedOut()) return;
+      if (typeof window.gtag === 'function') {
+        let url = pathname;
+        if (searchParams?.toString()) url += `?${searchParams.toString()}`;
+        window.gtag('event', 'page_view', {
+          page_path: url,
+          page_location: window.location.origin + url,
+        });
+        return;
+      }
+      if (Date.now() - start >= 4000) return;
+      window.setTimeout(tick, 150);
+    };
+    tick();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, searchParams, untracked]);
 
   if (!GA_MEASUREMENT_ID || untracked) return null;
+  if (typeof document !== 'undefined' && isClientAdMeasurementOptedOut()) return null;
 
   return (
     <>

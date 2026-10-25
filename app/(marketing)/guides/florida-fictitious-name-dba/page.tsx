@@ -106,7 +106,7 @@ If an LLC uses a trade name, it helps to note it in the company records. Our [Fl
 
 const CLOSING = `## Ready to form your Florida LLC?
 
-LaunchForma is an online formation service for Florida businesses run by a husband and wife team, helping business owners since 2015. Florida LLC packages start at $149 with the state filing fee included, and the Popular package ($279) includes a custom Operating Agreement.
+LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015. Florida LLC packages start at $149 with the state filing fee included, and the Popular package ($279) includes a custom Operating Agreement.
 
 [Start your Florida LLC](/start)
 

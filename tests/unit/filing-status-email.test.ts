@@ -15,7 +15,7 @@ describe('filing status emails', () => {
       'Your filing for Acme LLC is started',
     );
     expect(renderTemplate('FILING_SUBMITTED', { businessName: 'Acme LLC' }).subject).toBe(
-      'Acme LLC has been submitted to the state',
+      'We received your order for Acme LLC',
     );
     expect(renderTemplate('FILING_APPROVED', { businessName: 'Acme LLC' }).subject).toBe(
       'Acme LLC is officially formed',
@@ -39,13 +39,14 @@ describe('filing status emails', () => {
       trackingNumber: 'LF1',
       pin: '4321',
     });
-    expect(submitted.subject).toBe('Acme LLC ya se envió al estado');
-    expect(submitted.html).toContain('Tu trámite ya está en el estado');
-    expect(submitted.html).toContain('Te escribimos en cuanto lo aprueben');
+    expect(submitted.subject).toBe('Recibimos tu pedido para Acme LLC');
+    expect(submitted.html).toContain('Recibimos tu pedido y estamos preparando tu registro.');
     expect(submitted.html).toContain('LF1');
     expect(submitted.html).toContain('4321');
     expect(submitted.html).toContain('href="https://launchforma.com/es/dashboard"');
     expect(submitted.html).not.toContain('has been submitted');
+    expect(submitted.html).not.toContain('Sunbiz');
+    expect(submitted.html).not.toMatch(/envió al estado|está en el estado/);
 
     const approved = renderTemplate('FILING_APPROVED', {
       locale: 'es',
@@ -79,11 +80,49 @@ describe('filing status emails', () => {
       locale: 'es',
       resumeUrl: 'https://launchforma.com/es/wizard/filing_1/2',
     });
-    expect(submitted.subject).toBe('Tu empresa ya se envió al estado');
+    expect(submitted.subject).toBe('Recibimos tu pedido para Tu empresa');
     expect(submitted.html).toContain('href="https://launchforma.com/es/wizard/filing_1/2"');
     expect(renderTemplate('FILING_REJECTED', { locale: 'es' }).subject).toBe(
       'Acción necesaria: el trámite de tu empresa',
     );
+  });
+
+  it('says the order was received and is being prepared, in both languages', () => {
+    const enSubmitted = renderTemplate('FILING_SUBMITTED', {
+      businessName: 'Acme LLC',
+      trackingNumber: 'LF1',
+      pin: '4321',
+    });
+    expect(enSubmitted.subject).toBe('We received your order for Acme LLC');
+    expect(enSubmitted.html).toContain('We received your order and are preparing your filing.');
+    expect(enSubmitted.html).toContain('LF1');
+    expect(enSubmitted.html).toContain('4321');
+    expect(enSubmitted.html).not.toMatch(/submitted to the state|with the state|Sunbiz/i);
+
+    const enPayment = renderTemplate('PAYMENT_CONFIRMATION', {
+      businessName: 'Acme LLC',
+      totalCents: 19900,
+    });
+    expect(enPayment.subject).toBe('Payment confirmed for Acme LLC');
+    expect(enPayment.html).toContain('We received your order and are preparing your filing.');
+    expect(enPayment.html).toContain('$199');
+    expect(enPayment.html).not.toMatch(/submitted to the state/i);
+
+    const esPayment = renderTemplate('PAYMENT_CONFIRMATION', {
+      locale: 'es',
+      businessName: 'Acme LLC',
+      totalCents: 19900,
+    });
+    expect(esPayment.subject).toBe('Pago confirmado para Acme LLC');
+    expect(esPayment.html).toContain('Recibimos tu pedido y estamos preparando tu registro.');
+    expect(esPayment.html).not.toMatch(/enviarlo al estado|Sunbiz/);
+    assertSpanish(esPayment.subject);
+    assertSpanish(esPayment.html);
+
+    const mock = readFileSync('lib/email-mock.ts', 'utf8');
+    expect(mock).toContain('We received your order for ${businessName ?? \'your business\'}');
+    expect(mock).toContain('We received your order and are preparing your filing.');
+    expect(mock).not.toMatch(/being submitted to the Florida|has been filed with the State/);
   });
 
   it('passes the filing and user locale into every filing-status send', () => {

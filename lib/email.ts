@@ -530,7 +530,7 @@ const TEMPLATES: Record<
         subject: `Pago confirmado para ${company}`,
         body: html`
           <h1>Recibimos tu pago. Gracias.</h1>
-          <p>Cobramos <strong>${amount}</strong> por <strong>${company}</strong>. Estamos preparando tu trámite para enviarlo al estado.</p>
+          <p>Recibimos tu pedido y estamos preparando tu registro. Cobramos <strong>${amount}</strong> por <strong>${company}</strong>.</p>
           <a class="cta" href="${dashboardUrl}">Ver el estado del trámite</a>
           <p class="muted">El recibo también queda en tu panel cuando termine el proceso.</p>
         `,
@@ -540,7 +540,7 @@ const TEMPLATES: Record<
       subject: `Payment confirmed for ${company}`,
       body: html`
         <h1>Payment received - thank you</h1>
-        <p>We charged <strong>${amount}</strong> for <strong>${company}</strong>. Your filing is being prepared and submitted to the state now.</p>
+        <p>We received your order and are preparing your filing. We charged <strong>${amount}</strong> for <strong>${company}</strong>.</p>
         <a class="cta" href="${dashboardUrl}">View filing status</a>
         <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
       `,
@@ -552,11 +552,11 @@ const TEMPLATES: Record<
     if (spanish) {
       const company = businessName ?? 'Tu empresa';
       return {
-        subject: `${company} ya se envió al estado`,
+        subject: `Recibimos tu pedido para ${company}`,
         body: wrap(
           `
-      <h1>Tu trámite ya está en el estado</h1>
-      <p><strong>${company}</strong> ya se envió. Te escribimos en cuanto lo aprueben. Suele tardar 1 o 2 días hábiles.</p>
+      <h1>Recibimos tu pedido</h1>
+      <p>Recibimos tu pedido y estamos preparando tu registro.</p>
       <table class="meta">
         <tr><td>Referencia</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
@@ -569,10 +569,10 @@ const TEMPLATES: Record<
       };
     }
     return {
-      subject: `${businessName ?? 'Your business'} has been submitted to the state`,
+      subject: `We received your order for ${businessName ?? 'your business'}`,
       body: html`
-      <h1>Your filing is with the state</h1>
-      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved - usually within 1–2 business days.</p>
+      <h1>We received your order</h1>
+      <p>We received your order and are preparing your filing.</p>
       <table class="meta">
         <tr><td>Reference #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>

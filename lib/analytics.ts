@@ -254,6 +254,38 @@ export function trackAddOnToggled(slug: string, action: 'added' | 'removed', tie
   trackEvent('add_on_toggled', { slug, action, tier, state });
 }
 
+/**
+ * Dashboard add-on purchase. Same slug / action / tier / state shape as
+ * {@link trackAddOnToggled}, plus the charged total. Kept off
+ * `purchase_completed` so a later certificate order is not deduped against
+ * the formation purchase.
+ */
+export function trackAddOnPurchased(input: {
+  slug: string;
+  tier: string;
+  state: string;
+  entityType: string;
+  filingId: string;
+  serviceCents: number;
+  stateFeeCents: number;
+  totalCents: number;
+}) {
+  trackEvent('add_on_purchased', {
+    slug: input.slug,
+    action: 'purchased',
+    tier: input.tier,
+    state: input.state,
+    entity_type: input.entityType,
+    filing_id: input.filingId,
+    service_cents: input.serviceCents,
+    state_fee_cents: input.stateFeeCents,
+    revenue_cents: input.totalCents,
+    value: input.totalCents / 100,
+    currency: 'USD',
+    surface: 'dashboard',
+  });
+}
+
 export function trackStateSwitched(from: string, to: string, surface: string) {
   trackEvent('state_switched', { from_state: from, to_state: to, surface });
 }

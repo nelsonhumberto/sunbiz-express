@@ -26,9 +26,9 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck, Hash, FileText, Users, Globe, Award, FileCheck, CalendarCheck, Receipt, BellRing, Landmark,
 };
 
-// State-issued certificates are delivered inside formation packages but never
-// advertised as standalone purchases (Google Ads restricts promoting direct
-// acquisition of government documents).
+// State-issued certificates stay off this public page. Google Ads restricts
+// promoting direct acquisition of government documents. Customers with a filed
+// company order them from /dashboard/filings/{id}/certificates/{slug}.
 const LISTED_SERVICES = WIZARD_ADD_ONS.filter(
   (a) => a.slug !== 'cert_status' && a.slug !== 'cert_copy',
 );

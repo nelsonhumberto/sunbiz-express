@@ -167,6 +167,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             filing={filing}
             needsGuestEmail={needsGuestEmail}
             initialGuestEmail={guestEmailPrefill}
+            pendingAccountEmail={pendingAccountEmail}
           />
         )}
         {stepNum === 2 && (
@@ -174,6 +175,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             filing={filing}
             needsGuestEmail={needsGuestEmail}
             initialGuestEmail={guestEmailPrefill}
+            pendingAccountEmail={pendingAccountEmail}
           />
         )}
         {stepNum === 3 && <Step3Tier filing={filing} />}

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
 import { useErrorLocale } from '@/components/i18n/useErrorLocale';
+import { hrefForLocale } from '@/lib/app-href';
 import { Button } from '@/components/ui/button';
 import { ERROR_PAGE_COPY } from '@/lib/error-page-copy';
 import { logger } from '@/lib/logger';
@@ -50,7 +51,7 @@ export default function WizardError({
             <RefreshCw className="h-4 w-4" /> {copy.tryAgain}
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard" locale={locale}>{copy.dashboard}</Link>
+            <Link href={hrefForLocale('/dashboard', locale)}>{copy.dashboard}</Link>
           </Button>
         </div>
       </div>

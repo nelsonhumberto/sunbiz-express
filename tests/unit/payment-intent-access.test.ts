@@ -41,6 +41,8 @@ function filingOwnedBy(userId: string) {
     state: 'FL',
     optionalDetails: null,
     checkoutPaymentIntentId: null,
+    status: 'DRAFT',
+    payments: [],
     utmSource: null,
     utmMedium: null,
     utmCampaign: null,
@@ -117,5 +119,26 @@ describe('payment intent access', () => {
       expect.objectContaining({ amount: 14900 }),
       expect.anything(),
     );
+  });
+
+  it('returns 409 for a paid or submitted filing and does not call Stripe', async () => {
+    auth.mockResolvedValue({ user: { id: 'user_1' } });
+    filingFindUnique.mockResolvedValue({ ...filingOwnedBy('user_1'), status: 'SUBMITTED', payments: [] });
+    const submitted = await POST({
+      json: async () => ({ filingId: 'filing_1', amountCents: 50 }),
+    } as never);
+    expect(submitted.status).toBe(409);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('user_1'),
+      status: 'DRAFT',
+      payments: [{ id: 'pay_1' }],
+    });
+    const paid = await POST({
+      json: async () => ({ filingId: 'filing_1', amountCents: 50 }),
+    } as never);
+    expect(paid.status).toBe(409);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
   });
 });

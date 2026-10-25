@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
-import { Link as LocaleLink } from '@/i18n/navigation';
+import { hrefForLocale } from '@/lib/app-href';
 import { pickLocale } from '@/lib/pick-locale';
 import {
   ArrowLeft,
@@ -701,7 +701,7 @@ function CertificateAddonCard({
         </div>
         {orderable ? (
           <Button asChild className="shrink-0">
-            <LocaleLink href={href} locale={locale}>{cta}</LocaleLink>
+            <Link href={hrefForLocale(href, locale)}>{cta}</Link>
           </Button>
         ) : null}
       </CardContent>

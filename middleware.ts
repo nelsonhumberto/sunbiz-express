@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { routing } from '@/i18n/routing';
-import { stripSpanishPrefix } from '@/i18n/config';
+import { stripDefaultLocalePrefix, stripSpanishPrefix } from '@/i18n/config';
 import {
   LOCALE_HEADER,
   localeFromPublicPath,
@@ -81,6 +81,15 @@ export function middleware(request: NextRequest) {
       target.protocol = 'https:';
       return NextResponse.redirect(target, { status: 308 });
     }
+  }
+
+  // English is unprefixed. A leftover /en or /en/* link 308s to that path
+  // and keeps the query string. /enterprise and /en-us are not prefixes.
+  const unprefixed = stripDefaultLocalePrefix(pathname);
+  if (unprefixed) {
+    const url = request.nextUrl.clone();
+    url.pathname = unprefixed;
+    return NextResponse.redirect(url, 308);
   }
 
   // Delaware and Wyoming marketing URLs 308 to the Florida equivalent.

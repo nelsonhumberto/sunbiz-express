@@ -179,7 +179,7 @@ async function persistGuestEmail(
   contactEmail: string | undefined,
   required: boolean,
   filingLocale?: string | null,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string; needsSignIn?: boolean }> {
   if (actor.kind !== 'guest') return { ok: true };
   const email = contactEmail?.trim() ?? '';
   const placeholder = isPlaceholderGuestEmail(actor.email);
@@ -191,7 +191,10 @@ async function persistGuestEmail(
     return { ok: true };
   }
   const saved = await saveGuestEmail(filingId, email);
-  if (saved.needsSignIn) return { ok: true };
+  if (saved.needsSignIn) {
+    const t = await wizardCopy(filingLocale);
+    return { ok: false as const, needsSignIn: true, error: saved.error ?? t('guestEmailHasAccount') };
+  }
   if (!saved.ok) {
     const t = await wizardCopy(filingLocale);
     return { ok: false, error: saved.error ?? t('guestEmailInvalid') };

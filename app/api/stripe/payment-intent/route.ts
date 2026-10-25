@@ -95,13 +95,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const stripe = getStripe();
     const body = (await request.json()) as PaymentBody;
     const { filingId, posthogDistinctId, certificateSlug, purpose, couponCode, raServiceId } = body;
 
     if (isCertificateAddOnSlug(certificateSlug)) {
       return createCertificatePaymentIntent({
-        stripe,
+        stripe: getStripe(),
         actorId: userId,
         filingId,
         slug: certificateSlug,
@@ -119,6 +118,7 @@ export async function POST(request: NextRequest) {
     });
     if (priced instanceof NextResponse) return priced;
 
+    const stripe = getStripe();
     const customerId = await ensureStripeCustomer(stripe, userId);
     const attribution = readPaymentAttribution(posthogDistinctId);
     const intentParams = {
@@ -219,7 +219,10 @@ async function priceOwnedCharge(input: {
 
   const filing = await prisma.filing.findUnique({
     where: { id: input.filingId },
-    include: { filingAdditionalServices: { include: { service: true } } },
+    include: {
+      filingAdditionalServices: { include: { service: true } },
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
   });
   if (!filing || filing.userId !== input.userId) {
     return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
@@ -249,6 +252,10 @@ async function priceOwnedCharge(input: {
       reuseFilingCheckout: false,
       attributionFiling: filing,
     };
+  }
+
+  if (filing.status !== 'DRAFT' || filing.payments.length > 0) {
+    return NextResponse.json({ error: 'This filing has already been paid.' }, { status: 409 });
   }
 
   const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);

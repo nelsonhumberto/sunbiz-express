@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { getPathname } from '@/i18n/navigation';
+import { hrefForLocale } from '@/lib/app-href';
 import { pickLocale } from '@/lib/pick-locale';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import {
@@ -315,7 +315,7 @@ async function wizardHref(
   step: number,
 ): Promise<string> {
   const locale = pickLocale(await getLocale(), filing.locale);
-  return getPathname({ href: `/wizard/${filing.id}/${step}`, locale });
+  return hrefForLocale(`/wizard/${filing.id}/${step}`, locale);
 }
 
 async function DraftCard({ filing }: { filing: any }) {

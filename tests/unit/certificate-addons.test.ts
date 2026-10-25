@@ -252,10 +252,10 @@ describe('certificate copy', () => {
   it('keeps certificate links and hidden-offer redirects on the locale', () => {
     const filing = source('app/(app)/dashboard/filings/[id]/page.tsx');
     const order = source('app/(app)/dashboard/filings/[id]/certificates/[slug]/page.tsx');
-    expect(filing).toContain("from '@/i18n/navigation'");
-    expect(filing).toContain('LocaleLink');
+    expect(filing).toContain('hrefForLocale(href, locale)');
     expect(filing).toContain('certificateOrderPath(filing.id, slug)');
     expect(filing).toContain('locale={locale}');
+    expect(filing).not.toContain('LocaleLink');
     expect(order).toContain("from '@/i18n/navigation'");
     expect(order).toContain('redirect({ href: `/dashboard/filings/${filing.id}`, locale })');
     expect(order).toContain('redirect({ href: \'/sign-in\', locale: requestLocale })');

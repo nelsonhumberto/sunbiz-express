@@ -34,6 +34,18 @@ export function stripSpanishPrefix(pathname: string): string | null {
 }
 
 /**
+ * `/en` and `/en/...` are not public URLs. English is the unprefixed
+ * default. Returns the path without that prefix, or null when the path
+ * is not an English prefix (`/enterprise` and `/en-us` stay put).
+ */
+export function stripDefaultLocalePrefix(pathname: string): string | null {
+  if (pathname === '/en' || pathname === '/en/') return '/';
+  if (!pathname.startsWith('/en/')) return null;
+  const rest = pathname.slice(3);
+  return rest.startsWith('/') ? rest : `/${rest}`;
+}
+
+/**
  * Message namespaces used only by signed-in screens (dashboard, admin, the
  * post-formation EIN add-on). The root layout omits them so they never ship
  * in public page HTML; the (app) and admin layouts provide the full set.

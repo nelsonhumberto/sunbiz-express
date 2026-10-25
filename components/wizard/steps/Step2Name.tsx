@@ -13,6 +13,7 @@ import {
   type BusinessNameAssessment,
 } from '../NameCheckWidget';
 import { GuestEmailField } from '../GuestEmailField';
+import { GuestSignInPrompt } from '../GuestSignInPrompt';
 import type { WizardFiling } from '../types';
 import {
   Dialog,
@@ -34,15 +35,18 @@ export function Step2Name({
   filing,
   needsGuestEmail = false,
   initialGuestEmail = '',
+  pendingAccountEmail = '',
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
   initialGuestEmail?: string;
+  pendingAccountEmail?: string;
 }) {
   const t = useTranslations('wizard');
   const [name, setName] = useState(filing.businessName ?? '');
   const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail));
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
@@ -70,7 +74,11 @@ export function Step2Name({
         nameStatus: result?.status,
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
-      if (!res.ok) return { ok: false, error: res.error };
+      if (!res.ok) {
+        setNeedsSignIn('needsSignIn' in res && Boolean(res.needsSignIn));
+        setEmailError(res.error ?? null);
+        return { ok: false, error: res.error };
+      }
       router.push(`/wizard/${filing.id}/3`);
     });
   };
@@ -98,8 +106,18 @@ export function Step2Name({
           onChange={(value) => {
             setGuestEmail(value);
             setEmailError(null);
+            setNeedsSignIn(false);
           }}
           error={emailError}
+        />
+      )}
+
+      {needsSignIn && (
+        <GuestSignInPrompt
+          filingId={filing.id}
+          email={pendingAccountEmail || guestEmail}
+          returnStep={2}
+          filingLocale={filing.locale}
         />
       )}
 

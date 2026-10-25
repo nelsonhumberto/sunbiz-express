@@ -109,8 +109,12 @@ describe('guest start flow', () => {
     const wizard = source('actions/wizard.ts');
     expect(wizard).toContain('persistGuestEmail');
     expect(wizard).toContain('contactEmail');
-    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestEmailField');
-    expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('GuestEmailField');
+    expect(wizard).toContain('needsSignIn: true');
+    expect(wizard).not.toContain('if (saved.needsSignIn) return { ok: true }');
+    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestSignInPrompt');
+    expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('GuestSignInPrompt');
+    expect(source('components/wizard/GuestSignInPrompt.tsx')).toContain("t('accountGateSignIn')");
+    expect(source('app/wizard/[filingId]/[step]/page.tsx')).toContain('pendingAccountEmail={pendingAccountEmail}');
   });
 
   it('requires an account before checkout', () => {

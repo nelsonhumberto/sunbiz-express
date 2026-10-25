@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { Link, redirect } from '@/i18n/navigation';
+import { redirect } from '@/i18n/navigation';
+import { hrefForLocale } from '@/lib/app-href';
 import { pickLocale } from '@/lib/pick-locale';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -91,8 +93,7 @@ export default async function CertificateOrderPage({ params }: PageProps) {
   return (
     <div className="container max-w-2xl py-10 space-y-6">
       <Link
-        href={`/dashboard/filings/${filing.id}`}
-        locale={locale}
+        href={hrefForLocale(`/dashboard/filings/${filing.id}`, locale)}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />

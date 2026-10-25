@@ -2,10 +2,11 @@ import 'server-only';
 
 import { redirect as nextRedirect } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
-import { redirect } from '@/i18n/navigation';
-import { hrefForLocale, isSpanishHref } from '@/lib/app-href';
+import { hrefForLocale, localizedRedirectHref } from '@/lib/app-href';
 import { pickLocale, type SiteLocale } from '@/lib/pick-locale';
 import { safeRedirectPath } from '@/lib/utils';
+
+export { localizedRedirectHref } from '@/lib/app-href';
 
 export async function localeForRedirect(filingLocale?: string | null): Promise<SiteLocale> {
   let requestLocale: string | null = null;
@@ -18,24 +19,16 @@ export async function localeForRedirect(filingLocale?: string | null): Promise<S
 }
 
 /**
- * next-intl redirect. An href that is already /es/... is sent through
- * Next's redirect so it is not prefixed a second time.
+ * Redirect without an /en prefix. Spanish paths stay under /es.
+ * Next's redirect is used directly. next-intl's redirect adds /en
+ * when locale "en" is passed explicitly.
  */
 export async function redirectLocalized(
   href: string,
   filingLocale?: string | null,
 ): Promise<never> {
-  const safe = safeRedirectPath(href);
   const locale = await localeForRedirect(filingLocale);
-  if (!safe) {
-    redirect({ href: '/dashboard', locale });
-    throw new Error('Redirect did not stop execution.');
-  }
-  if (isSpanishHref(safe)) {
-    nextRedirect(safe);
-    throw new Error('Redirect did not stop execution.');
-  }
-  redirect({ href: safe, locale });
+  nextRedirect(localizedRedirectHref(href, locale));
   throw new Error('Redirect did not stop execution.');
 }
 

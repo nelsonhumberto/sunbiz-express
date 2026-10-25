@@ -168,7 +168,7 @@ describe('contact page content', () => {
 });
 
 /** HTML that ships for /contact and /es/contacto: schema, client catalog, page copy. */
-function renderedContactHtml(messages: typeof en) {
+function renderedContactHtml(messages: typeof en | typeof es) {
   const clientMessages = messagesForPath('/contact', messages);
   const pageCopy = Object.values(messages.contactPage).join('\n');
   return [

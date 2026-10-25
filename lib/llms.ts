@@ -36,6 +36,7 @@ const CORE_PAGES: LinkEntry[] = [
   { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, annual reports, and timelines.' },
   { title: 'About', path: '/about', note: 'Company mission: transparent, all-in business formation.' },
   { title: 'Contact', path: '/contact', note: 'Phone, mailing address, and the service inquiry form.' },
+  { title: 'LLC for Hair Stylists and Barbers', path: '/llc-for/stylists-barbers', note: 'Florida LLC formation for hair stylists and barbers. Essential is $149 and includes the $125 state fee. Spanish alternate: /es/llc-para/estilistas-barberos.' },
   { title: 'File an Annual Report', path: '/file-annual-report', note: 'Florida annual report filing service and deadlines.' },
   { title: 'BOI Reporting', path: '/boi-reporting', note: 'BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting (August 2026 final rule).' },
   { title: 'States', path: '/states', note: 'States where LaunchForma files and coming-soon states.' },
@@ -68,6 +69,7 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Preguntas frecuentes', path: '/es/faq', note: 'Preguntas sobre formación, agente registrado y reportes anuales.' },
   { title: 'Nosotros', path: '/es/about', note: 'Qué es LaunchForma y cómo trabajamos.' },
   { title: 'Contacto', path: '/es/contacto', note: 'Teléfono, dirección postal y el formulario de servicios.' },
+  { title: 'LLC para estilistas y barberos', path: '/es/llc-para/estilistas-barberos', note: 'LLC en Florida para estilistas y barberos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Alterna en inglés: /llc-for/stylists-barbers.' },
   { title: 'Reporte anual', path: '/es/file-annual-report', note: 'Presentación del reporte anual de Florida.' },
   { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final del 11 de agosto de 2026, fincen.gov/boi).' },
   { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },
@@ -91,22 +93,12 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Reembolsos (borrador)', path: '/es/refund-policy', note: 'Traducción en borrador. La versión en inglés es la que rige: /refund-policy.' },
 ];
 
-/**
- * TODO(niche-pages-go-live): add /llc-for/stylists-barbers and
- * /es/llc-para/estilistas-barberos after copy review and QA. Filtered out
- * until then so llms.txt does not list them early.
- */
-const LLMS_EXCLUDED_UNTIL_GO_LIVE = new Set<string>([
-  '/llc-for/stylists-barbers',
-  '/es/llc-para/estilistas-barberos',
-]);
-
 function line(entry: LinkEntry): string {
   return `- [${entry.title}](${BASE_URL}${entry.path}): ${entry.note}`;
 }
 
 function published(entries: LinkEntry[]): string[] {
-  return entries.filter((entry) => !LLMS_EXCLUDED_UNTIL_GO_LIVE.has(entry.path)).map(line);
+  return entries.map(line);
 }
 
 function stateLines(): string[] {

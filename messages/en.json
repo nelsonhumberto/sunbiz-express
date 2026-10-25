@@ -60,7 +60,8 @@
     "dashboard": "Dashboard",
     "admin": "Admin",
     "signOut": "Sign out",
-    "language": "Language"
+    "language": "Language",
+    "changeLanguage": "Change language"
   },
   "footer": {
     "tagline": "Incorporate. Empower. Elevate. - The modern way to form your business.",

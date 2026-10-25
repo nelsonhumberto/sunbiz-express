@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { checkActionRateLimit } from '@/lib/rate-limit';
+import { isActivePartnerPromotion } from '@/lib/affiliate-order';
 
 // ─── Public: validate a coupon code at checkout ───────────────────────────────
 
@@ -32,6 +33,18 @@ export async function validateCoupon(
   const coupon = await prisma.coupon.findUnique({
     where: { code: code.trim().toUpperCase() },
   });
+
+  // A partner Stripe promotion code is not a discount. Accept it so checkout
+  // can attribute the order. The flag defaults off, and then this is skipped.
+  if (!coupon && (await isActivePartnerPromotion(code))) {
+    return {
+      ok: true,
+      code: code.trim(),
+      type: 'FIXED',
+      value: 0,
+      discountCents: 0,
+    };
+  }
 
   // Generic message so attackers can't distinguish "not found" from inactive.
   if (!coupon) return { ok: false, error: 'This coupon code is invalid.' };

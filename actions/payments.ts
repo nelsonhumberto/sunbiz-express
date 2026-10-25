@@ -42,6 +42,11 @@ import {
 import { capturePurchaseCompletedServer, type PurchaseIntentLike } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
+import { affiliateEnabled } from '@/lib/affiliate';
+import {
+  applyAffiliateCommissionForFiling,
+  captureAffiliateForCheckout,
+} from '@/lib/affiliate-order';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -270,6 +275,15 @@ export async function processCheckout(input: {
   }
   const optionalDetailsUpdate = JSON.stringify(nextOptional);
 
+  if (affiliateEnabled() && !filing.referralCode) {
+    await captureAffiliateForCheckout({
+      checkoutCode: input.couponCode,
+      filingId: filing.id,
+      stampFiling: true,
+      existingReferralCode: null,
+    });
+  }
+
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
@@ -283,6 +297,12 @@ export async function processCheckout(input: {
       optionalDetails: optionalDetailsUpdate,
       completedSteps: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     },
+  });
+
+  await applyAffiliateCommissionForFiling(filing.id, {
+    purpose: null,
+    product: paidIntent.metadata?.product ?? filing.serviceTier,
+    ref: paidIntent.metadata?.ref ?? null,
   });
 
   // Increment coupon usage counter

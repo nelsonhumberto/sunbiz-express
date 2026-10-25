@@ -49,6 +49,11 @@ import {
   planCheckoutPaymentIntent,
   checkoutPaymentIntentIdempotencyKey,
 } from '@/lib/checkout-payment-intent';
+import { affiliateEnabled } from '@/lib/affiliate';
+import {
+  captureAffiliateForCheckout,
+  isActivePartnerPromotion,
+} from '@/lib/affiliate-order';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -64,8 +69,10 @@ interface PaymentBody {
   certificateSlug?: string;
   purpose?: string;
   couponCode?: string;
+  promotionCode?: string;
   raServiceId?: string;
   useOurRa?: boolean;
+  storedReferral?: unknown;
 }
 
 /**
@@ -105,6 +112,8 @@ export async function POST(request: NextRequest) {
         filingId,
         slug: certificateSlug,
         posthogDistinctId,
+        checkoutCode: couponCode || body.promotionCode,
+        storedReferral: body.storedReferral,
       });
     }
 
@@ -121,6 +130,13 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const customerId = await ensureStripeCustomer(stripe, userId);
     const attribution = readPaymentAttribution(posthogDistinctId);
+    const referralMeta = await referralMetadata({
+      checkoutCode: couponCode || body.promotionCode,
+      storedReferral: body.storedReferral,
+      filingId: priced.filingId,
+      stampFiling: priced.reuseFilingCheckout,
+      existingReferralCode: priced.existingReferralCode,
+    });
     const intentParams = {
       amount: priced.amountCents,
       currency: 'usd' as const,
@@ -137,6 +153,7 @@ export async function POST(request: NextRequest) {
           filing: priced.attributionFiling,
           posthogDistinctId: attribution.distinctId,
         }),
+        ...referralMeta,
       },
     };
 
@@ -147,6 +164,7 @@ export async function POST(request: NextRequest) {
       amountCents: priced.amountCents,
       intentParams,
     });
+    await mergeReferralMetadata(stripe, paymentIntent.id, referralMeta);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
@@ -164,6 +182,7 @@ interface PricedCharge {
   purpose?: string;
   storedPaymentIntentId: string | null;
   reuseFilingCheckout: boolean;
+  existingReferralCode: string | null;
   attributionFiling: {
     utmSource: string | null;
     utmMedium: string | null;
@@ -197,6 +216,7 @@ async function priceOwnedCharge(input: {
             utmCampaign: true,
             utmContent: true,
             utmTerm: true,
+            referralCode: true,
           },
         },
       },
@@ -209,6 +229,7 @@ async function priceOwnedCharge(input: {
       purpose: 'ra_renewal',
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
+      existingReferralCode: service.filing.referralCode,
       attributionFiling: service.filing,
     };
   }
@@ -234,6 +255,7 @@ async function priceOwnedCharge(input: {
       purpose: 'ein',
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
+      existingReferralCode: filing.referralCode,
       attributionFiling: filing,
     };
   }
@@ -250,6 +272,7 @@ async function priceOwnedCharge(input: {
       purpose: 'annual_report',
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
+      existingReferralCode: filing.referralCode,
       attributionFiling: filing,
     };
   }
@@ -288,6 +311,7 @@ async function priceOwnedCharge(input: {
     filingId: filing.id,
     storedPaymentIntentId: filing.checkoutPaymentIntentId,
     reuseFilingCheckout: true,
+    existingReferralCode: filing.referralCode,
     attributionFiling: filing,
   };
 }
@@ -300,9 +324,12 @@ async function formationCouponDiscount(
   const coupon = await prisma.coupon.findUnique({
     where: { code: code.trim().toUpperCase() },
   });
-  if (!coupon || !coupon.active) return { ok: false };
-  if (coupon.expiresAt && coupon.expiresAt < new Date()) return { ok: false };
-  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return { ok: false };
+  const expired = Boolean(coupon?.expiresAt && coupon.expiresAt < new Date());
+  const exhausted = Boolean(coupon && coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses);
+  if (!coupon || !coupon.active || expired || exhausted) {
+    if (await isActivePartnerPromotion(code)) return { ok: true, discountCents: 0 };
+    return { ok: false };
+  }
   const raw = coupon.type === 'PERCENT' ? Math.round((subtotalCents * coupon.value) / 100) : coupon.value;
   return { ok: true, discountCents: Math.min(Math.max(raw, 0), subtotalCents) };
 }
@@ -425,6 +452,8 @@ async function createCertificatePaymentIntent(input: {
   filingId?: string;
   slug: 'cert_status' | 'cert_copy';
   posthogDistinctId?: string;
+  checkoutCode?: string | null;
+  storedReferral?: unknown;
 }) {
   const { stripe, actorId, filingId, slug } = input;
   if (!filingId) {
@@ -467,6 +496,13 @@ async function createCertificatePaymentIntent(input: {
   const quote = certificateOrderQuote(slug, entityType, state);
   const attribution = readPaymentAttribution(input.posthogDistinctId);
   const customerId = await ensureStripeCustomer(stripe, actorId);
+  const referralMeta = await referralMetadata({
+    checkoutCode: input.checkoutCode,
+    storedReferral: input.storedReferral,
+    filingId: filing.id,
+    stampFiling: false,
+    existingReferralCode: filing.referralCode,
+  });
 
   const paymentIntent = await stripe.paymentIntents.create(
     {
@@ -488,13 +524,43 @@ async function createCertificatePaymentIntent(input: {
           filing,
           posthogDistinctId: attribution.distinctId,
         }),
+        ...referralMeta,
       },
     },
     { idempotencyKey: `certificate_${filing.id}_${slug}_${quote.totalCents}`.slice(0, 255) },
   );
+  await mergeReferralMetadata(stripe, paymentIntent.id, referralMeta);
 
   return NextResponse.json({
     clientSecret: paymentIntent.client_secret,
     paymentIntentId: paymentIntent.id,
   });
+}
+
+async function referralMetadata(input: {
+  checkoutCode?: string | null;
+  storedReferral?: unknown;
+  filingId?: string;
+  stampFiling: boolean;
+  existingReferralCode: string | null;
+}): Promise<Record<string, string>> {
+  if (!affiliateEnabled()) return {};
+  return captureAffiliateForCheckout(input);
+}
+
+async function mergeReferralMetadata(
+  stripe: Stripe,
+  paymentIntentId: string,
+  metadata: Record<string, string>,
+) {
+  if (!metadata.ref) return;
+  try {
+    await stripe.paymentIntents.update(paymentIntentId, { metadata });
+  } catch (err) {
+    logger.warn('affiliate payment metadata skipped', {
+      area: 'affiliate',
+      tag: 'pi-metadata',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 }

@@ -23,6 +23,7 @@ import {
 } from '@/lib/sunbiz';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
+import { referralDataForCapture } from '@/lib/affiliate-order';
 
 const AddressSchema = z.object({
   street1: z.string().min(1),
@@ -328,6 +329,16 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
   const email = data.guestEmail.toLowerCase().trim();
+  let referral: Awaited<ReturnType<typeof referralDataForCapture>> = null;
+  try {
+    referral = await referralDataForCapture();
+  } catch (err) {
+    logger.warn('guest annual report referral skipped', {
+      area: 'affiliate',
+      tag: 'guest-annual-report',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   // Verify Stripe amount matches our expected total (±1 cent for rounding)
   if (Math.abs(pi.amount - totalCents) > 1) {
@@ -389,6 +400,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           serviceFeeCents: 0,
           addOnsTotalCents: 0,
           totalCents: 0,
+          ...(referral ?? {}),
         },
       });
 

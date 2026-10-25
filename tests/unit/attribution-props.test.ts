@@ -9,7 +9,7 @@ describe('definedAttributionProps', () => {
   it('reads UTMs and click IDs from the URL', () => {
     expect(
       definedAttributionProps(
-        'utm_source=test&utm_medium=cpc&utm_campaign=deadlines&utm_content=ad&utm_term=llc&gclid=g123&li_fat_id=li456',
+        'utm_source=test&utm_medium=cpc&utm_campaign=deadlines&utm_content=ad&utm_term=llc&gclid=g123',
         '',
       ),
     ).toEqual({
@@ -19,7 +19,6 @@ describe('definedAttributionProps', () => {
       utm_content: 'ad',
       utm_term: 'llc',
       gclid: 'g123',
-      li_fat_id: 'li456',
     });
   });
 

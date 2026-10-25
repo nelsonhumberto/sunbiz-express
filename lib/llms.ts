@@ -46,7 +46,7 @@ const GUIDES: LinkEntry[] = [
   { title: 'Guides index', path: '/guides', note: 'Long-form formation and compliance guides.' },
   { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
   { title: 'How to Form a Florida Corporation', path: '/guides/how-to-form-a-florida-corporation', note: 'Steps, Sunbiz fees ($70 to form, $150 annual report), and what to do after Articles of Incorporation are filed. Spanish alternate: /es/guides/how-to-form-a-florida-corporation.' },
-  { title: 'Florida Fictitious Name (DBA)', path: '/guides/florida-fictitious-name-dba', note: 'who needs a DBA, the $50 Sunbiz fee, newspaper ad, 5-year renewal, cancellation.' },
+  { title: 'Florida Fictitious Name (DBA)', path: '/guides/florida-fictitious-name-dba', note: 'Who needs a DBA, the $50 Sunbiz fee, newspaper ad, 5-year renewal, cancellation.' },
   { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
   { title: 'Florida Registered Agent', path: '/guides/florida-registered-agent', note: 'Who can serve, the street-address rule, and state fees to appoint or change an agent.' },
   { title: 'Florida LLC Operating Agreement', path: '/guides/florida-llc-operating-agreement', note: 'What a Florida LLC operating agreement is, what Chapter 605 says, and how to adopt one.' },

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import sitemap from '@/app/sitemap';
 import { buildLlmsTxt } from '@/lib/llms';
+import { contentLastModified } from '@/lib/sitemap-lastmod';
 import { TIER_BY_SLUG, tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 
@@ -95,7 +96,7 @@ describe('Florida fictitious name guide', () => {
 
   it('lists the English URL in the sitemap and llms.txt, with no Spanish alternate', () => {
     const entry = sitemap().find((item) => item.url === URL);
-    expect(entry?.lastModified).toBe('2026-10-25');
+    expect(entry?.lastModified).toEqual(contentLastModified(PAGE));
     expect(entry?.alternates).toBeUndefined();
     const urls = sitemap().map((item) => item.url);
     expect(urls).toContain(URL);
@@ -103,7 +104,7 @@ describe('Florida fictitious name guide', () => {
 
     const text = buildLlmsTxt();
     expect(text).toContain(
-      '- [Florida Fictitious Name (DBA)](https://launchforma.com/guides/florida-fictitious-name-dba): who needs a DBA, the $50 Sunbiz fee, newspaper ad, 5-year renewal, cancellation.',
+      '- [Florida Fictitious Name (DBA)](https://launchforma.com/guides/florida-fictitious-name-dba): Who needs a DBA, the $50 Sunbiz fee, newspaper ad, 5-year renewal, cancellation.',
     );
     expect(text).not.toContain('/es/guides/florida-fictitious-name-dba');
   });

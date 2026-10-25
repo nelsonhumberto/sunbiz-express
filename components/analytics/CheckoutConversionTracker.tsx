@@ -6,7 +6,6 @@ import {
   purchaseCompletedEventProperties,
   trackPurchaseCompleted,
   trackGooglePurchase,
-  trackLinkedInConversion,
 } from '@/lib/analytics';
 import { utmToAnalyticsProps } from '@/lib/utm';
 
@@ -27,7 +26,6 @@ interface CheckoutConversionTrackerProps {
     utmContent?: string | null;
     utmTerm?: string | null;
     gclid?: string | null;
-    liFatId?: string | null;
   };
 }
 
@@ -61,7 +59,6 @@ export function CheckoutConversionTracker({
             utm_content: utm.utmContent ?? undefined,
             utm_term: utm.utmTerm ?? undefined,
             gclid: utm.gclid ?? undefined,
-            li_fat_id: utm.liFatId ?? undefined,
           }
         : null,
     );
@@ -87,8 +84,6 @@ export function CheckoutConversionTracker({
         ...(currency ? { currency } : {}),
       });
     }
-    // LinkedIn purchase conversion (no-op until the conversion ID is set).
-    trackLinkedInConversion('purchase');
   }, [userId, filingId, amountCents, currency, state, entityType, tier, utm]);
 
   return null;

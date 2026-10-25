@@ -17,12 +17,19 @@ import {
   ADD_ON_BY_SLUG,
   ANNUAL_REPORT_SERVICE_FEE_CENTS,
   computeCost,
+  LAUNCH_BUNDLE_PRICE_CENTS,
   RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import {
+  isLaunchBundleFiling,
+  launchBundlePaymentAllowed,
+  launchBundleSoldOutMessage,
+} from '@/lib/launch-bundle';
+import { countPaidLaunchBundleOrders } from '@/lib/launch-bundle-orders';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
@@ -484,6 +491,26 @@ async function priceOwnedCharge(input: {
 
   if (filing.status !== 'DRAFT' || filing.payments.length > 0) {
     return paymentError('already_paid', 409);
+  }
+
+  // Launch bundle: the server price is exactly $299. The client amount is ignored.
+  // Recheck the paid cap here so a sold-out offer cannot mint another intent.
+  if (isLaunchBundleFiling(filing)) {
+    const paid = await countPaidLaunchBundleOrders();
+    if (!launchBundlePaymentAllowed(paid)) {
+      return NextResponse.json(
+        { error: launchBundleSoldOutMessage(filing.locale) },
+        { status: 409 },
+      );
+    }
+    return {
+      amountCents: LAUNCH_BUNDLE_PRICE_CENTS,
+      filingId: filing.id,
+      purpose: 'launch_bundle',
+      storedPaymentIntentId: filing.checkoutPaymentIntentId,
+      reuseFilingCheckout: true,
+      attributionFiling: filing,
+    };
   }
 
   const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);

@@ -231,6 +231,18 @@ export const RA_RENEWAL_PRICE_CENTS = 15_000; // $150.00
 /** Checkout add-on starts off. The customer opts in; the price does not change. */
 export const RA_AUTORENEW_CHECKED_BY_DEFAULT = false;
 
+/**
+ * Direct-link launch bundle for the first 10 paid customers.
+ * Essential + EIN + single-member Operating Agreement, Florida filing fee included.
+ * These three numbers are the whole offer. Do not retune any other price to match them.
+ */
+export const LAUNCH_BUNDLE_PRICE_CENTS = 29_900;
+export const LAUNCH_BUNDLE_CAP = 10;
+/** Partner commission kept for a later payout. This offer does not pay it out. */
+export const LAUNCH_BUNDLE_REFERRAL_COMMISSION_CENTS = 2_000;
+/** Stored on Filing.filingSource. No schema migration: the column is already a string. */
+export const LAUNCH_BUNDLE_SOURCE = 'LAUNCH_BUNDLE';
+
 // ─── Add-on services ──────────────────────────────────────────────────────
 
 export type AddOnSlug =
@@ -730,6 +742,58 @@ function isBundledIntoTier(slug: AddOnSlug, tier: TierSlug): boolean {
   // surfaces it as an explicit perk to justify the price gap).
   if (slug === 's_corp_election' && tier === 'PREMIUM') return true;
   return false;
+}
+
+/**
+ * Fixed $299 launch bundle. The Florida LLC filing fee is inside the total.
+ * Line items name what is included and add up to {@link LAUNCH_BUNDLE_PRICE_CENTS}.
+ * Catalog tier and add-on prices are not changed.
+ */
+export function launchBundleCostBreakdown(): CostBreakdown {
+  const stateFeeCents = stateFilingFeeCents('FL', 'LLC');
+  const totalCents = LAUNCH_BUNDLE_PRICE_CENTS;
+  const serviceCents = totalCents - stateFeeCents;
+  const lines: CostBreakdownLine[] = [
+    {
+      key: 'bundle:launch',
+      label: 'Launch bundle',
+      detail:
+        'Essential package, EIN application and filing, and a single-member Operating Agreement. Florida state filing fee included.',
+      cents: totalCents,
+      category: 'package',
+    },
+  ];
+  return {
+    lines,
+    packageCents: totalCents,
+    addOnsCents: 0,
+    totalCents,
+    governmentRemittanceCents: stateFeeCents,
+    incServicesRevenueCents: serviceCents,
+    packageMarginCents: serviceCents,
+    addOnsRevenueCents: 0,
+    stateSubtotalCents: stateFeeCents,
+    serviceSubtotalCents: serviceCents,
+  };
+}
+
+/** Bundle orders ignore catalog math and coupons. Everyone else uses {@link computeCost}. */
+export function checkoutBreakdown(input: {
+  entityType: EntityType;
+  tier: TierSlug;
+  addOnSlugs: AddOnSlug[];
+  state?: StateCode;
+  processingOptionId?: string | null;
+  launchBundle?: boolean;
+}): CostBreakdown {
+  if (input.launchBundle) return launchBundleCostBreakdown();
+  return computeCost({
+    entityType: input.entityType,
+    tier: input.tier,
+    addOnSlugs: input.addOnSlugs,
+    state: input.state,
+    processingOptionId: input.processingOptionId,
+  });
 }
 
 export function effectiveAddOns(tier: TierSlug, all: AddOnSlug[]): AddOnSlug[] {

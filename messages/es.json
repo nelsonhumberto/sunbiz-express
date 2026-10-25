@@ -2079,5 +2079,33 @@
     "optIn": "Volver a permitir la medición",
     "stillRun": "Las cookies esenciales y nuestra propia analítica del producto (PostHog y Vercel) siguen funcionando. Guardamos esta elección en una cookie durante 1 año.",
     "privacyLink": "Leer la política de privacidad"
+  },
+  "launchBundle": {
+    "metaTitle": "Paquete de lanzamiento para una LLC de Florida",
+    "metaDescription": "Paquete Esencial, solicitud y presentación del EIN, y acuerdo operativo para un solo miembro. La tarifa estatal de Florida va incluida. Enlace directo para los primeros 10 pedidos pagados.",
+    "eyebrow": "Primeros 10 pedidos pagados",
+    "headline": "Paquete de lanzamiento para una LLC de Florida por {price}",
+    "subhead": "Paquete Esencial, solicitud y presentación del EIN, y acuerdo operativo para un solo miembro. La tarifa estatal de Florida va incluida en {price}.",
+    "includeEssential": "Paquete Esencial: preparamos y presentamos los Articles of Organization de tu LLC de Florida",
+    "includeFee": "Tarifa estatal de Florida, incluida en {price}",
+    "includeEin": "Solicitud y presentación del EIN (formulario SS-4 del IRS). El IRS emite el EIN sin costo si lo solicitas en irs.gov. Este cobro cubre la preparación y la presentación.",
+    "includeAgreement": "Acuerdo operativo para un solo miembro de la LLC",
+    "includeRa": "Agente registrado del primer año gratis, incluido con Esencial",
+    "includeTiming": "Presentamos el trámite en 1 día hábil",
+    "cta": "Empezar este trámite",
+    "finePrint": "LaunchForma es un servicio privado de presentación. No somos una agencia del gobierno y esto no es asesoría legal ni fiscal.",
+    "soldOutTitle": "Este paquete de lanzamiento ya se agotó",
+    "soldOutBody": "Ya se completaron los primeros 10 pedidos pagados. Esencial, Popular y Premium siguen disponibles a su precio habitual.",
+    "viewPackages": "Ver paquetes",
+    "startRegular": "Empezar un trámite normal",
+    "startError": "No pudimos empezar el trámite. Inténtalo de nuevo.",
+    "line": "Paquete de lanzamiento",
+    "detail": "Paquete Esencial, solicitud y presentación del EIN, y acuerdo operativo para un solo miembro. Tarifa estatal de Florida incluida.",
+    "locked": "Este trámite es el paquete de lanzamiento de {price}. Esencial, la presentación del EIN y el acuerdo operativo para un solo miembro se quedan en el pedido.",
+    "lockedState": "Esta oferta es una LLC de Florida. El estado y el tipo de entidad se quedan en el pedido.",
+    "lockedTier": "Esencial va incluido en el paquete de lanzamiento de {price}. Los otros paquetes no forman parte de esta oferta.",
+    "oneOwner": "Esta oferta incluye un acuerdo operativo para un solo miembro, así que el trámite queda con un solo miembro.",
+    "oneOwnerError": "Este paquete de lanzamiento incluye un acuerdo operativo para un solo miembro. Indica un solo miembro. Si hay más de un miembro, empieza un trámite normal desde la página de precios.",
+    "soldOutPayment": "Este paquete de lanzamiento ya se agotó."
   }
 }

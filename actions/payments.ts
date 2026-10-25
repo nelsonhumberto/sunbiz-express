@@ -10,13 +10,15 @@ import { auth, signIn } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import {
-  computeCost,
+  checkoutBreakdown,
+  LAUNCH_BUNDLE_PRICE_CENTS,
   RA_AUTORENEW_CHECKED_BY_DEFAULT,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { isTestPayment } from '@/lib/payment-test';
 import {
   CHECKOUT_BELOW_STATE_FEE_ERROR,
@@ -287,15 +289,20 @@ export async function processCheckout(input: {
     optionalDetails && typeof optionalDetails.processingOption === 'string'
       ? (optionalDetails.processingOption as string)
       : undefined;
-  const breakdown = computeCost({
+  const launchBundle = isLaunchBundleFiling(filing);
+  const breakdown = checkoutBreakdown({
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
     state: asStateCode(filing.state),
     processingOptionId,
+    launchBundle,
   });
-  const discountCents = input.discountCents ?? 0;
-  const expectedTotal = Math.max(0, breakdown.totalCents - discountCents);
+  // The bundle price is fixed. A client-supplied coupon cannot change it.
+  const discountCents = launchBundle ? 0 : (input.discountCents ?? 0);
+  const expectedTotal = launchBundle
+    ? LAUNCH_BUNDLE_PRICE_CENTS
+    : Math.max(0, breakdown.totalCents - discountCents);
   const stateFeeMinimum = tierBundledStateFeeCents(
     filing.serviceTier as TierSlug,
     filing.entityType as EntityType,
@@ -406,7 +413,7 @@ export async function processCheckout(input: {
         cardLast4,
         cardBrand,
         cardholderName,
-        couponCode: input.couponCode ?? null,
+        couponCode: launchBundle ? null : (input.couponCode ?? null),
         discountCents,
         completedAt: new Date(),
       },
@@ -476,15 +483,15 @@ export async function processCheckout(input: {
       addOnsTotalCents: breakdown.addOnsCents,
       discountCents,
       totalCents: expectedTotal,
-      couponCode: input.couponCode ?? null,
-      couponId: input.couponId ?? null,
+      couponCode: launchBundle ? null : (input.couponCode ?? null),
+      couponId: launchBundle ? null : (input.couponId ?? null),
       optionalDetails: optionalDetailsUpdate,
       completedSteps: JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
     },
   });
 
   // Increment coupon usage counter
-  if (input.couponId) {
+  if (input.couponId && !launchBundle) {
     await prisma.coupon.update({
       where: { id: input.couponId },
       data: { usedCount: { increment: 1 } },

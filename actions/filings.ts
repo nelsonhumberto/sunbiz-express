@@ -6,13 +6,14 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import {
-  computeCost,
+  checkoutBreakdown,
   filingHasOperatingAgreement,
   tierBundledAddOns,
   RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import {
   generateArticlesOfOrganization,
   generateArticlesOfIncorporation,
@@ -193,7 +194,7 @@ export async function submitFilingToState(
 
   // Customer receipts present the all-in pricing the customer actually paid
   // (filing package + add-ons), not the internal state-vs-margin split. We
-  // reconstruct the lines directly from `computeCost` so the receipt always
+  // reconstruct the lines directly from the checkout quote so the receipt always
   // matches what the wizard cost sidebar showed.
   const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
     filing.state.toUpperCase() as StateCode,
@@ -209,19 +210,24 @@ export async function submitFilingToState(
     optionalForCost && typeof optionalForCost.processingOption === 'string'
       ? (optionalForCost.processingOption as string)
       : undefined;
-  const breakdownForReceipt = computeCost({
+  const launchBundle = isLaunchBundleFiling(filing);
+  const breakdownForReceipt = checkoutBreakdown({
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs: filingAddOnSlugs,
     state: filingStateCode,
     processingOptionId,
+    launchBundle,
   });
   const payment = filing.payments.find((p) => p.status === 'SUCCEEDED');
   const receipt = generateReceipt({
     filingId: filing.id,
     businessName: filing.businessName ?? '',
-    totalCents: filing.totalCents,
-    lines: breakdownForReceipt.lines.map((l) => ({ label: l.label, cents: l.cents })),
+    totalCents: launchBundle ? breakdownForReceipt.totalCents : filing.totalCents,
+    lines: breakdownForReceipt.lines.map((l) => ({
+      label: launchBundle && l.detail ? `${l.label}. ${l.detail}` : l.label,
+      cents: l.cents,
+    })),
     paidAt: payment?.completedAt ?? submittedAt,
     cardLast4: payment?.cardLast4 ?? undefined,
     state: filingStateCode,

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { retrieveCheckoutSession } from '@/lib/retrieve-checkout-session';
 import {
   checkoutFilingCandidates,
@@ -107,6 +108,7 @@ export default async function CheckoutSuccessPage({
     utmContent: string | null;
     utmTerm: string | null;
     gclid: string | null;
+    filingSource: string;
     documents: { id: string; documentType: string }[];
     filingAdditionalServices: { service: { serviceSlug: string } }[];
   } | null = paidFiling;
@@ -218,6 +220,7 @@ export default async function CheckoutSuccessPage({
             }
           : undefined
       }
+      suppressGoogleAds={filing ? isLaunchBundleFiling(filing) : false}
     />
   );
 

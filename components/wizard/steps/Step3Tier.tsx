@@ -9,7 +9,8 @@ import { withActionTimeout } from '@/lib/action-timeout';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
-import { TIERS, tierPackagePriceCents, tierPriceParts, type EntityType, type TierSlug } from '@/lib/pricing';
+import { TIERS, LAUNCH_BUNDLE_PRICE_CENTS, tierPackagePriceCents, tierPriceParts, type EntityType, type TierSlug } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -19,6 +20,8 @@ import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('pricing');
+  const tBundle = useTranslations('launchBundle');
+  const bundle = isLaunchBundleFiling(filing);
   const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const { pending, error, run } = useWizardSubmit();
@@ -56,14 +59,21 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
     });
   };
 
+  const visibleTiers = bundle ? TIERS.filter((tierDef) => tierDef.slug === 'BASIC') : TIERS;
+
   return (
     <div className="space-y-4">
+      {bundle ? (
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-ink leading-relaxed">
+          {tBundle('lockedTier', { price: formatCurrency(LAUNCH_BUNDLE_PRICE_CENTS) })}
+        </p>
+      ) : null}
       <div
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
         role="radiogroup"
         aria-label="Choose your package"
       >
-        {TIERS.map((tierDef) => {
+        {visibleTiers.map((tierDef) => {
           const isSelected = tier === tierDef.slug;
           const tierName = t(`tier_${tierDef.slug}` as never);
           const tierDesc = t(`tier_${tierDef.slug}_desc` as never);
@@ -99,17 +109,21 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
                   <h3 className="font-display text-xl font-medium">{tierName}</h3>
                   <p className="font-display text-3xl font-medium mt-1">
                     {formatCurrency(
-                      tierPackagePriceCents(tierDef.slug, entityType, stateCode),
+                      bundle
+                        ? LAUNCH_BUNDLE_PRICE_CENTS
+                        : tierPackagePriceCents(tierDef.slug, entityType, stateCode),
                     )}{' '}
                     <span className="text-xs font-normal text-ink-subtle">{t('allIn')}</span>
                   </p>
                   <p className="text-xs font-medium text-ink mt-1 leading-snug">
-                    {feeSplitLabel(
-                      t,
-                      tierPriceParts(tierDef.slug, entityType, stateCode),
-                      formationState.name,
-                      tierDef.slug,
-                    )}
+                    {bundle
+                      ? tBundle('detail')
+                      : feeSplitLabel(
+                          t,
+                          tierPriceParts(tierDef.slug, entityType, stateCode),
+                          formationState.name,
+                          tierDef.slug,
+                        )}
                   </p>
                   <p className="text-[11px] text-ink-subtle mt-0.5">{bestFor}</p>
                 </div>

@@ -26,11 +26,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   computeCost,
+  LAUNCH_BUNDLE_PRICE_CENTS,
+  launchBundleCostBreakdown,
   RA_AUTORENEW_CHECKED_BY_DEFAULT,
   RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
@@ -65,6 +68,7 @@ export function Step12Payment({
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const tBundle = useTranslations('launchBundle');
   const locale = useLocale();
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
@@ -83,13 +87,16 @@ export function Step12Payment({
     optionalDetails && typeof optionalDetails.processingOption === 'string'
       ? (optionalDetails.processingOption as string)
       : undefined;
-  const breakdown = computeCost({
-    entityType,
-    tier: filing.serviceTier as TierSlug,
-    addOnSlugs,
-    state: stateCode,
-    processingOptionId,
-  });
+  const launchBundle = isLaunchBundleFiling(filing);
+  const breakdown = launchBundle
+    ? launchBundleCostBreakdown()
+    : computeCost({
+        entityType,
+        tier: filing.serviceTier as TierSlug,
+        addOnSlugs,
+        state: stateCode,
+        processingOptionId,
+      });
 
   // Registered Agent auto-renew: only offer it when the customer chose our RA.
   const registeredAgent = safeParseJson<{ useOurService?: boolean } | null>(
@@ -121,8 +128,10 @@ export function Step12Payment({
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [couponError, setCouponError] = useState('');
 
-  const discountCents = appliedCoupon?.discountCents ?? 0;
-  const finalTotal = Math.max(0, breakdown.totalCents - discountCents);
+  const discountCents = launchBundle ? 0 : (appliedCoupon?.discountCents ?? 0);
+  const finalTotal = launchBundle
+    ? LAUNCH_BUNDLE_PRICE_CENTS
+    : Math.max(0, breakdown.totalCents - discountCents);
 
   const applyCode = () => {
     if (!couponInput.trim()) return;
@@ -216,10 +225,11 @@ export function Step12Payment({
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
         <div className="space-y-2.5">
           {breakdown.lines.map((line) => {
-            const label = localizedLineLabel(line, entityType, t, tPricing);
-            const detail =
-              lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
-              localizedLineDetail(line, t);
+            const label = launchBundle ? tBundle('line') : localizedLineLabel(line, entityType, t, tPricing);
+            const detail = launchBundle
+              ? tBundle('detail')
+              : lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
+                localizedLineDetail(line, t);
             return (
               <div key={line.key} className="flex items-baseline justify-between text-sm gap-3">
                 <div className="min-w-0">
@@ -261,8 +271,8 @@ export function Step12Payment({
         </div>
         <p className="mt-2 text-xs text-ink-subtle leading-snug">{t('packageDisclosure')}</p>
 
-        {/* Coupon code input */}
-        <div className="border-t border-border pt-4 mt-2">
+        {/* Coupon code input. The launch bundle price is fixed, so coupons do not apply. */}
+        {launchBundle ? null : <div className="border-t border-border pt-4 mt-2">
           {appliedCoupon ? (
             <div className="flex items-center justify-between rounded-md bg-success/10 border border-success/20 px-3 py-2 text-sm text-success">
               <span className="flex items-center gap-1.5">
@@ -299,7 +309,7 @@ export function Step12Payment({
               {couponError && <p className="text-xs text-destructive">{couponError}</p>}
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* What happens after payment - calms anxiety, keeps customer oriented. */}

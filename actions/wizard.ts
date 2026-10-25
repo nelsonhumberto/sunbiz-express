@@ -12,12 +12,14 @@ import { getGuestUser, getWizardActor } from '@/lib/guest';
 import { planMismatchedGuestSignIn, readGuestAsideEmails } from '@/lib/guest-identity';
 import { encryptString } from '@/lib/encryption';
 import {
-  computeCost,
+  checkoutBreakdown,
   filingHasOperatingAgreement,
   isWizardAddOn,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
+import { ensureLaunchBundleAddOns } from '@/lib/launch-bundle-orders';
 import {
   validateBusinessName,
   validateRegisteredAgentAddress,
@@ -133,12 +135,14 @@ async function recomputeCost(filingId: string) {
     optional && typeof optional.processingOption === 'string'
       ? (optional.processingOption as string)
       : undefined;
-  const breakdown = computeCost({
-    entityType: filing.entityType as 'LLC' | 'CORP',
-    tier: filing.serviceTier as TierSlug,
+  const launchBundle = isLaunchBundleFiling(filing);
+  const breakdown = checkoutBreakdown({
+    entityType: launchBundle ? 'LLC' : (filing.entityType as 'LLC' | 'CORP'),
+    tier: launchBundle ? 'BASIC' : (filing.serviceTier as TierSlug),
     addOnSlugs,
-    state: asStateCode(filing.state),
-    processingOptionId,
+    state: launchBundle ? 'FL' : asStateCode(filing.state),
+    processingOptionId: launchBundle ? undefined : processingOptionId,
+    launchBundle,
   });
   await prisma.filing.update({
     where: { id: filingId },
@@ -208,14 +212,17 @@ export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const { filing, actor } = await getFilingForUser(data.filingId);
   const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, false, filing.locale);
   if (!emailSaved.ok) return emailSaved;
-  const nextState = data.state ?? asStateCode(filing.state);
-  const taxElection = data.taxElection ?? null;
+  const bundle = isLaunchBundleFiling(filing);
+  const nextState = bundle ? 'FL' : (data.state ?? asStateCode(filing.state));
+  const taxElection = bundle ? null : (data.taxElection ?? null);
+  const entityType = bundle ? 'LLC' : data.entityType;
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      entityType: data.entityType,
+      entityType,
       state: nextState,
       taxElection,
+      serviceTier: bundle ? 'BASIC' : filing.serviceTier,
       currentStep: Math.max(filing.currentStep, 2),
       completedSteps: markStepComplete(filing.completedSteps, 1),
     },
@@ -224,7 +231,11 @@ export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   // Keep the S-Corp election service in sync with the Step-1 choice so cost
   // and the Form 2553 collection are correct regardless of when the user
   // reaches the add-ons step. Premium already bundles it (don't double-add).
-  await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', filing.serviceTier as TierSlug);
+  await syncSCorpElectionAddOn(
+    filing.id,
+    !bundle && taxElection === 'S_CORP',
+    bundle ? 'BASIC' : (filing.serviceTier as TierSlug),
+  );
 
   await recomputeCost(filing.id);
   revalidatePath(`/wizard/${filing.id}`);
@@ -337,17 +348,19 @@ const Step3Schema = z.object({
 export async function saveStep3(input: z.infer<typeof Step3Schema>) {
   const data = Step3Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const bundle = isLaunchBundleFiling(filing);
+  const tier = bundle ? 'BASIC' : data.tier;
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      serviceTier: data.tier,
+      serviceTier: tier,
       currentStep: Math.max(filing.currentStep, 4),
       completedSteps: markStepComplete(filing.completedSteps, 3),
     },
   });
   // Keep the S-Corp election service consistent with the new tier (Premium
   // bundles it; other tiers bill it à la carte when S-Corp was elected).
-  await syncSCorpElectionAddOn(filing.id, filing.taxElection === 'S_CORP', data.tier);
+  await syncSCorpElectionAddOn(filing.id, !bundle && filing.taxElection === 'S_CORP', tier);
   await recomputeCost(filing.id);
 }
 
@@ -357,6 +370,7 @@ export async function saveStep3(input: z.infer<typeof Step3Schema>) {
 export async function upgradeTier(input: { filingId: string; tier: 'BASIC' | 'STANDARD' | 'PREMIUM' }) {
   const data = Step3Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  if (isLaunchBundleFiling(filing)) return { ok: true as const };
   await prisma.filing.update({
     where: { id: filing.id },
     data: { serviceTier: data.tier },
@@ -535,6 +549,14 @@ const Step7Schema = z.object({
 export async function saveStep7(input: z.infer<typeof Step7Schema>) {
   const data = Step7Schema.parse(input);
   const { filing, actor } = await getFilingForUser(data.filingId);
+
+  if (isLaunchBundleFiling(filing) && data.members.length !== 1) {
+    const tBundle = await getTranslations({
+      locale: localeFromPathOrFiling(await storedLocale(), filing.locale),
+      namespace: 'launchBundle',
+    });
+    return { ok: false as const, error: tBundle('oneOwnerError') };
+  }
 
   const members = data.members.map((m) => ({ ...m })); // mutable copy
   const entityType = filing.entityType as 'LLC' | 'CORP';
@@ -948,7 +970,9 @@ export async function saveStep9(
         businessPurpose: data.businessPurpose || undefined,
         electronicServiceConsent: data.electronicServiceConsent,
         organizerEmail: data.organizerEmail || undefined,
-        processingOption: data.processingOption || undefined,
+        processingOption: isLaunchBundleFiling(filing)
+          ? undefined
+          : data.processingOption || undefined,
         foreignRegistrationInterest: data.foreignRegistrationInterest,
       }),
       currentStep: Math.max(filing.currentStep, 9),
@@ -1027,6 +1051,24 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
 
 export async function saveStep11(input: { filingId: string; addOnSlugs: string[] }) {
   const { filing } = await getFilingForUser(input.filingId);
+
+  if (isLaunchBundleFiling(filing)) {
+    await ensureLaunchBundleAddOns(filing.id);
+    await prisma.filing.update({
+      where: { id: filing.id },
+      data: {
+        serviceTier: 'BASIC',
+        entityType: 'LLC',
+        state: 'FL',
+        taxElection: null,
+        currentStep: Math.max(filing.currentStep, 11),
+        completedSteps: markStepComplete(filing.completedSteps, 10),
+      },
+    });
+    await recomputeCost(filing.id);
+    await reconcileOwnershipPercentages(filing.id);
+    return { ok: true as const };
+  }
 
   const services = await prisma.additionalService.findMany({
     where: { serviceSlug: { in: input.addOnSlugs.filter(isWizardAddOn) } },

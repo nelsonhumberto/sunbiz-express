@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Globe, Check } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ interface Props {
 
 export function LanguageSwitcher({ variant = 'icon', className }: Props) {
   const currentLocale = useLocale() as Locale;
+  const tNav = useTranslations('nav');
   const pathname = usePathname() ?? '';
   const spanishOnly = isSpanishOnlyGuidePath(pathname);
   const [pending, start] = useTransition();
@@ -54,7 +55,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: Props) {
             className
           )}
           disabled={pending}
-          aria-label="Change language"
+          aria-label={tNav('changeLanguage')}
         >
           <Globe className="h-4 w-4" />
           {variant === 'full' ? (

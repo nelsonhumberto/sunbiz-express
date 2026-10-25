@@ -60,7 +60,8 @@
     "dashboard": "Panel",
     "admin": "Admin",
     "signOut": "Cerrar sesión",
-    "language": "Idioma"
+    "language": "Idioma",
+    "changeLanguage": "Cambiar idioma"
   },
   "footer": {
     "tagline": "Incorpora. Empodera. Eleva. - La forma moderna de constituir tu empresa.",

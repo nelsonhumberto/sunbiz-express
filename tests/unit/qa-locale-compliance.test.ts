@@ -163,6 +163,10 @@ describe('Spanish-only guides and statute labels', () => {
     expect(isSpanishOnlyGuidePath('/guides/llc-para-tu-app-florida')).toBe(true);
     expect(isSpanishOnlyGuidePath('/es/guides/how-to-form-an-llc-in-florida')).toBe(false);
     const switcher = source('components/marketing/LanguageSwitcher.tsx');
+    expect(switcher).toContain("tNav('changeLanguage')");
+    expect(switcher).not.toContain('aria-label="Change language"');
+    expect(en.nav.changeLanguage).toBe('Change language');
+    expect(es.nav.changeLanguage).toBe('Cambiar idioma');
     expect(switcher).toContain('Solo en español');
     expect(switcher).toContain('isSpanishOnlyGuidePath');
     expect(switcher.indexOf('await setLocaleAction(locale)')).toBeLessThan(

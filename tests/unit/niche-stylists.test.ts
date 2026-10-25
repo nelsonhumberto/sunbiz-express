@@ -357,15 +357,27 @@ describe('niche bundle flag', () => {
   });
 });
 
-describe('stylists pages stay out of sitemap and llms.txt', () => {
-  it('does not list either URL until go-live', () => {
-    const urls = sitemap().map((entry) => entry.url);
-    expect(urls).not.toContain('https://launchforma.com/llc-for/stylists-barbers');
-    expect(urls).not.toContain('https://launchforma.com/es/llc-para/estilistas-barberos');
+describe('stylists pages are in the sitemap and llms.txt', () => {
+  it('lists both URLs with the same hreflang alternates as other EN/ES pairs', () => {
+    const entries = sitemap();
+    const enUrl = 'https://launchforma.com/llc-for/stylists-barbers';
+    const esUrl = 'https://launchforma.com/es/llc-para/estilistas-barberos';
+    const english = entries.find((entry) => entry.url === enUrl);
+    const spanish = entries.find((entry) => entry.url === esUrl);
+    const languages = { en: enUrl, es: esUrl, 'x-default': enUrl };
+    expect(english?.alternates?.languages).toEqual(languages);
+    expect(spanish?.alternates?.languages).toEqual(languages);
+    expect(entries.map((entry) => entry.url)).not.toContain(
+      'https://launchforma.com/es/llc-for/stylists-barbers',
+    );
     const text = buildLlmsTxt();
-    expect(text).not.toContain('/llc-for/stylists-barbers');
-    expect(text).not.toContain('/es/llc-para/estilistas-barberos');
-    expect(readFileSync('app/sitemap.ts', 'utf8')).toContain('TODO(niche-pages-go-live)');
-    expect(readFileSync('lib/llms.ts', 'utf8')).toContain('TODO(niche-pages-go-live)');
+    expect(text).toContain(
+      '- [LLC for Hair Stylists and Barbers](https://launchforma.com/llc-for/stylists-barbers): Florida LLC formation for hair stylists and barbers. Essential is $149 and includes the $125 state fee. Spanish alternate: /es/llc-para/estilistas-barberos.',
+    );
+    expect(text).toContain(
+      '- [LLC para estilistas y barberos](https://launchforma.com/es/llc-para/estilistas-barberos): LLC en Florida para estilistas y barberos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Alterna en inglés: /llc-for/stylists-barbers.',
+    );
+    expect(readFileSync('app/sitemap.ts', 'utf8')).not.toContain('TODO(niche-pages-go-live)');
+    expect(readFileSync('lib/llms.ts', 'utf8')).not.toContain('TODO(niche-pages-go-live)');
   });
 });

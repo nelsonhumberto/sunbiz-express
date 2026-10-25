@@ -30,6 +30,7 @@ import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
+import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
 import { submitFilingToState } from './filings';
 import {
   ensureFilingTouchUtm,
@@ -69,6 +70,10 @@ export async function processCheckout(input: {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
   if (!actor) return { error: 'Please sign in.' };
+  // Guests can fill the wizard. The charge waits until the guest row is an account.
+  if (!checkoutAllowsPayment(actor.kind)) {
+    return { error: CHECKOUT_ACCOUNT_REQUIRED };
+  }
 
   const filing = await prisma.filing.findUnique({
     where: { id: input.filingId },

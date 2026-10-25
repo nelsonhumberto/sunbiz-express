@@ -43,6 +43,7 @@ import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
+import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,13 @@ export default async function WizardStepPage({ params }: PageProps) {
     actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
   }
   const actorEmail = actor?.email ?? undefined;
+  const realGuestEmail =
+    actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
+  const needsGuestEmail = actor?.kind === 'guest' && !realGuestEmail;
+  const pendingAccountEmail =
+    optional && typeof optional.pendingAccountEmail === 'string'
+      ? optional.pendingAccountEmail
+      : '';
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
@@ -141,8 +149,20 @@ export default async function WizardStepPage({ params }: PageProps) {
         isGuest={isGuest}
         guestEmail={actor?.kind === 'guest' ? actor.email : undefined}
       >
-        {stepNum === 1 && <Step1Entity filing={filing} />}
-        {stepNum === 2 && <Step2Name filing={filing} />}
+        {stepNum === 1 && (
+          <Step1Entity
+            filing={filing}
+            needsGuestEmail={needsGuestEmail}
+            initialGuestEmail={pendingAccountEmail}
+          />
+        )}
+        {stepNum === 2 && (
+          <Step2Name
+            filing={filing}
+            needsGuestEmail={needsGuestEmail}
+            initialGuestEmail={pendingAccountEmail}
+          />
+        )}
         {stepNum === 3 && <Step3Tier filing={filing} />}
         {stepNum === 4 && <Step4Address filing={filing} />}
         {stepNum === 5 && <Step5Mailing filing={filing} />}
@@ -158,17 +178,24 @@ export default async function WizardStepPage({ params }: PageProps) {
         {stepNum === 9 && <Step10Review filing={filing} />}
         {stepNum === 10 && <Step11AddOns filing={filing} />}
         {stepNum === 11 && (
-          <Step12Payment filing={filing} isTester={isTester} testMode={testMode} />
+          <Step12Payment
+            filing={filing}
+            isTester={isTester}
+            testMode={testMode}
+            isGuest={isGuest}
+            guestEmail={realGuestEmail ?? ''}
+            pendingAccountEmail={pendingAccountEmail || undefined}
+          />
         )}
       </WizardShell>
 
       {/* Guest-only popup: appears after Step 1 (entity choice) so we have
           collected enough info to position the offer. The popup is dismissable
           and persists its dismissal in localStorage. */}
-      {isGuest && actor && stepNum >= 1 && (
+      {isGuest && actor?.kind === 'guest' && realGuestEmail && stepNum >= 2 && (
         <GuestAccountPrompt
           firstName={actor.firstName}
-          email={actor.email}
+          email={realGuestEmail}
           filingId={filing.id}
         />
       )}

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from './db';
+import { loginLinkClaimPlan } from './guest-identity';
 import { safeRedirectPath } from './utils';
 
 export const LOGIN_LINK_COOKIE = 'lf_login_link';
@@ -75,6 +76,16 @@ export async function consumeLoginLink(token: string) {
     },
   });
   const user = row?.user;
-  if (!user || user.accountStatus !== 'ACTIVE' || user.role === 'ADMIN') return null;
+  if (!user) return null;
+  const plan = loginLinkClaimPlan(user.accountStatus, user.role);
+  if (plan === 'deny') return null;
+  if (plan === 'claim_guest') {
+    // The draft already belongs to this row. Claiming it here is the attach.
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { accountStatus: 'ACTIVE', guestToken: null },
+    });
+    return { ...user, accountStatus: 'ACTIVE' };
+  }
   return user;
 }

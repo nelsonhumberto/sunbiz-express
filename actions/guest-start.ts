@@ -27,6 +27,8 @@ import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume } from '@/lib/start-draft';
+import { isPlaceholderGuestEmail, placeholderGuestEmail } from '@/lib/guest-identity';
+import { checkActionRateLimit } from '@/lib/rate-limit';
 
 const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
@@ -252,6 +254,160 @@ export async function startGuestFiling(
   redirect(`/wizard/${filing.id}/2`);
 }
 
+/**
+ * Open the wizard for a logged-out visitor without asking for a name or email.
+ * A guest row and draft are created on the first call. The email is collected
+ * on the entity step or the name check, then written to User.email.
+ * A later visit with the guest cookie resumes the same draft.
+ */
+export async function openGuestDraft(input: {
+  state?: string;
+  entityType?: string;
+  tier?: string;
+  businessName?: string;
+  draftIntent?: 'resume' | 'new';
+  draftId?: string;
+}): Promise<StartGuestResult> {
+  const t = await getTranslations('start');
+  const requestedState = (input.state ?? 'FL').toUpperCase();
+  const stateCode = (
+    ACTIVE_FORMATION_STATES.includes(requestedState as StateCode) ? requestedState : 'FL'
+  ) as StateCode;
+  const entityChoice = (['LLC', 'CORP', 'SCORP'].includes((input.entityType ?? '').toUpperCase())
+    ? (input.entityType ?? 'LLC').toUpperCase()
+    : 'LLC') as 'LLC' | 'CORP' | 'SCORP';
+  const { entityType, taxElection } = resolveEntityChoice(entityChoice);
+  const tierRaw = (input.tier ?? 'STANDARD').toUpperCase();
+  const serviceTier = (['BASIC', 'STANDARD', 'PREMIUM'].includes(tierRaw) ? tierRaw : 'STANDARD') as
+    | 'BASIC'
+    | 'STANDARD'
+    | 'PREMIUM';
+  const seededName = normalizeNameCheckQuery(input.businessName) || null;
+  const locale = await storedLocale();
+  const localeData = locale ? { locale } : {};
+  const entryPath = storedEntryPath();
+  const entryData = entryPath ? { entryPath } : {};
+
+  const session = await auth();
+  if (session?.user?.id) {
+    const filing = await prisma.filing.create({
+      data: {
+        userId: session.user.id,
+        entityType,
+        taxElection,
+        state: stateCode,
+        serviceTier,
+        businessName: seededName,
+        currentStep: seededName ? 2 : 1,
+        completedSteps: JSON.stringify(seededName ? [1] : []),
+        ...localeData,
+        ...entryData,
+        ...filingUtmCreateFields(),
+      },
+    });
+    await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    const step = seededName ? 2 : 1;
+    redirect(`/wizard/${filing.id}/${step}`);
+  }
+
+  const guest = await getGuestUser();
+  if (guest && input.draftIntent !== 'new') {
+    const draft = await prisma.filing.findFirst({
+      where: { userId: guest.id, status: 'DRAFT' },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, currentStep: true, businessName: true },
+    });
+    if (draft && (!input.draftId || input.draftId === draft.id)) {
+      const decision = decideDraftNameResume({
+        existingName: draft.businessName,
+        proposedName: input.draftIntent === 'resume' ? null : seededName,
+        currentStep: draft.currentStep,
+      });
+      if (decision.action === 'apply' && seededName) {
+        await prisma.filing.update({
+          where: { id: draft.id },
+          data: { businessName: seededName, nameAvailable: null, nameCheckedAt: null },
+        });
+        redirect(`/wizard/${draft.id}/2`);
+      }
+      if (decision.action === 'choose' && seededName) {
+        const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+        return {
+          choice: {
+            draftId: draft.id,
+            existingName: draft.businessName?.trim() || '',
+            proposedName: seededName,
+            resumeHref: `/wizard/${draft.id}/${step}`,
+          },
+        };
+      }
+      const step = decision.action === 'resume' ? decision.step : 2;
+      redirect(`/wizard/${draft.id}/${step}`);
+    }
+  }
+
+  if (!guest) {
+    const limited = checkActionRateLimit('guest-open', 30, 60 * 60 * 1000);
+    if (limited) return { error: limited };
+  }
+
+  const initialStep = seededName ? 2 : 1;
+  let filingId = '';
+  try {
+    let userId = guest?.id ?? null;
+    if (!userId) {
+      const token = newGuestToken();
+      const placeholderPassword = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+      const created = await prisma.user.create({
+        data: {
+          email: placeholderGuestEmail(token),
+          firstName: '',
+          lastName: '',
+          passwordHash: placeholderPassword,
+          accountStatus: 'GUEST',
+          guestToken: token,
+          ...localeData,
+          ...userUtmCreateFields(),
+        },
+      });
+      userId = created.id;
+      setGuestCookie(token);
+    } else {
+      await ensureUserFirstTouchUtm(userId);
+    }
+
+    cookies().set(PREFERRED_STATE_COOKIE, stateCode, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    });
+
+    const filing = await prisma.filing.create({
+      data: {
+        userId,
+        entityType,
+        taxElection,
+        state: stateCode,
+        serviceTier,
+        businessName: seededName,
+        currentStep: initialStep,
+        completedSteps: JSON.stringify(seededName ? [1] : []),
+        ...localeData,
+        ...entryData,
+        ...filingUtmCreateFields(),
+      },
+    });
+    filingId = filing.id;
+    await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    logger.error('guest draft open failed', { area: 'guest', tag: 'open-draft' }, err);
+    return { error: t('errorStart') };
+  }
+
+  redirect(`/wizard/${filingId}/${initialStep}`);
+}
+
 // ─── Claim Account (popup → real account) ────────────────────────────────
 
 const ClaimSchema = z.object({
@@ -273,6 +429,8 @@ export interface ClaimResult {
   resumeHref?: string;
   signedIn?: boolean;
   fieldErrors?: Record<string, string>;
+  /** The email belongs to an existing account. Sign in to attach the draft. */
+  needsSignIn?: boolean;
 }
 
 /**
@@ -303,6 +461,9 @@ export async function claimGuestAccount(
   }
   const newEmail = parsed.data.email.toLowerCase().trim();
   const password = parsed.data.password;
+  if (isPlaceholderGuestEmail(newEmail)) {
+    return { error: 'Enter a valid email.', fieldErrors: { email: 'Enter a valid email.' } };
+  }
 
   const guest = await getGuestUser();
   if (!guest) return { error: 'Your guest session has expired. Please start again.' };
@@ -312,9 +473,16 @@ export async function claimGuestAccount(
   if (newEmail !== guest.email) {
     const collision = await prisma.user.findUnique({ where: { email: newEmail } });
     if (collision && collision.id !== guest.id) {
+      if (collision.accountStatus !== 'GUEST') {
+        return {
+          needsSignIn: true,
+          error:
+            'That email already has an account. Sign in and we will attach this draft.',
+        };
+      }
       return {
         error:
-          'That email is already in use. Sign in to that account, or use a different email.',
+          'That email already has a saved draft. Continue with it, or use a different email.',
       };
     }
   }

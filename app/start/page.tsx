@@ -8,7 +8,8 @@ import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
-import { GuestStartForm } from './guest-start-form';
+import { GuestStartLaunch } from './guest-start-launch';
+import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
@@ -108,11 +109,16 @@ export default async function StartPage({ searchParams }: StartPageProps) {
 
   const t = await getTranslations('start');
   const tDisc = await getTranslations('disclosure');
+  const locale = await getLocale();
   const requested = (searchParams?.state ?? 'FL').toUpperCase();
   const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
     ? (requested as StateCode)
     : 'FL';
   const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
+  const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
+  const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
+  const entityLabel =
+    entityChoice === 'SCORP' ? t('entitySCorp') : entityChoice === 'CORP' ? t('entityCorp') : t('entityLLC');
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -128,11 +134,13 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       </div>
 
       <main className="flex-1 container max-w-3xl py-10">
-        <GuestStartForm
+        <GuestStartLaunch
           defaultState={stateCode}
           defaultEntity={entityChoice}
           defaultTier={resolveTier(searchParams?.tier)}
           defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
+          stateName={stateName}
+          entityLabel={entityLabel}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

@@ -12,6 +12,7 @@ import {
   type NameCheckResult,
   type BusinessNameAssessment,
 } from '../NameCheckWidget';
+import { GuestEmailField } from '../GuestEmailField';
 import type { WizardFiling } from '../types';
 import {
   Dialog,
@@ -29,9 +30,19 @@ import {
 } from '@/lib/formation-states';
 import { nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
-export function Step2Name({ filing }: { filing: WizardFiling }) {
+export function Step2Name({
+  filing,
+  needsGuestEmail = false,
+  initialGuestEmail = '',
+}: {
+  filing: WizardFiling;
+  needsGuestEmail?: boolean;
+  initialGuestEmail?: string;
+}) {
   const t = useTranslations('wizard');
   const [name, setName] = useState(filing.businessName ?? '');
+  const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
@@ -55,6 +66,7 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
         filingId: filing.id,
         businessName: name,
         available: result?.available ?? undefined,
+        contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
       if (!res.ok) return { ok: false, error: res.error };
       router.push(`/wizard/${filing.id}/3`);
@@ -62,6 +74,10 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
   };
 
   const onContinue = () => {
+    if (needsGuestEmail && !guestEmail.trim()) {
+      setEmailError(t('guestEmailRequired'));
+      return;
+    }
     if (!canContinue) return;
     // If the state lookup says the name is taken, confirm via an accessible
     // dialog (keyboard + screen-reader friendly) instead of window.confirm().
@@ -74,6 +90,17 @@ export function Step2Name({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-6">
+      {needsGuestEmail && (
+        <GuestEmailField
+          value={guestEmail}
+          onChange={(value) => {
+            setGuestEmail(value);
+            setEmailError(null);
+          }}
+          error={emailError}
+        />
+      )}
+
       <NameCheckWidget
         initialName={seededBusinessName(filing.businessName)}
         entityType={filing.entityType as 'LLC' | 'CORP'}

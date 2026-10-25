@@ -36,6 +36,7 @@ import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import { formatLongDate } from '@/lib/due-label';
 import type { WizardFiling } from '../types';
+import { GuestCheckoutAccount } from '../GuestCheckoutAccount';
 import {
   getFormationState,
   isActiveFormationState,
@@ -46,11 +47,17 @@ export function Step12Payment({
   filing,
   isTester = false,
   testMode = false,
+  isGuest = false,
+  guestEmail = '',
+  pendingAccountEmail,
 }: {
   filing: WizardFiling;
   isTester?: boolean;
   /** Server-computed: not production, or the publishable key is pk_test_. */
   testMode?: boolean;
+  isGuest?: boolean;
+  guestEmail?: string;
+  pendingAccountEmail?: string;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -132,6 +139,10 @@ export function Step12Payment({
   };
 
   const onPay = () => {
+    if (isGuest) {
+      run(async () => ({ ok: false, error: t('accountGateRequired') }));
+      return;
+    }
     // Longer than the other steps so a real card confirm is not a false timeout.
     run(async () => {
       let paymentIntentId: string;
@@ -295,8 +306,16 @@ export function Step12Payment({
         </ol>
       </div>
 
-      {/* Card form / Tester bypass */}
-      {isTester ? (
+      {isGuest && (
+        <GuestCheckoutAccount
+          filingId={filing.id}
+          email={guestEmail}
+          pendingAccountEmail={pendingAccountEmail}
+        />
+      )}
+
+      {/* Card form / Tester bypass. Hidden until the guest has an account. */}
+      {isGuest ? null : isTester ? (
         <div className="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-5 space-y-3">
           <div className="flex items-center gap-2 text-amber-700 font-semibold">
             <FlaskConical className="h-5 w-5" />
@@ -344,7 +363,7 @@ export function Step12Payment({
       {/* Registered Agent auto-renew mandate - affirmative, informed consent
           with the amount, date, cadence, and cancel path shown inline. Only
           when the customer chose our RA and there's a real charge to renew. */}
-      {usesOurRa && !isTester && (
+      {usesOurRa && !isTester && !isGuest && (
         <label className="flex items-start gap-3 rounded-lg border border-border bg-paper-soft p-4 cursor-pointer">
           <input
             type="checkbox"
@@ -383,6 +402,10 @@ export function Step12Payment({
       <WizardActions
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
+        nextDisabled={isGuest}
+        onBlocked={() => {
+          document.getElementById('checkout-account')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
         pending={pending}
         error={error}
         nextLabel={t('pay', {

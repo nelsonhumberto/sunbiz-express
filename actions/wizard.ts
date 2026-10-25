@@ -27,6 +27,9 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
 import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
+import { getTranslations } from 'next-intl/server';
+import { saveGuestEmail } from '@/actions/guest-email';
+import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -155,11 +158,40 @@ const Step1Schema = z.object({
   state: z.enum(['FL', 'WY', 'DE']).optional(),
   /** Federal tax election. 'S_CORP' elects S-Corporation taxation. */
   taxElection: z.enum(['S_CORP']).nullable().optional(),
+  /** Optional on step 1. The name step requires it when the guest has none. */
+  contactEmail: z.string().max(254).optional(),
 });
+
+async function persistGuestEmail(
+  actor: { kind: 'user' | 'guest'; email?: string | null },
+  filingId: string,
+  contactEmail: string | undefined,
+  required: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (actor.kind !== 'guest') return { ok: true };
+  const email = contactEmail?.trim() ?? '';
+  const placeholder = isPlaceholderGuestEmail(actor.email);
+  if (!email) {
+    if (required && placeholder) {
+      const t = await getTranslations('wizard');
+      return { ok: false, error: t('guestEmailRequired') };
+    }
+    return { ok: true };
+  }
+  const saved = await saveGuestEmail(filingId, email);
+  if (saved.needsSignIn) return { ok: true };
+  if (!saved.ok) {
+    const t = await getTranslations('wizard');
+    return { ok: false, error: saved.error ?? t('guestEmailInvalid') };
+  }
+  return { ok: true };
+}
 
 export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const data = Step1Schema.parse(input);
-  const { filing } = await getFilingForUser(data.filingId);
+  const { filing, actor } = await getFilingForUser(data.filingId);
+  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, false);
+  if (!emailSaved.ok) return emailSaved;
   const nextState = data.state ?? asStateCode(filing.state);
   const taxElection = data.taxElection ?? null;
   await prisma.filing.update({
@@ -226,6 +258,7 @@ const Step2Schema = z.object({
   filingId: z.string(),
   businessName: z.string().min(2).max(100),
   available: z.boolean().optional(),
+  contactEmail: z.string().max(254).optional(),
 });
 
 export async function saveStep2(input: z.infer<typeof Step2Schema>) {
@@ -238,7 +271,9 @@ export async function saveStep2(input: z.infer<typeof Step2Schema>) {
     };
   }
   const data = parsed.data;
-  const { filing } = await getFilingForUser(data.filingId);
+  const { filing, actor } = await getFilingForUser(data.filingId);
+  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, true);
+  if (!emailSaved.ok) return emailSaved;
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const businessName = canonicalFiledName(data.businessName, entityType);
 

@@ -51,6 +51,7 @@ export type NotificationType =
   | 'ANNUAL_REPORT_FINAL'
   | 'COMPLIANCE_ALERT'
   | 'PASSWORD_RESET'
+  | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
   | 'OA_TEMPLATE_CONFIRM'
   | 'OA_TEMPLATE_DOWNLOAD';
@@ -421,6 +422,33 @@ const TEMPLATES: Record<
       <a class="cta" href="${siteUrl}/dashboard">Review now</a>
     `,
   }),
+  CHECKOUT_LOGIN_LINK: ({ firstName, resumeUrl, locale, linkExpiresInDays }) => {
+    const spanish = locale === 'es';
+    const days = linkExpiresInDays ?? 3;
+    const href = escapeHtml(resumeUrl ?? '#');
+    const name = escapeHtml(firstName?.trim() || '');
+    if (spanish) {
+      return {
+        subject: 'Tu enlace para entrar a LaunchForma',
+        body: html`
+          <h1>Tu enlace para pagar</h1>
+          <p>${name ? `Hola ${name}.` : 'Hola.'} Tu trámite está guardado. Este enlace abre tu cuenta y te lleva al pago.</p>
+          <a class="cta" href="${href}">Ir al pago</a>
+          <p class="muted">El enlace vence en ${days} días y solo funciona una vez. Si no lo pediste, ignora este correo.</p>
+        `,
+      };
+    }
+    const hello = name ? `Hi ${name}.` : 'Hi there.';
+    return {
+      subject: 'Your LaunchForma sign-in link',
+      body: html`
+        <h1>Your link to checkout</h1>
+        <p>${hello} Your filing is saved. This link signs you in and brings you back to payment.</p>
+        <a class="cta" href="${href}">Continue to payment</a>
+        <p class="muted">The link expires in ${days} days and works once. If you did not ask for it, you can ignore this email.</p>
+      `,
+    };
+  },
   PASSWORD_RESET: ({ firstName, resetUrl }) => ({
     subject: 'Reset your LaunchForma password',
     body: html`

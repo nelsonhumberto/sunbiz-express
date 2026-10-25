@@ -57,8 +57,8 @@ const LLC_STATE = getFloridaAnnualReportStateFees(SOLD_YEAR, new Date(), {
 const CORP_STATE = getFloridaAnnualReportStateFees(SOLD_YEAR, new Date(), {
   entityType: 'CORP',
 }).filingFeeCents;
-const LLC_TOTAL = OUR_SERVICE_FEE + LLC_STATE; // $80 + $138.75 = $218.75
-const CORP_TOTAL = OUR_SERVICE_FEE + CORP_STATE; // $80 + $150 = $230
+const LLC_TOTAL = OUR_SERVICE_FEE + LLC_STATE; // $99 + $138.75 = $237.75
+const CORP_TOTAL = OUR_SERVICE_FEE + CORP_STATE; // $99 + $150 = $249
 
 const competitors = [
   {

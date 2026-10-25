@@ -118,7 +118,7 @@ describe('submitGuestAnnualReport', () => {
     );
     const detail = sendEmail.mock.calls[0][0].context.unsavedChargeDetail as string;
     expect(detail).toContain('21875');
-    expect(detail).toContain('61875');
+    expect(detail).toContain('63775');
     expect(detail).toContain('No refund was issued.');
     expect(refundsCreate).not.toHaveBeenCalled();
     expect(userCreate).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('submitGuestAnnualReport', () => {
     retrieve.mockResolvedValue({
       id: 'pi_guest_1',
       status: 'succeeded',
-      amount: 61_875,
+      amount: 63_775,
       livemode: false,
       payment_method: { id: 'pm_1', card: { last4: '4242', brand: 'visa' }, billing_details: {} },
     });

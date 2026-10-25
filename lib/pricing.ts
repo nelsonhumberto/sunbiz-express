@@ -207,20 +207,20 @@ export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 /**
  * Our service fee for filing an annual report (EXCLUDING the state fee).
  *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state fees
- *   FL LLC  on time: $80 + $138.75 = $218.75
- *   FL LLC  after May 1: $80 + $138.75 + $400 late fee = $618.75
- *   FL Corp on time: $80 + $150.00 = $230.00
- *   FL Corp after May 1: $80 + $150.00 + $400 late fee = $630.00
- *   The $400 is a Florida state fee, not part of the $80 service fee.
- *   WY LLC/Corp total: $80 + $60.00 minimum = $140.00 minimum
- *   DE LLC total: $80 + $300.00 = $380.00 (annual tax, no report)
- *   DE Corp total: $80 + $225.00 minimum (franchise tax min) = $305.00 minimum
+ *   FL LLC  on time: $99 + $138.75 = $237.75
+ *   FL LLC  after May 1: $99 + $138.75 + $400 late fee = $637.75
+ *   FL Corp on time: $99 + $150.00 = $249.00
+ *   FL Corp after May 1: $99 + $150.00 + $400 late fee = $649.00
+ *   The $400 is a Florida state fee, not part of the $99 service fee.
+ *   WY LLC/Corp total: $99 + $60.00 minimum = $159.00 minimum
+ *   DE LLC total: $99 + $300.00 = $399.00 (annual tax, no report)
+ *   DE Corp total: $99 + $225.00 minimum (franchise tax min) = $324.00 minimum
  */
-export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
+export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 9_900; // $99.00
 
 /**
  * Nelson approved charging Florida's $400 annual-report late fee after May 1.
- * Set this to false to stop adding the fee. The $80 service fee never includes it.
+ * Set this to false to stop adding the fee. The $99 service fee never includes it.
  */
 export const FL_AR_LATE_FEE_ENABLED = true;
 

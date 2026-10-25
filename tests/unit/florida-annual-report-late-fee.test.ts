@@ -41,7 +41,7 @@ function easternParts(now: Date) {
   };
 }
 
-/** Order summary: $80 service fee + state filing fee + late fee line. */
+/** Order summary: $99 service fee + state filing fee + late fee line. */
 function uiTotal(
   reportYear: number,
   now: Date,
@@ -52,7 +52,7 @@ function uiTotal(
   return ANNUAL_REPORT_SERVICE_FEE_CENTS + fees.filingFeeCents + fees.lateFeeCents;
 }
 
-/** Payment intent and actions: $80 service fee + helper state total. */
+/** Payment intent and actions: $99 service fee + helper state total. */
 function serverTotal(
   reportYear: number,
   now: Date,
@@ -74,7 +74,7 @@ describe('Florida annual report late fee', () => {
     expect(fees.filingFeeCents).toBe(13_875);
     expect(fees.lateFeeCents).toBe(0);
     expect(fees.totalCents).toBe(13_875);
-    expect(uiTotal(2027, OCTOBER_15_NOON_ET)).toBe(21_875);
+    expect(uiTotal(2027, OCTOBER_15_NOON_ET)).toBe(23_775);
   });
 
   it('charges the $400 late fee for a 2026 report filed in October 2026', () => {
@@ -82,7 +82,7 @@ describe('Florida annual report late fee', () => {
     expect(fees.filingFeeCents).toBe(13_875);
     expect(fees.lateFeeCents).toBe(40_000);
     expect(fees.totalCents).toBe(13_875 + 40_000);
-    expect(uiTotal(2026, OCTOBER_15_NOON_ET)).toBe(61_875);
+    expect(uiTotal(2026, OCTOBER_15_NOON_ET)).toBe(63_775);
   });
 
   it('charges no late fee for a 2026 report on May 1 at 11:59 PM ET', () => {
@@ -97,7 +97,7 @@ describe('Florida annual report late fee', () => {
     expect(fees.filingFeeCents).toBe(13_875);
     expect(fees.lateFeeCents).toBe(0);
     expect(fees.totalCents).toBe(13_875);
-    expect(uiTotal(2026, MAY_1_1159_PM_ET)).toBe(21_875);
+    expect(uiTotal(2026, MAY_1_1159_PM_ET)).toBe(23_775);
   });
 
   it('charges the $400 late fee for a 2026 report on May 2', () => {
@@ -112,7 +112,7 @@ describe('Florida annual report late fee', () => {
     expect(fees.filingFeeCents).toBe(13_875);
     expect(fees.lateFeeCents).toBe(40_000);
     expect(fees.totalCents).toBe(13_875 + 40_000);
-    expect(uiTotal(2026, MAY_2_1200_AM_ET)).toBe(61_875);
+    expect(uiTotal(2026, MAY_2_1200_AM_ET)).toBe(63_775);
   });
 
   it('charges no late fee in January of the report year', () => {
@@ -120,18 +120,18 @@ describe('Florida annual report late fee', () => {
     const fees = getFloridaAnnualReportStateFees(2026, JANUARY_15_NOON_ET);
     expect(fees.lateFeeCents).toBe(0);
     expect(fees.filingFeeCents).toBe(13_875);
-    expect(uiTotal(2026, JANUARY_15_NOON_ET)).toBe(21_875);
+    expect(uiTotal(2026, JANUARY_15_NOON_ET)).toBe(23_775);
   });
 
   it('charges the late fee when the calendar year is after the report year', () => {
     const fees = getFloridaAnnualReportStateFees(2026, JANUARY_2027_NOON_ET);
     expect(fees.lateFeeCents).toBe(40_000);
-    expect(uiTotal(2026, JANUARY_2027_NOON_ET)).toBe(61_875);
+    expect(uiTotal(2026, JANUARY_2027_NOON_ET)).toBe(63_775);
   });
 
   it('the server total equals the UI total', () => {
     expect(FL_AR_LATE_FEE_ENABLED).toBe(true);
-    expect(ANNUAL_REPORT_SERVICE_FEE_CENTS).toBe(8_000);
+    expect(ANNUAL_REPORT_SERVICE_FEE_CENTS).toBe(9_900);
 
     const cases = [
       { reportYear: 2027, now: OCTOBER_15_NOON_ET },
@@ -146,11 +146,11 @@ describe('Florida annual report late fee', () => {
       }
     }
 
-    expect(uiTotal(2026, MAY_1_1159_PM_ET, 'LLC')).toBe(8_000 + 13_875);
-    expect(serverTotal(2026, MAY_2_1200_AM_ET, 'LLC')).toBe(8_000 + 13_875 + 40_000);
-    expect(serverTotal(2027, OCTOBER_15_NOON_ET, 'LLC')).toBe(8_000 + 13_875);
-    expect(serverTotal(2026, OCTOBER_15_NOON_ET, 'CORP')).toBe(8_000 + 15_000 + 40_000);
-    expect(serverTotal(2026, MAY_1_1159_PM_ET, 'CORP')).toBe(8_000 + 15_000);
+    expect(uiTotal(2026, MAY_1_1159_PM_ET, 'LLC')).toBe(9_900 + 13_875);
+    expect(serverTotal(2026, MAY_2_1200_AM_ET, 'LLC')).toBe(9_900 + 13_875 + 40_000);
+    expect(serverTotal(2027, OCTOBER_15_NOON_ET, 'LLC')).toBe(9_900 + 13_875);
+    expect(serverTotal(2026, OCTOBER_15_NOON_ET, 'CORP')).toBe(9_900 + 15_000 + 40_000);
+    expect(serverTotal(2026, MAY_1_1159_PM_ET, 'CORP')).toBe(9_900 + 15_000);
 
     const files = [
       'lib/annual-report-quote.ts',
@@ -222,7 +222,7 @@ describe('Florida annual report late fee', () => {
     expect(fees.lateFeeCents).toBe(0);
     expect(fees.filingFeeCents).toBe(13_875);
     expect(fees.totalCents).toBe(13_875);
-    expect(serverTotal(2026, MAY_2_1200_AM_ET, 'LLC', false)).toBe(21_875);
+    expect(serverTotal(2026, MAY_2_1200_AM_ET, 'LLC', false)).toBe(23_775);
     expect(serverTotal(2026, MAY_2_1200_AM_ET, 'LLC', false)).toBe(
       uiTotal(2026, MAY_2_1200_AM_ET, 'LLC', false),
     );

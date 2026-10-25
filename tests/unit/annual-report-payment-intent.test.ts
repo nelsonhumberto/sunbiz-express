@@ -142,7 +142,7 @@ describe('annual report payment intent', () => {
     });
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 21_875 }),
+      expect.objectContaining({ amount: 23_775 }),
       undefined,
     );
   });
@@ -163,7 +163,7 @@ describe('annual report payment intent', () => {
     });
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 61_875 }),
+      expect.objectContaining({ amount: 63_775 }),
       undefined,
     );
   });
@@ -184,7 +184,7 @@ describe('annual report payment intent', () => {
     });
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 14_000 }),
+      expect.objectContaining({ amount: 15_900 }),
       undefined,
     );
   });

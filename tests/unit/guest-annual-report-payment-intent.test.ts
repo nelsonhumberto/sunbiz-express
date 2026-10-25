@@ -69,7 +69,7 @@ beforeEach(() => {
     id: 'pi_guest',
     client_secret: 'sec_guest',
     status: 'requires_payment_method',
-    amount: 61_875,
+    amount: 63_775,
   });
 });
 
@@ -95,14 +95,14 @@ describe('guest annual report payment intent', () => {
     expect(json.paymentIntentId).toBe('pi_guest');
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 61_875,
+        amount: 63_775,
         metadata: expect.objectContaining({
           purpose: 'guest_annual_report',
           reportYear: '2026',
           entityType: 'LLC',
         }),
       }),
-      { idempotencyKey: 'guest_ar_attempt-12345678_amt_61875' },
+      { idempotencyKey: 'guest_ar_attempt-12345678_amt_63775' },
     );
     expect(filingFindUnique).not.toHaveBeenCalled();
     expect(refundsCreate).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('guest annual report payment intent', () => {
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 63_000 + 15_000,
+        amount: 9_900 + 15_000 + 40_000 + 15_000,
         metadata: expect.objectContaining({
           purpose: 'guest_annual_report',
           entityType: 'CORP',
@@ -145,7 +145,7 @@ describe('guest annual report payment intent', () => {
     );
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 61_875 }),
+      expect.objectContaining({ amount: 63_775 }),
       undefined,
     );
   });
@@ -186,7 +186,7 @@ describe('guest annual report payment intent', () => {
     paymentIntentsUpdate.mockResolvedValue({
       id: 'pi_open',
       client_secret: 'sec_open',
-      amount: 61_875,
+      amount: 63_775,
     });
     const res = await post(
       {
@@ -202,7 +202,7 @@ describe('guest annual report payment intent', () => {
     expect(json.paymentIntentId).toBe('pi_open');
     expect(paymentIntentsUpdate).toHaveBeenCalledWith(
       'pi_open',
-      expect.objectContaining({ amount: 61_875 }),
+      expect.objectContaining({ amount: 63_775 }),
     );
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
   });

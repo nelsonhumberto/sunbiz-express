@@ -1,4 +1,4 @@
-import { isDeliverableEmail } from './email-address';
+import { isDeliverableEmail, normalizeEmail } from './email-address';
 
 /**
  * Guest filing identity rules.
@@ -89,6 +89,36 @@ export function readGuestAsideEmails(raw: string | null | undefined): string[] {
     return emails.filter((email, index): email is string => Boolean(email) && emails.indexOf(email) === index);
   } catch {
     return [];
+  }
+}
+
+/**
+ * The "this email already has an account" banner is for a guest who still
+ * needs to sign in. Once this browser is signed in as that same mailbox,
+ * the banner is finished in English and Spanish.
+ */
+export function showPendingAccountBanner(input: {
+  pendingAccountEmail?: string | null;
+  actorKind?: 'user' | 'guest' | null;
+  actorEmail?: string | null;
+}): boolean {
+  const pending = normalizeEmail(input.pendingAccountEmail ?? '');
+  if (!pending) return false;
+  if (input.actorKind === 'user' && normalizeEmail(input.actorEmail ?? '') === pending) return false;
+  return true;
+}
+
+/** Drop the sign-in hold after the matching account takes the draft. */
+export function withoutPendingAccountEmail(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return raw;
+    if (!Object.prototype.hasOwnProperty.call(parsed, 'pendingAccountEmail')) return raw;
+    delete parsed.pendingAccountEmail;
+    return JSON.stringify(parsed);
+  } catch {
+    return raw;
   }
 }
 

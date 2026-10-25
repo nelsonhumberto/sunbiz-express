@@ -1,10 +1,14 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderTemplate } from '@/lib/email';
 import {
   authorizeGuestFormationPayment,
   filingCheckoutEmailDetails,
+  guestSetPasswordSiteUrl,
   maySignInClaimedGuest,
   planGuestAccountClaim,
+  planGuestClaimFollowUp,
+  planRecoveredGuestClaim,
   planWebhookPaidReplay,
 } from '@/lib/guest-checkout';
 import en from '../../messages/en.json';
@@ -16,6 +20,9 @@ const tokenCreate = vi.hoisted(() => vi.fn());
 const sendEmail = vi.hoisted(() => vi.fn());
 
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({
+  headers: () => ({ get: () => null }),
+}));
 vi.mock('@/lib/db', () => ({
   prisma: {
     user: { findUnique: userFindUnique, updateMany: userUpdateMany },
@@ -142,9 +149,40 @@ describe('guest account claim after payment', () => {
       firstName: 'Ana',
     }));
     const second = await claimPaidGuestAccount({ userId: 'guest_1', filingId: 'filing_1' });
-    expect(second.claimed).toBe(false);
+    expect(second).toEqual({
+      claimed: false,
+      alreadyClaimed: true,
+      email: 'buyer@example.com',
+      userId: 'guest_1',
+    });
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(userUpdateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a lost claim race for this same user as already claimed, without a second email', async () => {
+    let status = 'GUEST';
+    userFindUnique.mockImplementation(async (args: { where: { id?: string; email?: string } }) => {
+      if (args.where.email) return { id: 'guest_1', accountStatus: status };
+      return {
+        id: 'guest_1',
+        email: 'buyer@example.com',
+        accountStatus: status,
+        firstName: 'Ana',
+      };
+    });
+    userUpdateMany.mockImplementation(async () => {
+      status = 'ACTIVE';
+      return { count: 0 };
+    });
+
+    const result = await claimPaidGuestAccount({ userId: 'guest_1', filingId: 'filing_1' });
+    expect(result).toEqual({
+      claimed: false,
+      alreadyClaimed: true,
+      email: 'buyer@example.com',
+      userId: 'guest_1',
+    });
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   it('does not claim or email when the address belongs to another account', async () => {
@@ -190,6 +228,116 @@ describe('guest account claim after payment', () => {
         loadedStatus: 'ACTIVE',
       }),
     ).toBe(true);
+  });
+});
+
+describe('already claimed by this PaymentIntent', () => {
+  const pi = {
+    actorId: 'guest_1',
+    filingId: 'filing_1',
+    paymentIntentUserId: 'guest_1',
+    paymentIntentFilingId: 'filing_1',
+  };
+
+  it('opens a session on the first claim and uses claimed sign-in when the webhook won', () => {
+    expect(
+      planGuestClaimFollowUp({
+        ...pi,
+        claim: { claimed: true, email: 'buyer@example.com', password: 'secret', userId: 'guest_1' },
+      }),
+    ).toBe('open_session');
+    expect(
+      planGuestClaimFollowUp({
+        ...pi,
+        claim: { claimed: false, alreadyClaimed: true, email: 'buyer@example.com', userId: 'guest_1' },
+      }),
+    ).toBe('claimed_sign_in');
+    expect(
+      planGuestClaimFollowUp({
+        ...pi,
+        paymentIntentUserId: 'other_user',
+        claim: { claimed: false, alreadyClaimed: true, email: 'buyer@example.com', userId: 'guest_1' },
+      }),
+    ).toBe('leave');
+    expect(
+      planRecoveredGuestClaim({
+        filingId: 'filing_1',
+        filingUserId: 'guest_1',
+        paymentIntentId: 'pi_1',
+        paymentIntentStatus: 'succeeded',
+        paymentIntentUserId: 'guest_1',
+        paymentIntentFilingId: 'filing_1',
+        recordedPaymentIntentId: 'pi_1',
+        recordedFilingId: 'filing_1',
+        recordedUserId: 'guest_1',
+        accountStatus: 'ACTIVE',
+        accountEmail: 'buyer@example.com',
+      }),
+    ).toEqual({ followUp: 'claimed_sign_in', email: 'buyer@example.com' });
+    expect(
+      planRecoveredGuestClaim({
+        filingId: 'filing_1',
+        filingUserId: 'guest_1',
+        paymentIntentId: 'pi_1',
+        paymentIntentStatus: 'succeeded',
+        paymentIntentUserId: 'guest_1',
+        paymentIntentFilingId: 'filing_other',
+        recordedPaymentIntentId: 'pi_1',
+        recordedFilingId: 'filing_1',
+        recordedUserId: 'guest_1',
+        accountStatus: 'ACTIVE',
+        accountEmail: 'buyer@example.com',
+      }).followUp,
+    ).toBe('leave');
+    expect(sourceOf('actions/payments.ts')).toContain('planGuestClaimFollowUp');
+    expect(sourceOf('actions/payments.ts')).toContain('claimed=1');
+    expect(sourceOf('actions/payments.ts')).toContain('setPassword=1');
+  });
+});
+
+function sourceOf(rel: string): string {
+  return readFileSync(rel, 'utf8');
+}
+
+describe('set-password link host', () => {
+  it('uses the preview deployment outside production and ignores a foreign origin in production', () => {
+    expect(
+      guestSetPasswordSiteUrl({
+        vercelEnv: 'production',
+        canonicalUrl: 'https://launchforma.com',
+        vercelUrl: 'launchforma-abc.vercel.app',
+        branchUrl: 'launchforma-git-branch.vercel.app',
+        requestOrigin: 'https://evil.example',
+      }),
+    ).toBe('https://launchforma.com');
+    expect(
+      guestSetPasswordSiteUrl({
+        vercelEnv: 'preview',
+        canonicalUrl: 'https://launchforma.com',
+        vercelUrl: 'launchforma-abc.vercel.app',
+        requestOrigin: 'https://evil.example',
+      }),
+    ).toBe('https://launchforma-abc.vercel.app');
+    expect(
+      guestSetPasswordSiteUrl({
+        vercelEnv: 'preview',
+        canonicalUrl: 'https://launchforma.com/',
+        vercelUrl: 'launchforma-abc.vercel.app',
+        branchUrl: 'launchforma-git-branch-team.vercel.app',
+        requestOrigin: 'https://launchforma-git-branch-team.vercel.app',
+      }),
+    ).toBe('https://launchforma-git-branch-team.vercel.app');
+    expect(
+      guestSetPasswordSiteUrl({
+        vercelEnv: 'development',
+        canonicalUrl: 'https://launchforma.com',
+        requestOrigin: 'http://localhost:3000',
+      }),
+    ).toBe('http://localhost:3000');
+    const claim = sourceOf('lib/guest-checkout-claim.ts');
+    expect(claim).toContain('guestSetPasswordSiteUrl');
+    expect(claim).not.toContain("headers().get('host')");
+    expect(claim).not.toContain("headers().get('x-forwarded-host')");
   });
 });
 

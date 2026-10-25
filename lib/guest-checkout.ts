@@ -140,3 +140,125 @@ export function maySignInClaimedGuest(input: {
   if (!claimed || claimed !== loaded) return false;
   return isDeliverableEmail(loaded) && !isPlaceholderGuestEmail(loaded);
 }
+
+export type GuestClaimFollowUp = 'open_session' | 'claimed_sign_in' | 'leave';
+
+/**
+ * A guest claim that this PaymentIntent already finished still uses the
+ * set-password success path. A different PaymentIntent or a different user
+ * does not.
+ */
+export function planGuestClaimFollowUp(input: {
+  actorId: string;
+  filingId: string;
+  paymentIntentUserId?: string | null;
+  paymentIntentFilingId?: string | null;
+  claim: {
+    claimed: boolean;
+    alreadyClaimed?: boolean;
+    email?: string;
+    userId?: string;
+    password?: string;
+  };
+}): GuestClaimFollowUp {
+  const piUser = input.paymentIntentUserId ?? '';
+  const piFiling = input.paymentIntentFilingId ?? '';
+  const sameIntent =
+    (!piUser || piUser === input.actorId) && (!piFiling || piFiling === input.filingId);
+  if (!sameIntent) return 'leave';
+  if (input.claim.claimed && input.claim.email && input.claim.password) return 'open_session';
+  const email = normalizeEmail(input.claim.email ?? '');
+  if (
+    input.claim.alreadyClaimed &&
+    input.claim.userId === input.actorId &&
+    piUser === input.actorId &&
+    isDeliverableEmail(email) &&
+    !isPlaceholderGuestEmail(email)
+  ) {
+    return 'claimed_sign_in';
+  }
+  return 'leave';
+}
+
+/**
+ * The browser lost the guest cookie because this PaymentIntent's webhook
+ * already promoted that same user. Replay is the claimed sign-in, not a
+ * new account.
+ */
+export function planRecoveredGuestClaim(input: {
+  filingId: string;
+  filingUserId: string;
+  paymentIntentId: string;
+  paymentIntentStatus: string;
+  paymentIntentUserId?: string | null;
+  paymentIntentFilingId?: string | null;
+  recordedPaymentIntentId?: string | null;
+  recordedFilingId?: string | null;
+  recordedUserId?: string | null;
+  accountStatus?: string | null;
+  accountEmail?: string | null;
+}): { followUp: 'claimed_sign_in'; email: string } | { followUp: 'leave' } {
+  const email = normalizeEmail(input.accountEmail ?? '');
+  if (input.paymentIntentStatus !== 'succeeded') return { followUp: 'leave' };
+  if (!input.paymentIntentId || input.paymentIntentId === 'TESTER_BYPASS') return { followUp: 'leave' };
+  if (input.paymentIntentUserId !== input.filingUserId) return { followUp: 'leave' };
+  if (input.paymentIntentFilingId !== input.filingId) return { followUp: 'leave' };
+  if (input.recordedPaymentIntentId !== input.paymentIntentId) return { followUp: 'leave' };
+  if (input.recordedFilingId !== input.filingId) return { followUp: 'leave' };
+  if (input.recordedUserId !== input.filingUserId) return { followUp: 'leave' };
+  if (input.accountStatus !== 'ACTIVE') return { followUp: 'leave' };
+  if (!isDeliverableEmail(email) || isPlaceholderGuestEmail(email)) return { followUp: 'leave' };
+  return { followUp: 'claimed_sign_in', email };
+}
+
+const CANONICAL_SET_PASSWORD_SITE = 'https://launchforma.com';
+
+function httpsOrigin(value: string | null | undefined, allowHttpLocal: boolean): string | null {
+  const raw = (value ?? '').trim();
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+  } catch {
+    return null;
+  }
+  if (url.username || url.password) return null;
+  const hostname = url.hostname.toLowerCase();
+  const local = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (url.protocol === 'http:' && allowHttpLocal && local) return url.origin;
+  if (url.protocol !== 'https:') return null;
+  if (!hostname) return null;
+  return url.origin;
+}
+
+/**
+ * Set-password links on a preview deployment must hit that deployment.
+ * Production always uses the canonical site. A request Host or Origin cannot
+ * choose the production link.
+ */
+export function guestSetPasswordSiteUrl(input: {
+  vercelEnv?: string | null;
+  canonicalUrl?: string | null;
+  vercelUrl?: string | null;
+  branchUrl?: string | null;
+  requestOrigin?: string | null;
+}): string {
+  const canonical = httpsOrigin(input.canonicalUrl, false) ?? CANONICAL_SET_PASSWORD_SITE;
+  if ((input.vercelEnv ?? '').trim() === 'production') return canonical;
+
+  const vercelOrigin = httpsOrigin(input.vercelUrl, false);
+  const branchOrigin = httpsOrigin(input.branchUrl, false);
+  const request = httpsOrigin(input.requestOrigin, true);
+  const allowedHosts = new Set(
+    [vercelOrigin, branchOrigin]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new URL(value).host.toLowerCase()),
+  );
+  if (request) {
+    const requestUrl = new URL(request);
+    const hostname = requestUrl.hostname.toLowerCase();
+    const local = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (local || allowedHosts.has(requestUrl.host.toLowerCase())) return request;
+  }
+  return vercelOrigin ?? branchOrigin ?? canonical;
+}

@@ -32,8 +32,13 @@ import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
-import { maySignInClaimedGuest } from '@/lib/guest-checkout';
-import { claimPaidGuestAccount } from '@/lib/guest-checkout-claim';
+import {
+  maySignInClaimedGuest,
+  planGuestClaimFollowUp,
+  planRecoveredGuestClaim,
+} from '@/lib/guest-checkout';
+import { claimPaidGuestAccount, type GuestClaimResult } from '@/lib/guest-checkout-claim';
+import type { SiteLocale } from '@/lib/pick-locale';
 import { submitFilingToState } from './filings';
 import {
   ensureFilingTouchUtm,
@@ -42,6 +47,134 @@ import {
 import { capturePurchaseCompletedServer, type PurchaseIntentLike } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
+
+function isUniqueConflict(err: unknown): boolean {
+  return Boolean(
+    err && typeof err === 'object' && 'code' in err && (err as { code?: unknown }).code === 'P2002',
+  );
+}
+
+function claimedSignInHref(email: string, filingId: string, locale: SiteLocale): string {
+  const next = hrefForLocale(`/checkout/success?filing=${filingId}&setPassword=1`, locale);
+  return hrefForLocale(
+    `/sign-in?claimed=1&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`,
+    locale,
+  );
+}
+
+/**
+ * Open a session when we just promoted the guest. If this PaymentIntent
+ * already promoted them, send the same claimed sign-in the success page uses.
+ */
+async function finishGuestClaim(input: {
+  actorId: string;
+  filingId: string;
+  locale: SiteLocale;
+  paymentIntentUserId: string | null;
+  paymentIntentFilingId: string | null;
+  claim: GuestClaimResult;
+}): Promise<string | null> {
+  const follow = planGuestClaimFollowUp({
+    actorId: input.actorId,
+    filingId: input.filingId,
+    paymentIntentUserId: input.paymentIntentUserId,
+    paymentIntentFilingId: input.paymentIntentFilingId,
+    claim: input.claim,
+  });
+  const claimedPath = hrefForLocale(
+    `/checkout/success?filing=${input.filingId}&setPassword=1`,
+    input.locale,
+  );
+  if (follow === 'open_session' && input.claim.email && input.claim.password) {
+    const loaded = await prisma.user.findUnique({
+      where: { id: input.actorId },
+      select: { id: true, email: true, accountStatus: true },
+    });
+    if (
+      loaded &&
+      maySignInClaimedGuest({
+        claimedUserId: input.actorId,
+        claimedEmail: input.claim.email,
+        loadedUserId: loaded.id,
+        loadedEmail: loaded.email,
+        loadedStatus: loaded.accountStatus,
+      })
+    ) {
+      cookies().delete(GUEST_COOKIE);
+      try {
+        await signIn('credentials', {
+          email: loaded.email,
+          password: input.claim.password,
+          redirect: false,
+        });
+        return claimedPath;
+      } catch (signInErr) {
+        logger.error(
+          'post-checkout auto sign-in failed',
+          { area: 'checkout', entityId: input.actorId, tag: 'guest-auto-signin' },
+          signInErr,
+        );
+      }
+    }
+    return claimedSignInHref(input.claim.email, input.filingId, input.locale);
+  }
+  if (follow === 'claimed_sign_in' && input.claim.email) {
+    cookies().delete(GUEST_COOKIE);
+    return claimedSignInHref(input.claim.email, input.filingId, input.locale);
+  }
+  return null;
+}
+
+/** Webhook already promoted this PaymentIntent's guest. No session is created. */
+async function recoveredClaimedSignIn(
+  filingId: string,
+  paymentIntentId: string,
+): Promise<string | null> {
+  if (!paymentIntentId || paymentIntentId === 'TESTER_BYPASS') return null;
+  const payment = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: paymentIntentId },
+    select: { filingId: true, userId: true, status: true, stripePaymentIntentId: true },
+  });
+  if (!payment || payment.status !== 'SUCCEEDED') return null;
+  const [filing, user] = await Promise.all([
+    prisma.filing.findUnique({
+      where: { id: filingId },
+      select: { id: true, userId: true, locale: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: { email: true, accountStatus: true },
+    }),
+  ]);
+  if (!filing || !user) return null;
+  let status = '';
+  let piUser: string | null = null;
+  let piFiling: string | null = null;
+  try {
+    const pi = await getStripe().paymentIntents.retrieve(paymentIntentId);
+    status = pi.status;
+    piUser = pi.metadata?.userId ?? null;
+    piFiling = pi.metadata?.filingId ?? null;
+  } catch {
+    return null;
+  }
+  const decision = planRecoveredGuestClaim({
+    filingId,
+    filingUserId: filing.userId,
+    paymentIntentId,
+    paymentIntentStatus: status,
+    paymentIntentUserId: piUser,
+    paymentIntentFilingId: piFiling,
+    recordedPaymentIntentId: payment.stripePaymentIntentId,
+    recordedFilingId: payment.filingId,
+    recordedUserId: payment.userId,
+    accountStatus: user.accountStatus,
+    accountEmail: user.email,
+  });
+  if (decision.followUp !== 'claimed_sign_in') return null;
+  const locale = pickLocale(await storedLocale(), filing.locale);
+  return claimedSignInHref(decision.email, filingId, locale);
+}
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -72,7 +205,11 @@ export async function processCheckout(input: {
 }): Promise<CheckoutResult> {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-  if (!actor) return { error: 'Please sign in.' };
+  if (!actor) {
+    const redirectTo = await recoveredClaimedSignIn(input.filingId, input.paymentIntentId);
+    if (redirectTo) return { ok: true, redirectTo };
+    return { error: 'Please sign in.' };
+  }
   // A guest pays only after the PaymentIntent route stored a real email on
   // that guest. Placeholder rows still stop here. We never look a payer up
   // by the typed email and sign into that other account.
@@ -229,26 +366,53 @@ export async function processCheckout(input: {
     };
   }
 
-  await prisma.payment.create({
-    data: {
-      filingId: filing.id,
-      userId: actor.id,
-      stripePaymentIntentId: stripeIntentId,
-      stripePaymentMethodId: pmId,
-      amountCents: expectedTotal,
-      status: 'SUCCEEDED',
-      isTest: isTestPayment({ stripePaymentIntentId: stripeIntentId, livemode }),
-      stateFilingFeeCents: breakdown.governmentRemittanceCents,
-      formationServiceFeeCents: breakdown.packageMarginCents,
-      otherServicesCents: breakdown.addOnsCents,
-      cardLast4,
-      cardBrand,
-      cardholderName,
-      couponCode: input.couponCode ?? null,
-      discountCents,
-      completedAt: new Date(),
-    },
-  });
+  const piUserId =
+    typeof paidIntent.metadata?.userId === 'string' ? paidIntent.metadata.userId : null;
+  const piFilingId =
+    typeof paidIntent.metadata?.filingId === 'string' ? paidIntent.metadata.filingId : null;
+  try {
+    await prisma.payment.create({
+      data: {
+        filingId: filing.id,
+        userId: actor.id,
+        stripePaymentIntentId: stripeIntentId,
+        stripePaymentMethodId: pmId,
+        amountCents: expectedTotal,
+        status: 'SUCCEEDED',
+        isTest: isTestPayment({ stripePaymentIntentId: stripeIntentId, livemode }),
+        stateFilingFeeCents: breakdown.governmentRemittanceCents,
+        formationServiceFeeCents: breakdown.packageMarginCents,
+        otherServicesCents: breakdown.addOnsCents,
+        cardLast4,
+        cardBrand,
+        cardholderName,
+        couponCode: input.couponCode ?? null,
+        discountCents,
+        completedAt: new Date(),
+      },
+    });
+  } catch (err) {
+    // The webhook inserted this PaymentIntent and may already have claimed
+    // the guest. Replay the claimed sign-in instead of a second payment.
+    if (isUniqueConflict(err) && actor.kind === 'guest') {
+      const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
+      const claim = await claimPaidGuestAccount({
+        userId: actor.id,
+        filingId: filing.id,
+        locale: checkoutLocale,
+      });
+      const redirectTo = await finishGuestClaim({
+        actorId: actor.id,
+        filingId: filing.id,
+        locale: checkoutLocale,
+        paymentIntentUserId: piUserId,
+        paymentIntentFilingId: piFilingId,
+        claim,
+      });
+      if (redirectTo) return { ok: true, redirectTo };
+    }
+    throw err;
+  }
 
   // The Payment insert is the transition to paid. The webhook captures only
   // when it wins that insert, so a succeeded PaymentIntent is one event.
@@ -332,50 +496,15 @@ export async function processCheckout(input: {
         filingId: filing.id,
         locale: checkoutLocale,
       });
-      const claimedPath = hrefForLocale(
-        `/checkout/success?filing=${filing.id}&setPassword=1`,
-        checkoutLocale,
-      );
-      if (claim.claimed && claim.email && claim.password) {
-        const loaded = await prisma.user.findUnique({
-          where: { id: actor.id },
-          select: { id: true, email: true, accountStatus: true },
-        });
-        if (
-          loaded &&
-          maySignInClaimedGuest({
-            claimedUserId: actor.id,
-            claimedEmail: claim.email,
-            loadedUserId: loaded.id,
-            loadedEmail: loaded.email,
-            loadedStatus: loaded.accountStatus,
-          })
-        ) {
-          cookies().delete(GUEST_COOKIE);
-          try {
-            await signIn('credentials', {
-              email: loaded.email,
-              password: claim.password,
-              redirect: false,
-            });
-            postCheckoutRedirect = claimedPath;
-          } catch (signInErr) {
-            logger.error(
-              'post-checkout auto sign-in failed',
-              { area: 'checkout', entityId: actor.id, tag: 'guest-auto-signin' },
-              signInErr,
-            );
-            const next = encodeURIComponent(claimedPath);
-            const email = encodeURIComponent(loaded.email);
-            postCheckoutRedirect = hrefForLocale(
-              `/sign-in?claimed=1&email=${email}&next=${next}`,
-              checkoutLocale,
-            );
-          }
-        } else {
-          postCheckoutRedirect = claimedPath;
-        }
-      }
+      const next = await finishGuestClaim({
+        actorId: actor.id,
+        filingId: filing.id,
+        locale: checkoutLocale,
+        paymentIntentUserId: piUserId,
+        paymentIntentFilingId: piFilingId,
+        claim,
+      });
+      if (next) postCheckoutRedirect = next;
     } catch (err) {
       logger.error(
         'guest auto-claim failed',

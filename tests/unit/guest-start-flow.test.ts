@@ -17,7 +17,9 @@ import {
   readGuestAsideEmails,
   readTypedGuestEmail,
   shouldAttachGuestDraft,
+  showPendingAccountBanner,
   wizardHrefForDraft,
+  withoutPendingAccountEmail,
 } from '@/lib/guest-identity';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import en from '../../messages/en.json';
@@ -232,6 +234,9 @@ describe('guest start flow', () => {
     expect(source('app/wizard/draft-email/page.tsx')).toContain('guestDraftEmailMismatch');
     expect(source('app/wizard/draft-email/page.tsx')).toContain('guestDraftContinue');
     expect(source('actions/auth.ts')).toContain('localizedNextParam');
+    expect(source('app/wizard/[filingId]/[step]/page.tsx')).toContain('showPendingAccountBanner');
+    expect(source('actions/guest-email.ts')).toContain('withoutPendingAccountEmail');
+    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestSignInPrompt');
 
     expect(loginLinkClaimPlan('GUEST', 'USER')).toBe('claim_guest');
     expect(loginLinkClaimPlan('ACTIVE', 'USER')).toBe('allow');
@@ -244,6 +249,48 @@ describe('guest start flow', () => {
     expect(source('lib/login-link.ts')).toContain("accountStatus: 'ACTIVE'");
     expect(wizardHrefForDraft('filing_1', 11)).toBe('/wizard/filing_1/11');
     expect(wizardHrefForDraft('filing_1', 0)).toBe('/wizard/filing_1/2');
+  });
+
+  it('hides the existing-account banner once the signed-in email matches, in English and Spanish', () => {
+    expect(
+      showPendingAccountBanner({
+        pendingAccountEmail: 'Ada@example.com',
+        actorKind: 'guest',
+      }),
+    ).toBe(true);
+    expect(
+      showPendingAccountBanner({
+        pendingAccountEmail: 'Ada@example.com',
+        actorKind: 'user',
+        actorEmail: 'ada@example.com',
+      }),
+    ).toBe(false);
+    expect(
+      showPendingAccountBanner({
+        pendingAccountEmail: 'ada@example.com',
+        actorKind: 'user',
+        actorEmail: 'other@example.com',
+      }),
+    ).toBe(true);
+    expect(
+      withoutPendingAccountEmail(
+        JSON.stringify({
+          pendingAccountEmail: 'ada@example.com',
+          typedGuestEmail: 'ada@example.com',
+          processingOption: 'standard',
+        }),
+      ),
+    ).toBe(
+      JSON.stringify({
+        typedGuestEmail: 'ada@example.com',
+        processingOption: 'standard',
+      }),
+    );
+    expect(en.wizard.guestEmailHasAccount).toMatch(/already has an account/i);
+    expect(es.wizard.guestEmailHasAccount).toMatch(/ya tiene una cuenta/);
+    for (const copy of [en.wizard.guestEmailHasAccount, es.wizard.guestEmailHasAccount]) {
+      expect(copy).not.toMatch(/\u2014|\u2013/);
+    }
   });
 
   it('keeps the guest resume link for a draft that still has a guest token', () => {

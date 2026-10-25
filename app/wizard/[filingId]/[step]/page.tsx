@@ -43,7 +43,7 @@ import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
-import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
+import { isPlaceholderGuestEmail, showPendingAccountBanner } from '@/lib/guest-identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,29 +125,39 @@ export default async function WizardStepPage({ params }: PageProps) {
   // Compute the actor's display name once (Step 7 first-member prefill).
   let actorDisplayName: string | undefined;
   let isTester = false;
+  let signedInEmail: string | null = actor?.kind === 'user' ? (actor.email ?? null) : null;
   if (actor?.kind === 'user') {
     const u = await prisma.user.findUnique({
       where: { id: actor.id },
-      select: { isTester: true, firstName: true, lastName: true },
+      select: { isTester: true, firstName: true, lastName: true, email: true },
     });
     isTester = u?.isTester ?? false;
+    signedInEmail = u?.email ?? signedInEmail;
     if (u?.firstName || u?.lastName) {
       actorDisplayName = [u?.firstName, u?.lastName].filter(Boolean).join(' ');
     }
   } else if (actor?.kind === 'guest') {
     actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
   }
-  const actorEmail = actor?.email ?? undefined;
+  const actorEmail =
+    actor?.kind === 'guest' ? (actor.email ?? undefined) : (signedInEmail ?? undefined);
   const realGuestEmail =
     actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
   const needsGuestEmail = actor?.kind === 'guest' && !realGuestEmail;
-  const pendingAccountEmail =
+  const storedPendingAccountEmail =
     optional && typeof optional.pendingAccountEmail === 'string'
       ? optional.pendingAccountEmail
       : '';
+  const pendingAccountEmail = showPendingAccountBanner({
+    pendingAccountEmail: storedPendingAccountEmail,
+    actorKind: actor?.kind ?? null,
+    actorEmail,
+  })
+    ? storedPendingAccountEmail
+    : '';
   const typedGuestEmail =
     optional && typeof optional.typedGuestEmail === 'string' ? optional.typedGuestEmail : '';
-  const guestEmailPrefill = pendingAccountEmail || typedGuestEmail;
+  const guestEmailPrefill = storedPendingAccountEmail || typedGuestEmail;
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,

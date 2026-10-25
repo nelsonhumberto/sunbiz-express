@@ -14,6 +14,7 @@ import {
   planMismatchedGuestSignIn,
   readGuestAsideEmails,
   wizardHrefForDraft,
+  withoutPendingAccountEmail,
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
 import { guestResumeUrl } from '@/lib/draft-recovery';
@@ -234,6 +235,15 @@ export async function attachGuestDraftsToAccount(
       where: { id: { in: plan.filingIds }, userId: guest.id, status: 'DRAFT' },
       data: { userId: account.id },
     });
+    for (const draft of drafts) {
+      if (!plan.filingIds.includes(draft.id)) continue;
+      const cleared = withoutPendingAccountEmail(draft.optionalDetails);
+      if (!cleared || cleared === draft.optionalDetails) continue;
+      await prisma.filing.update({
+        where: { id: draft.id },
+        data: { optionalDetails: cleared },
+      });
+    }
   }
   const remaining = await prisma.filing.count({ where: { userId: guest.id } });
   if (remaining === 0 && plan.retireGuestUserId) {

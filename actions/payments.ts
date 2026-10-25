@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { hrefForLocale } from '@/lib/app-href';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { storedLocale } from '@/lib/stored-locale';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
@@ -301,6 +301,7 @@ export async function processCheckout(input: {
     context: {
       businessName: filing.businessName ?? '',
       totalCents: expectedTotal,
+      locale: checkoutLocale,
     },
   });
 
@@ -313,7 +314,7 @@ export async function processCheckout(input: {
   // a temporary password and route them through /sign-in so they can land
   // on the dashboard with a real session. The checkout-success page lives
   // behind auth so this also bridges them into the account-only area.
-  const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
+  const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
   const successPath = hrefForLocale(`/checkout/success?filing=${filing.id}`, checkoutLocale);
   let postCheckoutRedirect = successPath;
   if (actor.kind === 'guest' && actor.email) {
@@ -343,6 +344,7 @@ export async function processCheckout(input: {
               firstName: guestRow.firstName ?? undefined,
               tempPassword,
               loginEmail: guestRow.email,
+              locale: checkoutLocale,
             },
           });
         } catch (err) {

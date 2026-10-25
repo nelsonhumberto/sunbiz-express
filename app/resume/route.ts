@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db';
 import { GUEST_COOKIE } from '@/lib/guest';
 import { guestResumeAllowed } from '@/lib/guest-identity';
 import { hrefForLocale } from '@/lib/app-href';
-import { pickLocale } from '@/lib/pick-locale';
+import { PUBLIC_PATH_HEADER, localeFromPublicPath } from '@/lib/locale-paths';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { resumeWizardPath } from '@/lib/wizard-constants';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,12 @@ export async function GET(request: NextRequest) {
   const filingId = searchParams.get('f') ?? '';
   const token = searchParams.get('t') ?? '';
 
-  const fail = () => NextResponse.redirect(new URL('/start', request.url));
+  const seenPath = request.headers.get(PUBLIC_PATH_HEADER) || new URL(request.url).pathname;
+  const pathLocale = localeFromPublicPath(seenPath);
+  const fail = () =>
+    NextResponse.redirect(
+      new URL(hrefForLocale('/start', pathLocale === 'es' ? 'es' : 'en'), request.url),
+    );
   if (!filingId || !token) return fail();
 
   const user = await prisma.user.findUnique({
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
     new URL(
       hrefForLocale(
         resumeWizardPath(filing.id, filing.currentStep),
-        pickLocale(null, filing.locale),
+        localeFromPathOrFiling(pathLocale === 'es' ? 'es' : null, filing.locale),
       ),
       request.url,
     ),

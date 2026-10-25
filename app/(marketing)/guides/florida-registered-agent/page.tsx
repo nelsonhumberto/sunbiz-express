@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
@@ -141,7 +142,7 @@ export default async function FloridaRegisteredAgentGuide() {
         </p>
         <p>
           LaunchForma includes Year-1 registered agent service in every formation package.{' '}
-          <a href="/pricing">See pricing</a> or <a href="/start">start a filing</a>.
+          <Link href="/pricing">See pricing</Link> or <Link href="/start">start a filing</Link>.
         </p>
 
         <h2>Questions</h2>

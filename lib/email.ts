@@ -27,6 +27,7 @@ import type { PostFormationStepId } from './post-formation';
 import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
 import { isResumeDripType, RESUME_DRIP_MAX_ATTEMPTS } from './resume-drip-claim';
+import { hrefForLocale } from './app-href';
 import { listUnsubscribeHeaders } from './unsubscribe';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -177,6 +178,10 @@ export interface SendEmailArgs {
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
+function localeUrl(locale: string | null | undefined, path: string): string {
+  return `${siteUrl}${hrefForLocale(path, locale === 'es' ? 'es' : 'en')}`;
+}
+
 /**
  * Registered Agent renewal reminder body, shared by the 60/30/7-day cascade.
  *
@@ -291,28 +296,56 @@ const TEMPLATES: Record<
   NotificationType,
   (ctx: EmailContext) => { subject: string; body: string }
 > = {
-  WELCOME: ({ firstName, tempPassword, loginEmail }) => ({
-    subject: tempPassword
-      ? 'Your LaunchForma account is ready'
-      : 'Welcome to LaunchForma',
-    body: tempPassword
-      ? html`
-          <h1>Welcome, ${firstName ?? 'there'} - your account is ready</h1>
-          <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
-          <div class="panel mono">
-            <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
-            <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
-          </div>
-          <a class="cta" href="${siteUrl}/sign-in">Sign in to my dashboard</a>
-          <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> - a real person will help.</p>
-        `
-      : html`
-          <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
-          <p>You're moments away from forming your business. When you're ready, your dashboard is waiting - no busywork, one clear price.</p>
-          <a class="cta" href="${siteUrl}/dashboard">Go to dashboard</a>
-          <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
-        `,
-  }),
+  WELCOME: ({ firstName, tempPassword, loginEmail, locale }) => {
+    const spanish = locale === 'es';
+    const signInUrl = localeUrl(locale, '/sign-in');
+    const dashboardUrl = localeUrl(locale, '/dashboard');
+    const name = firstName?.trim() || '';
+    if (spanish) {
+      return {
+        subject: tempPassword ? 'Tu cuenta de LaunchForma está lista' : 'Tu cuenta de LaunchForma',
+        body: tempPassword
+          ? html`
+              <h1>Tu cuenta está lista</h1>
+              <p>${name ? `Hola ${name}.` : 'Hola.'} Usa estos datos para entrar cuando quieras y seguir con tu trámite. Por seguridad, cambia esta contraseña después de entrar.</p>
+              <div class="panel mono">
+                <div style="margin-bottom:6px"><span style="color:#667085">Correo</span><br/><strong>${loginEmail ?? ''}</strong></div>
+                <div><span style="color:#667085">Contraseña temporal</span><br/><strong>${tempPassword}</strong></div>
+              </div>
+              <a class="cta" href="${signInUrl}">Entrar a mi panel</a>
+              <p class="muted">¿Necesitas ayuda? Responde a este correo o escribe a <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+            `
+          : html`
+              <h1>Tu cuenta está lista</h1>
+              <p>${name ? `Hola ${name}.` : 'Hola.'} Cuando quieras, tu panel está listo para seguir con el trámite.</p>
+              <a class="cta" href="${dashboardUrl}">Ir al panel</a>
+              <p class="muted">¿Preguntas? Responde cuando quieras o escribe a <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+            `,
+      };
+    }
+    return {
+      subject: tempPassword
+        ? 'Your LaunchForma account is ready'
+        : 'Welcome to LaunchForma',
+      body: tempPassword
+        ? html`
+            <h1>Welcome, ${firstName ?? 'there'} - your account is ready</h1>
+            <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
+            <div class="panel mono">
+              <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
+              <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
+            </div>
+            <a class="cta" href="${signInUrl}">Sign in to my dashboard</a>
+            <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> - a real person will help.</p>
+          `
+        : html`
+            <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
+            <p>You're moments away from forming your business. When you're ready, your dashboard is waiting - no busywork, one clear price.</p>
+            <a class="cta" href="${dashboardUrl}">Go to dashboard</a>
+            <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+          `,
+    };
+  },
   FILING_STARTED: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Your filing for ${businessName ?? 'your business'} is started`,
     body: html`
@@ -468,15 +501,32 @@ const TEMPLATES: Record<
     };
   },
   CERTIFICATE_ORDERED: (ctx) => certificateOrderedEmail(ctx),
-  PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
-    subject: `Payment confirmed for ${businessName ?? 'your business'}`,
-    body: html`
-      <h1>Payment received - thank you</h1>
-      <p>We charged <strong>${totalCents != null ? formatCurrency(totalCents) : 'your card'}</strong> for <strong>${businessName ?? 'your business'}</strong>. Your filing is being prepared and submitted to the state now.</p>
-      <a class="cta" href="${siteUrl}/dashboard">View filing status</a>
-      <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
-    `,
-  }),
+  PAYMENT_CONFIRMATION: ({ businessName, totalCents, locale }) => {
+    const spanish = locale === 'es';
+    const dashboardUrl = localeUrl(locale, '/dashboard');
+    const company = businessName?.trim() || (spanish ? 'tu empresa' : 'your business');
+    const amount = totalCents != null ? formatCurrency(totalCents) : spanish ? 'tu tarjeta' : 'your card';
+    if (spanish) {
+      return {
+        subject: `Pago confirmado para ${company}`,
+        body: html`
+          <h1>Recibimos tu pago. Gracias.</h1>
+          <p>Cobramos <strong>${amount}</strong> por <strong>${company}</strong>. Estamos preparando tu trámite para enviarlo al estado.</p>
+          <a class="cta" href="${dashboardUrl}">Ver el estado del trámite</a>
+          <p class="muted">El recibo también queda en tu panel cuando termine el proceso.</p>
+        `,
+      };
+    }
+    return {
+      subject: `Payment confirmed for ${company}`,
+      body: html`
+        <h1>Payment received - thank you</h1>
+        <p>We charged <strong>${amount}</strong> for <strong>${company}</strong>. Your filing is being prepared and submitted to the state now.</p>
+        <a class="cta" href="${dashboardUrl}">View filing status</a>
+        <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
+      `,
+    };
+  },
   FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl }) => ({
     subject: `${businessName ?? 'Your business'} has been submitted to the state`,
     body: html`

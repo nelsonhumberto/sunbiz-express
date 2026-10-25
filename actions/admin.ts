@@ -11,6 +11,8 @@ import {
 } from '@/lib/pdf';
 import { safeParseJson } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
+import { hrefForLocale } from '@/lib/app-href';
+import { guestResumeUrl, signInResumeUrl } from '@/lib/draft-recovery';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { TOTAL_DISPLAYED_STEPS, TOTAL_STEPS } from '@/lib/wizard-constants';
@@ -419,6 +421,7 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
       state: true,
       currentStep: true,
       completedSteps: true,
+      locale: true,
       user: { select: { firstName: true, email: true, role: true, accountStatus: true, guestToken: true } },
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
     },
@@ -446,14 +449,15 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
   const step = filing.currentStep && filing.currentStep >= 1 ? filing.currentStep : 2;
+  const mailLocale = filing.locale === 'es' ? 'es' : 'en';
   const wizardPath = `/wizard/${filing.id}/${step}`;
   const isGuest = filing.user.accountStatus === 'GUEST' && Boolean(filing.user.guestToken);
   const oneClick = filing.user.accountStatus === 'ACTIVE' && filing.user.role !== 'ADMIN';
   const resumeUrl = isGuest
-    ? `${siteUrl}/resume?f=${filing.id}&t=${filing.user.guestToken}`
+    ? guestResumeUrl(siteUrl, filing.id, filing.user.guestToken!, mailLocale)
     : oneClick
-      ? await createLoginLink(filing.userId, wizardPath)
-      : `${siteUrl}/sign-in?next=${encodeURIComponent(wizardPath)}`;
+      ? await createLoginLink(filing.userId, hrefForLocale(wizardPath, mailLocale))
+      : signInResumeUrl(siteUrl, wizardPath, mailLocale);
   const completed = safeParseJson<number[]>(filing.completedSteps, []);
 
   const result = await sendEmail({
@@ -469,6 +473,7 @@ export async function sendDraftReengagementEmail(filingId: string): Promise<Reen
       stepsCompleted: Math.min(completed.length, TOTAL_DISPLAYED_STEPS),
       readyForCheckout: step === TOTAL_STEPS,
       resumeUrl,
+      locale: mailLocale,
       linkExpiresInDays: oneClick ? LOGIN_LINK_TTL_DAYS : undefined,
     },
   });

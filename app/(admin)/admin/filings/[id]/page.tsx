@@ -33,6 +33,12 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
+import { DomainRegistrationRow } from '@/components/admin/DomainRegistrationRow';
+import {
+  readDomainRegisteredAt,
+  readPreferredDomain,
+  showsManualDomainBadge,
+} from '@/lib/premium-domain';
 import { AdminApprovalForm } from './approval-form';
 import { AdminUploadForm } from './upload-form';
 import { FileCompanyPanel } from './file-company-panel';
@@ -195,6 +201,13 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 </Badge>
               )}
             </div>
+            {showsManualDomainBadge(filing) ? (
+              <DomainRegistrationRow
+                filingId={filing.id}
+                registered={Boolean(readDomainRegisteredAt(filing.optionalDetails))}
+                preferredDomain={readPreferredDomain(filing.optionalDetails)}
+              />
+            ) : null}
             {filing.taxElection === 'S_CORP' && (
               <a
                 href={`/api/admin/filings/${filing.id}/form-2553`}

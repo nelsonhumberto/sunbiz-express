@@ -23,6 +23,7 @@ const TYPE_VARIANT: Record<string, 'default' | 'success' | 'warn' | 'accent'> = 
   POST_FORMATION_DAY_30: 'success',
   WEEKLY_NEWSLETTER: 'accent',
   PAYMENT_CONFIRMATION: 'success',
+  DOMAIN_REGISTER: 'warn',
   FILING_SUBMITTED: 'success',
   FILING_APPROVED: 'success',
   FILING_REJECTED: 'warn',

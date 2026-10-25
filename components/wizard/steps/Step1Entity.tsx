@@ -15,6 +15,7 @@ import {
   FORMATION_STATES,
   type StateCode,
 } from '@/lib/formation-states';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import type { WizardFiling } from '../types';
 
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
@@ -32,6 +33,8 @@ export function Step1Entity({
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const tBundle = useTranslations('launchBundle');
+  const bundle = isLaunchBundleFiling(filing);
   const isSCorp = filing.taxElection === 'S_CORP';
   const [selected, setSelected] = useState<EntityChoice>(
     isSCorp ? 'SCORP' : (filing.entityType as 'LLC' | 'CORP'),
@@ -113,6 +116,11 @@ export function Step1Entity({
         onContinue();
       }}
     >
+      {bundle ? (
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-ink leading-relaxed">
+          {tBundle('lockedState')}
+        </p>
+      ) : null}
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
         <div
           id="filing-state-label"
@@ -135,7 +143,11 @@ export function Step1Entity({
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setStateCode(code)}
+                onClick={() => {
+                  if (bundle) return;
+                  setStateCode(code);
+                }}
+                disabled={bundle && code !== 'FL'}
                 className={cn(
                   'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors',
                   active
@@ -164,7 +176,11 @@ export function Step1Entity({
               type="button"
               role="radio"
               aria-checked={isSelected}
-              onClick={() => setSelected(option.value)}
+              onClick={() => {
+                if (bundle && option.value !== 'LLC') return;
+                setSelected(option.value);
+              }}
+              disabled={bundle && option.value !== 'LLC'}
               className={cn(
                 'relative text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',
                 isSelected

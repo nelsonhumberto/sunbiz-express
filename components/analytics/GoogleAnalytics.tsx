@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
+import { isLaunchBundlePath } from '@/lib/launch-bundle';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -26,6 +27,9 @@ export function GoogleAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const untracked = UNTRACKED_PATHS.has(pathname);
+  // EIN is restricted in Google Ads. The launch bundle is direct-link only,
+  // so the Ads tag is not configured on this path. PostHog still loads.
+  const suppressGoogleAds = isLaunchBundlePath(pathname);
 
   // Manual SPA pageviews. We init gtag with send_page_view:false below so the
   // initial load isn't double-counted; this effect fires the page_view on
@@ -75,7 +79,7 @@ export function GoogleAnalytics() {
           window.gtag = gtag;
           gtag('js', new Date());
           gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
-          ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ''}
+          ${GOOGLE_ADS_ID && !suppressGoogleAds ? `gtag('config', '${GOOGLE_ADS_ID}');` : ''}
         `}
       </Script>
     </>

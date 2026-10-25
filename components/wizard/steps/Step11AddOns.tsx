@@ -29,6 +29,7 @@ import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { Badge } from '@/components/ui/badge';
 import {
   WIZARD_ADD_ONS,
+  LAUNCH_BUNDLE_PRICE_CENTS,
   addOnPriceCents,
   computeCost,
   preferredOperatingAgreementSlug,
@@ -37,6 +38,7 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { trackAddOnToggled } from '@/lib/analytics';
 import {
@@ -64,6 +66,8 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
   const tPricing = useTranslations('pricing');
+  const tBundle = useTranslations('launchBundle');
+  const bundle = isLaunchBundleFiling(filing);
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const entityType = filing.entityType as EntityType;
   const stateCode: StateCode = isActiveFormationState(filing.state)
@@ -248,6 +252,50 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
     const catOrder = { formation: 0, compliance: 1, branding: 2 } as const;
     return catOrder[a.category] - catOrder[b.category];
   });
+
+  if (bundle) {
+    const price = formatCurrency(LAUNCH_BUNDLE_PRICE_CENTS);
+    return (
+      <div className="space-y-5">
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-ink leading-relaxed">
+          {tBundle('locked', { price })}
+        </p>
+        <ul className="space-y-2 text-sm text-ink leading-relaxed">
+          <li>{tBundle('includeEssential')}</li>
+          <li>{tBundle('includeFee', { price })}</li>
+          <li>{tBundle('includeEin')}</li>
+          <li>{tBundle('includeAgreement')}</li>
+          <li>{tBundle('includeRa')}</li>
+        </ul>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-10 pt-6 border-t border-border flex items-center justify-between gap-4">
+          <Link
+            href={`/wizard/${filing.id}/9`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {tCommon('back')}
+          </Link>
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={pending}
+            className={cn(
+              'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
+              'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',
+              'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
+            )}
+          >
+            {pending ? tCommon('saving') : t('reviewPayment')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

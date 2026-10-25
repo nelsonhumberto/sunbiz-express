@@ -151,7 +151,7 @@ describe('stylists and barbers copy', () => {
     expect(enCopy.readyBody).toBe(
       'You take care of your clients. We take care of the filing. It only takes a few minutes.',
     );
-    expect(enBundle.title).toBe('Launch Bundle, $199 for our first 10 customers');
+    expect(enBundle.title).toBe('Launch Bundle, $299 for our first 10 customers');
     expect(enBundle.body).toBe(
       'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. [See the Launch Bundle](/launch-bundle)',
     );

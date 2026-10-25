@@ -35,6 +35,7 @@ interface WizardShellProps {
     state?: StateCode;
     /** Customer-selected processing-speed option id (per state). */
     processingOptionId?: string | null;
+    launchBundle?: boolean;
   };
   saved?: boolean;
   /** Guest context - drives the low-friction "Save & exit" account offer. */
@@ -183,26 +184,32 @@ function LiveCostSidebar({
   step: number;
 }) {
   const { tierPreview, addOnsPreview } = useWizardCostPreview();
+  const launchBundle = costData.launchBundle === true;
   const tier = (
-    step === 3 && tierPreview !== null ? tierPreview : (costData.tier as TierSlug)
+    launchBundle
+      ? 'BASIC'
+      : step === 3 && tierPreview !== null
+        ? tierPreview
+        : (costData.tier as TierSlug)
   ) as TierSlug;
   // Live add-on selection (set by the add-ons step) takes precedence so the
   // order summary updates the instant a customer toggles an add-on, before the
   // step is saved. Falls back to the server-persisted selection elsewhere.
-  const addOnSlugs = addOnsPreview ?? costData.addOnSlugs;
+  const addOnSlugs = launchBundle ? costData.addOnSlugs : (addOnsPreview ?? costData.addOnSlugs);
   // The customer-facing total stays hidden until they actively interact
   // with the package selection step. Before step 3 we only show the
   // package placeholder; on step 3+ (or whenever a preview is active) we
-  // surface the running total.
-  const packageSelected = step >= 3 || tierPreview !== null;
+  // surface the running total. The launch bundle price is known from step 1.
+  const packageSelected = launchBundle || step >= 3 || tierPreview !== null;
   return (
     <CostSidebar
       entityType={costData.entityType}
       tier={tier}
       addOnSlugs={addOnSlugs as any}
       state={costData.state}
-      processingOptionId={costData.processingOptionId ?? null}
+      processingOptionId={launchBundle ? null : (costData.processingOptionId ?? null)}
       packageSelected={packageSelected}
+      launchBundle={launchBundle}
     />
   );
 }

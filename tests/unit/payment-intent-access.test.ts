@@ -3,18 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => vi.fn());
 const getGuestUser = vi.hoisted(() => vi.fn());
 const filingFindUnique = vi.hoisted(() => vi.fn());
+const filingCount = vi.hoisted(() => vi.fn());
 const userFindUnique = vi.hoisted(() => vi.fn());
 const filingUpdate = vi.hoisted(() => vi.fn());
 const userUpdate = vi.hoisted(() => vi.fn());
 const paymentIntentsCreate = vi.hoisted(() => vi.fn());
 const customersUpdate = vi.hoisted(() => vi.fn());
 const headerGet = vi.hoisted(() => vi.fn((_name: string) => null as string | null));
+const executeRaw = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
 vi.mock('@/lib/db', () => ({
   prisma: {
-    filing: { findUnique: filingFindUnique, update: filingUpdate },
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({ filing: { count: filingCount }, $executeRaw: executeRaw }),
+    filing: { findUnique: filingFindUnique, update: filingUpdate, count: filingCount },
     user: { findUnique: userFindUnique, update: userUpdate },
     coupon: { findUnique: vi.fn() },
     registeredAgentService: { findUnique: vi.fn() },
@@ -55,6 +60,8 @@ function filingOwnedBy(userId: string) {
     utmContent: null,
     utmTerm: null,
     filingAdditionalServices: [],
+    filingSource: 'WIZARD',
+    locale: 'en',
   };
 }
 
@@ -79,6 +86,8 @@ beforeEach(() => {
     stripeCustomerId: 'cus_1',
   });
   filingUpdate.mockResolvedValue({});
+  filingCount.mockResolvedValue(0);
+  executeRaw.mockResolvedValue(1);
   paymentIntentsCreate.mockResolvedValue({
     id: 'pi_1',
     client_secret: 'sec',
@@ -280,6 +289,126 @@ describe('payment intent access', () => {
       json: async () => ({ filingId: 'filing_1', amountCents: 50 }),
     } as never);
     expect(paid.status).toBe(409);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it('charges exactly $299 for a launch bundle and ignores the client amount', async () => {
+    auth.mockResolvedValue({ user: { id: 'user_1' } });
+    filingCount.mockResolvedValue(9);
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('user_1'),
+      filingSource: 'LAUNCH_BUNDLE',
+    });
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(200);
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 29900, metadata: expect.objectContaining({ purpose: 'launch_bundle' }) }),
+      expect.anything(),
+    );
+  });
+
+  it('refuses the 11th launch bundle payment intent', async () => {
+    auth.mockResolvedValue({ user: { id: 'user_1' } });
+    filingCount.mockResolvedValue(10);
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('user_1'),
+      filingSource: 'LAUNCH_BUNDLE',
+    });
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', amountCents: 29900 }),
+    } as never);
+    expect(res.status).toBe(409);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it('lets a guest pay $299 for the bundle before an account exists', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    });
+    filingCount.mockResolvedValue(9);
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('guest_1'),
+      filingSource: 'LAUNCH_BUNDLE',
+      optionalDetails: JSON.stringify({
+        launchBundle: true,
+        referralRef: 'partner_1',
+        referralCommissionCents: 2000,
+      }),
+    });
+    userFindUnique.mockImplementation(async (args: { where: { email?: string; id?: string } }) => {
+      if (args.where.email) return null;
+      return {
+        id: 'guest_1',
+        email: 'buyer@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        stripeCustomerId: 'cus_g',
+        accountStatus: 'GUEST',
+      };
+    });
+
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(200);
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 29900,
+        receipt_email: 'buyer@example.com',
+        metadata: expect.objectContaining({
+          purpose: 'launch_bundle',
+          userId: 'guest_1',
+          filingId: 'filing_1',
+        }),
+      }),
+      expect.anything(),
+    );
+    const stored = filingUpdate.mock.calls.map((call) => call[0] as { data?: { optionalDetails?: string } });
+    const details = stored.find((write) => write.data?.optionalDetails)?.data?.optionalDetails ?? '';
+    const parsed = JSON.parse(details) as {
+      launchBundle: boolean;
+      referralRef: string;
+      referralCommissionCents: number;
+      checkoutEmail: string;
+    };
+    expect(parsed.launchBundle).toBe(true);
+    expect(parsed.referralRef).toBe('partner_1');
+    expect(parsed.referralCommissionCents).toBe(2000);
+    expect(parsed.checkoutEmail).toBe('buyer@example.com');
+  });
+
+  it('refuses a guest bundle payment intent once 10 are paid', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    });
+    filingCount.mockResolvedValue(10);
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('guest_1'),
+      filingSource: 'LAUNCH_BUNDLE',
+    });
+    userFindUnique.mockImplementation(async (args: { where: { email?: string; id?: string } }) => {
+      if (args.where.email) return null;
+      return {
+        id: 'guest_1',
+        email: 'buyer@example.com',
+        accountStatus: 'GUEST',
+        stripeCustomerId: 'cus_g',
+      };
+    });
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 29900 }),
+    } as never);
+    expect(res.status).toBe(409);
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
   });
 });

@@ -38,6 +38,7 @@ const Step12Payment = nextDynamic(() =>
   import('@/components/wizard/steps/Step12Payment').then((m) => m.Step12Payment),
 );
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
@@ -125,6 +126,7 @@ export default async function WizardStepPage({ params }: PageProps) {
     addOnSlugs,
     state: (isActiveFormationState(filing.state) ? filing.state : 'FL') as StateCode,
     processingOptionId,
+    launchBundle: isLaunchBundleFiling(filing),
   };
 
   // Identify the current actor (auth user OR guest). Used for the tester

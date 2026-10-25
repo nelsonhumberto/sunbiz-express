@@ -35,6 +35,7 @@ import {
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
+import { isLaunchBundleFiling } from '@/lib/launch-bundle';
 import { safeParseJson, cn } from '@/lib/utils';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import type { AddressValue } from '../AddressForm';
@@ -97,6 +98,8 @@ export function Step7Members({
   defaultEmail?: string;
 }) {
   const t = useTranslations('wizard');
+  const tBundle = useTranslations('launchBundle');
+  const bundle = isLaunchBundleFiling(filing);
   const isLLC = filing.entityType === 'LLC';
 
   // Corporations get an entirely different UI: required role slots (one
@@ -662,10 +665,16 @@ export function Step7Members({
         </div>
       ))}
 
-      <Button type="button" variant="outline" onClick={addMember} className="w-full">
-        <UserPlus className="h-4 w-4" />
-        {t('addAnother')} {isLLC ? t('memberOrManager') : t('officerOrDirector')}
-      </Button>
+      {bundle ? (
+        <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-ink leading-relaxed">
+          {tBundle('oneOwner')}
+        </p>
+      ) : (
+        <Button type="button" variant="outline" onClick={addMember} className="w-full">
+          <UserPlus className="h-4 w-4" />
+          {t('addAnother')} {isLLC ? t('memberOrManager') : t('officerOrDirector')}
+        </Button>
+      )}
 
       {isLLC && oaEntitled && members.length > 1 && Math.abs(totalOwnership - 100) > 0.01 && (
         <p

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   computeCost,
+  launchBundleCostBreakdown,
   type AddOnSlug,
   type CostBreakdownLine,
   type EntityType,
@@ -32,6 +33,8 @@ interface CostSidebarProps {
    * misleading default price.
    */
   packageSelected?: boolean;
+  /** Fixed $299 offer. Ignores live tier and add-on previews. */
+  launchBundle?: boolean;
 }
 
 export function CostSidebar({
@@ -41,24 +44,32 @@ export function CostSidebar({
   state,
   processingOptionId,
   packageSelected = true,
+  launchBundle = false,
 }: CostSidebarProps) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
-  const breakdown = computeCost({
-    entityType,
-    tier,
-    addOnSlugs,
-    state,
-    processingOptionId: processingOptionId ?? undefined,
-  });
+  const tBundle = useTranslations('launchBundle');
+  const breakdown = launchBundle
+    ? launchBundleCostBreakdown()
+    : computeCost({
+        entityType,
+        tier,
+        addOnSlugs,
+        state,
+        processingOptionId: processingOptionId ?? undefined,
+      });
 
   const stateCode: StateCode = state ?? 'FL';
   const stateName = getFormationState(stateCode).name;
   const labelFor = (line: CostBreakdownLine) =>
-    localizedLineLabel(line, entityType, t, tPricing);
+    launchBundle && line.key.startsWith('bundle:')
+      ? tBundle('line')
+      : localizedLineLabel(line, entityType, t, tPricing);
   const detailFor = (line: CostBreakdownLine) =>
-    lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
-    localizedLineDetail(line, t);
+    launchBundle && line.key.startsWith('bundle:')
+      ? tBundle('detail')
+      : lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
+        localizedLineDetail(line, t);
 
   return (
     <Card className="overflow-hidden">

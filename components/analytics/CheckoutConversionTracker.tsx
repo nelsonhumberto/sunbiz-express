@@ -27,6 +27,8 @@ interface CheckoutConversionTrackerProps {
     utmTerm?: string | null;
     gclid?: string | null;
   };
+  /** Launch bundle orders must not send a Google Ads conversion. PostHog still fires. */
+  suppressGoogleAds?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export function CheckoutConversionTracker({
   entityType,
   tier,
   utm,
+  suppressGoogleAds = false,
 }: CheckoutConversionTrackerProps) {
   const fired = useRef(false);
 
@@ -77,14 +80,15 @@ export function CheckoutConversionTracker({
     });
 
     // GA4 + Google Ads conversion (no-op when gtag/env not configured).
-    if (filingId && typeof amountCents === 'number') {
+    // Skipped for the launch bundle so an EIN-inclusive order is not an Ads conversion.
+    if (!suppressGoogleAds && filingId && typeof amountCents === 'number') {
       trackGooglePurchase({
         transactionId: filingId,
         valueCents: amountCents,
         ...(currency ? { currency } : {}),
       });
     }
-  }, [userId, filingId, amountCents, currency, state, entityType, tier, utm]);
+  }, [userId, filingId, amountCents, currency, state, entityType, tier, utm, suppressGoogleAds]);
 
   return null;
 }

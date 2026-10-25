@@ -44,8 +44,13 @@ export function AdMeasurementGate({
         globalPrivacyControl: readGlobalPrivacyControl(),
       });
       if (!allow) {
-        tearDownAdMeasurement();
+        // Unmount first. A throw while stopping gtag must not leave the tags mounted.
         setEnabled(false);
+        try {
+          tearDownAdMeasurement();
+        } catch {
+          // tearDown isolates its own steps. This keeps the listener in place.
+        }
         return;
       }
       clearGaDisableFlags();

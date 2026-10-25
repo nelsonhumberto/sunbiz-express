@@ -7,6 +7,13 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getGuestUser } from '@/lib/guest';
 import { CHECKOUT_ACCOUNT_REQUIRED } from '@/lib/guest-identity';
+import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
+import {
+  GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
+  GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
+  authorizeGuestFormationPayment,
+  filingCheckoutEmailDetails,
+} from '@/lib/guest-checkout';
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
@@ -66,14 +73,18 @@ interface PaymentBody {
   couponCode?: string;
   raServiceId?: string;
   useOurRa?: boolean;
+  /** Real mailbox a guest types on the payment step. Ignored for signed-in users. */
+  email?: string;
 }
 
 /**
  * POST /api/stripe/payment-intent
  *
- * Auth is decided before the body is read. No session is 401. A guest cookie
- * with no account is 403. The signed-in user must own the filing. The amount
- * is computed here and the client amount is ignored.
+ * No session and no guest cookie is 401 before the body is read. A guest
+ * cookie can pay only for a draft that cookie owns, and only after a real
+ * email is stored on that guest. An email that already belongs to a
+ * non-guest account is refused. The signed-in user must own the filing.
+ * The amount is computed here and the client amount is ignored.
  */
 export async function POST(request: NextRequest) {
   const limit = rateLimit(`payment-intent:${clientIp()}`, 10, 60 * 1000);
@@ -88,10 +99,15 @@ export async function POST(request: NextRequest) {
   const userId = session?.user?.id;
   if (!userId) {
     const guest = await getGuestUser();
-    if (guest) {
-      return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
+    if (!guest) {
+      return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
+    try {
+      return await createGuestFormationPaymentIntent(request, guest);
+    } catch (err) {
+      logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
+      return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
+    }
   }
 
   try {
@@ -156,6 +172,210 @@ export async function POST(request: NextRequest) {
     logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
     return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
   }
+}
+
+/**
+ * Formation checkout for the guest who owns the draft.
+ * Certificates, EIN, annual reports, and renewals stay account-only.
+ * The real email is written on the user and the filing before Stripe runs.
+ */
+async function createGuestFormationPaymentIntent(
+  request: NextRequest,
+  guest: { id: string; email: string; firstName: string; lastName: string },
+) {
+  let body: PaymentBody;
+  try {
+    body = (await request.json()) as PaymentBody;
+  } catch {
+    return NextResponse.json({ error: 'Filing not found.' }, { status: 400 });
+  }
+
+  if (
+    isCertificateAddOnSlug(body.certificateSlug) ||
+    body.purpose === 'ein' ||
+    body.purpose === 'annual_report' ||
+    body.purpose === 'ra_renewal' ||
+    Boolean(body.raServiceId)
+  ) {
+    return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
+  }
+
+  if (!body.filingId) {
+    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+  }
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: body.filingId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      optionalDetails: true,
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
+  });
+
+  const normalized = normalizeEmail(body.email ?? '');
+  const emailOwner =
+    isDeliverableEmail(normalized) && !normalized.endsWith('.invalid')
+      ? await prisma.user.findUnique({
+          where: { email: normalized },
+          select: { id: true, accountStatus: true },
+        })
+      : null;
+
+  const decision = authorizeGuestFormationPayment({
+    guestUserId: guest.id,
+    filingUserId: filing?.userId ?? null,
+    filingStatus: filing?.status ?? null,
+    alreadyPaid: (filing?.payments.length ?? 0) > 0,
+    email: body.email ?? '',
+    emailOwner,
+  });
+
+  if (!decision.ok) {
+    if (decision.reason === 'existing_account') {
+      if (filing && filing.userId === guest.id) {
+        await rememberCheckoutEmail(filing.id, filing.optionalDetails, normalized, true);
+      }
+      return NextResponse.json(
+        {
+          error: 'This email already has an account. Sign in and we will attach this draft.',
+          code: GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
+        },
+        { status: 403 },
+      );
+    }
+    if (decision.reason === 'email_held') {
+      return NextResponse.json(
+        {
+          error: 'That email can\'t be used. Enter a different one to pay.',
+          code: GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
+        },
+        { status: 409 },
+      );
+    }
+    if (decision.reason === 'not_owner' || !filing) {
+      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    }
+    if (decision.reason === 'already_paid' || decision.reason === 'not_draft') {
+      return NextResponse.json({ error: 'This filing has already been paid.' }, { status: 409 });
+    }
+    return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
+  }
+
+  if (normalizeEmail(guest.email) !== decision.email) {
+    try {
+      await prisma.user.update({
+        where: { id: guest.id },
+        data: { email: decision.email },
+      });
+    } catch (err) {
+      if (!isUniqueConflict(err)) throw err;
+      const winner = await prisma.user.findUnique({
+        where: { email: decision.email },
+        select: { id: true, accountStatus: true },
+      });
+      if (winner && winner.id !== guest.id && winner.accountStatus !== 'GUEST') {
+        return NextResponse.json(
+          {
+            error: 'This email already has an account. Sign in and we will attach this draft.',
+            code: GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
+          },
+          { status: 403 },
+        );
+      }
+      return NextResponse.json(
+        {
+          error: 'That email can\'t be used. Enter a different one to pay.',
+          code: GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
+  await rememberCheckoutEmail(filing!.id, filing!.optionalDetails, decision.email, false);
+
+  const priced = await priceOwnedCharge({
+    userId: guest.id,
+    filingId: body.filingId,
+    purpose: body.purpose,
+    couponCode: body.couponCode,
+    raServiceId: body.raServiceId,
+    useOurRa: body.useOurRa === true,
+  });
+  if (priced instanceof NextResponse) return priced;
+
+  const stripe = getStripe();
+  const customerId = await ensureStripeCustomer(stripe, guest.id);
+  if (customerId) {
+    try {
+      await stripe.customers.update(customerId, {
+        email: decision.email,
+        metadata: { userId: guest.id },
+      });
+    } catch (err) {
+      logger.warn('guest stripe customer email update failed', {
+        area: 'stripe',
+        tag: 'guest-customer-email',
+        entityId: guest.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const attribution = readPaymentAttribution(body.posthogDistinctId);
+  const paymentIntent = await resolveCheckoutPaymentIntent({
+    stripe,
+    filingId: priced.reuseFilingCheckout ? priced.filingId : undefined,
+    storedPaymentIntentId: priced.storedPaymentIntentId,
+    amountCents: priced.amountCents,
+    intentParams: {
+      amount: priced.amountCents,
+      currency: 'usd',
+      receipt_email: decision.email,
+      ...(customerId
+        ? { customer: customerId, setup_future_usage: 'off_session' as const }
+        : {}),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        ...(priced.filingId ? { filingId: priced.filingId } : {}),
+        ...(priced.purpose ? { purpose: priced.purpose } : {}),
+        userId: guest.id,
+        ...checkoutAttributionMetadata({
+          cookie: attribution.cookieUtm,
+          filing: priced.attributionFiling,
+          posthogDistinctId: attribution.distinctId,
+        }),
+      },
+    },
+  });
+
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
+async function rememberCheckoutEmail(
+  filingId: string,
+  existing: string | null,
+  email: string,
+  pendingAccount: boolean,
+) {
+  const prev = safeParseJson<Record<string, unknown>>(existing, {}) ?? {};
+  const next = pendingAccount
+    ? { ...prev, pendingAccountEmail: email, typedGuestEmail: email }
+    : filingCheckoutEmailDetails(prev, email);
+  await prisma.filing.update({
+    where: { id: filingId },
+    data: { optionalDetails: JSON.stringify(next) },
+  });
+}
+
+function isUniqueConflict(err: unknown): boolean {
+  return Boolean(err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002');
 }
 
 interface PricedCharge {

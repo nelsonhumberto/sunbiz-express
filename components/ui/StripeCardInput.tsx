@@ -59,10 +59,16 @@ export interface ConfirmOptions {
   metadata?: Record<string, string>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
   savedPaymentMethodId?: string;
+  /** Guest checkout mailbox. The server stores it before creating the PaymentIntent. */
+  email?: string;
 }
 
+export type CardConfirmResult =
+  | { paymentIntentId: string }
+  | { error: string; code?: string };
+
 export interface StripeCardHandle {
-  confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }>;
+  confirm(opts: ConfirmOptions): Promise<CardConfirmResult>;
 }
 
 // ── Inner component (has access to useStripe / useElements) ────────────────
@@ -75,7 +81,7 @@ const InnerCard = forwardRef(function InnerCard(
   const elements = useElements();
 
   useImperativeHandle(ref, () => ({
-    async confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }> {
+    async confirm(opts: ConfirmOptions): Promise<CardConfirmResult> {
       const {
         amountCents,
         cardholderName,
@@ -86,6 +92,7 @@ const InnerCard = forwardRef(function InnerCard(
         couponCode,
         raServiceId,
         useOurRa,
+        email,
       } = opts;
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
@@ -101,13 +108,17 @@ const InnerCard = forwardRef(function InnerCard(
           ...(couponCode ? { couponCode } : {}),
           ...(raServiceId ? { raServiceId } : {}),
           ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
+          ...(email ? { email } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
         }),
       });
       const json = await res.json();
       if (json.error || !json.clientSecret) {
-        return { error: json.error ?? 'Could not create payment.' };
+        return {
+          error: json.error ?? 'Could not create payment.',
+          ...(typeof json.code === 'string' ? { code: json.code } : {}),
+        };
       }
 
       // 2. Confirm the PaymentIntent on the client

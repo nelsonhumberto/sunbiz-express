@@ -28,13 +28,22 @@ import {
   visibleSuccessDocuments,
 } from '@/lib/success-documents';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import {
+  filingNeedsSetPasswordPrompt,
+  withoutGuestSetPasswordPending,
+} from '@/lib/guest-checkout';
+import { safeParseJson } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: { filing?: string | string[]; session_id?: string | string[] };
+  searchParams: {
+    filing?: string | string[];
+    session_id?: string | string[];
+    setPassword?: string | string[];
+  };
 }) {
   const session = await auth();
   if (!session?.user?.id) return await redirectLocalized('/sign-in');
@@ -43,52 +52,34 @@ export default async function CheckoutSuccessPage({
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const sessionId = readQueryParam(searchParams.session_id);
   const urlFilingId = readQueryParam(searchParams.filing);
+  const setPassword = readQueryParam(searchParams.setPassword) === '1';
 
-  if (!sessionId) {
-    return (
-      <OrderNotice
-        pending
-        title={t('confirmingTitle')}
-        body={t('confirmingBody')}
-        dashboardLabel={t('goDashboard')}
-        locale={locale}
-      />
-    );
-  }
-
-  const checkoutSession = await retrieveCheckoutSession(sessionId);
-  const candidateIds = checkoutFilingCandidates(checkoutSession, urlFilingId);
-  const [user, filings] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { email: true, stripeCustomerId: true },
-    }),
-    candidateIds.length
-      ? prisma.filing.findMany({
-          where: { id: { in: candidateIds }, userId: session.user.id },
-          include: {
-            documents: true,
-            filingAdditionalServices: {
-              include: { service: { select: { serviceSlug: true } } },
-            },
+  // PaymentIntent checkout has no Checkout Session. A succeeded Payment on
+  // a filing this account owns is enough to show the receipt and fire the
+  // same purchase events. Guests land here after the claim signs them in.
+  const paidFiling = !sessionId && urlFilingId
+    ? await prisma.filing.findFirst({
+        where: {
+          id: urlFilingId,
+          userId: session.user.id,
+          payments: { some: { status: 'SUCCEEDED' } },
+        },
+        include: {
+          documents: true,
+          filingAdditionalServices: {
+            include: { service: { select: { serviceSlug: true } } },
           },
-        })
-      : Promise.resolve([]),
-  ]);
+          payments: {
+            where: { status: 'SUCCEEDED' },
+            orderBy: { completedAt: 'desc' },
+            take: 1,
+            select: { amountCents: true, currency: true },
+          },
+        },
+      })
+    : null;
 
-  const gate = gateCheckoutSuccess({
-    sessionId,
-    session: checkoutSession,
-    owner: {
-      userId: session.user.id,
-      email: user?.email ?? session.user.email,
-      stripeCustomerId: user?.stripeCustomerId,
-      requestedFilingId: urlFilingId,
-      ownedFilingIds: filings.map((row) => row.id),
-    },
-  });
-
-  if (gate.status !== 'paid') {
+  if (!sessionId && !paidFiling) {
     return (
       <OrderNotice
         pending
@@ -100,13 +91,118 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  const filing = gate.filingId ? filings.find((row) => row.id === gate.filingId) ?? null : null;
+  let sessionFiling: {
+    id: string;
+    businessName: string | null;
+    entityType: string;
+    serviceTier: string;
+    state: string;
+    sunbizTrackingNumber: string | null;
+    sunbizPin: string | null;
+    sunbizFilingNumber: string | null;
+    totalCents: number;
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmContent: string | null;
+    utmTerm: string | null;
+    gclid: string | null;
+    documents: { id: string; documentType: string }[];
+    filingAdditionalServices: { service: { serviceSlug: string } }[];
+  } | null = paidFiling;
+  let amountCents: number | null = paidFiling?.payments[0]?.amountCents ?? paidFiling?.totalCents ?? null;
+  let currency: string | null = (paidFiling?.payments[0]?.currency ?? 'usd').toUpperCase();
+  let trackedFilingId: string | null = paidFiling?.id ?? null;
+
+  if (!paidFiling) {
+    if (!sessionId) {
+      return (
+        <OrderNotice
+          pending
+          title={t('confirmingTitle')}
+          body={t('confirmingBody')}
+          dashboardLabel={t('goDashboard')}
+          locale={locale}
+        />
+      );
+    }
+    const checkoutSession = await retrieveCheckoutSession(sessionId);
+    const candidateIds = checkoutFilingCandidates(checkoutSession, urlFilingId);
+    const [user, filings] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { email: true, stripeCustomerId: true },
+      }),
+      candidateIds.length
+        ? prisma.filing.findMany({
+            where: { id: { in: candidateIds }, userId: session.user.id },
+            include: {
+              documents: true,
+              filingAdditionalServices: {
+                include: { service: { select: { serviceSlug: true } } },
+              },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const gate = gateCheckoutSuccess({
+      sessionId,
+      session: checkoutSession,
+      owner: {
+        userId: session.user.id,
+        email: user?.email ?? session.user.email,
+        stripeCustomerId: user?.stripeCustomerId,
+        requestedFilingId: urlFilingId,
+        ownedFilingIds: filings.map((row) => row.id),
+      },
+    });
+
+    if (gate.status !== 'paid') {
+      return (
+        <OrderNotice
+          pending
+          title={t('confirmingTitle')}
+          body={t('confirmingBody')}
+          dashboardLabel={t('goDashboard')}
+          locale={locale}
+        />
+      );
+    }
+
+    sessionFiling = gate.filingId ? filings.find((row) => row.id === gate.filingId) ?? null : null;
+    amountCents = gate.amountCents;
+    currency = gate.currency;
+    trackedFilingId = sessionFiling?.id ?? gate.filingId;
+  }
+
+  const filing = sessionFiling;
+
+  // The guest has reached the prompt. Later visits to the wizard URL can go
+  // to the filing dashboard again. The query string keeps this page in place.
+  if (
+    setPassword &&
+    paidFiling &&
+    filingNeedsSetPasswordPrompt(safeParseJson(paidFiling.optionalDetails, null))
+  ) {
+    const details =
+      safeParseJson<Record<string, unknown> | null>(paidFiling.optionalDetails, null) ?? {};
+    try {
+      await prisma.filing.update({
+        where: { id: paidFiling.id },
+        data: { optionalDetails: JSON.stringify(withoutGuestSetPasswordPending(details)) },
+      });
+    } catch {
+      // The prompt still renders from setPassword=1 if the flag stays set.
+    }
+  }
+
   const tracker = (
     <CheckoutConversionTracker
       userId={session.user.id}
-      filingId={filing?.id ?? gate.filingId}
-      amountCents={gate.amountCents}
-      currency={gate.currency}
+      filingId={trackedFilingId}
+      amountCents={amountCents}
+      currency={currency}
       state={filing?.state}
       entityType={filing?.entityType}
       tier={filing?.serviceTier}
@@ -179,6 +275,18 @@ export default async function CheckoutSuccessPage({
               strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
             })}
           </p>
+          {setPassword ? (
+            <div
+              role="status"
+              className="mt-6 max-w-xl mx-auto rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-left"
+            >
+              <p className="font-semibold text-ink">{t('setPasswordTitle')}</p>
+              <p className="mt-1 text-sm text-ink-muted leading-relaxed">
+                {t('setPasswordBody', { email: session.user.email ?? '' })}
+              </p>
+              <p className="mt-1 text-sm text-ink-muted leading-relaxed">{t('setPasswordEmailed')}</p>
+            </div>
+          ) : null}
 
           {/* Filing details */}
           <div className="mt-10 max-w-2xl mx-auto rounded-2xl border border-border bg-white p-6 md:p-8 text-left shadow-card">

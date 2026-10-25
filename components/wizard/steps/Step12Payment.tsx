@@ -36,7 +36,11 @@ import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
 import { formatLongDate } from '@/lib/due-label';
 import type { WizardFiling } from '../types';
-import { GuestCheckoutAccount } from '../GuestCheckoutAccount';
+import { GuestSignInPrompt } from '../GuestSignInPrompt';
+import {
+  GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
+  GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
+} from '@/lib/guest-checkout';
 import {
   getFormationState,
   isActiveFormationState,
@@ -95,6 +99,8 @@ export function Step12Payment({
   const usesOurRa = registeredAgent?.useOurService === true;
 
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
+  const [checkoutEmail, setCheckoutEmail] = useState(guestEmail || pendingAccountEmail || '');
+  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail) && !guestEmail);
   // Unchecked until the customer opts in. The mandate still shows the price,
   // the renewal date, and that they can cancel.
   const [autoRenewRa, setAutoRenewRa] = useState(RA_AUTORENEW_CHECKED_BY_DEFAULT);
@@ -139,15 +145,15 @@ export function Step12Payment({
   };
 
   const onPay = () => {
-    if (isGuest) {
-      run(async () => ({ ok: false, error: t('accountGateRequired') }));
-      return;
-    }
     // Longer than the other steps so a real card confirm is not a false timeout.
     run(async () => {
       let paymentIntentId: string;
 
-      if (isTester) {
+      if (isGuest && !checkoutEmail.trim()) {
+        return { ok: false, error: t('guestPayEmailRequired') };
+      }
+
+      if (isTester && !isGuest) {
         // Tester mode: skip Stripe entirely, use bypass sentinel
         paymentIntentId = 'TESTER_BYPASS';
       } else {
@@ -159,8 +165,16 @@ export function Step12Payment({
           cardholderName,
           filingId: filing.id,
           couponCode: appliedCoupon?.code,
+          ...(isGuest ? { email: checkoutEmail.trim() } : {}),
         });
         if ('error' in result) {
+          if (result.code === GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE) {
+            setNeedsSignIn(true);
+            return { ok: false, error: t('guestEmailHasAccount') };
+          }
+          if (result.code === GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE) {
+            return { ok: false, error: t('guestCheckoutEmailUnavailable') };
+          }
           return { ok: false, error: result.error };
         }
         paymentIntentId = result.paymentIntentId;
@@ -174,6 +188,10 @@ export function Step12Payment({
         discountCents,
         autoRenewRa: usesOurRa && autoRenewRa,
       });
+      // Checkout submits the filing, and the wizard page then redirects.
+      // Next drops the action result when that redirect fires. The browser
+      // is already navigating, so a missing result is not a failed payment.
+      if (!res) return { ok: true };
       if (res.error) {
         return { ok: false, error: res.error };
       }
@@ -307,17 +325,10 @@ export function Step12Payment({
         </ol>
       </div>
 
-      {isGuest && (
-        <GuestCheckoutAccount
-          filingId={filing.id}
-          email={guestEmail}
-          pendingAccountEmail={pendingAccountEmail}
-          filingLocale={filing.locale}
-        />
-      )}
-
-      {/* Card form / Tester bypass. Hidden until the guest has an account. */}
-      {isGuest ? null : isTester ? (
+      {/* Card form / Tester bypass. Guests pay on this step. The email sits
+          above the card. An address that already has an account stops here
+          and asks them to sign in, with next= back to payment. */}
+      {isTester && !isGuest ? (
         <div className="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-5 space-y-3">
           <div className="flex items-center gap-2 text-amber-700 font-semibold">
             <FlaskConical className="h-5 w-5" />
@@ -345,6 +356,34 @@ export function Step12Payment({
             </span>
           </div>
 
+          {isGuest && (
+            <div className="space-y-1.5">
+              <Label htmlFor="checkout-email">{t('guestPayEmailLabel')}</Label>
+              <Input
+                id="checkout-email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                value={checkoutEmail}
+                placeholder={t('guestEmailPlaceholder')}
+                onChange={(e) => {
+                  setCheckoutEmail(e.target.value);
+                  setNeedsSignIn(false);
+                }}
+              />
+              <p className="text-xs text-ink-subtle leading-snug">{t('guestPayEmailHint')}</p>
+              {needsSignIn && (
+                <GuestSignInPrompt
+                  filingId={filing.id}
+                  email={checkoutEmail.trim() || pendingAccountEmail || ''}
+                  returnStep={11}
+                  filingLocale={filing.locale}
+                />
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>{t('cardholderName')}</Label>
             <Input
@@ -365,7 +404,7 @@ export function Step12Payment({
       {/* Registered Agent auto-renew mandate - affirmative, informed consent
           with the amount, date, cadence, and cancel path shown inline. Only
           when the customer chose our RA and there's a real charge to renew. */}
-      {usesOurRa && !isTester && !isGuest && (
+      {usesOurRa && !(isTester && !isGuest) && (
         <label className="flex items-start gap-3 rounded-lg border border-border bg-paper-soft p-4 cursor-pointer">
           <input
             type="checkbox"
@@ -404,9 +443,9 @@ export function Step12Payment({
       <WizardActions
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
-        nextDisabled={isGuest}
+        nextDisabled={isGuest && !checkoutEmail.trim()}
         onBlocked={() => {
-          document.getElementById('checkout-account')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.getElementById('checkout-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }}
         pending={pending}
         error={error}

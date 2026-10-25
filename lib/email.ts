@@ -62,6 +62,7 @@ export type NotificationType =
   | 'ANNUAL_REPORT_FINAL'
   | 'COMPLIANCE_ALERT'
   | 'PASSWORD_RESET'
+  | 'GUEST_SET_PASSWORD'
   | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
   | 'OA_TEMPLATE_CONFIRM'
@@ -544,6 +545,33 @@ const TEMPLATES: Record<
       <a class="cta" href="${siteUrl}/dashboard">Review now</a>
     `,
   }),
+  GUEST_SET_PASSWORD: ({ firstName, resetUrl, locale, loginEmail }) => {
+    const spanish = locale === 'es';
+    const href = escapeHtml(resetUrl ?? '#');
+    const name = escapeHtml(firstName?.trim() || '');
+    const mailbox = escapeHtml(loginEmail?.trim() || '');
+    if (spanish) {
+      return {
+        subject: 'Crea tu contraseña de LaunchForma',
+        body: html`
+          <h1>Crea tu contraseña</h1>
+          <p>${name ? `Hola ${name}.` : 'Hola.'} Tu pago ya se completó. Este enlace crea la contraseña de tu cuenta${mailbox ? ` (${mailbox})` : ''} y abre tu trámite.</p>
+          <a class="cta" href="${href}">Crear contraseña</a>
+          <p class="muted">El enlace vence en 3 días y funciona una sola vez. Si no pagaste un trámite, ignora este correo.</p>
+        `,
+      };
+    }
+    const hello = name ? `Hi ${name}.` : 'Hi there.';
+    return {
+      subject: 'Set your LaunchForma password',
+      body: html`
+        <h1>Set your password</h1>
+        <p>${hello} Your payment went through. This link sets a password for your account${mailbox ? ` (${mailbox})` : ''} and opens your filing.</p>
+        <a class="cta" href="${href}">Set your password</a>
+        <p class="muted">The link expires in 3 days and works once. If you did not pay for a filing, you can ignore this email.</p>
+      `,
+    };
+  },
   CHECKOUT_LOGIN_LINK: ({ firstName, resumeUrl, locale, linkExpiresInDays }) => {
     const spanish = locale === 'es';
     const days = linkExpiresInDays ?? 3;

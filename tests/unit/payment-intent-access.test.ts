@@ -5,14 +5,16 @@ const getGuestUser = vi.hoisted(() => vi.fn());
 const filingFindUnique = vi.hoisted(() => vi.fn());
 const userFindUnique = vi.hoisted(() => vi.fn());
 const filingUpdate = vi.hoisted(() => vi.fn());
+const userUpdate = vi.hoisted(() => vi.fn());
 const paymentIntentsCreate = vi.hoisted(() => vi.fn());
+const customersUpdate = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
 vi.mock('@/lib/db', () => ({
   prisma: {
     filing: { findUnique: filingFindUnique, update: filingUpdate },
-    user: { findUnique: userFindUnique, update: vi.fn() },
+    user: { findUnique: userFindUnique, update: userUpdate },
     coupon: { findUnique: vi.fn() },
     registeredAgentService: { findUnique: vi.fn() },
   },
@@ -20,7 +22,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/stripe', () => ({
   getStripe: () => ({
     paymentIntents: { create: paymentIntentsCreate, retrieve: vi.fn(), update: vi.fn() },
-    customers: { create: vi.fn() },
+    customers: { create: vi.fn(), update: customersUpdate },
   }),
 }));
 vi.mock('@/lib/rate-limit', () => ({
@@ -58,7 +60,11 @@ beforeEach(() => {
   filingFindUnique.mockReset();
   userFindUnique.mockReset();
   filingUpdate.mockReset();
+  userUpdate.mockReset();
+  customersUpdate.mockReset();
   paymentIntentsCreate.mockReset();
+  userUpdate.mockResolvedValue({});
+  customersUpdate.mockResolvedValue({});
   userFindUnique.mockResolvedValue({
     id: 'user_1',
     email: 'ada@example.com',
@@ -88,14 +94,110 @@ describe('payment intent access', () => {
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for a guest before reading the body', async () => {
+  it('lets the guest who owns the draft pay after the real email is stored', async () => {
+    const order: string[] = [];
     auth.mockResolvedValue(null);
-    getGuestUser.mockResolvedValue({ id: 'guest_1' });
-    const json = vi.fn();
-    const res = await POST({ json } as never);
-    expect(res.status).toBe(403);
-    expect(json).not.toHaveBeenCalled();
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    });
+    filingFindUnique.mockResolvedValue(filingOwnedBy('guest_1'));
+    userFindUnique.mockImplementation(async (args: { where: { email?: string; id?: string } }) => {
+      if (args.where.email) return null;
+      return {
+        id: 'guest_1',
+        email: 'buyer@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        stripeCustomerId: 'cus_g',
+        accountStatus: 'GUEST',
+      };
+    });
+    userUpdate.mockImplementation(async () => {
+      order.push('email');
+      return {};
+    });
+    filingUpdate.mockImplementation(async () => {
+      order.push('filing');
+      return {};
+    });
+    paymentIntentsCreate.mockImplementation(async () => {
+      order.push('pi');
+      return { id: 'pi_1', client_secret: 'sec', status: 'requires_payment_method', amount: 14900 };
+    });
+
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'Buyer@Example.com', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(200);
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 'guest_1' },
+      data: { email: 'buyer@example.com' },
+    });
+    expect(filingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'filing_1' },
+        data: expect.objectContaining({
+          optionalDetails: expect.stringContaining('buyer@example.com'),
+        }),
+      }),
+    );
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 14900,
+        receipt_email: 'buyer@example.com',
+        metadata: expect.objectContaining({ userId: 'guest_1', filingId: 'filing_1' }),
+      }),
+      { idempotencyKey: 'filing_filing_1_amt_14900' },
+    );
+    expect(order.indexOf('email')).toBeGreaterThan(-1);
+    expect(order.indexOf('email')).toBeLessThan(order.indexOf('pi'));
+    expect(order.indexOf('filing')).toBeLessThan(order.indexOf('pi'));
+  });
+
+  it('denies a guest who does not own the draft', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'A',
+      lastName: 'B',
+    });
+    filingFindUnique.mockResolvedValue(filingOwnedBy('guest_2'));
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(404);
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it('denies a guest who types an email that already has an account', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'A',
+      lastName: 'B',
+    });
+    filingFindUnique.mockResolvedValue(filingOwnedBy('guest_1'));
+    userFindUnique.mockImplementation(async (args: { where: { email?: string; id?: string } }) => {
+      if (args.where.email) {
+        return { id: 'victim', accountStatus: 'ACTIVE', email: 'buyer@example.com' };
+      }
+      return null;
+    });
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ code: 'existing_account' });
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    const filingWrites = filingUpdate.mock.calls.map((call) => call[0] as { data?: { userId?: string } });
+    expect(filingWrites.every((write) => write.data?.userId === undefined)).toBe(true);
   });
 
   it('does not let a signed-in user pay another user filing', async () => {

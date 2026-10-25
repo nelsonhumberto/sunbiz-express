@@ -44,6 +44,20 @@ export function spanishOnlyAlternates(esPath: string): NonNullable<Metadata['alt
   };
 }
 
+/**
+ * hreflang for an English-only URL. There is no Spanish article yet, so
+ * `es` is omitted. Do not point hreflang at a page that does not exist.
+ */
+export function englishOnlyAlternates(englishPath: string): NonNullable<Metadata['alternates']> {
+  return {
+    canonical: englishPath,
+    languages: {
+      en: englishPath,
+      'x-default': englishPath,
+    },
+  };
+}
+
 export function buildLocaleAlternates(englishPath: string): NonNullable<Metadata['alternates']> {
   const requestPath = headers().get(PUBLIC_PATH_HEADER) ?? '';
   return localeAlternates(englishPath, requestPath);

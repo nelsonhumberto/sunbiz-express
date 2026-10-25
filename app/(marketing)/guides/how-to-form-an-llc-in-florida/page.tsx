@@ -215,6 +215,10 @@ export default async function HowToFormFloridaLlcGuide() {
           Forming a corporation instead? Read{' '}
           <a href="/guides/how-to-form-a-florida-corporation">how to form a Florida corporation</a>.
         </p>
+        <p>
+          Selling under a brand name? See{' '}
+          <a href="/guides/florida-fictitious-name-dba">Florida fictitious names</a>.
+        </p>
 
         <h2>Questions</h2>
         {FAQ.map((item) => (

@@ -147,17 +147,84 @@ export function clearGaDisableFlags(): void {
   for (const id of measurementIds()) record[`ga-disable-${id}`] = false;
 }
 
-/** Stop tags that already loaded in this tab. A reload stays clean because we never inject them. */
-export function tearDownAdMeasurement(): void {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+/** One failing step must not abort the rest of the opt-out. */
+function runStep(step: () => void): void {
+  try {
+    step();
+  } catch {
+    // Keep going. A non-configurable gtag, or any other throw, stays in this step.
+  }
+}
+
+function denyGoogleConsent(): void {
+  const gtag = window.gtag;
+  if (typeof gtag !== 'function') return;
+  gtag('consent', 'update', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied',
+  });
+}
+
+function setGaDisableFlags(): void {
   const record = window as unknown as Record<string, unknown>;
-  for (const id of measurementIds()) record[`ga-disable-${id}`] = true;
+  for (const id of measurementIds()) {
+    try {
+      record[`ga-disable-${id}`] = true;
+    } catch {
+      // Keep going so one measurement id cannot block the others.
+    }
+  }
+}
+
+function disableOpenAiPixel(): void {
+  try {
+    const pixel = window.oaiq as { q?: unknown[] } | undefined;
+    if (pixel && Array.isArray(pixel.q)) pixel.q.length = 0;
+  } catch {
+    // Queue cleanup is best-effort. Replacing the function still has to run.
+  }
+  window.oaiq = function () {};
+}
+
+function neutralizeGtag(): void {
+  window.gtag = function () {};
+}
+
+function neutralizeDataLayerPush(): void {
+  const dataLayer = window.dataLayer;
+  if (!dataLayer || typeof dataLayer.push !== 'function') return;
+  dataLayer.push = () => dataLayer.length;
+}
+
+function removeBlockedAdScripts(): void {
   document.querySelectorAll('script').forEach((script) => {
-    const src = script.getAttribute('src') ?? '';
-    if (BLOCKED_SCRIPT.test(src) || script.id === 'google-analytics' || script.id === 'openai-ads-pixel') {
-      script.parentNode?.removeChild(script);
+    try {
+      const src = script.getAttribute('src') ?? '';
+      if (BLOCKED_SCRIPT.test(src) || script.id === 'google-analytics' || script.id === 'openai-ads-pixel') {
+        script.parentNode?.removeChild(script);
+      }
+    } catch {
+      // Keep removing the other tags.
     }
   });
-  delete record.gtag;
-  delete record.oaiq;
+}
+
+/**
+ * Stop tags that already loaded in this tab. A reload stays clean because we
+ * never inject them.
+ *
+ * Disable steps run before gtag is replaced. The bootstrap's
+ * `function gtag(){}` is not configurable, so `delete window.gtag` throws
+ * and must not be used.
+ */
+export function tearDownAdMeasurement(): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  runStep(denyGoogleConsent);
+  runStep(setGaDisableFlags);
+  runStep(disableOpenAiPixel);
+  runStep(neutralizeGtag);
+  runStep(neutralizeDataLayerPush);
+  runStep(removeBlockedAdScripts);
 }

@@ -17,6 +17,7 @@ import {
   serializeAdOptOutCookie,
   serializeGpcDerivedCookie,
   shouldInjectAdScripts,
+  tearDownAdMeasurement,
 } from '@/lib/ad-opt-out';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
@@ -192,6 +193,116 @@ describe('analytics no-ops when opted out', () => {
     fireAll();
     expect(gtag).not.toHaveBeenCalled();
     expect(oaiq).not.toHaveBeenCalled();
+  });
+});
+
+describe('tearDownAdMeasurement', () => {
+  const envKeys = ['NEXT_PUBLIC_GA_MEASUREMENT_ID', 'NEXT_PUBLIC_GOOGLE_ADS_ID'] as const;
+  const previous: Record<string, string | undefined> = {};
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    for (const key of envKeys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  });
+
+  it('does not throw when gtag is a non-configurable global and still runs every disable step', () => {
+    for (const key of envKeys) previous[key] = process.env[key];
+    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = 'G-SSYG3R6NHM';
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID = 'AW-18328422146';
+
+    const calls: unknown[][] = [];
+    function installedGtag(...args: unknown[]) {
+      calls.push(args);
+    }
+    const dataLayer: unknown[] = [];
+    const pushCalls: unknown[][] = [];
+    function recordingPush(...args: unknown[]) {
+      pushCalls.push(args);
+      return dataLayer.length;
+    }
+    dataLayer.push = recordingPush as unknown as typeof dataLayer.push;
+    const oaiq = vi.fn();
+    const queue: unknown[] = [['measure', 'page_viewed']];
+    (oaiq as unknown as { q: unknown[] }).q = queue;
+
+    const removed: unknown[] = [];
+    const gtm = {
+      id: '',
+      getAttribute: (name: string) =>
+        name === 'src' ? 'https://www.googletagmanager.com/gtag/js?id=G-SSYG3R6NHM' : null,
+      parentNode: { removeChild: (node: unknown) => removed.push(node) },
+    };
+    const gaInline = {
+      id: 'google-analytics',
+      getAttribute: () => null,
+      parentNode: { removeChild: (node: unknown) => removed.push(node) },
+    };
+    const pixel = {
+      id: 'openai-ads-pixel',
+      getAttribute: () => 'https://bzrcdn.openai.com/sdk/oaiq.min.js',
+      parentNode: { removeChild: (node: unknown) => removed.push(node) },
+    };
+    const other = {
+      id: 'app',
+      getAttribute: () => 'https://example.com/app.js',
+      parentNode: { removeChild: (node: unknown) => removed.push(node) },
+    };
+
+    const win = { dataLayer, oaiq } as unknown as Window & Record<string, unknown>;
+    Object.defineProperty(win, 'gtag', {
+      configurable: false,
+      writable: true,
+      value: installedGtag,
+    });
+    vi.stubGlobal('window', win);
+    vi.stubGlobal('document', {
+      querySelectorAll: () => [gtm, gaInline, pixel, other],
+    });
+
+    expect(() => {
+      delete (win as { gtag?: unknown }).gtag;
+    }).toThrow(TypeError);
+    expect(win.gtag).toBe(installedGtag);
+
+    expect(() => tearDownAdMeasurement()).not.toThrow();
+
+    expect(calls).toEqual([
+      [
+        'consent',
+        'update',
+        {
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+          analytics_storage: 'denied',
+        },
+      ],
+    ]);
+    expect(win['ga-disable-G-SSYG3R6NHM']).toBe(true);
+    expect(win['ga-disable-AW-18328422146']).toBe(true);
+
+    expect(queue).toEqual([]);
+    expect(typeof win.oaiq).toBe('function');
+    expect(win.oaiq).not.toBe(oaiq);
+    win.oaiq?.('measure', 'lead_created');
+    expect(oaiq).not.toHaveBeenCalled();
+
+    const gtagDescriptor = Object.getOwnPropertyDescriptor(win, 'gtag');
+    expect(gtagDescriptor?.configurable).toBe(false);
+    expect(typeof gtagDescriptor?.value).toBe('function');
+    expect(gtagDescriptor?.value).not.toBe(installedGtag);
+    (win.gtag as (...args: unknown[]) => void)('event', 'page_view');
+    expect(calls).toHaveLength(1);
+
+    const pushesBefore = pushCalls.length;
+    dataLayer.push(['event', 'page_view']);
+    expect(pushCalls.length).toBe(pushesBefore);
+    expect(dataLayer.push).not.toBe(recordingPush);
+
+    expect(removed).toEqual([gtm, gaInline, pixel]);
   });
 });
 

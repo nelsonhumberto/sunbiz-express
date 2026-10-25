@@ -104,7 +104,7 @@ export default async function BillingPage() {
               {t('lifetimeSpend')}
             </div>
             <p className="font-display text-3xl font-medium">
-              {formatCurrency(lifetimeCents)}
+              {formatCurrency(lifetimeCents, { locale })}
             </p>
             <p className="text-xs text-ink-subtle">
               {t('lifetimeFootnote', {
@@ -200,7 +200,7 @@ export default async function BillingPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-medium tabular-nums">
-                      {formatCurrency(payment.amountCents)}
+                      {formatCurrency(payment.amountCents, { locale })}
                     </p>
                     <PaymentStatusBadge status={payment.status} />
                   </div>

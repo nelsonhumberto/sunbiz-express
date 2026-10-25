@@ -1,4 +1,4 @@
-import { BUSINESS_LEGAL_NAME } from '@/lib/constants';
+import { BUSINESS_LEGAL_NAME, CONTACT_PHONE_E164 } from '@/lib/constants';
 
 /**
  * Renders a JSON-LD structured data script tag. Server-safe (no client
@@ -29,6 +29,7 @@ export function organizationJsonLd() {
     sameAs: [],
     contactPoint: {
       '@type': 'ContactPoint',
+      telephone: CONTACT_PHONE_E164,
       email: 'hello@launchforma.com',
       contactType: 'customer service',
       availableLanguage: ['English', 'Spanish'],

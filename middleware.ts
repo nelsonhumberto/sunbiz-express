@@ -3,8 +3,10 @@ import { routing } from '@/i18n/routing';
 import { stripSpanishPrefix } from '@/i18n/config';
 import {
   LOCALE_HEADER,
+  englishPathname,
   localeFromPublicPath,
   localeQueryRedirect,
+  localizedPublicRedirect,
   PUBLIC_PATH_HEADER,
 } from '@/lib/locale-paths';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
@@ -92,6 +94,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // Localized slugs (`/contact` vs `/es/contacto`). Non-canonical URLs 308
+  // before the /es rewrite, so `/contacto` does not loop back on itself.
+  const slugTo = localizedPublicRedirect(pathname);
+  if (slugTo) {
+    const url = request.nextUrl.clone();
+    url.pathname = slugTo;
+    return NextResponse.redirect(url, 308);
+  }
+
   // `?lang=` moves onto the path. This response does not set NEXT_LOCALE.
   const localeJump = localeQueryRedirect(pathname, searchParams);
   if (localeJump) {
@@ -102,7 +113,8 @@ export function middleware(request: NextRequest) {
   }
 
   const strippedPath = stripSpanishPrefix(pathname);
-  const appPath = strippedPath ?? pathname;
+  // `/es/contacto` rewrites to the `/contact` page. Other /es URLs drop the prefix.
+  const appPath = strippedPath == null ? pathname : englishPathname(pathname);
 
   // Bare /wizard (and /es/wizard) is not a filing. Send visitors to /start
   // before the wizard layout asks them to sign in. Keep /es so Spanish
@@ -131,7 +143,7 @@ export function middleware(request: NextRequest) {
   let response: NextResponse;
   if (strippedPath) {
     const url = request.nextUrl.clone();
-    url.pathname = strippedPath;
+    url.pathname = appPath;
     response = NextResponse.rewrite(url, requestInit);
   } else {
     response = NextResponse.next(requestInit);

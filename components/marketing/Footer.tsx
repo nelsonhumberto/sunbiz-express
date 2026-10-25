@@ -24,7 +24,7 @@ export function Footer() {
       { label: tNav('about'), href: href('/about') },
       { label: tFooter('whyUs'), href: href('/about#why') },
       { label: tNav('faq'), href: href('/faq') },
-      { label: tFooter('contact'), href: href('/about#contact') },
+      { label: tFooter('contact'), href: href('/contact') },
     ],
     legal: [
       { label: tFooter('terms'), href: href('/terms') },

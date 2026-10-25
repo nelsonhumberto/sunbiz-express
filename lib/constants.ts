@@ -11,6 +11,11 @@ export const COPYRIGHT_YEAR = new Date().getFullYear();
 export const BUSINESS_LEGAL_NAME = 'LAUNCHFORMA, LLC';
 export const BUSINESS_ADDRESS = '14160 Palmetto Frontage Road, Suite 101, Miami Lakes, FL 33016';
 
+/** Public phone on the contact page and in Organization JSON-LD. */
+export const CONTACT_PHONE_DISPLAY = '(844) 703-6762';
+/** E.164 form for `tel:` links and schema.org telephone. */
+export const CONTACT_PHONE_E164 = '+18447036762';
+
 /** Public inbox already used on the about page. */
 export const BUSINESS_EMAIL = 'hello@launchforma.com';
 

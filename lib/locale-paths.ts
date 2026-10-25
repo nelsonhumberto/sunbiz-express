@@ -1,4 +1,27 @@
 import { stripSpanishPrefix, type Locale } from '@/i18n/config';
+import { routing } from '@/i18n/routing';
+
+/**
+ * English public path -> Spanish slug (no `/es` prefix), taken from
+ * next-intl pathnames. `/contact` is `/contacto` in Spanish.
+ */
+const EN_TO_ES_SLUG: Record<string, string> = {};
+const ES_TO_EN_PATH: Record<string, string> = {};
+for (const value of Object.values(routing.pathnames ?? {})) {
+  if (!value || typeof value === 'string') continue;
+  const en = value.en;
+  const es = value.es;
+  if (!en || !es || (en as string) === (es as string)) continue;
+  const enPath = en.startsWith('/') ? en : `/${en}`;
+  const esPath = es.startsWith('/') ? es : `/${es}`;
+  EN_TO_ES_SLUG[enPath] = esPath;
+  ES_TO_EN_PATH[esPath] = enPath;
+}
+
+function withoutTrailingSlash(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1);
+  return pathname || '/';
+}
 
 /** `/es` and `/es/*` are Spanish. Every other path is English. */
 export function localeFromPublicPath(pathname: string): Locale {
@@ -21,12 +44,7 @@ export function localeQueryRedirect(
   const next = new URLSearchParams(searchParams.toString());
   next.delete('lang');
   const search = next.toString();
-  const path =
-    lang === 'es'
-      ? pathname === '/'
-        ? '/es'
-        : `/es${pathname.startsWith('/') ? pathname : `/${pathname}`}`
-      : englishPathname(pathname);
+  const path = lang === 'es' ? toSpanishUrl(pathname) : englishPathname(pathname);
   return { pathname: path, search };
 }
 
@@ -38,7 +56,29 @@ export const LOCALE_HEADER = 'x-lf-locale';
 /** Browser pathname with the /es prefix removed. Ignores query and hash. */
 export function englishPathname(pathname: string): string {
   const path = (pathname.split('?')[0] ?? pathname).split('#')[0] || '/';
-  return stripSpanishPrefix(path) ?? (path.startsWith('/') ? path : `/${path}`);
+  const stripped = stripSpanishPrefix(path);
+  if (stripped == null) return path.startsWith('/') ? path : `/${path}`;
+  return ES_TO_EN_PATH[stripped] ?? stripped;
+}
+
+/**
+ * 308 when a URL uses the other language's slug.
+ * `/contacto` goes to `/es/contacto`. `/es/contact` goes to `/es/contacto`.
+ * Returns null for the canonical English and Spanish URLs.
+ */
+export function localizedPublicRedirect(pathname: string): string | null {
+  const path = withoutTrailingSlash((pathname.split('?')[0] ?? pathname).split('#')[0] || '/');
+  const fromBareSpanishSlug = ES_TO_EN_PATH[path];
+  if (fromBareSpanishSlug) return toSpanishUrl(fromBareSpanishSlug);
+  if (path.startsWith('/es/')) {
+    const englishSlug = path.slice(3);
+    const spanishSlug = EN_TO_ES_SLUG[englishSlug];
+    if (spanishSlug) {
+      const canonical = `/es${spanishSlug}`;
+      if (canonical !== path) return canonical;
+    }
+  }
+  return null;
 }
 
 export function isSpanishPublicPath(pathname: string): boolean {
@@ -58,7 +98,8 @@ export function toSpanishUrl(englishPath: string): string {
   const query = queryAt === -1 ? '' : withoutHash.slice(queryAt);
   const rawPath = queryAt === -1 ? withoutHash : withoutHash.slice(0, queryAt);
   const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-  const prefixed = path === '/' ? '/es' : `/es${path}`;
+  const localized = path === '/' ? '/' : (EN_TO_ES_SLUG[path] ?? path);
+  const prefixed = localized === '/' ? '/es' : `/es${localized}`;
   return `${prefixed}${query}${hash}`;
 }
 
@@ -71,7 +112,7 @@ export function pathForLocale(pathname: string, locale: Locale): string {
   const query = queryAt === -1 ? '' : withoutHash.slice(queryAt);
   const path = queryAt === -1 ? withoutHash : withoutHash.slice(0, queryAt);
   const english = englishPathname(path || '/');
-  const next = locale === 'es' ? (english === '/' ? '/es' : `/es${english}`) : english;
+  const next = locale === 'es' ? toSpanishUrl(english) : english;
   return `${next}${query}${hash}`;
 }
 

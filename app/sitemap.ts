@@ -25,6 +25,13 @@ const STATIC_PAGES: PageDef[] = [
   { path: '/faq', file: 'app/(marketing)/faq/page.tsx', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/services', file: 'app/(marketing)/services/page.tsx', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/about', file: 'app/(marketing)/about/page.tsx', changeFrequency: 'monthly', priority: 0.6 },
+  {
+    path: '/contact',
+    file: 'app/(marketing)/contact/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.6,
+    hreflang: true,
+  },
   { path: '/file-annual-report', file: 'app/(marketing)/file-annual-report/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/states', file: 'app/(marketing)/states/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/boi-reporting', file: 'app/(marketing)/boi-reporting/page.tsx', changeFrequency: 'monthly', priority: 0.8 },

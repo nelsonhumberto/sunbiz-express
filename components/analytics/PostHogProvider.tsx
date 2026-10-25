@@ -4,6 +4,7 @@ import posthog from 'posthog-js';
 import { PostHogProvider as PHProvider } from 'posthog-js/react';
 import type { ReactNode } from 'react';
 import '@/lib/posthog-browser';
+import { SessionReplayRoute } from '@/components/analytics/SessionReplayRoute';
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
@@ -12,5 +13,10 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  return <PHProvider client={posthog}>{children}</PHProvider>;
+  return (
+    <PHProvider client={posthog}>
+      <SessionReplayRoute />
+      {children}
+    </PHProvider>
+  );
 }

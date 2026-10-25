@@ -28,6 +28,11 @@ import {
   visibleSuccessDocuments,
 } from '@/lib/success-documents';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import {
+  filingNeedsSetPasswordPrompt,
+  withoutGuestSetPasswordPending,
+} from '@/lib/guest-checkout';
+import { safeParseJson } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,6 +177,26 @@ export default async function CheckoutSuccessPage({
   }
 
   const filing = sessionFiling;
+
+  // The guest has reached the prompt. Later visits to the wizard URL can go
+  // to the filing dashboard again. The query string keeps this page in place.
+  if (
+    setPassword &&
+    paidFiling &&
+    filingNeedsSetPasswordPrompt(safeParseJson(paidFiling.optionalDetails, null))
+  ) {
+    const details =
+      safeParseJson<Record<string, unknown> | null>(paidFiling.optionalDetails, null) ?? {};
+    try {
+      await prisma.filing.update({
+        where: { id: paidFiling.id },
+        data: { optionalDetails: JSON.stringify(withoutGuestSetPasswordPending(details)) },
+      });
+    } catch {
+      // The prompt still renders from setPassword=1 if the flag stays set.
+    }
+  }
+
   const tracker = (
     <CheckoutConversionTracker
       userId={session.user.id}
@@ -259,6 +284,7 @@ export default async function CheckoutSuccessPage({
               <p className="mt-1 text-sm text-ink-muted leading-relaxed">
                 {t('setPasswordBody', { email: session.user.email ?? '' })}
               </p>
+              <p className="mt-1 text-sm text-ink-muted leading-relaxed">{t('setPasswordEmailed')}</p>
             </div>
           ) : null}
 

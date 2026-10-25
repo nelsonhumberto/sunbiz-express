@@ -1171,6 +1171,7 @@
     "checkEmailBody": "We sent a confirmation receipt and a copy of your Articles to {email}.",
     "setPasswordTitle": "Check your email to set your password",
     "setPasswordBody": "We sent a link to {email}. Open it to set your password. You can keep this page open.",
+    "setPasswordEmailed": "We also emailed you a link.",
     "stateProcesses": "{state} processes your filing",
     "stateProcessesBody": "The {state} Department of State will review and approve your formation. We'll email you the moment your business is officially formed.",
     "stateProcessesTime": "1-2 business days",

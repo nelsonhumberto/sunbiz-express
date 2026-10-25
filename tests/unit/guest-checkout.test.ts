@@ -4,13 +4,18 @@ import { renderTemplate } from '@/lib/email';
 import {
   authorizeGuestFormationPayment,
   filingCheckoutEmailDetails,
+  filingNeedsSetPasswordPrompt,
   guestSetPasswordSiteUrl,
   maySignInClaimedGuest,
   planGuestAccountClaim,
   planGuestClaimFollowUp,
   planRecoveredGuestClaim,
   planWebhookPaidReplay,
+  submittedFilingHref,
+  withGuestSetPasswordPending,
+  withoutGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
+import { hrefForLocale } from '@/lib/app-href';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
@@ -358,6 +363,44 @@ describe('repeated payment webhook', () => {
   });
 });
 
+describe('submitted filing redirect', () => {
+  it('keeps setPassword=1 on the success page and sends everyone else to the filing', () => {
+    const pending = withGuestSetPasswordPending({ checkoutEmail: 'ana@example.com' });
+    expect(filingNeedsSetPasswordPrompt(pending)).toBe(true);
+    expect(submittedFilingHref('fil_1', pending)).toBe(
+      '/checkout/success?filing=fil_1&setPassword=1',
+    );
+    expect(submittedFilingHref('fil_1', pending)).not.toContain('/dashboard/filings/');
+    expect(hrefForLocale(submittedFilingHref('fil_1', pending), 'es')).toBe(
+      '/es/checkout/success?filing=fil_1&setPassword=1',
+    );
+
+    expect(submittedFilingHref('fil_1', withoutGuestSetPasswordPending(pending))).toBe(
+      '/dashboard/filings/fil_1',
+    );
+    expect(submittedFilingHref('fil_1', { checkoutEmail: 'ana@example.com' })).toBe(
+      '/dashboard/filings/fil_1',
+    );
+    expect(submittedFilingHref('fil_1', null)).toBe('/dashboard/filings/fil_1');
+    expect(hrefForLocale(submittedFilingHref('fil_1', null), 'es')).toBe(
+      '/es/dashboard/filings/fil_1',
+    );
+
+    const wizard = sourceOf('app/wizard/[filingId]/[step]/page.tsx');
+    expect(wizard).toContain('submittedFilingHref');
+    expect(wizard).not.toContain('`/dashboard/filings/${filing.id}`');
+    const payments = sourceOf('actions/payments.ts');
+    expect(payments).toContain('withGuestSetPasswordPending');
+    const step = sourceOf('components/wizard/steps/Step12Payment.tsx');
+    expect(step).toContain('if (!res) return { ok: true }');
+    const success = sourceOf('app/(app)/checkout/success/page.tsx');
+    expect(success).toContain("t('setPasswordTitle')");
+    expect(success).toContain("t('setPasswordEmailed')");
+    expect(success).not.toContain('redirectLocalized(`/dashboard/filings/');
+    expect(success).not.toContain('router.push');
+  });
+});
+
 describe('guest checkout copy', () => {
   it('says to check email for a password, in English and Spanish, without em dashes', () => {
     expect(en.wizard.guestDraftEmailMismatch).toBe(
@@ -366,8 +409,11 @@ describe('guest checkout copy', () => {
     expect(es.wizard.guestDraftEmailMismatch).toMatch(/otro correo/);
     expect(es.wizard.guestDraftContinue).toMatch(/invitado/);
     expect(en.checkoutSuccess.setPasswordTitle).toBe('Check your email to set your password');
+    expect(en.checkoutSuccess.setPasswordEmailed).toBe('We also emailed you a link.');
     expect(es.checkoutSuccess.setPasswordTitle).toMatch(/correo/);
     expect(es.checkoutSuccess.setPasswordTitle).toMatch(/contraseña/);
+    expect(es.checkoutSuccess.setPasswordEmailed).toMatch(/enlace/);
+    expect(es.checkoutSuccess.setPasswordEmailed).toMatch(/correo/);
     for (const copy of [
       en.wizard.guestPayEmailHint,
       es.wizard.guestPayEmailHint,
@@ -381,8 +427,10 @@ describe('guest checkout copy', () => {
       es.wizard.guestDraftSignInEmail,
       en.checkoutSuccess.setPasswordTitle,
       en.checkoutSuccess.setPasswordBody,
+      en.checkoutSuccess.setPasswordEmailed,
       es.checkoutSuccess.setPasswordTitle,
       es.checkoutSuccess.setPasswordBody,
+      es.checkoutSuccess.setPasswordEmailed,
     ]) {
       expect(copy).not.toMatch(/\u2014|\u2013/);
       expect(copy).not.toMatch(/Bienvenid/);

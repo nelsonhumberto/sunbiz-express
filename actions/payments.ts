@@ -36,6 +36,8 @@ import {
   maySignInClaimedGuest,
   planGuestClaimFollowUp,
   planRecoveredGuestClaim,
+  submittedFilingHref,
+  withGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
 import { claimPaidGuestAccount, type GuestClaimResult } from '@/lib/guest-checkout-claim';
 import type { SiteLocale } from '@/lib/pick-locale';
@@ -225,7 +227,25 @@ export async function processCheckout(input: {
     },
   });
   if (!filing || filing.userId !== actor.id) return { error: 'Filing not found.' };
-  if (filing.status !== 'DRAFT') return { error: 'This filing has already been submitted.' };
+  if (filing.status !== 'DRAFT') {
+    // The webhook can submit before this request returns. A guest still needs
+    // the set-password success page. A signed-in checkout keeps the error.
+    if (actor.kind === 'guest') {
+      const locale = pickLocale(await storedLocale(), filing.locale);
+      const pending = withGuestSetPasswordPending(
+        safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null),
+      );
+      await prisma.filing.update({
+        where: { id: filing.id },
+        data: { optionalDetails: JSON.stringify(pending) },
+      });
+      return {
+        ok: true,
+        redirectTo: hrefForLocale(submittedFilingHref(filing.id, pending), locale),
+      };
+    }
+    return { error: 'This filing has already been submitted.' };
+  }
 
   // Retarget campaigns may arrive after the draft was created - backfill
   // attribution from the current lf_utm cookie before we finalize payment.
@@ -436,6 +456,11 @@ export async function processCheckout(input: {
     ...existingOptional,
     autoRenewRa,
   };
+  // Set before submit. The wizard re-render after this action redirects, and
+  // it must already see that a guest should stay on the success page.
+  if (actor.kind === 'guest') {
+    Object.assign(nextOptional, withGuestSetPasswordPending(nextOptional));
+  }
   if (autoRenewRa) {
     nextOptional.autoRenewConsentAt = new Date().toISOString();
   } else {

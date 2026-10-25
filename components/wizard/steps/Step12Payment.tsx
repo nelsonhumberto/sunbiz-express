@@ -188,6 +188,10 @@ export function Step12Payment({
         discountCents,
         autoRenewRa: usesOurRa && autoRenewRa,
       });
+      // Checkout submits the filing, and the wizard page then redirects.
+      // Next drops the action result when that redirect fires. The browser
+      // is already navigating, so a missing result is not a failed payment.
+      if (!res) return { ok: true };
       if (res.error) {
         return { ok: false, error: res.error };
       }

@@ -44,6 +44,7 @@ import { getWizardActor } from '@/lib/guest';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
 import { isPlaceholderGuestEmail, showPendingAccountBanner } from '@/lib/guest-identity';
+import { submittedFilingHref } from '@/lib/guest-checkout';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,9 +70,19 @@ export default async function WizardStepPage({ params }: PageProps) {
 
   const filing = await getWizardFiling(params.filingId);
   if (filing.status !== 'DRAFT') {
-    // Submitted filings always go to the dashboard. Guests get sent through
-    // sign-in first since the dashboard is account-only.
-    return await redirectLocalized(`/dashboard/filings/${filing.id}`, filing.locale);
+    // Paying leaves the draft, and this page re-renders as part of checkout.
+    // That redirect used to replace /checkout/success?setPassword=1 with the
+    // filing dashboard, so the guest never saw the set-password prompt.
+    // Guests with that prompt stay on the success page. Everyone else still
+    // goes to the filing dashboard.
+    const submittedDetails = safeParseJson<Record<string, unknown> | null>(
+      filing.optionalDetails,
+      null,
+    );
+    return await redirectLocalized(
+      submittedFilingHref(filing.id, submittedDetails),
+      filing.locale,
+    );
   }
 
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's

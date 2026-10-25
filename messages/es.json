@@ -1171,6 +1171,7 @@
     "checkEmailBody": "Enviamos un recibo de confirmación y una copia de tus Articles a {email}.",
     "setPasswordTitle": "Revisa tu correo para crear tu contraseña",
     "setPasswordBody": "Enviamos un enlace a {email}. Ábrelo para crear tu contraseña. Puedes dejar esta página abierta.",
+    "setPasswordEmailed": "También te enviamos un enlace por correo.",
     "stateProcesses": "{state} procesa tu trámite",
     "stateProcessesBody": "El Departamento de Estado de {state} revisará y aprobará tu formación. Te enviaremos un correo en cuanto tu empresa esté oficialmente formada.",
     "stateProcessesTime": "1-2 días hábiles",

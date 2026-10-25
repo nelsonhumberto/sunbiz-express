@@ -262,3 +262,37 @@ export function guestSetPasswordSiteUrl(input: {
   }
   return vercelOrigin ?? branchOrigin ?? canonical;
 }
+
+/** Stored on the filing until the guest has seen the set-password success page. */
+export const GUEST_SET_PASSWORD_PENDING_KEY = 'guestSetPasswordPending';
+
+export function withGuestSetPasswordPending(
+  details: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  return { ...(details ?? {}), [GUEST_SET_PASSWORD_PENDING_KEY]: true };
+}
+
+export function withoutGuestSetPasswordPending(
+  details: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = { ...(details ?? {}) };
+  delete next[GUEST_SET_PASSWORD_PENDING_KEY];
+  return next;
+}
+
+export function filingNeedsSetPasswordPrompt(details: unknown): boolean {
+  if (!details || typeof details !== 'object' || Array.isArray(details)) return false;
+  return (details as Record<string, unknown>)[GUEST_SET_PASSWORD_PENDING_KEY] === true;
+}
+
+/**
+ * After payment the wizard is no longer a draft, so it redirects.
+ * A guest who still needs a password stays on the success page.
+ * Every other submitted filing keeps the filing dashboard.
+ */
+export function submittedFilingHref(filingId: string, details: unknown): string {
+  if (filingNeedsSetPasswordPrompt(details)) {
+    return `/checkout/success?filing=${filingId}&setPassword=1`;
+  }
+  return `/dashboard/filings/${filingId}`;
+}

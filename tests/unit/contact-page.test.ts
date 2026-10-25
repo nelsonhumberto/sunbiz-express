@@ -3,6 +3,7 @@ import path from 'node:path';
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
 import sitemap from '@/app/sitemap';
+import { messagesForPath } from '@/i18n/config';
 import { routing } from '@/i18n/routing';
 import {
   BUSINESS_ADDRESS,
@@ -10,6 +11,7 @@ import {
   CONTACT_PHONE_E164,
 } from '@/lib/constants';
 import { localizedPublicRedirect } from '@/lib/locale-paths';
+import { organizationJsonLd } from '@/lib/organization-jsonld';
 import { middleware } from '../../middleware';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
@@ -98,14 +100,35 @@ describe('contact page content', () => {
     expect(entries.map((entry) => entry.url)).not.toContain('https://launchforma.com/contacto');
   });
 
-  it('puts the telephone on the Organization contactPoint', () => {
+  it('puts the telephone on the Organization contactPoint and leaves email out', () => {
+    const data = organizationJsonLd();
+    expect(data.contactPoint).toEqual({
+      '@type': 'ContactPoint',
+      telephone: CONTACT_PHONE_E164,
+      contactType: 'customer service',
+      availableLanguage: ['English', 'Spanish'],
+    });
+    expect(JSON.stringify(data)).not.toMatch(/@launchforma\.com|mailto:/);
+
     const jsonLd = readFileSync(path.join(process.cwd(), 'components/seo/JsonLd.tsx'), 'utf8');
-    expect(jsonLd).toContain("telephone: CONTACT_PHONE_E164");
-    expect(jsonLd).toContain("import { BUSINESS_LEGAL_NAME, CONTACT_PHONE_E164 }");
-    const pointStart = jsonLd.indexOf('contactPoint:');
-    const point = jsonLd.slice(pointStart, jsonLd.indexOf('},', pointStart));
-    expect(point).toContain('telephone: CONTACT_PHONE_E164');
-    expect(point).toContain("@type': 'ContactPoint'");
+    expect(jsonLd).toContain('export { organizationJsonLd }');
+    expect(jsonLd).not.toContain('hello@launchforma.com');
+    expect(jsonLd).not.toContain('email:');
+  });
+
+  it('renders /contact and /es/contacto without an address or a mailto link', () => {
+    // /es/contacto rewrites to /contact, so both locales share this provider path.
+    for (const messages of [en, es]) {
+      const html = renderedContactHtml(messages);
+      expect(html).not.toMatch(/@launchforma\.com/);
+      expect(html).not.toMatch(/mailto:/i);
+      expect(html).toContain(CONTACT_PHONE_E164);
+    }
+
+    const otherPages = JSON.stringify(messagesForPath('/about', es));
+    expect(otherPages).toContain('mailto:legal@launchforma.com');
+    expect(otherPages).toContain('help@launchforma.com');
+    expect(JSON.stringify(messagesForPath('/about', en))).toContain('help@launchforma.com');
   });
 
   it('keeps Spanish contact copy free of em dashes and en dashes', () => {
@@ -116,6 +139,20 @@ describe('contact page content', () => {
     expect(JSON.stringify(copy)).not.toMatch(/—|–/);
     expect(JSON.stringify(english)).not.toMatch(/—|–/);
     expect(copy.intro).toMatch(/ll[aá]manos/i);
+    expect(copy.intro).toContain('Te responde');
+    expect(copy.metaDescription).toContain('Te responde');
     expect(copy.metaDescription).toContain('{phone}');
+    expect(JSON.stringify(copy)).not.toContain('contesta');
   });
 });
+
+/** HTML that ships for /contact and /es/contacto: schema, client catalog, page copy. */
+function renderedContactHtml(messages: typeof en) {
+  const clientMessages = messagesForPath('/contact', messages);
+  const pageCopy = Object.values(messages.contactPage).join('\n');
+  return [
+    `<script type="application/ld+json">${JSON.stringify(organizationJsonLd())}</script>`,
+    `<script>${JSON.stringify(clientMessages)}</script>`,
+    pageCopy,
+  ].join('\n');
+}

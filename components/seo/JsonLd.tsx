@@ -1,4 +1,7 @@
-import { BUSINESS_LEGAL_NAME, CONTACT_PHONE_E164 } from '@/lib/constants';
+import { BUSINESS_LEGAL_NAME } from '@/lib/constants';
+import { organizationJsonLd } from '@/lib/organization-jsonld';
+
+export { organizationJsonLd };
 
 /**
  * Renders a JSON-LD structured data script tag. Server-safe (no client
@@ -15,27 +18,6 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
-
-export function organizationJsonLd() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'LaunchForma',
-    legalName: BUSINESS_LEGAL_NAME,
-    url: BASE_URL,
-    logo: `${BASE_URL}/images/logo-icon.png`,
-    description:
-      'LaunchForma simplifies business formation in Florida, Wyoming, and Delaware. LLC and Corporation filing with all-in pricing.',
-    sameAs: [],
-    contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: CONTACT_PHONE_E164,
-      email: 'hello@launchforma.com',
-      contactType: 'customer service',
-      availableLanguage: ['English', 'Spanish'],
-    },
-  };
-}
 
 export function faqPageJsonLd(
   items: { q: string; a: string }[],

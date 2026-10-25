@@ -402,6 +402,7 @@
     "phoneWhatsappLabel": "Phone or WhatsApp",
     "phonePlaceholder": "+1 305 555 0100",
     "phoneError": "Enter a phone or WhatsApp number.",
+    "servicePlaceholder": "Choose a service",
     "serviceError": "Choose a service.",
     "successHeadline": "We received your request.",
     "successBody": "We will contact you by phone or WhatsApp within one business day.",

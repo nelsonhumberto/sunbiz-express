@@ -338,6 +338,12 @@ describe('name check copy and wiring', () => {
     expect(es.wizard.saveExitBenefitDocuments).not.toMatch(/contraseña temporal|enlace para reanudar/i);
     expect(en.hero.checkName).toBe('Check name');
     expect(es.hero.checkName).toBe('Verificar nombre');
+    expect(en.hero.nameCheckLabel).toBe('Your business name');
+    expect(es.hero.nameCheckLabel).toBe('El nombre de tu negocio');
+    expect(en.hero.nameCheckPlaceholder).toBe('e.g. Sunshine Bakery LLC');
+    expect(es.hero.nameCheckPlaceholder).toBe('p. ej., Panadería Sol LLC');
+    expect(en.hero.nameCheckLabel).not.toMatch(/—|–/);
+    expect(es.hero.nameCheckLabel).not.toMatch(/—|–/);
     for (const messages of [en, es]) {
       expect(messages.hero.checkName).not.toMatch(/—|–/);
       expect(messages.hero.nameCheckPlaceholder).not.toMatch(/—|–/);
@@ -356,6 +362,15 @@ describe('name check copy and wiring', () => {
     expect(start).toBeGreaterThan(field);
     expect(hero).toContain("nameCheckSubmittedEvent('hero')");
     expect(hero).toContain('startHrefForNameCheck');
+    expect(hero).toContain('htmlFor="hero-business-name"');
+    expect(hero).toContain('id="hero-business-name"');
+    expect(hero).toContain('HERO_NAME_CONTROL_HEIGHT');
+    expect(hero).toContain('h-14 min-h-14 sm:h-[60px] sm:min-h-[60px]');
+    expect(hero).toContain('sm:flex-1');
+    expect(hero).toContain('text-lg');
+    expect(hero).not.toContain('sr-only');
+    expect(hero).not.toContain('autoFocus');
+    expect(hero).not.toContain('autofocus');
     expect(hero).not.toContain('Sunshine Coast Ventures');
     expect(hero).not.toContain('readOnly');
     expect(hero).not.toContain('previewAvailable');

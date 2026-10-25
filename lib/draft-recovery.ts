@@ -626,6 +626,7 @@ async function attemptResumeDraft(
         step: decision.send,
         filingId: draft.id,
         locale,
+        user: { role: draft.user.role, email: draft.user.email },
       });
       if (decision.final && draft.status === 'DRAFT') {
         await prisma.filing.updateMany({

@@ -12,7 +12,6 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/auth';
-import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
@@ -79,8 +78,6 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const session = await auth();
-  const internalUser =
-    session?.user?.id && isInternalTrafficUser(session.user) ? session.user : null;
   const pathname = headers().get('x-lf-pathname') ?? '';
   const openAiId = openAiPixelId();
   // Token URLs stay out of ad pixels. /es/... is rewritten before this header is set.
@@ -99,9 +96,11 @@ export default async function RootLayout({
           </Script>
         ) : null}
         <PostHogProvider>
-          {internalUser ? (
-            <InternalTrafficFlag userId={internalUser.id} email={internalUser.email} />
-          ) : null}
+          <InternalTrafficFlag
+            userId={session?.user?.id}
+            email={session?.user?.email}
+            role={session?.user?.role}
+          />
           <NextIntlClientProvider locale={locale} messages={messagesForPath(pathname, messages)}>
             {children}
             <Toaster

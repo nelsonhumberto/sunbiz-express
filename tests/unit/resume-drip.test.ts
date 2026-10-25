@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { allDripCopyText, checklistCopy, emailShellCopy, resumeStepCopy } from '@/lib/drip-copy';
 import { buildResumeEmail } from '@/lib/drip-email';
 import { renderTemplate } from '@/lib/email';
-import { buildResumeEmailSentCapture } from '@/lib/posthog-server';
+import { buildResumeEmailSentCapture, posthogServerEventProperties } from '@/lib/posthog-server';
 import { decorateResumeEmailHtml, withResumeUtms } from '@/lib/resume-utm';
 import {
   guestResumeUrl,
@@ -395,8 +395,21 @@ describe('resume copy and reply-to', () => {
     ).toEqual({
       event: 'resume_email_sent',
       distinct_id: 'fil_1',
-      properties: { step: 'RESUME_1H', filingId: 'fil_1', locale: 'es' },
+      properties: {
+        step: 'RESUME_1H',
+        filingId: 'fil_1',
+        locale: 'es',
+        ...posthogServerEventProperties(),
+      },
     });
+    expect(
+      buildResumeEmailSentCapture({
+        step: 'RESUME_1H',
+        filingId: 'fil_1',
+        locale: 'es',
+        user: { role: 'USER', email: 'ada@aqurio.com' },
+      })?.properties.is_internal,
+    ).toBe(true);
     expect(buildResumeEmailSentCapture({ step: 'RESUME_1D', filingId: ' ', locale: 'en' })).toBeNull();
   });
 

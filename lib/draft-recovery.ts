@@ -41,26 +41,73 @@ export interface RecoveryDraft {
   user: { role: string; email: string };
 }
 
-/** Exact mailboxes the recovery jobs never mail. Compared after trim and lowercasing. */
+/** Exact mailboxes the recovery jobs never mail. Compared after trim, lowercasing, and plus-tag removal. */
 export const RECOVERY_SKIP_EMAILS = ['nelsonhumberto@gmail.com'] as const;
 
 /**
- * Exact domains the recovery jobs never mail.
- * admin@ and social@ on launchforma.com are included. A subdomain or a
- * lookalike host is not.
+ * Domains the recovery jobs never mail, including subdomains.
+ * admin@ and social@ on launchforma.com are included. A lookalike host
+ * such as launchforma.com.evil is not.
  */
 export const RECOVERY_SKIP_DOMAINS = ['launchforma.com', 'intelepeer.ai', 'aqurio.com'] as const;
 
 function mailboxDomain(email: string): string {
   const at = email.lastIndexOf('@');
-  if (at < 1 || at === email.length - 1) return '';
+  if (at < 0 || at === email.length - 1) return '';
   return email.slice(at + 1);
 }
 
-export function isRecoverySkipAddress(email: string): boolean {
+/** Drop a +tag from the local part. nelsonhumberto+x@gmail.com becomes nelsonhumberto@gmail.com. */
+export function stripEmailPlusTag(email: string): string {
   const normalized = email.trim().toLowerCase();
+  const at = normalized.lastIndexOf('@');
+  if (at < 1) return normalized;
+  const local = normalized.slice(0, at);
+  const plus = local.indexOf('+');
+  const base = plus === -1 ? local : local.slice(0, plus);
+  return `${base}@${normalized.slice(at + 1)}`;
+}
+
+function domainIsSkipped(domain: string): boolean {
+  return (RECOVERY_SKIP_DOMAINS as readonly string[]).some(
+    (root) => domain === root || domain.endsWith(`.${root}`),
+  );
+}
+
+export function isRecoverySkipAddress(email: string): boolean {
+  const normalized = stripEmailPlusTag(email);
   if ((RECOVERY_SKIP_EMAILS as readonly string[]).includes(normalized)) return true;
-  return (RECOVERY_SKIP_DOMAINS as readonly string[]).includes(mailboxDomain(normalized));
+  return domainIsSkipped(mailboxDomain(normalized));
+}
+
+function recoverySkipFilters() {
+  const domainFilters = RECOVERY_SKIP_DOMAINS.map((domain) => ({
+    NOT: {
+      OR: [
+        { email: { endsWith: `@${domain}`, mode: 'insensitive' as const } },
+        { email: { endsWith: `.${domain}`, mode: 'insensitive' as const } },
+      ],
+    },
+  }));
+  const mailboxFilters = RECOVERY_SKIP_EMAILS.map((email) => {
+    const at = email.lastIndexOf('@');
+    const local = email.slice(0, at);
+    const domain = email.slice(at + 1);
+    return {
+      NOT: {
+        OR: [
+          { email: { equals: email, mode: 'insensitive' as const } },
+          {
+            AND: [
+              { email: { startsWith: `${local}+`, mode: 'insensitive' as const } },
+              { email: { endsWith: `@${domain}`, mode: 'insensitive' as const } },
+            ],
+          },
+        ],
+      },
+    };
+  });
+  return [...domainFilters, ...mailboxFilters];
 }
 
 export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
@@ -68,9 +115,12 @@ export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
   if (draft.adminArchivedAt || draft.userArchivedAt) return true;
   if (draft.user.role === 'ADMIN') return true;
   const email = draft.user.email.trim().toLowerCase();
+  // qa+ and e2e+ are prefixes on the original local part, so they are
+  // checked before plus-tag removal. The internal mailbox and domain
+  // list matches the address after that tag is stripped.
+  if (isQaOrE2eRecipient(email)) return true;
   if (isRecoverySkipAddress(email)) return true;
   if (isResendDevAddress(email)) return true;
-  if (isQaOrE2eRecipient(email)) return true;
   return false;
 }
 
@@ -343,7 +393,7 @@ export function signInResumeUrl(siteUrl: string, wizardPath: string): string {
  */
 export async function runScheduledDraftRecovery(now: number) {
   if (!isResumeDripEnabled()) {
-    return { scanned: 0, sent: 0, disabled: true as const };
+    return { scanned: 0, sent: 0, skipped: 1, failed: 0, disabled: true as const };
   }
   const stats = await runResumeDrip(now);
   return { ...stats, disabled: false as const };
@@ -408,12 +458,7 @@ export function resumeDraftListArgs(now: number) {
         role: { not: 'ADMIN' as const },
         accountStatus: { not: 'DELETED' as const },
         AND: [
-          ...RECOVERY_SKIP_DOMAINS.map((domain) => ({
-            NOT: { email: { endsWith: `@${domain}`, mode: 'insensitive' as const } },
-          })),
-          ...RECOVERY_SKIP_EMAILS.map((email) => ({
-            NOT: { email: { equals: email, mode: 'insensitive' as const } },
-          })),
+          ...recoverySkipFilters(),
           { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' as const } } },
           { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' as const } } },
           { NOT: { email: { endsWith: '@resend.dev', mode: 'insensitive' as const } } },
@@ -439,6 +484,8 @@ async function runResumeDrip(now: number) {
 
   let scanned = 0;
   let sent = 0;
+  let skipped = 0;
+  let failed = 0;
   let attempted = 0;
   let skip = 0;
 
@@ -461,6 +508,9 @@ async function runResumeDrip(now: number) {
         sent++;
       } else if (didAttempt === 'attempted') {
         attempted++;
+        failed++;
+      } else {
+        skipped++;
       }
     }
 
@@ -468,7 +518,7 @@ async function runResumeDrip(now: number) {
     skip += drafts.length;
   }
 
-  return { scanned, sent };
+  return { scanned, sent, skipped, failed };
 }
 
 async function attemptResumeDraft(

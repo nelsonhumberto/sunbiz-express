@@ -147,17 +147,18 @@ export function guardMigrations({
 }
 
 export function readMigrationFiles(migrationsDir) {
-  return fs
+  const names = fs
     .readdirSync(migrationsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort()
-    .map((name) => {
-      const file = path.join(migrationsDir, name, 'migration.sql');
-      if (!fs.existsSync(file)) return null;
-      return { name, sql: fs.readFileSync(file, 'utf8') };
-    })
-    .filter(Boolean);
+    .sort();
+  const migrations = [];
+  for (const name of names) {
+    const file = path.join(migrationsDir, name, 'migration.sql');
+    if (!fs.existsSync(file)) continue;
+    migrations.push({ name, sql: fs.readFileSync(file, 'utf8') });
+  }
+  return migrations;
 }
 
 export function migrationNamesFromLsTree(text) {

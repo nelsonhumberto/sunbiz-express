@@ -18,6 +18,7 @@ const ES_PATHS = [
   '/es/guides/how-to-form-an-llc-in-florida',
   '/es/guides/how-to-form-a-florida-corporation',
   '/es/guides/florida-annual-report',
+  '/es/guides/how-to-reinstate-a-florida-llc',
   '/es/guides/florida-registered-agent',
   '/es/guides/florida-llc-operating-agreement',
   '/es/guides/llc-florida-sin-seguro-social',

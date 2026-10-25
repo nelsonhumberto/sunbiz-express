@@ -65,6 +65,13 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.7,
   },
   {
+    path: '/guides/how-to-reinstate-a-florida-llc',
+    file: 'app/(marketing)/guides/how-to-reinstate-a-florida-llc/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    hreflang: true,
+  },
+  {
     path: '/guides/florida-registered-agent',
     file: 'app/(marketing)/guides/florida-registered-agent/page.tsx',
     changeFrequency: 'monthly',

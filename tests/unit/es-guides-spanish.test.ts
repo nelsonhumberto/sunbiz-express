@@ -36,7 +36,7 @@ function headings(markdown: string): string[] {
 
 describe('Spanish guide pages', () => {
   it('uses Spanish title, meta, headings, and body on every live /es/guides page', () => {
-    const namespaces = ['guidesPage', 'guideFlForm', 'guideFlAnnual', 'guideFlRa', 'guideOa'] as const;
+    const namespaces = ['guidesPage', 'guideFlForm', 'guideFlAnnual', 'guideFlRa', 'guideOa', 'guideFlReinstate'] as const;
     for (const name of namespaces) {
       const guide = messages[name];
       expect(guide, name).toBeTruthy();
@@ -79,6 +79,7 @@ describe('Spanish guide pages', () => {
       ['app/(marketing)/guides/page.tsx', 'guidesPage'],
       ['app/(marketing)/guides/how-to-form-an-llc-in-florida/page.tsx', 'guideFlForm'],
       ['app/(marketing)/guides/florida-annual-report/page.tsx', 'guideFlAnnual'],
+      ['app/(marketing)/guides/how-to-reinstate-a-florida-llc/page.tsx', 'guideFlReinstate'],
       ['app/(marketing)/guides/florida-registered-agent/page.tsx', 'guideFlRa'],
       ['app/(marketing)/guides/florida-llc-operating-agreement/page.tsx', 'guideOa'],
     ];

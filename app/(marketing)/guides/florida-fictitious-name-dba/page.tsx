@@ -80,7 +80,7 @@ Sources: [Sunbiz fee schedule](https://dos.fl.gov/sunbiz/forms/fees/), [Fictitio
 
 1. **Search the name** on Sunbiz to see what is already on file. Remember: filing does not give you exclusive rights.
 2. **Run the newspaper ad.** Before you file, the statute requires you to advertise the name at least once in a newspaper in the county where your principal place of business is, and you certify that on the form (s. 865.09(3)(a)5).
-3. **Have your details ready.** If the owner is an LLC or corporation, it must be active on Sunbiz, and you give its Florida document number and FEIN if it has one.
+3. **Have your details ready.** If the owner is an LLC or corporation, it must be active on Sunbiz, and you give its Florida document number and FEIN if it has one. If your LLC is not active, see [how to reinstate a Florida LLC](/guides/how-to-reinstate-a-florida-llc).
 4. **File online** at Sunbiz and pay the $50 fee: [Fictitious Name Registration](https://dos.fl.gov/sunbiz/start-business/efile/fl-fictitious-name-registration).
 5. **Keep your local tax receipt in line.** Many cities and counties want your trade name on your local business tax receipt. In Spanish: [Miami-Dade](/es/guides/licencia-negocio-miami-dade) and [Broward](/es/guides/licencia-negocio-broward).
 

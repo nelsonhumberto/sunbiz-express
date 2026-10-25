@@ -137,6 +137,7 @@ describe('new Spanish copy', () => {
       'guideWyDe',
       'guideFlForm',
       'guideFlAnnual',
+      'guideFlReinstate',
       'guideFlRa',
       'guideLlcSinSsn',
       'guideMiamiBtr',

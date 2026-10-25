@@ -219,6 +219,10 @@ export default async function HowToFormFloridaLlcGuide() {
           Selling under a brand name? See{' '}
           <a href="/guides/florida-fictitious-name-dba">Florida fictitious names</a>.
         </p>
+        <p>
+          LLC dissolved for a missed annual report? See{' '}
+          <a href="/guides/how-to-reinstate-a-florida-llc">how to reinstate a Florida LLC</a>.
+        </p>
 
         <h2>Questions</h2>
         {FAQ.map((item) => (

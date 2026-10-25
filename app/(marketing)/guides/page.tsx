@@ -69,6 +69,13 @@ const GUIDES = [
     readingMinutes: 5,
   },
   {
+    slug: 'how-to-reinstate-a-florida-llc',
+    title: 'How to Reinstate a Dissolved Florida LLC',
+    description:
+      'Florida LLC administratively dissolved? How to check status on Sunbiz, file reinstatement online, the $100 fee plus $138.75 per missed report year.',
+    readingMinutes: 8,
+  },
+  {
     slug: 'florida-registered-agent',
     title: 'What Is a Registered Agent in Florida?',
     description:
@@ -115,6 +122,12 @@ export default async function GuidesHubPage() {
           title: t('arTitle'),
           description: t('arDescription'),
           readingMinutes: 5,
+        },
+        {
+          slug: 'how-to-reinstate-a-florida-llc',
+          title: t('reinstateTitle'),
+          description: t('reinstateDescription'),
+          readingMinutes: 8,
         },
         {
           slug: 'florida-registered-agent',

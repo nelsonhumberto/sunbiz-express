@@ -176,6 +176,10 @@ export default async function FloridaAnnualReportGuide() {
           can face administrative dissolution under Florida rules; check Sunbiz for the
           current schedule and reinstatement fees, or ask an attorney about your situation.
         </p>
+        <p>
+          LLC dissolved for a missed annual report? See{' '}
+          <a href="/guides/how-to-reinstate-a-florida-llc">how to reinstate a Florida LLC</a>.
+        </p>
 
         <h2>Questions</h2>
         {FAQ.map((item) => (

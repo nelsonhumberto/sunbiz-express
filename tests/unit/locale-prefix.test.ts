@@ -25,6 +25,7 @@ describe('stripSpanishPrefix', () => {
       privacy: '',
       refundPolicy: '',
       disclaimer: '',
+      doNotSell: '',
     });
     expect(slim).not.toHaveProperty('offer');
     expect(messagesForPath('/pricing', messages)).not.toHaveProperty('dashboard');

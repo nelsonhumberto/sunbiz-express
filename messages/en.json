@@ -89,7 +89,8 @@
     "annualReportHelp": "Annual Report Help",
     "sunbizSearch": "States we serve",
     "statesWeServe": "States we serve",
-    "copyright": "© {year} {company} · {address} · LaunchForma is not a law firm and does not provide legal advice."
+    "copyright": "© {year} {company} · {address} · LaunchForma is not a law firm and does not provide legal advice.",
+    "doNotSell": "Do Not Sell or Share My Personal Information"
   },
   "contactPage": {
     "metaTitle": "Contact",
@@ -1504,5 +1505,18 @@
     "felony": "I certify that I am an authorized representative and that all information is true and accurate. I authorize LaunchForma to file this annual report with the Florida Division of Corporations on my behalf. Submitting false information constitutes a third degree felony.",
     "processing": "Processing…",
     "submit": "Submit & Pay - {total}"
+  },
+  "privacyChoices": {
+    "metaTitle": "Do Not Sell or Share My Personal Information",
+    "metaDescription": "Opt out of sharing visit data with advertising tools for cross-context behavioral advertising. LaunchForma honors Global Privacy Control.",
+    "title": "Do Not Sell or Share My Personal Information",
+    "intro": "Some states (such as California) may treat sharing visit data with ad tools for cross-context behavioral advertising as \"sharing.\" Use this page to opt out in this browser. We honor Global Privacy Control (GPC) browser signals as an opt-out.",
+    "statusOn": "Ad measurement is on in this browser.",
+    "statusOff": "You are opted out in this browser. We do not load the Google Analytics and Google Ads tags or the OpenAI ads pixel.",
+    "gpc": "GPC signal detected, you're opted out",
+    "optOut": "Opt out",
+    "optIn": "Opt back in",
+    "stillRun": "Essential cookies and our own product analytics (PostHog and Vercel) still run. We store this choice in a cookie for 1 year.",
+    "privacyLink": "Read the Privacy Policy"
   }
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from '@/lib/constants';
 
 export async function ComplianceLandingFooter() {
@@ -19,6 +20,7 @@ export async function ComplianceLandingFooter() {
           <Link className="text-white/70 hover:text-white" href="/privacy">{tFooter('privacy')}</Link>
           <Link className="text-white/70 hover:text-white" href="/refund-policy">{tFooter('refundPolicy')}</Link>
           <Link className="text-white/70 hover:text-white" href="/disclaimer">{tFooter('disclaimer')}</Link>
+          <DoNotSellLink className="text-white/70 hover:text-white" />
         </nav>
         <p className="max-w-3xl text-sm leading-relaxed text-white/70">{tDisc('notAffiliatedServices')}</p>
       </div>

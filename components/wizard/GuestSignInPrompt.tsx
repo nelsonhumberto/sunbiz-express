@@ -32,7 +32,7 @@ export function GuestSignInPrompt({
 
   return (
     <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
-      <p className="text-ink-muted leading-relaxed">{t('accountGateSignIn')}</p>
+      <p className="text-ink-muted leading-relaxed">{t('guestEmailHasAccount')}</p>
       <Button asChild variant="outline" className="w-full">
         <a href={signInHref}>{t('accountGateSignInButton')}</a>
       </Button>

@@ -75,7 +75,12 @@ export function Step2Name({
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
       if (!res.ok) {
-        setNeedsSignIn('needsSignIn' in res && Boolean(res.needsSignIn));
+        if ('needsSignIn' in res && res.needsSignIn) {
+          setNeedsSignIn(true);
+          setEmailError(null);
+          return;
+        }
+        setNeedsSignIn(false);
         setEmailError(res.error ?? null);
         return { ok: false, error: res.error };
       }
@@ -189,12 +194,8 @@ export function Step2Name({
       <div className="rounded-lg border border-success/30 bg-success-subtle/40 p-4 text-sm text-ink leading-relaxed flex items-start gap-3">
         <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold mb-0.5">Our name approval guarantee</p>
-          <p className="text-xs text-ink-muted">
-            If the {stateName} Department of State pushes back on this name for any reason, we work
-            with you on revisions and resubmissions until your filing is approved - at no additional
-            cost.
-          </p>
+          <p className="font-semibold mb-0.5">{t('nameGuaranteeTitle')}</p>
+          <p className="text-xs text-ink-muted">{t('nameGuaranteeBody', { state: stateName })}</p>
         </div>
       </div>
 

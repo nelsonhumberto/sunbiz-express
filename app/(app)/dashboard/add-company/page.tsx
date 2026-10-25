@@ -1,6 +1,7 @@
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import { ArrowLeft } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { AddCompanyForm } from '@/components/dashboard/AddCompanyForm';
@@ -9,14 +10,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function AddCompanyPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
   const t = await getTranslations('addCompany');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
       <Link
-        href="/dashboard"
+        href={hrefForLocale('/dashboard', locale)}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />

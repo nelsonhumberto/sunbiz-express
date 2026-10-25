@@ -3,17 +3,24 @@
  *
  * A visitor is opted out of Google Analytics, Google Ads, and the OpenAI ads
  * pixel when any of these is true:
- *   - first-party cookie `lf_ad_optout=1`
+ *   - first-party cookie `lf_ad_optout=1` (explicit choice, kept for 1 year)
  *   - request header `Sec-GPC: 1`
  *   - `navigator.globalPrivacyControl === true`
+ *
+ * GPC alone does not write that 1-year cookie. It may set `lf_ad_optout=gpc`,
+ * which is cleared on a later request that has no GPC signal and does not
+ * opt the visitor out by itself.
  *
  * PostHog, Vercel Analytics, essential cookies, and Stripe attribution are
  * not affected.
  */
 
 export const AD_OPT_OUT_COOKIE = 'lf_ad_optout';
+/** Explicit Do Not Sell or Share choice. Kept for 1 year. */
 export const AD_OPT_OUT_VALUE = '1';
-/** 1 year. */
+/** Present only while Global Privacy Control is the reason for the opt-out. */
+export const AD_OPT_OUT_GPC_VALUE = 'gpc';
+/** 1 year. Applies to an explicit opt-out, not to a GPC-derived marker. */
 export const AD_OPT_OUT_MAX_AGE = 60 * 60 * 24 * 365;
 export const AD_OPT_OUT_EVENT = 'lf-ad-optout-change';
 
@@ -45,6 +52,25 @@ export function serializeAdOptOutCookie(optedOut: boolean, secure: boolean): str
   return secure ? `${base}; Secure` : base;
 }
 
+/** Marker written when GPC is the only opt-out. A later request without GPC clears it. */
+export function serializeGpcDerivedCookie(secure: boolean): string {
+  const base = `${AD_OPT_OUT_COOKIE}=${AD_OPT_OUT_GPC_VALUE}; Path=/; SameSite=Lax`;
+  return secure ? `${base}; Secure` : base;
+}
+
+export type GpcCookieDecision = 'set-gpc' | 'clear' | 'leave';
+
+/**
+ * `lf_ad_optout=1` is an explicit choice and is never replaced or cleared here.
+ * GPC with no explicit choice records `gpc`. That marker is removed when GPC is gone.
+ */
+export function gpcCookieDecision(cookie: string | null | undefined, gpc: boolean): GpcCookieDecision {
+  if (cookie === AD_OPT_OUT_VALUE) return 'leave';
+  if (gpc) return cookie === AD_OPT_OUT_GPC_VALUE ? 'leave' : 'set-gpc';
+  if (cookie === AD_OPT_OUT_GPC_VALUE) return 'clear';
+  return 'leave';
+}
+
 export type AdOptOutSignals = {
   cookie?: string | null;
   secGpc?: string | null;
@@ -55,8 +81,9 @@ export type AdOptOutSignals = {
 
 /**
  * Whether to inject gtag.js and the OpenAI pixel.
- * An explicit cookie clear (`null` after opt-in) allows tags again unless
- * GPC is on. `serverGpc` covers the header before the cookie is visible.
+ * An explicit cookie (`1`) blocks tags for a year. A GPC-derived cookie
+ * (`gpc`) does not: only a live GPC signal does, and that cookie is cleared
+ * once the signal is gone. `serverGpc` covers the header on this request.
  */
 export function shouldInjectAdScripts(input: AdOptOutSignals): boolean {
   if (input.serverGpc) return false;
@@ -93,6 +120,19 @@ export function writeClientAdOptOut(optedOut: boolean): void {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   document.cookie = serializeAdOptOutCookie(optedOut, adOptOutCookieSecure());
   window.dispatchEvent(new Event(AD_OPT_OUT_EVENT));
+}
+
+/** Keep `lf_ad_optout=gpc` in step with a live GPC signal. Never writes the 1-year value. */
+export function syncGpcDerivedCookie(gpc: boolean): void {
+  if (typeof document === 'undefined') return;
+  const decision = gpcCookieDecision(readAdOptOutCookieFromDocument(), gpc);
+  if (decision === 'set-gpc') {
+    document.cookie = serializeGpcDerivedCookie(adOptOutCookieSecure());
+    return;
+  }
+  if (decision === 'clear') {
+    document.cookie = serializeAdOptOutCookie(false, adOptOutCookieSecure());
+  }
 }
 
 function measurementIds(): string[] {

@@ -9,13 +9,12 @@ import { openAiPixelBootstrap } from '@/lib/openai-pixel';
 import { openAiPixelId } from '@/lib/tracking-ids';
 import {
   AD_OPT_OUT_EVENT,
-  AD_OPT_OUT_VALUE,
   clearGaDisableFlags,
   readAdOptOutCookieFromDocument,
   readGlobalPrivacyControl,
   shouldInjectAdScripts,
+  syncGpcDerivedCookie,
   tearDownAdMeasurement,
-  writeClientAdOptOut,
 } from '@/lib/ad-opt-out';
 
 /**
@@ -36,18 +35,13 @@ export function AdMeasurementGate({
 
   useEffect(() => {
     const sync = () => {
-      const gpc = readGlobalPrivacyControl();
-      if ((serverGpc || gpc) && readAdOptOutCookieFromDocument() !== AD_OPT_OUT_VALUE) {
-        clientChose.current = true;
-        writeClientAdOptOut(true);
-        return;
-      }
+      syncGpcDerivedCookie(serverGpc || readGlobalPrivacyControl());
       const liveCookie = readAdOptOutCookieFromDocument();
       const cookie = clientChose.current ? liveCookie : (liveCookie ?? serverCookie);
       const allow = shouldInjectAdScripts({
         serverGpc,
         cookie,
-        globalPrivacyControl: gpc,
+        globalPrivacyControl: readGlobalPrivacyControl(),
       });
       if (!allow) {
         tearDownAdMeasurement();

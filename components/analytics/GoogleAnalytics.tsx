@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -19,6 +20,7 @@ const UNTRACKED_PATHS = new Set(['/reset-password']);
  *
  * All of this is a no-op when NEXT_PUBLIC_GA_MEASUREMENT_ID is unset, so the
  * app runs fine without analytics configured (local dev, previews).
+ * AdMeasurementGate is what decides whether this component mounts at all.
  */
 export function GoogleAnalytics() {
   const pathname = usePathname();
@@ -27,7 +29,8 @@ export function GoogleAnalytics() {
 
   // Manual SPA pageviews. We init gtag with send_page_view:false below so the
   // initial load isn't double-counted; this effect fires the page_view on
-  // every client-side navigation (and once on mount).
+  // every client-side navigation (and once on mount). `li_fat_id` is dropped
+  // from the hit. utm params and gclid stay.
   useEffect(() => {
     if (!GA_MEASUREMENT_ID || untracked) return;
     let cancelled = false;
@@ -35,8 +38,11 @@ export function GoogleAnalytics() {
     const tick = () => {
       if (cancelled || isClientAdMeasurementOptedOut()) return;
       if (typeof window.gtag === 'function') {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.delete('li_fat_id');
+        const query = params.toString();
         let url = pathname;
-        if (searchParams?.toString()) url += `?${searchParams.toString()}`;
+        if (query) url += `?${query}`;
         window.gtag('event', 'page_view', {
           page_path: url,
           page_location: window.location.origin + url,
@@ -63,6 +69,7 @@ export function GoogleAnalytics() {
       />
       <Script id="google-analytics" strategy="afterInteractive">
         {`
+          ${LI_FAT_ID_STRIP_SCRIPT}
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           window.gtag = gtag;

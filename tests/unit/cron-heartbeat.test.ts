@@ -131,6 +131,34 @@ describe('cron heartbeat row', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('logs unauthorized, then start and count-only done', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const denied = await GET(new Request('https://launchforma.com/api/cron/recovery'));
+      expect(denied.status).toBe(401);
+      expect(warn).toHaveBeenCalledWith('[recovery] unauthorized');
+      expect(info).not.toHaveBeenCalled();
+
+      info.mockClear();
+      create.mockResolvedValue({ id: 'run_log' });
+      runDrafts.mockResolvedValue({ scanned: 2, sent: 1, skipped: 1, failed: 0, disabled: false });
+      runRa.mockResolvedValue({ scanned: 1, sent: 1 });
+      const response = await GET(authorizedRequest());
+      expect(response.status).toBe(200);
+      expect(info).toHaveBeenNthCalledWith(1, '[recovery] start');
+      const done = info.mock.calls.find((call) => call[0] === '[recovery] done');
+      expect(done?.[1]).toEqual({ eligible: 3, sent: 2, skipped: 1, failed: 0 });
+      expect(JSON.stringify(done?.[1])).not.toMatch(/@|Bearer|secret/i);
+
+      const route = readFileSync('app/api/cron/recovery/route.ts', 'utf8');
+      expect(route.split("console.warn('[recovery] unauthorized')").length - 1).toBe(2);
+    } finally {
+      warn.mockRestore();
+      info.mockRestore();
+    }
+  });
+
   it('writes one disabled row from the recovery route and returns ok', async () => {
     create.mockResolvedValue({ id: 'run_1' });
     runDrafts.mockResolvedValue({ scanned: 0, sent: 0, skipped: 1, failed: 0, disabled: true });

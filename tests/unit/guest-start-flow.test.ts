@@ -113,7 +113,11 @@ describe('guest start flow', () => {
     expect(wizard).not.toContain('if (saved.needsSignIn) return { ok: true }');
     expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestSignInPrompt');
     expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('GuestSignInPrompt');
-    expect(source('components/wizard/GuestSignInPrompt.tsx')).toContain("t('accountGateSignIn')");
+    expect(source('components/wizard/GuestSignInPrompt.tsx')).toContain("t('guestEmailHasAccount')");
+    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('setEmailError(null)');
+    expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('setEmailError(null)');
+    expect(source('actions/guest-start.ts')).toContain("t('guestEmailHasAccount')");
+    expect(source('actions/guest-start.ts')).not.toContain('That email already has an account');
     expect(source('app/wizard/[filingId]/[step]/page.tsx')).toContain('pendingAccountEmail={pendingAccountEmail}');
   });
 

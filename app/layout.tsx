@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
+import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { messagesForPath } from '@/i18n/config';
@@ -17,6 +18,7 @@ import { AdMeasurementGate } from '@/components/analytics/AdMeasurementGate';
 import { AD_OPT_OUT_COOKIE } from '@/lib/ad-opt-out';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
+import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -88,6 +90,9 @@ export default async function RootLayout({
       >
         <HtmlLang />
         <ChunkReload />
+        <Script id="strip-li-fat-id" strategy="beforeInteractive">
+          {LI_FAT_ID_STRIP_SCRIPT}
+        </Script>
         <PostHogProvider>
           <InternalTrafficFlag
             userId={session?.user?.id}

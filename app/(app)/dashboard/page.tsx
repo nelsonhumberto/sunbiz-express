@@ -1,9 +1,8 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { hrefForLocale } from '@/lib/app-href';
-import { pickLocale } from '@/lib/pick-locale';
+import { redirectToSignIn } from '@/lib/sign-in-gate';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import {
   ArrowRight,
@@ -34,8 +33,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectToSignIn();
   const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const preferredState = cookies().get('preferred_state')?.value?.toUpperCase();
   const filingState = preferredState && ['FL', 'WY', 'DE'].includes(preferredState)
@@ -97,18 +97,18 @@ export default async function DashboardPage() {
   const firstName = session.user.name?.split(' ')[0]?.trim() ?? '';
 
   return (
-    <div className="container max-w-6xl py-10 space-y-10">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
+    <div className="container max-w-6xl min-w-0 py-10 space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 min-w-0">
+        <div className="min-w-0">
           <DashboardGreeting
             name={firstName}
             morning={t('greetMorning')}
             afternoon={t('greetAfternoon')}
             evening={t('greetEvening')}
           />
-          <h1 className="font-display text-4xl font-medium tracking-tight mt-1">{t('title')}</h1>
+          <h1 className="font-display text-4xl font-medium tracking-tight mt-1 break-words">{t('title')}</h1>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full min-w-0 md:w-auto">
           <AddExistingCompanyButton />
           <StartFilingButton state={filingState} />
         </div>
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
         <section className="space-y-3">
           <SectionHeader
             title={t('upcomingCompliance')}
-            linkHref="/dashboard/compliance"
+            linkHref={hrefForLocale('/dashboard/compliance', locale)}
             linkLabel="→"
           />
           <Card>
@@ -200,7 +200,7 @@ export default async function DashboardPage() {
               {upcomingReports.map((report) => (
                 <Link
                   key={report.id}
-                  href={`/dashboard/filings/${report.filingId}`}
+                  href={hrefForLocale(`/dashboard/filings/${report.filingId}`, locale)}
                   className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
                 >
                   <div className="h-10 w-10 rounded-md bg-warn-subtle text-warn flex items-center justify-center">
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
                       {report.filing.businessName} · {t('annualReport')}
                     </p>
                     <p className="text-xs text-ink-muted">
-                      {formatDueLabel(t('due'), report.dueDate)}{' '}
+                      {formatDueLabel(t('due'), report.dueDate, locale)}{' '}
                       · ${(report.filingFeeCents / 100).toFixed(2)}
                     </p>
                   </div>
@@ -231,7 +231,7 @@ export default async function DashboardPage() {
               {upcomingRaRenewals.map((svc) => (
                 <Link
                   key={svc.id}
-                  href={`/dashboard/filings/${svc.filingId}`}
+                  href={hrefForLocale(`/dashboard/filings/${svc.filingId}`, locale)}
                   className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors"
                 >
                   <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center">
@@ -243,11 +243,15 @@ export default async function DashboardPage() {
                     </p>
                     <p className="text-xs text-ink-muted">
                       {t('renewsOn')}{' '}
-                      {formatDate(svc.renewalDate, {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}{' '}
+                      {formatDate(
+                        svc.renewalDate,
+                        {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        },
+                        locale,
+                      )}{' '}
                       · {t('raRenewalPrice')}
                     </p>
                   </div>
@@ -310,11 +314,8 @@ async function EmptyState({ filingState }: { filingState: string }) {
   );
 }
 
-async function wizardHref(
-  filing: { id: string; locale?: string | null },
-  step: number,
-): Promise<string> {
-  const locale = pickLocale(await getLocale(), filing.locale);
+async function wizardHref(filing: { id: string }, step: number): Promise<string> {
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   return hrefForLocale(`/wizard/${filing.id}/${step}`, locale);
 }
 
@@ -376,7 +377,7 @@ async function ActiveFilingCard({ filing }: { filing: any }) {
   const t = await getTranslations('dashboard');
   return (
     <Link
-      href={`/dashboard/filings/${filing.id}`}
+      href={hrefForLocale(`/dashboard/filings/${filing.id}`, (await getLocale()) === 'es' ? 'es' : 'en')}
       className="group block rounded-2xl border border-border bg-white p-5 hover:shadow-card transition-shadow"
     >
       <div className="flex items-center gap-4">

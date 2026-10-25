@@ -9,6 +9,7 @@ import {
   AD_OPT_OUT_VALUE,
   readAdOptOutCookieFromDocument,
   readGlobalPrivacyControl,
+  syncGpcDerivedCookie,
   writeClientAdOptOut,
 } from '@/lib/ad-opt-out';
 
@@ -25,12 +26,15 @@ export function PrivacyChoicesPanel({
   const [optedOut, setOptedOut] = useState(initialOptedOut || serverGpc);
 
   useEffect(() => {
-    const navGpc = readGlobalPrivacyControl();
-    if (serverGpc || navGpc) {
+    const gpcOn = serverGpc || readGlobalPrivacyControl();
+    syncGpcDerivedCookie(gpcOn);
+    if (gpcOn) {
       setGpc(true);
       setOptedOut(true);
-      if (readAdOptOutCookieFromDocument() !== AD_OPT_OUT_VALUE) writeClientAdOptOut(true);
+      return;
     }
+    setGpc(false);
+    setOptedOut(readAdOptOutCookieFromDocument() === AD_OPT_OUT_VALUE);
   }, [serverGpc]);
 
   function optOut() {

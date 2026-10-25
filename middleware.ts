@@ -10,8 +10,14 @@ import {
   PUBLIC_PATH_HEADER,
 } from '@/lib/locale-paths';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
+import { INTERNAL_TRAFFIC_HEADER, internalTrafficQueryRequested } from '@/lib/internal-traffic';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
-import { AD_OPT_OUT_COOKIE, AD_OPT_OUT_MAX_AGE, AD_OPT_OUT_VALUE, adOptOutCookieSecure } from '@/lib/ad-opt-out';
+import {
+  AD_OPT_OUT_COOKIE,
+  AD_OPT_OUT_GPC_VALUE,
+  adOptOutCookieSecure,
+  gpcCookieDecision,
+} from '@/lib/ad-opt-out';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
 
@@ -63,14 +69,26 @@ const PRIMARY_CANONICAL_HOST = CANONICAL_HOSTS[0];
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Sec-GPC: 1 is an opt-out. Persist it on every response, including redirects,
-  // so the next request and client scripts see lf_ad_optout=1.
+  // GPC opts this response out of ad tags via the request header. It does not
+  // write the 1-year lf_ad_optout=1 cookie. A GPC-only visit may set the
+  // session marker lf_ad_optout=gpc, which a later request without Sec-GPC clears.
+  // An explicit lf_ad_optout=1 choice is left alone.
   const withGpcOptOut = (response: NextResponse): NextResponse => {
-    if (request.headers.get('sec-gpc') === '1') {
-      response.cookies.set(AD_OPT_OUT_COOKIE, AD_OPT_OUT_VALUE, {
+    const gpc = request.headers.get('sec-gpc') === '1';
+    const existing = request.cookies.get(AD_OPT_OUT_COOKIE)?.value ?? null;
+    const decision = gpcCookieDecision(existing, gpc);
+    if (decision === 'set-gpc') {
+      response.cookies.set(AD_OPT_OUT_COOKIE, AD_OPT_OUT_GPC_VALUE, {
         path: '/',
         sameSite: 'lax',
-        maxAge: AD_OPT_OUT_MAX_AGE,
+        secure: adOptOutCookieSecure(),
+        httpOnly: false,
+      });
+    } else if (decision === 'clear') {
+      response.cookies.set(AD_OPT_OUT_COOKIE, '', {
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 0,
         secure: adOptOutCookieSecure(),
         httpOnly: false,
       });
@@ -163,6 +181,9 @@ export function middleware(request: NextRequest) {
     LOCALE_HEADER,
     effectiveLocale === 'es' ? 'es' : routing.defaultLocale,
   );
+  if (internalTrafficQueryRequested(request.nextUrl.search)) {
+    requestHeaders.set(INTERNAL_TRAFFIC_HEADER, '1');
+  }
   const requestInit = { request: { headers: requestHeaders } };
 
   let response: NextResponse;

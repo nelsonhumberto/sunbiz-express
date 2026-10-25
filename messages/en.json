@@ -38,7 +38,14 @@
     "comingSoon": "Coming soon",
     "currency": "USD",
     "perYear": "per year",
-    "perMonth": "per month"
+    "perMonth": "per month",
+    "skipToContent": "Skip to main content"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "body": "That page is not here. Check the address, or head back home.",
+    "home": "Back to home"
   },
   "nav": {
     "pricing": "Pricing",
@@ -261,6 +268,8 @@
     "bestFor_BASIC": "I only need the legal filing",
     "bestFor_STANDARD": "Best for opening a bank account",
     "bestFor_PREMIUM": "Best for hands-off setup",
+    "packageEntityLlc": "LLC",
+    "packageEntityCorp": "Corporation",
     "tier_BASIC": "Essential",
     "tier_BASIC_desc": "The legal filing, prepared and submitted by LaunchForma specialists.",
     "tier_STANDARD": "Popular",
@@ -604,7 +613,9 @@
     "complianceTip2": "LLC fee: $138.75 · Corporation fee: $150.00",
     "complianceTip3": "$400 late fee is non-waivable - there is no hardship exception",
     "complianceTip4": "Failure to file by the third Friday in September results in administrative dissolution",
-    "complianceTip5": "Reinstatement costs $100 (LLC) or $600 (Corp) plus all back fees"
+    "complianceTip5": "Reinstatement costs $100 (LLC) or $600 (Corp) plus all back fees",
+    "complianceFiledOn": "Filed {date}",
+    "complianceAnnual": "{year} annual report"
   },
   "addCompany": {
     "title": "Add your Florida company",
@@ -719,7 +730,9 @@
     "couponApplied": "applied",
     "nameTakenBlock": "That name is already taken in Florida. Choose a name that is distinguishable.",
     "guestEmailInvalid": "Enter a valid email.",
-    "guestEmailHasAccount": "This email already has an account. Sign in at checkout and we will attach this draft.",
+    "guestEmailHasAccount": "This email already has an account. Sign in and we will attach this draft.",
+    "guestCheckDetails": "Please check your details.",
+    "guestSessionExpired": "Your guest session has expired. Please start again.",
     "accountGateTitle": "Create your account to pay",
     "accountGateBody": "Your filing is saved. Choose a password, or we will email you a sign-in link. Then you can pay.",
     "accountGateEmail": "Email",
@@ -825,6 +838,8 @@
     "nameCheckRateLimit": "Too many checks, try again in a few seconds",
     "nameTooShort": "Enter at least 2 letters or numbers. The legal ending does not count.",
     "nameLockUrgency": "{state} won't reserve this name until your formation is filed. Lock it in by continuing now - we submit within 1 business day.",
+    "nameGuaranteeTitle": "Our name approval guarantee",
+    "nameGuaranteeBody": "If the {state} Department of State pushes back on this name for any reason, we work with you on revisions and resubmissions until your filing is approved, at no additional cost.",
     "nameTipsTitle": "Quick tips for a strong name",
     "nameTip1": "Make it distinctive on the {state} record (not just punctuation differences)",
     "nameTip2": "Keep it under 70 characters for easier marketing",

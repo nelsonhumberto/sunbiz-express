@@ -58,6 +58,7 @@ export async function GET(request: Request) {
   // (This route sends customer emails, so an open endpoint = email bombing.)
   if (!CRON_SECRET) {
     if (process.env.NODE_ENV === 'production') {
+      console.warn('[recovery] unauthorized');
       return NextResponse.json({ error: 'cron secret not configured' }, { status: 401 });
     }
     // Local development without a secret: allow.
@@ -67,10 +68,12 @@ export async function GET(request: Request) {
     const headerSecret =
       request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() ?? '';
     if (headerSecret !== CRON_SECRET) {
+      console.warn('[recovery] unauthorized');
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
   }
 
+  console.info('[recovery] start');
   const startedAt = new Date();
   const now = startedAt.getTime();
   let draftStats: Awaited<ReturnType<typeof runScheduledDraftRecovery>> | undefined;
@@ -108,17 +111,23 @@ export async function GET(request: Request) {
       }
     }
     const seriesError = seriesErrors.length > 0 ? seriesErrors.join('; ') : null;
-    await writeCronRun(
-      buildRecoveryCronRun({
-        startedAt,
-        finishedAt: new Date(),
-        drafts: draftStats,
-        ra: raStats,
-        postFormation,
-        newsletter,
-        error: seriesError,
-      }),
-    );
+    const row = buildRecoveryCronRun({
+      startedAt,
+      finishedAt: new Date(),
+      drafts: draftStats,
+      ra: raStats,
+      postFormation,
+      newsletter,
+      error: seriesError,
+    });
+    await writeCronRun(row);
+    const counts = {
+      eligible: row.eligibleCount,
+      sent: row.sentCount,
+      skipped: row.skippedCount,
+      failed: row.failedCount,
+    };
+    console.info('[recovery] done', { ...counts });
     return NextResponse.json({
       ok: true,
       drafts: draftStats,

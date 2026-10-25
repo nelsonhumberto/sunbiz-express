@@ -28,9 +28,13 @@ export function formatLongDate(
 }
 
 /** "Due May 1, 2028" with a single normal space and no stray backslash. */
-export function formatDueLabel(dueWord: string, date: Date | string | null | undefined): string {
+export function formatDueLabel(
+  dueWord: string,
+  date: Date | string | null | undefined,
+  locale: string = 'en',
+): string {
   const word = dueWord.replace(/\\/g, '').trim();
-  const formatted = formatLongDate(date);
+  const formatted = formatLongDate(date, locale);
   if (formatted === '-') return word || '-';
   return `${word} ${formatted}`.replace(/\\/g, '');
 }

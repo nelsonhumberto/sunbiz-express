@@ -9,17 +9,21 @@ import {
 } from '@/lib/analytics';
 import {
   AD_OPT_OUT_COOKIE,
+  AD_OPT_OUT_GPC_VALUE,
   AD_OPT_OUT_MAX_AGE,
   adOptOutCookieValue,
+  gpcCookieDecision,
   isAdMeasurementOptedOut,
   serializeAdOptOutCookie,
+  serializeGpcDerivedCookie,
   shouldInjectAdScripts,
 } from '@/lib/ad-opt-out';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
-function invoke(urlPath: string, extra?: Record<string, string>) {
+function invoke(urlPath: string, extra?: Record<string, string>, cookie?: string) {
   const headers = new Headers({ host: 'launchforma.com', ...extra });
+  if (cookie) headers.set('cookie', cookie);
   const request = new NextRequest(new URL(urlPath, 'https://launchforma.com'), { headers });
   return middleware(request);
 }
@@ -31,6 +35,9 @@ describe('ad measurement opt-out decision', () => {
 
     expect(isAdMeasurementOptedOut({ cookie: '1' })).toBe(true);
     expect(shouldInjectAdScripts({ cookie: '1' })).toBe(false);
+    expect(isAdMeasurementOptedOut({ cookie: 'gpc' })).toBe(false);
+    expect(shouldInjectAdScripts({ cookie: 'gpc' })).toBe(true);
+    expect(shouldInjectAdScripts({ cookie: 'gpc', secGpc: '1' })).toBe(false);
     expect(isAdMeasurementOptedOut({ cookie: '0' })).toBe(false);
     expect(isAdMeasurementOptedOut({ cookie: null })).toBe(false);
 
@@ -65,22 +72,51 @@ describe('ad measurement opt-out decision', () => {
     expect(serializeAdOptOutCookie(false, true)).toContain('Max-Age=0');
     expect(serializeAdOptOutCookie(false, true)).toContain('Secure');
     expect(serializeAdOptOutCookie(false, false)).not.toContain('Secure');
+    const gpcCookie = serializeGpcDerivedCookie(false);
+    expect(gpcCookie).toBe('lf_ad_optout=gpc; Path=/; SameSite=Lax');
+    expect(gpcCookie).not.toContain('Max-Age');
+    expect(serializeGpcDerivedCookie(true)).toContain('Secure');
   });
 
-  it('sets lf_ad_optout from the Sec-GPC header and leaves other requests alone', () => {
+  it('records GPC as lf_ad_optout=gpc and clears that marker when the signal is gone', () => {
+    expect(gpcCookieDecision(null, true)).toBe('set-gpc');
+    expect(gpcCookieDecision('gpc', true)).toBe('leave');
+    expect(gpcCookieDecision('gpc', false)).toBe('clear');
+    expect(gpcCookieDecision('1', true)).toBe('leave');
+    expect(gpcCookieDecision('1', false)).toBe('leave');
+    expect(gpcCookieDecision(null, false)).toBe('leave');
+    expect(AD_OPT_OUT_GPC_VALUE).toBe('gpc');
+
     const opted = invoke('/pricing', { 'sec-gpc': '1' });
     const setCookie = opted.headers.get('set-cookie') ?? '';
-    expect(setCookie).toContain('lf_ad_optout=1');
+    expect(setCookie).toContain('lf_ad_optout=gpc');
+    expect(setCookie).not.toContain('lf_ad_optout=1');
     expect(setCookie.toLowerCase()).toContain('samesite=lax');
     expect(setCookie.toLowerCase()).not.toContain('httponly');
     expect(setCookie.toLowerCase()).not.toContain('secure');
+    expect(setCookie.toLowerCase()).not.toContain('max-age');
 
     const redirect = invoke('/contacto', { 'sec-gpc': '1' });
     expect(redirect.status).toBe(308);
-    expect(redirect.headers.get('set-cookie') ?? '').toContain('lf_ad_optout=1');
+    const redirectCookie = redirect.headers.get('set-cookie') ?? '';
+    expect(redirectCookie).toContain('lf_ad_optout=gpc');
+    expect(redirectCookie).not.toContain('lf_ad_optout=1');
 
     const plain = invoke('/pricing');
     expect(plain.headers.get('set-cookie') ?? '').not.toContain('lf_ad_optout');
+
+    const cleared = invoke('/pricing', undefined, 'lf_ad_optout=gpc');
+    const clearedCookie = cleared.headers.get('set-cookie') ?? '';
+    expect(clearedCookie.toLowerCase()).toContain('lf_ad_optout=');
+    expect(clearedCookie.toLowerCase()).toContain('max-age=0');
+    expect(clearedCookie).not.toContain('lf_ad_optout=gpc');
+    expect(clearedCookie).not.toContain('lf_ad_optout=1');
+
+    const manualWhileGpc = invoke('/pricing', { 'sec-gpc': '1' }, 'lf_ad_optout=1');
+    expect(manualWhileGpc.headers.get('set-cookie') ?? '').not.toContain('lf_ad_optout');
+
+    const manualAfterGpc = invoke('/pricing', undefined, 'theme=dark; lf_ad_optout=1');
+    expect(manualAfterGpc.headers.get('set-cookie') ?? '').not.toContain('lf_ad_optout');
   });
 });
 

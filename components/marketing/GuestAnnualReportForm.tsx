@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { toast } from 'sonner';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Search, Loader2, CheckCircle2, ChevronDown,
   Plus, Trash2, Shield, CreditCard, User, Check, X, Pencil, Building2,
@@ -15,8 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
-import { FL } from '@/lib/florida';
+import { RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { guestAnnualReportPrice } from '@/lib/guest-service-price';
 
 type Address = { street1: string; street2?: string; city: string; state: string; zip: string };
 type Officer = { name: string; title: string };
@@ -68,6 +68,7 @@ function addrFrom(a?: { address_1?: string; city?: string; state?: string; zip?:
 
 export function GuestAnnualReportForm() {
   const t = useTranslations('annualReportForm');
+  const locale = useLocale() === 'es' ? 'es' : 'en';
   const [lookupPending, startLookup] = useTransition();
   const [searchPending, startSearch] = useTransition();
   const [submitPending, startSubmit] = useTransition();
@@ -164,9 +165,9 @@ export function GuestAnnualReportForm() {
   // Stripe
   const cardRef = useRef<StripeCardHandle>(null);
 
-  const stateFee = entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
-  const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raAddon;
+  const price = guestAnnualReportPrice(entityType, useOurRa);
+  const stateFee = price.stateFeeCents;
+  const totalCents = price.totalCents;
   const reportYear = new Date().getFullYear();
 
   const onSubmit = () => {
@@ -180,7 +181,16 @@ export function GuestAnnualReportForm() {
       const stripeResult = await cardRef.current!.confirm({
         amountCents: totalCents,
         cardholderName,
-        metadata: { documentNumber: docNumber.trim(), guestEmail },
+        intentPath: '/api/stripe/service-order',
+        intentBody: {
+          type: 'annual-report',
+          documentNumber: docNumber.trim(),
+          entityType,
+          useOurRa,
+          email: guestEmail,
+          amountCents: totalCents,
+          locale,
+        },
       });
       if ('error' in stripeResult) { toast.error(stripeResult.error); return; }
 
@@ -455,7 +465,7 @@ export function GuestAnnualReportForm() {
           </div>
           {/* Price breakdown */}
           <div className="rounded-md border border-border divide-y divide-border text-sm">
-            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('serviceFee')}</span><span>{formatCurrency(ANNUAL_REPORT_SERVICE_FEE_CENTS)}</span></div>
+            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('serviceFee')}</span><span>{formatCurrency(price.serviceCents)}</span></div>
             <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(stateFee)}</span></div>
             {useOurRa && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('raLine')}</span><span>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}</span></div>}
             <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>{t('total')}</span><span>{formatCurrency(totalCents)}</span></div>

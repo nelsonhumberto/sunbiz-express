@@ -11,6 +11,7 @@ const ES_PATHS = [
   '/es/about',
   '/es/contacto',
   '/es/file-annual-report',
+  '/es/reinstate-llc',
   '/es/states',
   '/es/states/florida',
   '/es/boi-reporting',
@@ -71,6 +72,8 @@ describe('llms.txt Spanish URLs', () => {
     expect(text).toContain('https://launchforma.com/es/guides/llc-o-negocio-individual-florida');
     expect(text).toContain('https://launchforma.com/es/guides/llc-para-tu-app-florida');
     expect(text).toContain('11 de agosto de 2026');
+    expect(text).toContain('https://launchforma.com/reinstate-llc');
+    expect(text).toContain('https://launchforma.com/es/reinstate-llc');
     expect(text).toContain('https://launchforma.com/es/states/florida');
     expect(text).toContain('Traducción en borrador');
   });

@@ -239,7 +239,7 @@ describe('service inquiry', () => {
       company: 'Company name',
     });
     expect(copy.es).toEqual({
-      service: 'Reinstalación de LLC (empresa disuelta)',
+      service: 'Reactivación de LLC (empresa disuelta)',
       late: 'Informe anual atrasado',
       document: 'Número de documento en Sunbiz',
       company: 'Nombre de la empresa',

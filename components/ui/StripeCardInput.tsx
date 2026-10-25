@@ -57,6 +57,13 @@ export interface ConfirmOptions {
   useOurRa?: boolean;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
+  /**
+   * Guest service orders post here instead of /api/stripe/payment-intent.
+   * Formation checkout leaves this unset.
+   */
+  intentPath?: string;
+  /** Posted as the request body when intentPath is set. The server prices it. */
+  intentBody?: Record<string, unknown>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
   savedPaymentMethodId?: string;
 }
@@ -90,20 +97,22 @@ const InnerCard = forwardRef(function InnerCard(
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
       // 1. Create PaymentIntent server-side
-      const res = await fetch('/api/stripe/payment-intent', {
+      const res = await fetch(opts.intentPath ?? '/api/stripe/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amountCents,
-          ...(filingId ? { filingId } : {}),
-          ...(certificateSlug ? { certificateSlug } : {}),
-          ...(purpose ? { purpose } : {}),
-          ...(couponCode ? { couponCode } : {}),
-          ...(raServiceId ? { raServiceId } : {}),
-          ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
-          ...(opts.metadata ? { metadata: opts.metadata } : {}),
-          posthogDistinctId: getAnalyticsDistinctId(),
-        }),
+        body: JSON.stringify(
+          opts.intentBody ?? {
+            amountCents,
+            ...(filingId ? { filingId } : {}),
+            ...(certificateSlug ? { certificateSlug } : {}),
+            ...(purpose ? { purpose } : {}),
+            ...(couponCode ? { couponCode } : {}),
+            ...(raServiceId ? { raServiceId } : {}),
+            ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
+            ...(opts.metadata ? { metadata: opts.metadata } : {}),
+            posthogDistinctId: getAnalyticsDistinctId(),
+          },
+        ),
       });
       const json = await res.json();
       if (json.error || !json.clientSecret) {
@@ -131,6 +140,12 @@ const InnerCard = forwardRef(function InnerCard(
       }
 
       if (result.error) {
+        // A guest retry can receive the same succeeded PaymentIntent. Record
+        // that payment instead of asking for the card again.
+        const alreadyPaid = result.error.payment_intent;
+        if (opts.intentBody && alreadyPaid?.status === 'succeeded' && alreadyPaid.id) {
+          return { paymentIntentId: alreadyPaid.id };
+        }
         return { error: result.error.message ?? 'Payment failed.' };
       }
 

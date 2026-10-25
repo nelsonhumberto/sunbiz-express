@@ -35,6 +35,13 @@ const STATIC_PAGES: PageDef[] = [
     hreflang: true,
   },
   { path: '/file-annual-report', file: 'app/(marketing)/file-annual-report/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
+  {
+    path: '/reinstate-llc',
+    file: 'app/(marketing)/reinstate-llc/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.8,
+    hreflang: true,
+  },
   { path: '/states', file: 'app/(marketing)/states/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/boi-reporting', file: 'app/(marketing)/boi-reporting/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/guides', file: 'app/(marketing)/guides/page.tsx', changeFrequency: 'monthly', priority: 0.6 },

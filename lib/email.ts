@@ -64,6 +64,8 @@ export type NotificationType =
   | 'PASSWORD_RESET'
   | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
+  | 'REINSTATEMENT_ORDER_ADMIN'
+  | 'REINSTATEMENT_ORDER_RECEIPT'
   | 'OA_TEMPLATE_CONFIRM'
   | 'OA_TEMPLATE_DOWNLOAD';
 
@@ -144,6 +146,18 @@ interface EmailContext {
   inquiryUtmContent?: string;
   inquiryUtmTerm?: string;
   inquiryGclid?: string;
+  // ── Paid LLC reinstatement (admin alert + customer receipt) ──
+  reinstatementDocument?: string;
+  reinstatementStatus?: string;
+  reinstatementContactName?: string;
+  reinstatementEmail?: string;
+  reinstatementPhone?: string;
+  reinstatementOfficer?: string;
+  reinstatementOfficerTitle?: string;
+  reinstatementChangeNote?: string;
+  /** Itemized lines, already in the recipient's language. */
+  reinstatementSummary?: string;
+  reinstatementIsTest?: boolean;
   // ── Operating agreement sample (double opt-in) ──
   oaLocale?: 'en' | 'es';
   oaConfirmUrl?: string;
@@ -609,6 +623,68 @@ const TEMPLATES: Record<
           <tr><td>gclid</td><td>${cell(ctx.inquiryGclid)}</td></tr>
         </table>
         ${message ? `<p><strong>Message</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>` : ''}
+      `,
+    };
+  },
+  REINSTATEMENT_ORDER_ADMIN: (ctx) => {
+    const cell = (value?: string) => escapeHtml(value?.trim() || 'Not provided');
+    const company = (ctx.businessName ?? 'LLC').replace(/[\r\n]/g, ' ').slice(0, 80);
+    const doc = (ctx.reinstatementDocument ?? '').replace(/[\r\n]/g, ' ').slice(0, 40);
+    const summary = ctx.reinstatementSummary?.trim();
+    const testNote = ctx.reinstatementIsTest ? 'Yes' : 'No';
+    return {
+      subject: `Paid LLC reinstatement: ${company} (${doc || 'no document'})`,
+      body: html`
+        <h1>Paid Florida LLC reinstatement</h1>
+        <p>A customer paid for a reinstatement. File it with Sunbiz on their behalf. Sunbiz processing times vary.</p>
+        <table class="meta">
+          <tr><td>Company</td><td>${cell(ctx.businessName)}</td></tr>
+          <tr><td>Sunbiz document</td><td>${cell(ctx.reinstatementDocument)}</td></tr>
+          <tr><td>Sunbiz status</td><td>${cell(ctx.reinstatementStatus)}</td></tr>
+          <tr><td>Contact</td><td>${cell(ctx.reinstatementContactName)}</td></tr>
+          <tr><td>Email</td><td>${cell(ctx.reinstatementEmail)}</td></tr>
+          <tr><td>Phone</td><td>${cell(ctx.reinstatementPhone)}</td></tr>
+          <tr><td>Signing officer</td><td>${cell(ctx.reinstatementOfficer)}</td></tr>
+          <tr><td>Title</td><td>${cell(ctx.reinstatementOfficerTitle)}</td></tr>
+          <tr><td>Officer/manager changes</td><td>${cell(ctx.reinstatementChangeNote)}</td></tr>
+          <tr><td>Amount</td><td>${cell(ctx.totalCents != null ? formatCurrency(ctx.totalCents) : undefined)}</td></tr>
+          <tr><td>Filing id</td><td>${cell(ctx.filingNumber)}</td></tr>
+          <tr><td>Test payment</td><td>${testNote}</td></tr>
+        </table>
+        ${summary ? `<p><strong>Itemized total</strong><br/>${escapeHtml(summary).replace(/\n/g, '<br/>')}</p>` : ''}
+      `,
+    };
+  },
+  REINSTATEMENT_ORDER_RECEIPT: (ctx) => {
+    const spanish = ctx.locale === 'es';
+    const name = escapeHtml(ctx.reinstatementContactName?.trim() || '');
+    const company = escapeHtml(ctx.businessName?.trim() || (spanish ? 'tu LLC' : 'your LLC'));
+    const doc = escapeHtml(ctx.reinstatementDocument?.trim() || '');
+    const total = formatCurrency(ctx.totalCents ?? 0);
+    const summary = ctx.reinstatementSummary?.trim();
+    const hello = name ? (spanish ? `Hola, ${name}.` : `Hello, ${name}.`) : spanish ? 'Hola.' : 'Hello.';
+    if (spanish) {
+      return {
+        subject: 'Recibimos tu pedido de reactivación de LLC en Florida',
+        body: html`
+          <h1>Recibimos tu pedido</h1>
+          <p>${hello} Recibimos el pedido para presentar la reactivación de <strong>${company}</strong> (documento de Sunbiz ${doc}). El cargo fue de <strong>${total}</strong>.</p>
+          ${summary ? `<p>${escapeHtml(summary).replace(/\n/g, '<br/>')}</p>` : ''}
+          <p>Las tarifas estatales se trasladan al costo, sin recargo.</p>
+          <p>Vamos a presentar la reactivación ante la División de Corporaciones de Florida (Sunbiz) en tu nombre. Sunbiz decide si la acepta, y los tiempos de procesamiento varían.</p>
+          <p class="muted">Si tienes una pregunta, escribe a <a href="mailto:hello@launchforma.com">hello@launchforma.com</a>.</p>
+        `,
+      };
+    }
+    return {
+      subject: 'We received your Florida LLC reinstatement order',
+      body: html`
+        <h1>We received your order</h1>
+        <p>${hello} We received the order to file a reinstatement for <strong>${company}</strong> (Sunbiz document ${doc}). We charged <strong>${total}</strong>.</p>
+        ${summary ? `<p>${escapeHtml(summary).replace(/\n/g, '<br/>')}</p>` : ''}
+        <p>State fees are passed through at cost.</p>
+        <p>We will file the reinstatement with the Florida Division of Corporations (Sunbiz) on your behalf. Sunbiz decides whether to accept it, and processing times vary.</p>
+        <p class="muted">Questions: <a href="mailto:hello@launchforma.com">hello@launchforma.com</a>.</p>
       `,
     };
   },

@@ -14,6 +14,7 @@ import {
   computeCost,
   filingHasOperatingAgreement,
   isWizardAddOn,
+  snapshotAddOnPriceCents,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -251,12 +252,21 @@ export async function syncSCorpElectionAddOn(
   const shouldHave = elected && tier !== 'PREMIUM';
 
   if (shouldHave && !existing) {
+    const filing = await prisma.filing.findUnique({
+      where: { id: filingId },
+      select: { entityType: true, state: true },
+    });
     await prisma.filingAdditionalService.create({
       data: {
         filingId,
         serviceId: svc.id,
         quantity: 1,
-        priceCents: svc.priceCents,
+        priceCents: snapshotAddOnPriceCents({
+          slug: svc.serviceSlug,
+          dbPriceCents: svc.priceCents,
+          entityType: filing?.entityType === 'CORP' ? 'CORP' : 'LLC',
+          state: asStateCode(filing?.state),
+        }),
         status: 'PENDING',
       },
     });
@@ -1037,7 +1047,12 @@ export async function saveStep11(input: { filingId: string; addOnSlugs: string[]
       filingId: filing.id,
       serviceId: s.id,
       quantity: 1,
-      priceCents: s.priceCents,
+      priceCents: snapshotAddOnPriceCents({
+        slug: s.serviceSlug,
+        dbPriceCents: s.priceCents,
+        entityType: filing.entityType as 'LLC' | 'CORP',
+        state: asStateCode(filing.state),
+      }),
       status: 'PENDING',
     })),
   });

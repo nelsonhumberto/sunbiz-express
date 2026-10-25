@@ -27,6 +27,7 @@ import {
   stateFilingFeeCents,
   type StateCode,
 } from './formation-states';
+import { logger } from './logger';
 
 export type TierSlug = 'BASIC' | 'STANDARD' | 'PREMIUM';
 export type EntityType = 'LLC' | 'CORP';
@@ -505,6 +506,35 @@ export function addOnPriceCents(
     def.serviceMarginCents +
     addOnGovernmentRemittanceCents(slug, entityType, state)
   );
+}
+
+function isKnownAddOnSlug(slug: string): slug is AddOnSlug {
+  return Object.prototype.hasOwnProperty.call(ADD_ON_BY_SLUG, slug);
+}
+
+/**
+ * Price stored on FilingAdditionalService when an add-on is attached to an
+ * order. This is {@link addOnPriceCents}, the same helper {@link computeCost}
+ * uses for the customer charge, keyed by add-on slug. The AdditionalService
+ * catalog is not the source of truth: a slug missing from this file keeps
+ * the catalog cents and logs a warning.
+ */
+export function snapshotAddOnPriceCents(input: {
+  slug: string;
+  dbPriceCents: number;
+  entityType?: EntityType;
+  state?: StateCode;
+}): number {
+  if (!isKnownAddOnSlug(input.slug)) {
+    logger.warn('Add-on slug is not in lib/pricing; snapshotting the catalog price', {
+      area: 'pricing',
+      tag: 'addon-price-snapshot',
+      slug: input.slug,
+      dbPriceCents: input.dbPriceCents,
+    });
+    return input.dbPriceCents;
+  }
+  return addOnPriceCents(input.slug, input.entityType ?? 'LLC', input.state ?? 'FL');
 }
 
 /**

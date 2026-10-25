@@ -14,7 +14,7 @@ import {
   lastFourDigits,
   looksLikeUsTaxId,
 } from '@/lib/ein';
-import { ADD_ON_BY_SLUG, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { ADD_ON_BY_SLUG, snapshotAddOnPriceCents, type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
@@ -398,7 +398,10 @@ export async function purchaseEinAddOn(
         data: {
           filingId: filing.id,
           serviceId: service.id,
-          priceCents,
+          priceCents: snapshotAddOnPriceCents({
+            slug: 'ein',
+            dbPriceCents: priceCents,
+          }),
           status: 'ACTIVE',
           purchasedAt: new Date(),
         },

@@ -37,6 +37,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { computeNextAnnualCompliance } from '@/lib/formation-validation';
+import { resolveDripLocale } from '@/lib/draft-recovery';
 import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
@@ -78,6 +79,9 @@ export async function createFiling(input?: {
     to: session.user.email!,
     userId: session.user.id,
     filingId: filing.id,
+    context: {
+      locale: resolveDripLocale(filing.locale, null, filing.entryPath),
+    },
   });
 
   return await redirectLocalized(`/wizard/${filing.id}/1`, locale);
@@ -127,6 +131,7 @@ export async function submitFilingToState(
       managersMembers: true,
       payments: true,
       filingAdditionalServices: { include: { service: true } },
+      user: { select: { locale: true } },
     },
   });
   if (!filing || filing.userId !== actorId) throw new Error('Not found');
@@ -517,6 +522,7 @@ export async function submitFilingToState(
       businessName: filing.businessName ?? '',
       trackingNumber,
       pin,
+      locale: resolveDripLocale(filing.locale, filing.user?.locale, filing.entryPath),
     },
   });
 

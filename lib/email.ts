@@ -341,14 +341,32 @@ const TEMPLATES: Record<
           `,
     };
   },
-  FILING_STARTED: ({ firstName, businessName, resumeUrl }) => ({
-    subject: `Your filing for ${businessName ?? 'your business'} is started`,
-    body: html`
+  FILING_STARTED: ({ firstName, businessName, resumeUrl, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'tu empresa';
+      const name = firstName?.trim();
+      const href = resumeUrl ?? localeUrl('es', '/dashboard');
+      return {
+        subject: `Tu trámite para ${company} ya empezó`,
+        body: wrap(
+          `
+      <h1>Tu trámite empezó</h1>
+      <p>${name ? `Hola ${name}.` : 'Hola.'} Guardamos tu avance. Sigues justo donde lo dejaste.</p>
+      <a class="cta" href="${href}">Seguir con el trámite</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `Your filing for ${businessName ?? 'your business'} is started`,
+      body: html`
       <h1>Filing started</h1>
       <p>Hi ${firstName ?? 'there'} - we've saved your progress. Pick up exactly where you left off.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
-  }),
+    };
+  },
   ABANDONED_24H: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
@@ -522,9 +540,31 @@ const TEMPLATES: Record<
       `,
     };
   },
-  FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl }) => ({
-    subject: `${businessName ?? 'Your business'} has been submitted to the state`,
-    body: html`
+  FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl, locale }) => {
+    const spanish = locale === 'es';
+    const statusUrl = resumeUrl ?? localeUrl(locale, '/dashboard');
+    if (spanish) {
+      const company = businessName ?? 'Tu empresa';
+      return {
+        subject: `${company} ya se envió al estado`,
+        body: wrap(
+          `
+      <h1>Tu trámite ya está en el estado</h1>
+      <p><strong>${company}</strong> ya se envió. Te escribimos en cuanto lo aprueben. Suele tardar 1 o 2 días hábiles.</p>
+      <table class="meta">
+        <tr><td>Referencia</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
+        <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
+      </table>
+      <p class="muted">Tu referencia y tu PIN identifican este trámite en tu panel de LaunchForma y cuando escribes a soporte. Las actualizaciones están en tu panel. No hay una página pública de seguimiento.</p>
+      <a class="cta" href="${statusUrl}">Ver el estado del trámite</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `${businessName ?? 'Your business'} has been submitted to the state`,
+      body: html`
       <h1>Your filing is with the state</h1>
       <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved - usually within 1–2 business days.</p>
       <table class="meta">
@@ -532,12 +572,33 @@ const TEMPLATES: Record<
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
       </table>
       <p class="muted">Your reference # and PIN identify this filing in your LaunchForma dashboard (and on support requests). Status updates live in your dashboard - there isn't a separate public tracking page.</p>
-      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">View filing status</a>
+      <a class="cta" href="${statusUrl}">View filing status</a>
     `,
-  }),
-  FILING_APPROVED: ({ businessName, filingNumber }) => ({
-    subject: `${businessName ?? 'Your business'} is officially formed`,
-    body: html`
+    };
+  },
+  FILING_APPROVED: ({ businessName, filingNumber, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'Tu empresa';
+      const dashboardUrl = localeUrl('es', '/dashboard');
+      return {
+        subject: `${company} ya es oficial`,
+        body: wrap(
+          `
+      <h1>Tu empresa ya es oficial</h1>
+      <p>El estado aprobó <strong>${company}</strong>. Ya puedes descargar los documentos de formación.</p>
+      <table class="meta">
+        <tr><td>Número de trámite</td><td><code>${filingNumber ?? '-'}</code></td></tr>
+      </table>
+      <p>Revisa tu panel para ver qué sigue, abre una cuenta de banco para la empresa y guarda la fecha del informe anual. Te avisamos cuando se acerque.</p>
+      <a class="cta" href="${dashboardUrl}">Descargar documentos</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `${businessName ?? 'Your business'} is officially formed`,
+      body: html`
       <h1>You're official - congrats!</h1>
       <p>The state has approved <strong>${businessName ?? 'your business'}</strong>. Your formation documents are ready to download.</p>
       <table class="meta">
@@ -546,17 +607,37 @@ const TEMPLATES: Record<
       <p>Next up: check your dashboard for next steps, open a business bank account, and keep your annual report deadline on the calendar - we'll remind you.</p>
       <a class="cta" href="${siteUrl}/dashboard">Download documents</a>
     `,
-  }),
-  FILING_REJECTED: ({ businessName, rejectionReason }) => ({
-    subject: `Action needed: ${businessName ?? 'your business'} filing`,
-    body: html`
+    };
+  },
+  FILING_REJECTED: ({ businessName, rejectionReason, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'tu empresa';
+      const dashboardUrl = localeUrl('es', '/dashboard');
+      return {
+        subject: `Acción necesaria: el trámite de ${company}`,
+        body: wrap(
+          `
+      <h1>El estado pidió cambios</h1>
+      <p>El estado pidió cambios en tu trámite.</p>
+      <blockquote>${rejectionReason ?? 'Revisa tu panel para ver el detalle.'}</blockquote>
+      <p>Lo volvemos a enviar. No hay una tarifa estatal extra.</p>
+      <a class="cta" href="${dashboardUrl}">Ver el detalle</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `Action needed: ${businessName ?? 'your business'} filing`,
+      body: html`
       <h1>State requested changes</h1>
       <p>The state has requested changes to your filing.</p>
       <blockquote>${rejectionReason ?? 'See dashboard for details.'}</blockquote>
       <p>We'll handle the resubmission - no extra state fee.</p>
       <a class="cta" href="${siteUrl}/dashboard">View details</a>
     `,
-  }),
+    };
+  },
   ANNUAL_REPORT_60: ({ businessName, dueDate }) => ({
     subject: `${businessName ?? 'Your business'}'s annual report is due ${dueDate ? formatDateLong(dueDate) : 'soon'}`,
     body: html`

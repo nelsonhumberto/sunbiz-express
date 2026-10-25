@@ -12,7 +12,7 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { hrefForLocale } from '@/lib/app-href';
-import { guestResumeUrl, signInResumeUrl } from '@/lib/draft-recovery';
+import { guestResumeUrl, resolveDripLocale, signInResumeUrl } from '@/lib/draft-recovery';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { TOTAL_DISPLAYED_STEPS, TOTAL_STEPS } from '@/lib/wizard-constants';
@@ -160,6 +160,7 @@ export async function advanceFilingStatus(
       context: {
         businessName: filing.businessName ?? '',
         filingNumber: sunbizFilingNumber ?? undefined,
+        locale: resolveDripLocale(filing.locale, filing.user?.locale, filing.entryPath),
       },
     });
   }
@@ -242,6 +243,7 @@ export async function uploadIssuedDocument(args: {
       context: {
         businessName: filing.businessName ?? '',
         filingNumber: filing.sunbizFilingNumber ?? undefined,
+        locale: resolveDripLocale(filing.locale, filing.user?.locale, filing.entryPath),
       },
     });
   }
@@ -273,7 +275,11 @@ export async function rejectFiling(filingId: string, reason: string) {
       to: filing.user.email,
       userId: filing.userId,
       filingId: filing.id,
-      context: { businessName: filing.businessName ?? '', rejectionReason: reason },
+      context: {
+        businessName: filing.businessName ?? '',
+        rejectionReason: reason,
+        locale: resolveDripLocale(filing.locale, filing.user?.locale, filing.entryPath),
+      },
     });
   }
 

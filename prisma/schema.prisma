@@ -65,6 +65,8 @@ model User {
   utmContent  String?
   utmTerm     String?
   gclid       String?
+  // Deprecated. Left in place so existing rows are not dropped. Do not read or write.
+  liFatId     String?
 }
 
 model Filing {
@@ -148,6 +150,8 @@ model Filing {
   utmContent               String?
   utmTerm                  String?
   gclid                    String?
+  // Deprecated. Left in place so existing rows are not dropped. Do not read or write.
+  liFatId                  String?
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
@@ -611,6 +615,8 @@ model ServiceInquiry {
   utmContent  String?
   utmTerm     String?
   gclid       String?
+  // Deprecated. Left in place so existing rows are not dropped. Do not read or write.
+  liFatId     String?
   createdAt   DateTime @default(now())
 
   @@index([email, createdAt])

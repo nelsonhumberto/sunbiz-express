@@ -45,6 +45,20 @@ describe('contact pathnames', () => {
     expect(englishSlug.status).toBe(308);
     expect(new URL(englishSlug.headers.get('location')!).pathname).toBe('/es/contacto');
 
+    const deepLink = invoke('/es/contact?service=late-annual-report');
+    expect(deepLink.status).toBe(308);
+    const deepLinkLocation = new URL(deepLink.headers.get('location')!);
+    expect(deepLinkLocation.pathname).toBe('/es/contacto');
+    expect(deepLinkLocation.searchParams.get('service')).toBe('late-annual-report');
+
+    const spanishDeepLink = invoke('/es/contacto?service=reinstatement');
+    expect(spanishDeepLink.status).toBe(200);
+    const spanishRewrite = spanishDeepLink.headers.get('x-middleware-rewrite');
+    expect(spanishRewrite).toBeTruthy();
+    const rewritten = new URL(spanishRewrite!);
+    expect(rewritten.pathname).toBe('/contact');
+    expect(rewritten.searchParams.get('service')).toBe('reinstatement');
+
     const spanish = invoke('/es/contacto');
     expect(spanish.status).toBe(200);
     expect(spanish.headers.get('x-middleware-request-x-lf-locale')).toBe('es');
@@ -72,6 +86,13 @@ describe('contact page content', () => {
 
   it('reuses the inquiry form, the footer address, and the phone link', () => {
     expect(page).toContain('ServiceInquiryForm');
+    expect(page).toContain('serviceInquiryFromQuery');
+    expect(page).toContain('initialService={initialService}');
+    expect(page).toContain('companyServices');
+    expect(page).toContain("t('serviceReinstatement')");
+    expect(page).toContain("t('serviceLateAnnualReport')");
+    expect(page).toContain("t('sunbizDocumentLabel')");
+    expect(page).toContain("t('companyNameLabel')");
     expect(page).toContain('id="request"');
     expect(page).toContain('BUSINESS_ADDRESS');
     expect(page).toContain('CONTACT_PHONE_DISPLAY');

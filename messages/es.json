@@ -101,7 +101,11 @@
     "phoneLabel": "Teléfono",
     "addressLabel": "Dirección postal",
     "formHeading": "Cuéntanos qué necesitas",
-    "formIntro": "Es el mismo formulario de servicios. Te llamamos para confirmar los detalles."
+    "formIntro": "Es el mismo formulario de servicios. Te llamamos para confirmar los detalles.",
+    "serviceReinstatement": "Reinstalación de LLC (empresa disuelta)",
+    "serviceLateAnnualReport": "Informe anual atrasado",
+    "sunbizDocumentLabel": "Número de documento en Sunbiz",
+    "companyNameLabel": "Nombre de la empresa"
   },
   "disclosure": {
     "notAffiliated": "LaunchForma es un servicio privado de gestión de trámites empresariales. No somos una agencia gubernamental ni estamos afiliados, respaldados ni actuando en nombre de ninguna agencia gubernamental. Las tarifas de presentación son fijadas por el estado y están incluidas en el precio de tu paquete.",

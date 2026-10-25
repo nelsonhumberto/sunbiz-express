@@ -8,23 +8,46 @@ import { HoneypotField } from '@/components/marketing/HoneypotField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  SERVICE_INQUIRY_OPTIONS,
+  inquiryCollectsCompanyDetails,
   inquiryFieldErrors,
   isServiceInquiryOption,
   type ServiceInquiryOption,
 } from '@/lib/service-inquiry';
 
-const SERVICE_LABEL_KEY = {
+const BASE_SERVICE_LABEL_KEY = {
   registered_agent: 'serviceRegisteredAgent',
   operating_agreement: 'serviceOperatingAgreement',
   compliance_alerts: 'serviceComplianceAlerts',
-  other: 'serviceOther',
 } as const;
 
-export function ServiceInquiryForm() {
+export type CompanyServiceCopy = {
+  llc_reinstatement: string;
+  late_annual_report: string;
+  documentNumberLabel: string;
+  companyNameLabel: string;
+};
+
+function initialSelection(
+  initial: ServiceInquiryOption | null | undefined,
+  companyServices?: CompanyServiceCopy,
+): ServiceInquiryOption | '' {
+  if (!initial || !isServiceInquiryOption(initial)) return '';
+  if (inquiryCollectsCompanyDetails(initial) && !companyServices) return '';
+  return initial;
+}
+
+export function ServiceInquiryForm({
+  initialService = null,
+  companyServices,
+}: {
+  initialService?: ServiceInquiryOption | null;
+  companyServices?: CompanyServiceCopy;
+}) {
   const t = useTranslations('businessServices');
   const locale = useLocale();
-  const [service, setService] = useState<ServiceInquiryOption | ''>('');
+  const [service, setService] = useState<ServiceInquiryOption | ''>(() =>
+    initialSelection(initialService, companyServices),
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<'invalid' | 'generic' | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
@@ -51,11 +74,13 @@ export function ServiceInquiryForm() {
   useEffect(() => {
     const onPick = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
-      if (isServiceInquiryOption(detail)) setService(detail);
+      if (!isServiceInquiryOption(detail)) return;
+      if (inquiryCollectsCompanyDetails(detail) && !companyServices) return;
+      setService(detail);
     };
     window.addEventListener('lf-inquiry-service', onPick);
     return () => window.removeEventListener('lf-inquiry-service', onPick);
-  }, []);
+  }, [companyServices]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,6 +110,8 @@ export function ServiceInquiryForm() {
         service,
         locale: formLocale,
         lf_hp: String(data.get('lf_hp') ?? ''),
+        documentNumber: String(data.get('documentNumber') ?? ''),
+        companyName: String(data.get('companyName') ?? ''),
       });
     } catch {
       setPending(false);
@@ -187,18 +214,59 @@ export function ServiceInquiryForm() {
           aria-invalid={fieldErrors.service ? true : undefined}
           onChange={(event) => {
             const next = event.target.value;
-            setService(isServiceInquiryOption(next) ? next : '');
+            if (!isServiceInquiryOption(next)) {
+              setService('');
+              return;
+            }
+            if (inquiryCollectsCompanyDetails(next) && !companyServices) return;
+            setService(next);
           }}
           className="flex h-12 w-full rounded-md border border-input bg-card px-4 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
         >
           <option value="">{t('servicePlaceholder')}</option>
-          {SERVICE_INQUIRY_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {t(SERVICE_LABEL_KEY[option])}
-            </option>
-          ))}
+          {(Object.keys(BASE_SERVICE_LABEL_KEY) as (keyof typeof BASE_SERVICE_LABEL_KEY)[]).map(
+            (option) => (
+              <option key={option} value={option}>
+                {t(BASE_SERVICE_LABEL_KEY[option])}
+              </option>
+            ),
+          )}
+          {companyServices ? (
+            <>
+              <option value="llc_reinstatement">{companyServices.llc_reinstatement}</option>
+              <option value="late_annual_report">{companyServices.late_annual_report}</option>
+            </>
+          ) : null}
+          <option value="other">{t('serviceOther')}</option>
         </select>
       </Field>
+      {companyServices && inquiryCollectsCompanyDetails(service) ? (
+        <>
+          <Field
+            label={companyServices.documentNumberLabel}
+            htmlFor="inquiry-document-number"
+          >
+            <Input
+              id="inquiry-document-number"
+              name="documentNumber"
+              maxLength={64}
+              autoComplete="off"
+              className="h-12 text-base"
+              data-testid="inquiry-document-number"
+            />
+          </Field>
+          <Field label={companyServices.companyNameLabel} htmlFor="inquiry-company-name">
+            <Input
+              id="inquiry-company-name"
+              name="companyName"
+              maxLength={200}
+              autoComplete="organization"
+              className="h-12 text-base"
+              data-testid="inquiry-company-name"
+            />
+          </Field>
+        </>
+      ) : null}
 
       {error ? (
         <p

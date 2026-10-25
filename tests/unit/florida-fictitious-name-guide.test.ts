@@ -58,7 +58,9 @@ describe('Florida fictitious name guide', () => {
     expect(page).toContain('faqPageJsonLd(FAQ)');
     expect(page).toContain('englishOnlyAlternates(PATH)');
     expect(page).not.toContain('withLocaleMeta');
-    expect(page).toContain("if (locale === 'es') permanentRedirect(PATH)");
+    expect(page).not.toContain('permanentRedirect');
+    expect(page).toContain("const ES_REINSTATE_GUIDE = '/es/guides/how-to-reinstate-a-florida-llc'");
+    expect(page).toContain('bodyForLocale(locale)');
     expect(page).toContain('General information, not legal or tax advice.');
   });
 

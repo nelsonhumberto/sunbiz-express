@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { getLocale } from 'next-intl/server';
-import { permanentRedirect } from 'next/navigation';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
@@ -112,6 +111,15 @@ LaunchForma is an online formation service for Florida businesses, run by a husb
 
 *General information, not legal or tax advice.*`;
 
+const EN_REINSTATE_GUIDE = '/guides/how-to-reinstate-a-florida-llc';
+const ES_REINSTATE_GUIDE = '/es/guides/how-to-reinstate-a-florida-llc';
+
+/** Same English article. Only the reinstatement href follows the locale. */
+function bodyForLocale(locale: string): string {
+  if (locale !== 'es') return BODY;
+  return BODY.replace(`](${EN_REINSTATE_GUIDE})`, `](${ES_REINSTATE_GUIDE})`);
+}
+
 function FaqList({ items }: { items: { q: string; a: string }[] }) {
   return (
     <>
@@ -126,10 +134,8 @@ function FaqList({ items }: { items: { q: string; a: string }[] }) {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  // No Spanish article yet. /es rewrites onto this page, so send it back
-  // to the English URL instead of publishing an es hreflang.
-  if (locale === 'es') permanentRedirect(PATH);
+  // No Spanish article, so hreflang stays English-only. /es still renders
+  // this page so its reinstatement link can point at the Spanish guide.
   return {
     title: { absolute: TITLE },
     description: DESCRIPTION,
@@ -147,7 +153,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function FloridaFictitiousNameGuide() {
   const locale = await getLocale();
-  if (locale === 'es') permanentRedirect(PATH);
   return (
     <>
       <JsonLd data={faqPageJsonLd(FAQ)} />
@@ -160,7 +165,7 @@ export default async function FloridaFictitiousNameGuide() {
         inLanguage="en"
         readingMinutes={5}
       >
-        <MarkdownBody markdown={BODY} locale="en" />
+        <MarkdownBody markdown={bodyForLocale(locale)} locale="en" />
         <h2>FAQ</h2>
         <FaqList items={FAQ} />
         <MarkdownBody markdown={CLOSING} locale="en" />

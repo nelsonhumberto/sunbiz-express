@@ -106,7 +106,7 @@ describe('Florida LLC reinstatement guide', () => {
 
     const form = es.guideFlForm.body;
     expect(form).toContain(
-      '¿Tu LLC fue disuelta por no presentar el reporte anual? Mira [cómo reactivarla](/guides/how-to-reinstate-a-florida-llc).',
+      '¿Tu LLC fue disuelta por no presentar el reporte anual? Mira [cómo reactivarla](/es/guides/how-to-reinstate-a-florida-llc).',
     );
 
     const dba = readFileSync('app/(marketing)/guides/florida-fictitious-name-dba/page.tsx', 'utf8');
@@ -118,7 +118,7 @@ describe('Florida LLC reinstatement guide', () => {
     expect(annual).toContain('LLC dissolved for a missed annual report? See');
     expect(annual).toContain('href="/guides/how-to-reinstate-a-florida-llc"');
     expect(es.guideFlAnnual.body).toContain(
-      '¿Tu LLC fue disuelta por no presentar el reporte anual? Mira [cómo reactivarla](/guides/how-to-reinstate-a-florida-llc).',
+      '¿Tu LLC fue disuelta por no presentar el reporte anual? Mira [cómo reactivarla](/es/guides/how-to-reinstate-a-florida-llc).',
     );
 
     const index = readFileSync('app/(marketing)/guides/page.tsx', 'utf8');

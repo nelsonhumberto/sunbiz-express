@@ -10,7 +10,8 @@
     "thinking": "Forma is thinking…",
     "placeholder": "Ask a question…",
     "send": "Send",
-    "disclaimer": "Forma gives general information, not legal or tax advice. Sensitive info like your SSN is only entered on the secure wizard step."
+    "disclaimer": "Forma gives general information, not legal or tax advice. Sensitive info like your SSN is only entered on the secure wizard step.",
+    "conversationLimit": "We have reached the chat limit for this conversation. You can keep going in the form, or [contact us](/contact) and a person will help you."
   },
   "common": {
     "appName": "LaunchForma",

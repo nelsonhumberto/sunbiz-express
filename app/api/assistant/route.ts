@@ -20,6 +20,8 @@ import { buildKnowledge } from '@/lib/assistant/knowledge';
 import { buildSystemPrompt } from '@/lib/assistant/system-prompt';
 import { summarizeFiling } from '@/lib/assistant/redact';
 import { buildAssistantTools, type AssistantActor } from '@/lib/assistant/tools';
+import { assistantMaxOutputTokens } from '@/lib/assistant/limits';
+import { assistantConversationCapResponse } from '@/lib/assistant/conversation-cap';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,8 +54,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // Per-IP throttle - keeps cost + abuse bounded.
-  const limit = rateLimit(`assistant:${clientIp()}`, 30, 60 * 1000);
+  // Per-IP throttle - keeps cost + abuse bounded. In-memory, per instance.
+  const ip = clientIp();
+  const limit = rateLimit(`assistant:${ip}`, 30, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'You are sending messages too quickly. Please wait a moment.' },
@@ -77,6 +80,24 @@ export async function POST(request: Request) {
   const actor: AssistantActor | null = resolved
     ? { kind: resolved.kind, id: resolved.id, email: resolved.email }
     : null;
+
+  const locale = body.locale === 'es' ? 'es' : 'en';
+  const conversationId =
+    typeof body.conversationId === 'string' ? body.conversationId.trim() : '';
+
+  // Turn cap uses stored user rows for this actor's conversation. A missing
+  // id, or an id this actor does not own, continues as before. A brand-new
+  // id is also counted against a small per-IP creation limit so rotating
+  // ids cannot skip the turn cap. Neither path calls the model when blocked.
+  if (conversationId) {
+    const capped = await assistantConversationCapResponse({
+      conversationId,
+      actor,
+      locale,
+      ip,
+    });
+    if (capped) return capped;
+  }
 
   // Resolve + verify the active filing (ownership) so tools can read/write it.
   let filingId: string | null = null;
@@ -106,7 +127,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const locale = body.locale === 'es' ? 'es' : 'en';
   const knowledge = buildKnowledge({ stateCode, entityType, locale });
   const system = buildSystemPrompt({
     knowledge,
@@ -136,15 +156,16 @@ export async function POST(request: Request) {
       system,
       messages: modelMessages,
       tools,
+      maxOutputTokens: assistantMaxOutputTokens(),
       stopWhen: stepCountIs(6),
       onFinish: async ({ text }) => {
         // Best-effort transcript persistence for handoff context + KB tuning.
-        if (!body.conversationId) return;
+        if (!conversationId) return;
         try {
           await prisma.assistantConversation.upsert({
-            where: { id: body.conversationId },
+            where: { id: conversationId },
             create: {
-              id: body.conversationId,
+              id: conversationId,
               actorId: actor?.id ?? null,
               actorKind: actor?.kind ?? null,
               filingId,
@@ -158,7 +179,7 @@ export async function POST(request: Request) {
           ];
           if (rows.length) {
             await prisma.assistantMessage.createMany({
-              data: rows.map((r) => ({ conversationId: body.conversationId!, ...r })),
+              data: rows.map((r) => ({ conversationId, ...r })),
             });
           }
         } catch (err) {

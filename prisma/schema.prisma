@@ -161,6 +161,8 @@ model Filing {
   referralCapturedAt       DateTime?
   commissionCents          Int?
   commissionStatus         CommissionStatus?
+  // PayPal batch reference entered by hand when a commission is marked paid.
+  commissionPayoutRef      String?
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt

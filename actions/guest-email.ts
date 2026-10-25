@@ -152,7 +152,7 @@ export async function sendGuestCheckoutLink(
     ownsMailbox
       ? await createLoginLink(owner.id, hrefForLocale(`/wizard/${filingId}/11`, locale))
       : owner.accountStatus === 'GUEST' && owner.guestToken
-        ? guestResumeUrl(siteUrl, filingId, owner.guestToken)
+        ? guestResumeUrl(siteUrl, filingId, owner.guestToken, locale)
         : null;
   if (!resumeUrl) return { ok: false, error: t('guestEmailInvalid') };
 
@@ -334,6 +334,6 @@ async function resolveMismatchedGuestDraft(filingId: string) {
     filing,
     plan,
     typedEmail: typedEmails[0] ?? null,
-    locale: pickLocale(await storedLocale(), filing.locale),
+    locale: localeFromPathOrFiling(await storedLocale(), filing.locale),
   };
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { safeRedirectPath } from '@/lib/utils';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
@@ -170,7 +170,7 @@ const Step1Schema = z.object({
 });
 
 async function wizardCopy(filingLocale?: string | null) {
-  const locale = pickLocale(await storedLocale(), filingLocale);
+  const locale = localeFromPathOrFiling(await storedLocale(), filingLocale);
   return getTranslations({ locale, namespace: 'wizard' });
 }
 

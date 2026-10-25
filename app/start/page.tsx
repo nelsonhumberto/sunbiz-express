@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';

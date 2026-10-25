@@ -491,7 +491,7 @@ function blockingResumeNotification(type: ResumeDripType, nowMs: number) {
   return {
     notificationType: type,
     OR: [
-      { status: { in: ['SENT', 'BOUNCED'] as string[] } },
+      { status: { in: ['SENT', 'BOUNCED', 'SKIPPED_TEST'] as string[] } },
       { attemptCount: { gte: RESUME_DRIP_MAX_ATTEMPTS } },
       {
         AND: [

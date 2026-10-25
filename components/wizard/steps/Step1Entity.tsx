@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
@@ -46,7 +46,7 @@ export function Step1Entity({
       : 'FL') as StateCode,
   );
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const stateRule = FORMATION_STATES[stateCode];
 
   const ENTITY_OPTIONS = [
@@ -101,7 +101,7 @@ export function Step1Entity({
           className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-2"
         >
           <MapPin className="h-3.5 w-3.5" />
-          Filing state
+          {t('filingState')}
         </div>
         <div
           className="flex flex-wrap gap-2"

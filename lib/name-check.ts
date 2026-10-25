@@ -56,6 +56,13 @@ const SUCCESS_STATUSES = new Set<NameCheckResult['status']>([
   'restricted',
 ]);
 
+/** Florida blocks a name only when Sunbiz reports an exact conflict. */
+export function nameCheckBlocksContinue(
+  result: { status?: string } | null | undefined,
+): boolean {
+  return result?.status === 'exact_conflict';
+}
+
 export function normalizeNameCheckQuery(raw: string | null | undefined): string {
   return (raw ?? '').trim().slice(0, NAME_CHECK_MAX_LENGTH);
 }

@@ -3,7 +3,10 @@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { redirect } from 'next/navigation';
+import { hrefForLocale } from '@/lib/app-href';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { pickLocale } from '@/lib/pick-locale';
+import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { auth, signIn } from '@/lib/auth';
@@ -134,7 +137,7 @@ export async function startGuestFiling(
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/2`);
+    return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
 
   // An email that already belongs to anyone does not hand over that session.
@@ -146,8 +149,12 @@ export async function startGuestFiling(
   const ownerKind = !existing ? 'free' : existing.accountStatus === 'GUEST' ? 'guest' : 'account';
   const sessionPlan = planStartGuestSession(ownerKind);
   if (sessionPlan === 'sign_in') {
-    const next = encodeURIComponent('/dashboard');
-    redirect(`/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`);
+    const siteLocale = locale === 'es' ? 'es' : 'en';
+    const next = encodeURIComponent(hrefForLocale('/dashboard', siteLocale));
+    return await redirectLocalized(
+      `/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`,
+      locale,
+    );
   }
 
   const token = newGuestToken();
@@ -193,7 +200,7 @@ export async function startGuestFiling(
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
 
-  redirect(`/wizard/${filing.id}/2`);
+  return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
 }
 
 /**
@@ -249,7 +256,7 @@ export async function openGuestDraft(input: {
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
     const step = seededName ? 2 : 1;
-    redirect(`/wizard/${filing.id}/${step}`);
+    return await redirectLocalized(`/wizard/${filing.id}/${step}`, locale);
   }
 
   const guest = await getGuestUser();
@@ -257,7 +264,7 @@ export async function openGuestDraft(input: {
     const draft = await prisma.filing.findFirst({
       where: { userId: guest.id, status: 'DRAFT' },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true },
+      select: { id: true, currentStep: true, businessName: true, locale: true },
     });
     if (draft && (!input.draftId || input.draftId === draft.id)) {
       const decision = decideDraftNameResume({
@@ -270,7 +277,7 @@ export async function openGuestDraft(input: {
           where: { id: draft.id },
           data: { businessName: seededName, nameAvailable: null, nameCheckedAt: null },
         });
-        redirect(`/wizard/${draft.id}/2`);
+        return await redirectLocalized(`/wizard/${draft.id}/2`, pickLocale(locale, draft.locale));
       }
       if (decision.action === 'choose' && seededName) {
         const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
@@ -279,12 +286,15 @@ export async function openGuestDraft(input: {
             draftId: draft.id,
             existingName: draft.businessName?.trim() || '',
             proposedName: seededName,
-            resumeHref: `/wizard/${draft.id}/${step}`,
+            resumeHref: hrefForLocale(
+              `/wizard/${draft.id}/${step}`,
+              pickLocale(locale, draft.locale),
+            ),
           },
         };
       }
       const step = decision.action === 'resume' ? decision.step : 2;
-      redirect(`/wizard/${draft.id}/${step}`);
+      return await redirectLocalized(`/wizard/${draft.id}/${step}`, pickLocale(locale, draft.locale));
     }
   }
 
@@ -347,7 +357,7 @@ export async function openGuestDraft(input: {
     return { error: t('errorStart') };
   }
 
-  redirect(`/wizard/${filingId}/${initialStep}`);
+  return await redirectLocalized(`/wizard/${filingId}/${initialStep}`, locale);
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────
@@ -361,6 +371,10 @@ const ClaimSchema = z.object({
     .regex(/[A-Z]/, 'Include at least one uppercase letter')
     .regex(/[0-9]/, 'Include at least one number'),
   filingId: z.string().optional(),
+  returnStep: z.preprocess(
+    (value) => (value === '' || value == null ? undefined : value),
+    z.coerce.number().int().min(1).max(TOTAL_STEPS).optional(),
+  ),
 });
 
 export interface ClaimResult {
@@ -369,6 +383,8 @@ export interface ClaimResult {
   message?: string;
   /** Wizard (or dashboard) path that still has this draft. */
   resumeHref?: string;
+  /** Same-origin sign-in URL when the email already has an account. */
+  signInHref?: string;
   signedIn?: boolean;
   fieldErrors?: Record<string, string>;
   /** The email belongs to an existing account. Sign in to attach the draft. */
@@ -389,6 +405,7 @@ export async function claimGuestAccount(
     email: formData.get('email'),
     password: formData.get('password'),
     filingId: (formData.get('filingId') as string) || undefined,
+    returnStep: formData.get('returnStep') || undefined,
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -415,14 +432,24 @@ export async function claimGuestAccount(
   if (newEmail !== guest.email) {
     const collision = await prisma.user.findUnique({ where: { email: newEmail } });
     if (collision && collision.id !== guest.id) {
+      const next = await draftResumeHref(guest.id, parsed.data.filingId, parsed.data.returnStep);
+      const signInLocale = next.startsWith('/es') ? 'es' : 'en';
       return {
         needsSignIn: true,
+        signInHref: hrefForLocale(
+          `/sign-in?email=${encodeURIComponent(newEmail)}&next=${encodeURIComponent(next)}`,
+          signInLocale,
+        ),
         error: 'That email already has an account. Sign in and we will attach this draft.',
       };
     }
   }
 
-  const resumeHref = await draftResumeHref(guest.id, parsed.data.filingId);
+  const resumeHref = await draftResumeHref(
+    guest.id,
+    parsed.data.filingId,
+    parsed.data.returnStep,
+  );
 
   // Set the password they chose, but stay a GUEST until sign-in succeeds.
   // Clearing the guest session first is what dropped people on /sign-in and
@@ -500,23 +527,33 @@ export async function claimGuestAccount(
   };
 }
 
-async function draftResumeHref(userId: string, filingId?: string): Promise<string> {
+async function draftResumeHref(
+  userId: string,
+  filingId?: string,
+  returnStep?: number,
+): Promise<string> {
+  const visibleStep =
+    returnStep && returnStep >= 1 && returnStep <= TOTAL_STEPS ? returnStep : null;
   if (filingId) {
     const owned = await prisma.filing.findFirst({
       where: { id: filingId, userId, status: 'DRAFT' },
-      select: { id: true, currentStep: true },
+      select: { id: true, currentStep: true, locale: true },
     });
     if (owned) {
-      const step = owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2;
-      return `/wizard/${owned.id}/${step}`;
+      const step =
+        visibleStep ?? (owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2);
+      return hrefForLocale(`/wizard/${owned.id}/${step}`, pickLocale(await storedLocale(), owned.locale));
     }
   }
   const draft = await prisma.filing.findFirst({
     where: { userId, status: 'DRAFT' },
     orderBy: { updatedAt: 'desc' },
-    select: { id: true, currentStep: true },
+    select: { id: true, currentStep: true, locale: true },
   });
-  if (!draft) return '/dashboard';
-  const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
-  return `/wizard/${draft.id}/${step}`;
+  if (!draft) {
+    return hrefForLocale('/dashboard', pickLocale(await storedLocale(), null));
+  }
+  const step =
+    visibleStep ?? (draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2);
+  return hrefForLocale(`/wizard/${draft.id}/${step}`, pickLocale(await storedLocale(), draft.locale));
 }

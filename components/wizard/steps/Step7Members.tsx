@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
+import { Link } from '@/i18n/navigation';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import {
@@ -176,7 +176,7 @@ export function Step7Members({
   const [showTitleHelp, setShowTitleHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   // OA entitlement drives whether ownership percentages are collected.
   const addOnSlugs = filing.filingAdditionalServices.map(

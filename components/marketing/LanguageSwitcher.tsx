@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Globe, Check } from 'lucide-react';
 import {
@@ -12,6 +13,7 @@ import {
 import { setLocaleAction } from '@/actions/locale';
 import { locales, localeNames, localeFlags, type Locale } from '@/i18n/config';
 import { pathForLocale } from '@/lib/locale-paths';
+import { isSpanishOnlyGuidePath } from '@/lib/spanish-guide-links';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -21,6 +23,8 @@ interface Props {
 
 export function LanguageSwitcher({ variant = 'icon', className }: Props) {
   const currentLocale = useLocale() as Locale;
+  const pathname = usePathname() ?? '';
+  const spanishOnly = isSpanishOnlyGuidePath(pathname);
   const [pending, start] = useTransition();
 
   const switchLocale = (locale: Locale) => {
@@ -61,17 +65,23 @@ export function LanguageSwitcher({ variant = 'icon', className }: Props) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[160px]">
-        {locales.map((locale) => (
-          <DropdownMenuItem
-            key={locale}
-            onClick={() => switchLocale(locale)}
-            className="cursor-pointer"
-          >
-            <span className="mr-2 text-base leading-none">{localeFlags[locale]}</span>
-            <span className="flex-1">{localeNames[locale]}</span>
-            {currentLocale === locale && <Check className="h-3.5 w-3.5 text-primary" />}
-          </DropdownMenuItem>
-        ))}
+        {locales.map((locale) => {
+          const blocked = spanishOnly && locale === 'en';
+          return (
+            <DropdownMenuItem
+              key={locale}
+              onClick={() => {
+                if (!blocked) switchLocale(locale);
+              }}
+              disabled={blocked}
+              className={blocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
+            >
+              <span className="mr-2 text-base leading-none">{localeFlags[locale]}</span>
+              <span className="flex-1">{blocked ? 'Solo en español' : localeNames[locale]}</span>
+              {currentLocale === locale && !blocked && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

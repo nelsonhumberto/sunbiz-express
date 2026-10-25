@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, X, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -89,6 +89,7 @@ export function WizardShell({
                 email={guestEmail}
                 label={t('saveAndExit')}
                 filingId={filingId}
+                returnStep={step}
               />
             ) : (
               <Link

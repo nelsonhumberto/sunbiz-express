@@ -1,5 +1,5 @@
 import nextDynamic from 'next/dynamic';
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getWizardFiling } from '@/actions/wizard';
@@ -53,17 +53,25 @@ interface PageProps {
 
 export default async function WizardStepPage({ params }: PageProps) {
   const stepNum = parseInt(params.step, 10);
-  if (isNaN(stepNum) || stepNum < 1) redirect(`/wizard/${params.filingId}/1`);
+  const filingLocale = (
+    await prisma.filing.findUnique({
+      where: { id: params.filingId },
+      select: { locale: true },
+    })
+  )?.locale;
+  if (isNaN(stepNum) || stepNum < 1) {
+    return await redirectLocalized(`/wizard/${params.filingId}/1`, filingLocale);
+  }
 
   if (stepNum > TOTAL_STEPS) {
-    redirect(`/wizard/${params.filingId}/${TOTAL_STEPS}`);
+    return await redirectLocalized(`/wizard/${params.filingId}/${TOTAL_STEPS}`, filingLocale);
   }
 
   const filing = await getWizardFiling(params.filingId);
   if (filing.status !== 'DRAFT') {
     // Submitted filings always go to the dashboard. Guests get sent through
     // sign-in first since the dashboard is account-only.
-    redirect(`/dashboard/filings/${filing.id}`);
+    return await redirectLocalized(`/dashboard/filings/${filing.id}`, filing.locale);
   }
 
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's
@@ -85,7 +93,9 @@ export default async function WizardStepPage({ params }: PageProps) {
     else if (!(ra?.useOurService === true || (ra?.name?.trim() && ra?.street1?.trim()))) gotoStep = 6;
     else if (peopleCount < 1) gotoStep = 7;
     else if (!filing.incorporatorSignature?.trim()) gotoStep = 9;
-    if (gotoStep) redirect(`/wizard/${filing.id}/${gotoStep}?incomplete=1`);
+    if (gotoStep) {
+      return await redirectLocalized(`/wizard/${filing.id}/${gotoStep}?incomplete=1`, filing.locale);
+    }
   }
 
   const addOnSlugs = filing.filingAdditionalServices.map(
@@ -200,6 +210,7 @@ export default async function WizardStepPage({ params }: PageProps) {
           firstName={actor.firstName}
           email={realGuestEmail}
           filingId={filing.id}
+          returnStep={stepNum}
         />
       )}
     </>

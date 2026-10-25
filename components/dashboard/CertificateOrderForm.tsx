@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { CreditCard, Loader2, ShieldCheck } from 'lucide-react';
@@ -34,10 +34,11 @@ export function CertificateOrderForm(props: {
   stateFeeCents: number;
   totalCents: number;
   savedCard: CertificateSavedCard | null;
+  filingLocale?: string | null;
 }) {
   const t = useTranslations('certificates');
   const tCard = useTranslations('dashboard');
-  const router = useRouter();
+  const router = useLocalizedRouter(props.filingLocale);
 
   const hasSaved = !!props.savedCard;
   const [useSavedCard, setUseSavedCard] = useState(hasSaved);

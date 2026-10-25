@@ -17,6 +17,7 @@ import {
   User,
 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { adminAddOnLabel } from '@/lib/certificate-addons';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -523,7 +524,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 return (
                   <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-4">
                     Certificate order waiting on the state PDF:{' '}
-                    {waiting.map((fas) => fas.service.serviceName).join(', ')}. Upload it below.
+                    {waiting.map((fas) => adminAddOnLabel(fas.service.serviceSlug, fas.service.serviceName)).join(', ')}. Upload it below.
                   </p>
                 );
               })()}
@@ -761,7 +762,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <ul className="space-y-1 text-sm">
                   {filing.filingAdditionalServices.map((fas) => (
                     <li key={fas.id} className="flex justify-between">
-                      <span>{fas.service.serviceName}</span>
+                      <span>{adminAddOnLabel(fas.service.serviceSlug, fas.service.serviceName)}</span>
                       <span className="font-mono text-xs text-ink-muted">
                         {formatCurrency(fas.priceCents, { showZero: true })}
                       </span>

@@ -1,6 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
+import { storedLocale } from '@/lib/stored-locale';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -310,7 +313,9 @@ export async function processCheckout(input: {
   // a temporary password and route them through /sign-in so they can land
   // on the dashboard with a real session. The checkout-success page lives
   // behind auth so this also bridges them into the account-only area.
-  let postCheckoutRedirect = `/checkout/success?filing=${filing.id}`;
+  const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
+  const successPath = hrefForLocale(`/checkout/success?filing=${filing.id}`, checkoutLocale);
+  let postCheckoutRedirect = successPath;
   if (actor.kind === 'guest' && actor.email) {
     try {
       const guestRow = await prisma.user.findUnique({
@@ -357,16 +362,19 @@ export async function processCheckout(input: {
             password: tempPassword,
             redirect: false,
           });
-          postCheckoutRedirect = `/checkout/success?filing=${filing.id}`;
+          postCheckoutRedirect = successPath;
         } catch (signInErr) {
           logger.error('post-checkout auto sign-in failed', {
             area: 'checkout',
             entityId: actor.id,
             tag: 'guest-auto-signin',
           }, signInErr);
-          const next = encodeURIComponent(`/checkout/success?filing=${filing.id}`);
+          const next = encodeURIComponent(successPath);
           const email = encodeURIComponent(guestRow.email);
-          postCheckoutRedirect = `/sign-in?claimed=1&email=${email}&next=${next}`;
+          postCheckoutRedirect = hrefForLocale(
+            `/sign-in?claimed=1&email=${email}&next=${next}`,
+            checkoutLocale,
+          );
         }
       }
     } catch (err) {

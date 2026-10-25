@@ -11,6 +11,7 @@
  * is always the notification type on these rows.
  */
 import { prisma } from './db';
+import { EMAIL_STATUS_SKIPPED_TEST } from './email-status';
 
 export const RESUME_DRIP_BATCH_SIZE = 50;
 export const RESUME_DRIP_MAX_ATTEMPTS = 3;
@@ -51,7 +52,9 @@ export function resumeSendBlocksAnotherAttempt(
   row: Pick<ResumeClaimRow, 'status' | 'attemptCount' | 'claimedAt' | 'createdAt'>,
   nowMs: number,
 ): boolean {
-  if (row.status === 'SENT' || row.status === 'BOUNCED') return true;
+  if (row.status === 'SENT' || row.status === 'BOUNCED' || row.status === EMAIL_STATUS_SKIPPED_TEST) {
+    return true;
+  }
   if (row.attemptCount >= RESUME_DRIP_MAX_ATTEMPTS) return true;
   if (row.status === 'FAILED') return false;
   if (row.status === 'PENDING' || row.status === 'QUEUED') return !claimIsStale(row, nowMs);

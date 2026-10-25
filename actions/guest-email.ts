@@ -15,7 +15,9 @@ import {
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
 import { guestResumeUrl } from '@/lib/draft-recovery';
+import { hrefForLocale } from '@/lib/app-href';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
+import { pickLocale } from '@/lib/pick-locale';
 import { safeParseJson } from '@/lib/utils';
 import { storedLocale } from '@/lib/stored-locale';
 import { cookies } from 'next/headers';
@@ -26,6 +28,11 @@ export interface GuestEmailResult {
   needsSignIn?: boolean;
   sent?: boolean;
   ownerId?: string;
+}
+
+async function guestCopy(filingLocale?: string | null) {
+  const locale = pickLocale(await storedLocale(), filingLocale);
+  return getTranslations({ locale, namespace: 'wizard' });
 }
 
 async function writeGuestEmailAside(
@@ -54,15 +61,15 @@ async function writeGuestEmailAside(
  * with this guest's own resume token. Nothing is revealed about the other row.
  */
 export async function saveGuestEmail(filingId: string, rawEmail: string): Promise<GuestEmailResult> {
-  const t = await getTranslations('wizard');
   const guest = await getGuestUser();
-  if (!guest) return { ok: false, error: t('errorSaveGeneric') };
-
-  const filing = await prisma.filing.findFirst({
-    where: { id: filingId, userId: guest.id, status: 'DRAFT' },
-    select: { id: true, optionalDetails: true },
-  });
-  if (!filing) return { ok: false, error: t('errorSaveGeneric') };
+  const filing = guest
+    ? await prisma.filing.findFirst({
+        where: { id: filingId, userId: guest.id, status: 'DRAFT' },
+        select: { id: true, optionalDetails: true, locale: true },
+      })
+    : null;
+  const t = await guestCopy(filing?.locale);
+  if (!guest || !filing) return { ok: false, error: t('errorSaveGeneric') };
 
   const normalized = normalizeEmail(rawEmail);
   if (!isDeliverableEmail(normalized) || isPlaceholderGuestEmail(normalized)) {
@@ -117,8 +124,12 @@ export async function sendGuestCheckoutLink(
   filingId: string,
   rawEmail: string,
 ): Promise<GuestEmailResult> {
-  const t = await getTranslations('wizard');
   const saved = await saveGuestEmail(filingId, rawEmail);
+  const filing = await prisma.filing.findFirst({
+    where: { id: filingId },
+    select: { locale: true },
+  });
+  const t = await guestCopy(filing?.locale);
   if (!saved.ok || saved.needsSignIn || !saved.ownerId) return saved;
 
   const typed = normalizeEmail(rawEmail);
@@ -130,13 +141,13 @@ export async function sendGuestCheckoutLink(
     return { ok: false, error: t('guestEmailInvalid') };
   }
 
-  const locale = await storedLocale();
+  const locale = pickLocale(await storedLocale(), filing?.locale);
   const ownsMailbox =
     !isPlaceholderGuestEmail(owner.email) && normalizeEmail(owner.email) === typed;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
   const resumeUrl =
     ownsMailbox
-      ? await createLoginLink(owner.id, `/wizard/${filingId}/11`)
+      ? await createLoginLink(owner.id, hrefForLocale(`/wizard/${filingId}/11`, locale))
       : owner.accountStatus === 'GUEST' && owner.guestToken
         ? guestResumeUrl(siteUrl, filingId, owner.guestToken)
         : null;

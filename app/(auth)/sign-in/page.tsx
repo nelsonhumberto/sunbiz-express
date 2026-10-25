@@ -1,9 +1,8 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { CheckCircle2, MailCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
-import { safeRedirectPath } from '@/lib/utils';
+import { localizedNextParam, redirectLocalized } from '@/lib/locale-redirect';
 import { SignInForm } from './sign-in-form';
 
 export const metadata = { title: 'Sign in' };
@@ -13,12 +12,13 @@ export default async function SignInPage({
 }: {
   searchParams: { reset?: string; claimed?: string; email?: string; next?: string; from?: string };
 }) {
-  const nextPath = safeRedirectPath(searchParams.next);
+  const nextPath = await localizedNextParam(searchParams.next);
   const session = await auth();
   if (session?.user) {
-    redirect(nextPath ?? '/dashboard');
+    return await redirectLocalized(nextPath ?? '/dashboard');
   }
   const t = await getTranslations('auth');
+  const signUpHref = nextPath ? `/sign-up?next=${encodeURIComponent(nextPath)}` : '/sign-up';
 
   const claimed = searchParams.claimed === '1';
   const claimedEmail = searchParams.email ?? '';
@@ -57,7 +57,7 @@ export default async function SignInPage({
         <h1 className="font-display text-3xl font-medium tracking-tight">{t('signInTitle')}</h1>
         <p className="text-sm text-ink-muted">
           {t('signInNew')}{' '}
-          <Link href="/sign-up" className="text-primary font-medium hover:underline">
+          <Link href={signUpHref} className="text-primary font-medium hover:underline">
             {t('signUpLink')}
           </Link>
           .

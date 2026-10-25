@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { Info, MapPin } from 'lucide-react';
 import { saveStep4 } from '@/actions/wizard';
@@ -33,7 +33,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   const [address, setAddress] = useState<AddressValue>(initial);
   const [showMissing, setShowMissing] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   const principalRequired = addressRules.principalAddressRequired;
   const filledOut =

@@ -15,7 +15,7 @@ import { utmToAnalyticsProps } from '@/lib/utm';
 
 const initial: ActionResult = {};
 
-export function SignUpForm() {
+export function SignUpForm({ nextHref = '' }: { nextHref?: string }) {
   const t = useTranslations('auth');
   const [state, formAction] = useFormState(signUpAction, initial);
   const [showPwd, setShowPwd] = useState(false);
@@ -30,6 +30,7 @@ export function SignUpForm() {
       }}
       className="space-y-4"
     >
+      {nextHref ? <input type="hidden" name="next" value={nextHref} /> : null}
       <div className="grid grid-cols-2 gap-3">
         <Field
           name="firstName"

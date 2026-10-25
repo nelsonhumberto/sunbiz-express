@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { Pencil, ShieldAlert } from 'lucide-react';
 import { saveStep10 } from '@/actions/wizard';
@@ -84,7 +84,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
   const [confirmed, setConfirmed] = useState(filing.confirmationAccepted);
   const [phone, setPhone] = useState(filing.contactPhone ?? correspondence?.phone ?? '');
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   const valid = signature.trim().length >= 2 && confirmed;
 

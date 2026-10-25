@@ -13,6 +13,16 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 // granted. Scripts use a nonce-less allowlist because Next.js inlines
 // hydration data — adopting nonces would require migrating to the edge
 // middleware-based nonce model which is tracked separately.
+//
+// A console may report an eval violation from `_next/static/chunks/7770-*.js`
+// on home, pricing, and checkout. That filename is a webpack chunk id, so it
+// changes every build. In a production `next build` the shared chunk on those
+// three routes is posthog-js (session replay included). The shipped bundle
+// and posthog-js's recorder files do not call eval or new Function. The word
+// "eval" only appears in stack-trace parsing. Dev compiles the same chunk
+// with eval source maps, which the browser reports and which are not in the
+// production output. Page render, checkout, and navigation do not need
+// 'unsafe-eval'. Do not add it.
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",

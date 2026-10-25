@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import {
   ShieldCheck,
@@ -72,7 +72,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const [showRAHelp, setShowRAHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   const externalValid =
     !useOurService &&

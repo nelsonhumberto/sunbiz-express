@@ -8,6 +8,7 @@ import {
   isActiveFormationState,
   type StateCode,
 } from './formation-states';
+import { type SiteLocale } from './pick-locale';
 import {
   addOnPriceParts,
   tierBundledAddOns,
@@ -35,8 +36,36 @@ export function isCertificateAddOnSlug(value: string | null | undefined): value 
   return value === 'cert_status' || value === 'cert_copy';
 }
 
-export function certificateOrderPath(filingId: string, slug: CertificateAddOnSlug): string {
-  return `/dashboard/filings/${filingId}/certificates/${slug}`;
+/**
+ * Dashboard path for a certificate order. Pass `es` when the link or
+ * redirect must stay on the Spanish site. The default is the unprefixed
+ * path so next-intl Link can add the locale once.
+ */
+export function certificateOrderPath(
+  filingId: string,
+  slug: CertificateAddOnSlug,
+  locale: SiteLocale = 'en',
+): string {
+  const path = `/dashboard/filings/${filingId}/certificates/${slug}`;
+  return locale === 'es' ? `/es${path}` : path;
+}
+
+/** Customer-facing title. Stored document titles stay in English. */
+export function displayedCertificateTitle(
+  documentType: string,
+  storedTitle: string,
+  titles: { CERT_STATUS?: string; CERT_COPY?: string },
+): string {
+  if (documentType === 'CERT_STATUS' && titles.CERT_STATUS) return titles.CERT_STATUS;
+  if (documentType === 'CERT_COPY' && titles.CERT_COPY) return titles.CERT_COPY;
+  return storedTitle;
+}
+
+/** Admin list label. Existing rows may still store the older "Handling" name. */
+export function adminAddOnLabel(slug: string | null | undefined, storedName: string): string {
+  if (slug === 'cert_status') return 'Certificate of Status';
+  if (slug === 'cert_copy') return 'Certified Copy';
+  return storedName;
 }
 
 export function asTierSlug(tier: string | null | undefined): TierSlug {

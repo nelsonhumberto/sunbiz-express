@@ -1,7 +1,9 @@
 'use client';
 
+import { Link } from '@/i18n/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import {
@@ -19,7 +21,6 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
 import { useWizardSubmit } from '../useWizardSubmit';
@@ -89,7 +90,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const [selected, setSelected] = useState<Set<string>>(initialSelected);
   const { pending, error, run } = useWizardSubmit();
   const [upgrading, startUpgrade] = useTransition();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const searchParams = useSearchParams();
   const { setAddOnsPreview } = useWizardCostPreview();
 

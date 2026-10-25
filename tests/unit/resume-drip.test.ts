@@ -525,6 +525,7 @@ describe('resume drip claim and batch', () => {
     expect(planResumeClaim(null, now)).toBe('insert');
     expect(planResumeClaim(row({ status: 'SENT' }), now)).toBe('skip');
     expect(planResumeClaim(row({ status: 'BOUNCED' }), now)).toBe('skip');
+    expect(planResumeClaim(row({ status: 'SKIPPED_TEST' }), now)).toBe('skip');
     expect(planResumeClaim(row({ status: 'PENDING', claimedAt: new Date(now - 60_000) }), now)).toBe('skip');
     expect(planResumeClaim(row({ status: 'QUEUED', claimedAt: new Date(now - 60_000) }), now)).toBe('skip');
     expect(isUniqueConflict({ code: 'P2002' })).toBe(true);

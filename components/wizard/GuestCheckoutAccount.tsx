@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { Loader2, Mail } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
 import { claimGuestAccount } from '@/actions/guest-start';
 import { saveGuestEmail, sendGuestCheckoutLink } from '@/actions/guest-email';
 import { Button } from '@/components/ui/button';
@@ -24,12 +26,15 @@ export function GuestCheckoutAccount({
   filingId,
   email,
   pendingAccountEmail,
+  filingLocale,
 }: {
   filingId: string;
   email: string;
   pendingAccountEmail?: string;
+  filingLocale?: string | null;
 }) {
   const t = useTranslations('wizard');
+  const locale = pickLocale(useLocale(), filingLocale);
   const [address, setAddress] = useState(email || pendingAccountEmail || '');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
@@ -37,9 +42,13 @@ export function GuestCheckoutAccount({
   const [sent, setSent] = useState(false);
   const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail) && !email);
 
-  const signInHref = `/sign-in?next=${encodeURIComponent(`/wizard/${filingId}/11`)}${
-    address.trim() ? `&email=${encodeURIComponent(address.trim())}` : ''
-  }`;
+  const wizardReturn = hrefForLocale(`/wizard/${filingId}/11`, locale);
+  const signInHref = hrefForLocale(
+    `/sign-in?next=${encodeURIComponent(wizardReturn)}${
+      address.trim() ? `&email=${encodeURIComponent(address.trim())}` : ''
+    }`,
+    locale,
+  );
 
   async function onPassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,6 +80,7 @@ export function GuestCheckoutAccount({
       fd.set('email', address.trim());
       fd.set('password', password);
       fd.set('filingId', filingId);
+      fd.set('returnStep', '11');
       const claimed = await withActionTimeout(claimGuestAccount({}, fd), WIZARD_ACTION_TIMEOUT_MS);
       if (claimed.needsSignIn) {
         setNeedsSignIn(true);
@@ -83,7 +93,7 @@ export function GuestCheckoutAccount({
         setPending(false);
         return;
       }
-      window.location.assign(claimed.resumeHref || `/wizard/${filingId}/11`);
+      window.location.assign(claimed.resumeHref || wizardReturn);
     } catch (err) {
       const href = redirectHrefFromError(err);
       if (href) {

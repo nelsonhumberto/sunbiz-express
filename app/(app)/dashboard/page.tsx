@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { getPathname } from '@/i18n/navigation';
+import { pickLocale } from '@/lib/pick-locale';
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import {
   ArrowRight,
   Building2,
@@ -91,17 +94,18 @@ export default async function DashboardPage() {
     ? safeParseJson<number[]>(latestDraft.completedSteps, []).length
     : 0;
 
-  const h = new Date().getHours();
-  const greet = h < 12 ? t('greetMorning') : h < 18 ? t('greetAfternoon') : t('greetEvening');
+  const firstName = session.user.name?.split(' ')[0]?.trim() ?? '';
 
   return (
     <div className="container max-w-6xl py-10 space-y-10">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <p className="text-sm text-ink-subtle">
-            {greet},{' '}
-            <span className="text-ink font-medium">{session.user.name?.split(' ')[0]}</span>
-          </p>
+          <DashboardGreeting
+            name={firstName}
+            morning={t('greetMorning')}
+            afternoon={t('greetAfternoon')}
+            evening={t('greetEvening')}
+          />
           <h1 className="font-display text-4xl font-medium tracking-tight mt-1">{t('title')}</h1>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -150,7 +154,7 @@ export default async function DashboardPage() {
               <div className="flex items-center gap-3 shrink-0">
                 <ArchiveDraftButton filingId={latestDraft.id} iconOnly />
                 <Link
-                  href={`/wizard/${latestDraft.id}/${latestDraft.currentStep ?? 1}`}
+                  href={await wizardHref(latestDraft, latestDraft.currentStep ?? 1)}
                   className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors"
                 >
                   {t('resumeFiling')}
@@ -306,8 +310,17 @@ async function EmptyState({ filingState }: { filingState: string }) {
   );
 }
 
+async function wizardHref(
+  filing: { id: string; locale?: string | null },
+  step: number,
+): Promise<string> {
+  const locale = pickLocale(await getLocale(), filing.locale);
+  return getPathname({ href: `/wizard/${filing.id}/${step}`, locale });
+}
+
 async function DraftCard({ filing }: { filing: any }) {
   const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const completedSteps = safeParseJson<number[]>(filing.completedSteps, []);
   const visibleCompleted = Math.min(completedSteps.length, TOTAL_DISPLAYED_STEPS);
   const progress = (visibleCompleted / TOTAL_DISPLAYED_STEPS) * 100;
@@ -341,12 +354,12 @@ async function DraftCard({ filing }: { filing: any }) {
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-ink-subtle">
-            {t('lastUpdated', { time: formatRelative(filing.updatedAt) })}
+            {t('lastUpdated', { time: formatRelative(filing.updatedAt, locale) })}
           </span>
           <div className="flex items-center gap-1">
             <ArchiveDraftButton filingId={filing.id} iconOnly />
             <Link
-              href={`/wizard/${filing.id}/${stepRoute}`}
+              href={await wizardHref(filing, stepRoute)}
               className="inline-flex items-center gap-1.5 text-sm font-semibold bg-primary text-white px-3 py-1.5 rounded-md hover:bg-primary-hover transition-colors"
             >
               {t('continueBtn')}

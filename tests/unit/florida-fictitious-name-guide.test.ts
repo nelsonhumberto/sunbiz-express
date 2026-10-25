@@ -74,7 +74,7 @@ describe('Florida fictitious name guide', () => {
     expect(formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'))).toBe('$149');
     expect(formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', 'FL'))).toBe('$279');
     expect(page).toContain(
-      'Packages start at $149 plus state fees, and the Popular package ($279) includes a custom Operating Agreement.',
+      'LaunchForma is an online formation service for Florida businesses run by a husband and wife team, helping business owners since 2015. Florida LLC packages start at $149 with the state filing fee included, and the Popular package ($279) includes a custom Operating Agreement.',
     );
   });
 

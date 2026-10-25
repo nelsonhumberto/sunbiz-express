@@ -15,15 +15,14 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
-  ANNUAL_REPORT_SERVICE_FEE_CENTS,
   computeCost,
-  getFloridaAnnualReportStateFees,
-  RA_ANNUAL_SERVICE_FEE_CENTS,
+  floridaEasternYear,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
@@ -38,7 +37,6 @@ import {
 } from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
-  annualComplianceFor,
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
@@ -62,6 +60,7 @@ import {
 } from '@/lib/payment-intent-errors';
 import { resolveRequestLocale } from '@/lib/request-locale';
 import { AnnualReportDraftSchema } from '@/lib/annual-report-draft';
+import { z } from 'zod';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -102,6 +101,25 @@ function asStateCode(input: string | null | undefined): StateCode {
   return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
 }
 
+const GuestAnnualReportChargeSchema = z.object({
+  entityType: z.enum(['LLC', 'CORP'], {
+    errorMap: () => ({ message: 'Choose LLC or corporation.' }),
+  }),
+  useOurRa: z.boolean({
+    errorMap: () => ({ message: 'Choose whether to add registered agent service.' }),
+  }),
+  paymentIntentId: z.string().trim().min(1).optional(),
+  guestAttemptId: z.string().trim().min(8).max(80).optional(),
+});
+
+/**
+ * Guest annual report checkout is flagged on the URL so a logged-out formation
+ * request still returns 401 before the body is read.
+ */
+function isGuestAnnualReportCheckout(request: NextRequest): boolean {
+  return request.nextUrl?.searchParams?.get('purpose') === 'guest_annual_report';
+}
+
 interface PaymentBody {
   filingId?: string;
   posthogDistinctId?: string;
@@ -133,6 +151,11 @@ export async function POST(request: NextRequest) {
 
   const session = await auth();
   const userId = session?.user?.id;
+
+  if (isGuestAnnualReportCheckout(request)) {
+    return createGuestAnnualReportPaymentIntent(request, userId);
+  }
+
   if (!userId) {
     const guest = await getGuestUser();
     if (!guest) {
@@ -372,6 +395,106 @@ async function createGuestFormationPaymentIntent(
   });
 }
 
+/**
+ * Public Florida annual report PaymentIntent. The amount is quoteAnnualReport
+ * for the Eastern year. Client amount, late fee, and year are ignored.
+ * An open or succeeded guest PaymentIntent is reused. The card is not refunded here.
+ */
+async function createGuestAnnualReportPaymentIntent(
+  request: NextRequest,
+  userId: string | undefined,
+) {
+  const guestLimit = rateLimit(`guest-annual-report:${clientIp()}`, 10, 60 * 1000);
+  if (!guestLimit.ok) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a moment.' },
+      { status: 429 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Check the form and try again.' }, { status: 400 });
+  }
+
+  const parsed = GuestAnnualReportChargeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' },
+      { status: 400 },
+    );
+  }
+
+  const now = new Date();
+  const reportYear = floridaEasternYear(now);
+  const quote = quoteAnnualReport(
+    'FL',
+    parsed.data.entityType,
+    parsed.data.useOurRa,
+    reportYear,
+    now,
+  );
+  const stripe = getStripe();
+  const metadata: Stripe.MetadataParam = {
+    purpose: 'guest_annual_report',
+    entityType: parsed.data.entityType,
+    useOurRa: parsed.data.useOurRa ? 'true' : 'false',
+    reportYear: String(reportYear),
+    ...(userId ? { userId } : {}),
+  };
+
+  if (parsed.data.paymentIntentId) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(parsed.data.paymentIntentId);
+      if (existing.metadata?.purpose !== 'guest_annual_report') {
+        return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
+      }
+      if (existing.status === 'succeeded') {
+        return NextResponse.json({
+          clientSecret: existing.client_secret,
+          paymentIntentId: existing.id,
+          alreadySucceeded: true,
+        });
+      }
+      if (isReusablePaymentIntentStatus(existing.status)) {
+        const paymentIntent =
+          existing.amount === quote.totalCents
+            ? existing
+            : await stripe.paymentIntents.update(existing.id, {
+                amount: quote.totalCents,
+                metadata,
+              });
+        return NextResponse.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+        });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
+    }
+  }
+
+  const attemptId = parsed.data.guestAttemptId?.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  const idempotencyKey = attemptId
+    ? `guest_ar_${attemptId}_amt_${quote.totalCents}`.slice(0, 255)
+    : undefined;
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: quote.totalCents,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      metadata,
+    },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
 async function rememberCheckoutEmail(
   filingId: string,
   existing: string | null,
@@ -501,14 +624,16 @@ async function priceOwnedCharge(input: {
     }
     const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
     const rule = getFormationState(filing.state);
-    const raFee = draft.data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
     // The report year comes from the database. A client year cannot skip the fee.
-    const stateFeeCents =
-      rule.code === 'FL'
-        ? getFloridaAnnualReportStateFees(report.reportYear, new Date(), { entityType }).totalCents
-        : annualComplianceFor(rule, entityType).baseFeeCents;
+    const quote = quoteAnnualReport(
+      rule.code,
+      entityType,
+      draft.data.useOurRa,
+      report.reportYear,
+      new Date(),
+    );
     return {
-      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFeeCents + raFee,
+      amountCents: quote.totalCents,
       filingId: filing.id,
       purpose: 'annual_report',
       storedPaymentIntentId: null,

@@ -8,17 +8,9 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
-import {
-  ANNUAL_REPORT_SERVICE_FEE_CENTS,
-  getFloridaAnnualReportStateFees,
-  RA_ANNUAL_SERVICE_FEE_CENTS,
-} from '@/lib/pricing';
-import {
-  ACTIVE_FORMATION_STATES,
-  annualComplianceFor,
-  getFormationState,
-  type StateCode,
-} from '@/lib/formation-states';
+import { ANNUAL_REPORT_SERVICE_FEE_CENTS, floridaEasternYear } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   searchSunbiz,
@@ -50,7 +42,6 @@ const GuestSubmitSchema = SubmitFields.omit({ filingId: true, annualReportId: tr
     guestEmail: z.string().email(),
     companyName: z.string().min(1),
     entityType: z.enum(['LLC', 'CORP']),
-    reportYear: z.number().int(),
   })
   .superRefine(refineAnnualReportDraft);
 
@@ -67,36 +58,6 @@ async function resolveUserId(
     select: { id: true },
   });
   return byEmail?.id ?? null;
-}
-
-/**
- * Server quote for an annual-report checkout. Florida adds the $400 late
- * fee from getFloridaAnnualReportStateFees. Other states keep their base fee.
- * The late fee is stored on the order and included in the payment's state fee.
- */
-function quoteAnnualReport(
-  stateCode: StateCode,
-  entityType: 'LLC' | 'CORP',
-  useOurRa: boolean,
-  reportYear: number,
-  now: Date = new Date(),
-) {
-  const raFee = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const base = annualComplianceFor(getFormationState(stateCode), entityType);
-  const florida =
-    stateCode === 'FL'
-      ? getFloridaAnnualReportStateFees(reportYear, now, { entityType })
-      : null;
-  const filingFeeCents = florida ? florida.filingFeeCents : base.baseFeeCents;
-  const lateFeeCents = florida ? florida.lateFeeCents : 0;
-  const stateFilingFeeCents = filingFeeCents + lateFeeCents;
-  return {
-    filingFeeCents,
-    lateFeeCents,
-    stateFilingFeeCents,
-    raFee,
-    totalCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents + raFee,
-  };
 }
 
 const RETRY_AFTER_CHARGE =
@@ -224,6 +185,10 @@ export async function submitAnnualReport(input: unknown) {
     annualReport.reportYear,
   );
   if (Math.abs(pi.amount - quote.totalCents) > 1) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. Server quote is ${quote.totalCents} cents. No refund was issued.`,
+      data.filingId,
+    );
     return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
   }
 
@@ -433,14 +398,28 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // Guest annual reports are Florida-only (Sunbiz lookup). The server quote
-  // includes the $400 late fee after May 1 so the client cannot skip it.
-  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa, data.reportYear);
+  // Guest annual reports are Florida-only. The year is the Eastern calendar
+  // year on the server. A client reportYear, late fee, or amount is ignored.
+  const now = new Date();
+  const reportYear = floridaEasternYear(now);
+  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa, reportYear, now);
   const email = data.guestEmail.toLowerCase().trim();
 
-  // Verify Stripe amount matches our expected total (±1 cent for rounding)
+  // Verify Stripe amount matches our expected total (±1 cent for rounding).
+  // A mismatch after a successful charge is reported. The card is not refunded.
   if (Math.abs(pi.amount - quote.totalCents) > 1) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. Server quote is ${quote.totalCents} cents. No refund was issued.`,
+    );
     return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
+  }
+
+  const existingPayment = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: pi.id },
+    select: { filingId: true },
+  });
+  if (existingPayment) {
+    return { ok: true as const, filingId: existingPayment.filingId };
   }
 
   try {
@@ -511,8 +490,8 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       const ar = await tx.annualReport.create({
         data: {
           filingId: filing.id,
-          reportYear: data.reportYear,
-          dueDate: new Date(`${data.reportYear}-05-01T23:59:00`),
+          reportYear,
+          dueDate: new Date(`${reportYear}-05-01T23:59:00`),
           status: 'FILED',
           filedDate: new Date(),
           filingFeeCents: quote.filingFeeCents,

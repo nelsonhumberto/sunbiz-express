@@ -819,7 +819,7 @@ const TEMPLATES: Record<
     subject: 'Annual report charged but not saved',
     body: html`
       <h1>Annual report charge needs a save</h1>
-      <p>A customer was charged for an annual report, and the filing did not finish saving. Ask them to submit the same page again. The retry uses the same payment and does not charge the card again.</p>
+      <p>A customer was charged for an annual report, and the filing was not saved. If the charged amount matches the quote, ask them to submit the same page again. That retry uses the same payment and does not charge the card again. If the amounts differ, do not refund the card from this alert.</p>
       <p>${escapeHtml(ctx.unsavedChargeDetail?.trim() || 'No extra detail was recorded.')}</p>
     `,
   }),

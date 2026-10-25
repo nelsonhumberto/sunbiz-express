@@ -153,14 +153,15 @@ describe('Florida annual report late fee', () => {
     expect(serverTotal(2026, MAY_1_1159_PM_ET, 'CORP')).toBe(8_000 + 15_000);
 
     const files = [
-      'app/api/stripe/payment-intent/route.ts',
-      'actions/annual-report.ts',
+      'lib/annual-report-quote.ts',
       'components/dashboard/AnnualReportForm.tsx',
-      'components/marketing/GuestAnnualReportForm.tsx',
     ];
     for (const file of files) {
       expect(readFileSync(file, 'utf8')).toContain('getFloridaAnnualReportStateFees');
     }
+    expect(readFileSync('lib/annual-report-quote.ts', 'utf8')).toContain(
+      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents',
+    );
     expect(readFileSync('components/dashboard/AnnualReportForm.tsx', 'utf8')).toContain(
       'getFloridaAnnualReportStateFees(props.reportYear',
     );
@@ -168,23 +169,21 @@ describe('Florida annual report late fee', () => {
       'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents',
     );
     expect(readFileSync('components/marketing/GuestAnnualReportForm.tsx', 'utf8')).toContain(
-      'floridaEasternYear',
+      "quoteAnnualReport('FL', entityType, useOurRa, reportYear, now)",
     );
     expect(readFileSync('components/marketing/GuestAnnualReportForm.tsx', 'utf8')).toContain(
-      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents',
+      'quote.totalCents',
     );
     expect(readFileSync('app/api/stripe/payment-intent/route.ts', 'utf8')).toContain(
-      'getFloridaAnnualReportStateFees(report.reportYear',
+      'quoteAnnualReport(',
     );
     expect(readFileSync('app/api/stripe/payment-intent/route.ts', 'utf8')).toContain(
-      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFeeCents',
+      'report.reportYear',
     );
     expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain(
-      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents',
+      "quoteAnnualReport('FL', data.entityType, data.useOurRa, reportYear, now)",
     );
-    expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain(
-      "quoteAnnualReport('FL', data.entityType, data.useOurRa, data.reportYear)",
-    );
+    expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain('floridaEasternYear(now)');
 
     const en = JSON.parse(readFileSync('messages/en.json', 'utf8')) as {
       annualReport: { lateFee: string };

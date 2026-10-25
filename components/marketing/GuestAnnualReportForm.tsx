@@ -18,9 +18,9 @@ import { formatCurrency } from '@/lib/utils';
 import {
   ANNUAL_REPORT_SERVICE_FEE_CENTS,
   floridaEasternYear,
-  getFloridaAnnualReportStateFees,
   RA_ANNUAL_SERVICE_FEE_CENTS,
 } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
 
 type Address = { street1: string; street2?: string; city: string; state: string; zip: string };
 type Officer = { name: string; title: string };
@@ -168,12 +168,11 @@ export function GuestAnnualReportForm() {
   // Stripe
   const cardRef = useRef<StripeCardHandle>(null);
 
-  // Same helper the server action uses, for the Eastern year being sold.
+  // Same quote the payment route and the save action use.
   const now = new Date();
   const reportYear = floridaEasternYear(now);
-  const stateFees = getFloridaAnnualReportStateFees(reportYear, now, { entityType });
-  const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents + raAddon;
+  const quote = quoteAnnualReport('FL', entityType, useOurRa, reportYear, now);
+  const totalCents = quote.totalCents;
 
   const onSubmit = () => {
     if (!signingOfficer) { toast.error(t('selectOfficer')); return; }
@@ -182,21 +181,56 @@ export function GuestAnnualReportForm() {
     if (!cardholderName.trim()) { toast.error(t('cardholderRequired')); return; }
 
     startSubmit(async () => {
-      // 1. Confirm payment with Stripe client-side
+      const doc = docNumber.trim();
+      const attemptKey = `guest-ar-attempt:${doc}`;
+      const piKey = `guest-ar-pi:${doc}`;
+      let guestAttemptId: string | null = null;
+      let openPaymentIntentId: string | null = null;
+      try {
+        guestAttemptId = sessionStorage.getItem(attemptKey);
+        if (!guestAttemptId) {
+          guestAttemptId = crypto.randomUUID();
+          sessionStorage.setItem(attemptKey, guestAttemptId);
+        }
+        openPaymentIntentId = sessionStorage.getItem(piKey);
+      } catch {
+        guestAttemptId = guestAttemptId ?? crypto.randomUUID();
+      }
+
       const stripeResult = await cardRef.current!.confirm({
         amountCents: totalCents,
         cardholderName,
-        metadata: { documentNumber: docNumber.trim(), guestEmail },
+        purpose: 'guest_annual_report',
+        entityType,
+        useOurRa,
+        guestAttemptId: guestAttemptId ?? undefined,
+        paymentIntentId: openPaymentIntentId ?? undefined,
+        onPaymentIntent: (id) => {
+          try {
+            sessionStorage.setItem(piKey, id);
+          } catch {
+            // The server still reuses this attempt id for the same amount.
+          }
+        },
+        metadata: { documentNumber: doc, guestEmail },
       });
-      if ('error' in stripeResult) { toast.error(stripeResult.error); return; }
+      if ('error' in stripeResult) {
+        if (stripeResult.paymentIntentId) {
+          try {
+            sessionStorage.setItem(piKey, stripeResult.paymentIntentId);
+          } catch {
+            // A later click can still reuse the attempt id.
+          }
+        }
+        toast.error(stripeResult.error);
+        return;
+      }
 
-      // 2. Record everything server-side
       const res = await submitGuestAnnualReport({
-        documentNumber: docNumber.trim(),
+        documentNumber: doc,
         guestEmail,
         companyName: detail!.corporation_name,
         entityType,
-        reportYear,
         ein: detail?.fei_number ?? undefined,
         registeredAgentName: raName,
         registeredAgentAddress: raAddr,
@@ -210,6 +244,11 @@ export function GuestAnnualReportForm() {
       });
 
       if (!res.ok) { toast.error(res.error); return; }
+      try {
+        sessionStorage.removeItem(piKey);
+      } catch {
+        // The filing is saved. A leftover id is ignored once the payment exists.
+      }
       setDone(true);
     });
   };
@@ -463,11 +502,11 @@ export function GuestAnnualReportForm() {
           {/* Price breakdown */}
           <div className="rounded-md border border-border divide-y divide-border text-sm">
             <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('serviceFee')}</span><span>{formatCurrency(ANNUAL_REPORT_SERVICE_FEE_CENTS)}</span></div>
-            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(stateFees.filingFeeCents)}</span></div>
-            {stateFees.lateFeeCents > 0 && (
-              <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('lateFee')}</span><span>{formatCurrency(stateFees.lateFeeCents)}</span></div>
+            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(quote.filingFeeCents)}</span></div>
+            {quote.lateFeeCents > 0 && (
+              <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('lateFee')}</span><span>{formatCurrency(quote.lateFeeCents)}</span></div>
             )}
-            {useOurRa && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('raLine')}</span><span>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}</span></div>}
+            {quote.raFee > 0 && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('raLine')}</span><span>{formatCurrency(quote.raFee)}</span></div>}
             <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>{t('total')}</span><span>{formatCurrency(totalCents)}</span></div>
           </div>
           <div className="grid gap-3">

@@ -20,6 +20,14 @@ interface PageDef {
   hreflang?: boolean;
 }
 
+/**
+ * TODO(niche-pages-go-live): /llc-for/stylists-barbers and its Spanish pair
+ * /es/llc-para/estilistas-barberos stay out of sitemap.xml until copy review
+ * and QA. Remove the path from this set at go-live, then add a STATIC_PAGES
+ * entry with hreflang. Do not list them before then.
+ */
+const SITEMAP_EXCLUDED_UNTIL_GO_LIVE = new Set<string>(['/llc-for/stylists-barbers']);
+
 const STATIC_PAGES: PageDef[] = [
   { path: '/', file: 'app/(marketing)/page.tsx', changeFrequency: 'weekly', priority: 1.0 },
   { path: '/start', file: 'app/start/page.tsx', changeFrequency: 'monthly', priority: 0.7 },
@@ -168,7 +176,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   const pages = [...STATIC_PAGES, ...statePages].filter(
-    (page) => retiredStateDestination(page.path) == null,
+    (page) =>
+      retiredStateDestination(page.path) == null && !SITEMAP_EXCLUDED_UNTIL_GO_LIVE.has(page.path),
   );
   return [
     ...pages.filter((page) => !page.spanishOnly).map((page) => toEntry(page, false)),

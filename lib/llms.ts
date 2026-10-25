@@ -91,8 +91,22 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Reembolsos (borrador)', path: '/es/refund-policy', note: 'Traducción en borrador. La versión en inglés es la que rige: /refund-policy.' },
 ];
 
+/**
+ * TODO(niche-pages-go-live): add /llc-for/stylists-barbers and
+ * /es/llc-para/estilistas-barberos after copy review and QA. Filtered out
+ * until then so llms.txt does not list them early.
+ */
+const LLMS_EXCLUDED_UNTIL_GO_LIVE = new Set<string>([
+  '/llc-for/stylists-barbers',
+  '/es/llc-para/estilistas-barberos',
+]);
+
 function line(entry: LinkEntry): string {
   return `- [${entry.title}](${BASE_URL}${entry.path}): ${entry.note}`;
+}
+
+function published(entries: LinkEntry[]): string[] {
+  return entries.filter((entry) => !LLMS_EXCLUDED_UNTIL_GO_LIVE.has(entry.path)).map(line);
 }
 
 function stateLines(): string[] {
@@ -114,22 +128,22 @@ export function buildLlmsTxt(): string {
   parts.push(ABOUT);
   parts.push('');
   parts.push('## Core pages');
-  parts.push(...CORE_PAGES.map(line));
+  parts.push(...published(CORE_PAGES));
   parts.push('');
   parts.push('## Guides');
-  parts.push(...GUIDES.map(line));
+  parts.push(...published(GUIDES));
   parts.push('');
   parts.push('## States');
   parts.push(...stateLines());
   parts.push('');
   parts.push('## Legal');
-  parts.push(...LEGAL.map(line));
+  parts.push(...published(LEGAL));
   parts.push('');
   parts.push('## Español');
   parts.push(
     'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Los términos, el aviso legal y la política de reembolso en español siguen en borrador y rige la versión en inglés.',
   );
-  parts.push(...SPANISH_PAGES.map(line));
+  parts.push(...published(SPANISH_PAGES));
   parts.push('');
   parts.push('## Optional');
   parts.push(

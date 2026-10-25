@@ -50,7 +50,19 @@ describe('Florida LLC reinstatement guide', () => {
     expect(existsSync('app/(marketing)/reinstate-llc/page.tsx')).toBe(false);
     expect(existsSync('app/(marketing)/reinstate-llc')).toBe(false);
     expect(page).toContain('$149 plus state fees');
+    expect(page).toContain(
+      'Florida charges $100 plus $138.75 for each annual report year due. There is no $400 late fee on a reinstatement. The $400 late fee applies only to annual reports filed late by an active company. Our service is $149.',
+    );
+    expect(page).toContain(
+      'If Sunbiz requires a different amount when we file, we will contact you before filing. We never charge more without your OK.',
+    );
+    expect(copy.body).toContain(
+      'Florida cobra $100 más $138.75 por cada año de reporte anual pendiente. No hay recargo de $400 en una reactivación (reinstatement). El recargo de $400 aplica solo a los reportes anuales presentados tarde por una empresa activa. Nuestro servicio es $149.',
+    );
     expect(copy.closing).toContain('$149 más las tarifas estatales');
+    expect(copy.closing).toContain(
+      'Si Sunbiz exige un monto diferente al presentar, te contactaremos antes de presentar. Nunca cobramos más sin tu aprobación.',
+    );
     expect(page).not.toContain('Florida-only');
     expect(copy.closing).not.toContain('Florida-only');
   });

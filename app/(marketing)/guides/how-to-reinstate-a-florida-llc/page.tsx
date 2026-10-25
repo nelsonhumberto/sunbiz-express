@@ -85,6 +85,8 @@ Sources: [Florida Statutes s. 605.0715](https://www.flsenate.gov/Laws/Statutes/2
 
 Example of the math only: an LLC owing one report year would pay $100.00 + $138.75 = $238.75 in state fees. Your actual total depends on how many report years are due, and the statute requires all fees and penalties owed at the rates in effect when you apply (s. 605.0715(1)).
 
+Florida charges $100 plus $138.75 for each annual report year due. There is no $400 late fee on a reinstatement. The $400 late fee applies only to annual reports filed late by an active company. Our service is $149.
+
 Sources: [Sunbiz LLC fees](https://dos.fl.gov/sunbiz/forms/fees/llc-fees/), [Sunbiz: File Reinstatement](https://dos.fl.gov/sunbiz/manage-business/efile/reinstatement/)
 
 ## What you need before you start
@@ -137,6 +139,8 @@ This guide covers administrative dissolution under s. 605.0714. If the LLC disso
 const CLOSING = `## Want us to file it for you?
 
 LaunchForma files the Florida LLC reinstatement for you for $149 plus state fees. You can also do it yourself on Sunbiz using the steps above.
+
+If Sunbiz requires a different amount when we file, we will contact you before filing. We never charge more without your OK.
 
 [Reinstate your Florida LLC](/reinstate-llc)
 

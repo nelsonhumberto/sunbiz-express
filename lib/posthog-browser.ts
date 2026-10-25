@@ -70,24 +70,36 @@ function persistInternalQueryFlag(): void {
 }
 
 let applyingReplay = false;
-let replayMode: 'record' | 'block' | null = null;
+/** True only after this module called stopSessionRecording for a sensitive route. */
+let replayStoppedByRoute = false;
 let replayRouteListenerInstalled = false;
 
 /**
- * Start or stop replay for the current URL. Pageviews, purchase events, and
- * `is_internal` keep flowing either way; this only toggles the recorder.
- * No-op until `posthog.init` has run (production with a key).
+ * Stop replay on customer-data routes. Resume it only when this module was
+ * the one that stopped it, so an allowed page does not force recording on
+ * against PostHog sampling or the project on/off setting. Pageviews, purchase
+ * events, and `is_internal` keep flowing either way. No-op until `posthog.init`
+ * has run (production with a key).
  */
 export function syncSessionReplay(pathname?: string | null): void {
   if (typeof window === 'undefined' || !posthog.__loaded || applyingReplay) return;
   const record = sessionReplayAllowed([window.location.pathname, pathname]);
-  const mode = record ? 'record' : 'block';
-  if (mode === replayMode && (mode === 'block' || posthog.sessionRecordingStarted())) return;
+  if (!record) {
+    if (replayStoppedByRoute) return;
+    applyingReplay = true;
+    try {
+      posthog.stopSessionRecording();
+      replayStoppedByRoute = true;
+    } finally {
+      applyingReplay = false;
+    }
+    return;
+  }
+  if (!replayStoppedByRoute) return;
   applyingReplay = true;
   try {
-    replayMode = mode;
-    if (mode === 'block') posthog.stopSessionRecording();
-    else posthog.startSessionRecording();
+    posthog.startSessionRecording();
+    replayStoppedByRoute = false;
   } finally {
     applyingReplay = false;
   }

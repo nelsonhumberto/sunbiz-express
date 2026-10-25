@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SESSION_REPLAY_BLOCKED_EXACT,
   SESSION_REPLAY_BLOCKED_MEDIA,
@@ -9,6 +9,17 @@ import {
   sessionRecordingPrivacy,
   sessionReplayAllowed,
 } from '@/lib/session-replay';
+import { syncSessionReplay } from '@/lib/posthog-browser';
+
+const posthog = vi.hoisted(() => ({
+  __loaded: true,
+  init: vi.fn(),
+  stopSessionRecording: vi.fn(),
+  startSessionRecording: vi.fn(),
+  sessionRecordingStarted: vi.fn(() => false),
+}));
+
+vi.mock('posthog-js', () => ({ default: posthog }));
 
 const blocked = [
   '/dashboard',
@@ -53,6 +64,14 @@ const blocked = [
   '/reset-password?token=secret',
   '/es/reset-password',
   '/es/reset-password?token=secret#form',
+  '/forgot-password',
+  '/forgot-password/',
+  '/es/forgot-password',
+  '/es/forgot-password?email=ada%40example.com',
+  '/login-link',
+  '/login-link/',
+  '/es/login-link',
+  '/es/login-link?next=%2Fdashboard',
   '/resume',
   '/resume?f=filing_1&t=guest-token',
   '/es/resume',
@@ -76,8 +95,6 @@ const allowed = [
   '/offer',
   '/checklist',
   '/tools/utm-builder',
-  '/forgot-password',
-  '/login-link',
   '/privacy',
   '/terms',
   '/starting',
@@ -128,6 +145,8 @@ describe('session replay routes', () => {
       '/sign-in',
       '/sign-up',
       '/reset-password',
+      '/forgot-password',
+      '/login-link',
       '/resume',
     ]);
   });
@@ -166,5 +185,41 @@ describe('session replay masking', () => {
     expect(route).toContain('syncSessionReplay(pathname)');
     const provider = readFileSync('components/analytics/PostHogProvider.tsx', 'utf8');
     expect(provider).toContain('<SessionReplayRoute />');
+  });
+});
+
+describe('syncSessionReplay', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    posthog.stopSessionRecording.mockClear();
+    posthog.startSessionRecording.mockClear();
+  });
+
+  function at(pathname: string) {
+    vi.stubGlobal('window', { location: { pathname } });
+    syncSessionReplay(pathname);
+  }
+
+  it('starts recording only after this code stopped it for a sensitive route', () => {
+    at('/pricing');
+    at('/faq');
+    expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+    expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
+
+    at('/forgot-password');
+    at('/es/login-link');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+    expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+
+    at('/pricing');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+
+    at('/es/pricing');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+
+    at('/dashboard');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(2);
+    at('/');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(2);
   });
 });

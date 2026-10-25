@@ -20,6 +20,8 @@ export const SESSION_REPLAY_BLOCKED_EXACT = [
   '/sign-in',
   '/sign-up',
   '/reset-password',
+  '/forgot-password',
+  '/login-link',
   '/resume',
 ] as const;
 

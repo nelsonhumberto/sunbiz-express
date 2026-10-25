@@ -27,7 +27,11 @@ import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume } from '@/lib/start-draft';
-import { isPlaceholderGuestEmail, placeholderGuestEmail } from '@/lib/guest-identity';
+import {
+  isPlaceholderGuestEmail,
+  placeholderGuestEmail,
+  planStartGuestSession,
+} from '@/lib/guest-identity';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 
 const StartSchema = z.object({
@@ -133,107 +137,42 @@ export async function startGuestFiling(
     redirect(`/wizard/${filing.id}/2`);
   }
 
-  // Block reuse of an existing ACTIVE account from this entry path.
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing && existing.accountStatus !== 'GUEST') {
+  // An email that already belongs to anyone does not hand over that session.
+  // Accounts go to sign-in. Another guest gets a separate guest for this browser.
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, accountStatus: true },
+  });
+  const ownerKind = !existing ? 'free' : existing.accountStatus === 'GUEST' ? 'guest' : 'account';
+  const sessionPlan = planStartGuestSession(ownerKind);
+  if (sessionPlan === 'sign_in') {
     const next = encodeURIComponent('/dashboard');
-    redirect(
-      `/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`,
-    );
+    redirect(`/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`);
   }
 
-  // Create a fresh GUEST user (or reuse if the same email already started).
-  let guestUser = existing;
-  let token = guestUser?.guestToken ?? null;
-  if (!guestUser) {
-    token = newGuestToken();
-    // We MUST satisfy the non-null `passwordHash` constraint. Use a random
-    // unguessable hash that the credentials provider can never validate.
-    const placeholderPassword = await bcrypt.hash(
-      randomBytes(32).toString('hex'),
-      10,
-    );
-    guestUser = await prisma.user.create({
-      data: {
-        email,
-        firstName,
-        lastName,
-        passwordHash: placeholderPassword,
-        accountStatus: 'GUEST',
-        guestToken: token,
-        ...localeData,
-        ...userUtmCreateFields(),
-      },
-    });
-  } else if (!token) {
-    // Guest record exists but token is missing (shouldn't happen, but recover).
-    token = newGuestToken();
-    await prisma.user.update({
-      where: { id: guestUser.id },
-      data: { guestToken: token, firstName, lastName, ...localeData },
-    });
-  } else {
-    await prisma.user.update({
-      where: { id: guestUser.id },
-      data: { firstName, lastName, ...localeData },
-    });
-    await ensureUserFirstTouchUtm(guestUser.id);
-  }
+  const token = newGuestToken();
+  const placeholderPassword = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+  const guestUser = await prisma.user.create({
+    data: {
+      email: sessionPlan === 'separate' ? placeholderGuestEmail(token) : email,
+      firstName,
+      lastName,
+      passwordHash: placeholderPassword,
+      accountStatus: 'GUEST',
+      guestToken: token,
+      ...localeData,
+      ...userUtmCreateFields(),
+    },
+  });
 
-  setGuestCookie(token!);
+  setGuestCookie(token);
 
-  // Persist preferred state for the marketing chrome.
   cookies().set(PREFERRED_STATE_COOKIE, stateCode, {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',
   });
 
-  // Returning guest? Resume their existing draft instead of spawning a new one
-  // on every /start submit (prevents draft sprawl + loses no progress).
-  // A name from ?name= is written onto a blank draft, or the customer chooses
-  // when that draft already has a different name. "new" starts another filing.
-  if (existing && parsed.data.draftIntent !== 'new') {
-    const draft = await prisma.filing.findFirst({
-      where: { userId: guestUser.id, status: 'DRAFT' },
-      orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true },
-    });
-    if (draft && (!parsed.data.draftId || parsed.data.draftId === draft.id)) {
-      const decision = decideDraftNameResume({
-        existingName: draft.businessName,
-        proposedName: parsed.data.draftIntent === 'resume' ? null : seededName,
-        currentStep: draft.currentStep,
-      });
-      if (decision.action === 'apply' && seededName) {
-        await prisma.filing.update({
-          where: { id: draft.id },
-          data: {
-            businessName: seededName,
-            nameAvailable: null,
-            nameCheckedAt: null,
-          },
-        });
-        redirect(`/wizard/${draft.id}/2`);
-      }
-      if (decision.action === 'choose' && seededName) {
-        const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
-        return {
-          choice: {
-            draftId: draft.id,
-            existingName: draft.businessName?.trim() || '',
-            proposedName: seededName,
-            resumeHref: `/wizard/${draft.id}/${step}`,
-          },
-        };
-      }
-      const step = decision.action === 'resume' ? decision.step : 2;
-      redirect(`/wizard/${draft.id}/${step}`);
-    }
-  }
-
-  // Spin up a draft filing. Step 1 is already done, so we open step 2.
-  // A name from ?name= is prefilled there and checked on arrival.
   const filing = await prisma.filing.create({
     data: {
       userId: guestUser.id,
@@ -247,6 +186,9 @@ export async function startGuestFiling(
       ...localeData,
       ...entryData,
       ...filingUtmCreateFields(),
+      ...(sessionPlan === 'separate'
+        ? { optionalDetails: JSON.stringify({ typedGuestEmail: email }) }
+        : {}),
     },
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
@@ -473,16 +415,9 @@ export async function claimGuestAccount(
   if (newEmail !== guest.email) {
     const collision = await prisma.user.findUnique({ where: { email: newEmail } });
     if (collision && collision.id !== guest.id) {
-      if (collision.accountStatus !== 'GUEST') {
-        return {
-          needsSignIn: true,
-          error:
-            'That email already has an account. Sign in and we will attach this draft.',
-        };
-      }
       return {
-        error:
-          'That email already has a saved draft. Continue with it, or use a different email.',
+        needsSignIn: true,
+        error: 'That email already has an account. Sign in and we will attach this draft.',
       };
     }
   }

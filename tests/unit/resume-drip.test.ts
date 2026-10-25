@@ -7,11 +7,13 @@ import { buildResumeEmailSentCapture, posthogServerEventProperties } from '@/lib
 import { decorateResumeEmailHtml, withResumeUtms } from '@/lib/resume-utm';
 import {
   guestResumeUrl,
+  isRecoverySkipAddress,
   planResumeDrip,
   raRenewalTypeForDays,
   RESUME_DRIP_MAX_AGE_HOURS,
   resolveDripLocale,
   resumeDraftListArgs,
+  resumeDripMailbox,
   resumeLinkPlan,
   shouldSkipDraftRecovery,
   wholeDaysUntil,
@@ -263,6 +265,22 @@ describe('qa and e2e skip', () => {
     expect(json).toContain('qa+');
     expect(json).toContain('e2e+');
     expect(json).toContain('insensitive');
+    expect(json).toContain('GUEST');
+    expect(json).toContain('.invalid');
+    expect(json).toContain('@guest.launchforma.invalid');
+    expect(json).toContain('typedGuestEmail');
+    expect(json).toContain('"OR"');
+    expect(resumeDripMailbox('buyer@example.com', null)).toBe('buyer@example.com');
+    expect(resumeDripMailbox('guest.abc@guest.launchforma.invalid', null)).toBeNull();
+    expect(resumeDripMailbox('user@bar.invalid', null)).toBeNull();
+    expect(
+      resumeDripMailbox(
+        'guest.abc@guest.launchforma.invalid',
+        JSON.stringify({ typedGuestEmail: 'Ada@Example.com' }),
+      ),
+    ).toBe('ada@example.com');
+    expect(isRecoverySkipAddress('user@bar.invalid')).toBe(true);
+    expect(isRecoverySkipAddress('guest.abc@guest.launchforma.invalid')).toBe(true);
   });
 });
 

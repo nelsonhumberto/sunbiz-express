@@ -788,6 +788,10 @@ async function deliverEmail(
   html: string,
   options?: DeliveryOptions,
 ): Promise<{ ok: true }> {
+  if (!isDeliverableEmail(to)) {
+    throw new Error('Invalid recipient address.');
+  }
+
   // QA and end-to-end fixtures (local part qa+ or e2e+, any case) are not
   // handed to Resend or SMTP. Transactional, drip, and abandoned-cart mail
   // all reach this helper, as does direct delivery. Callers treat the return

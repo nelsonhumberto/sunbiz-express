@@ -135,6 +135,9 @@ export default async function WizardStepPage({ params }: PageProps) {
     optional && typeof optional.pendingAccountEmail === 'string'
       ? optional.pendingAccountEmail
       : '';
+  const typedGuestEmail =
+    optional && typeof optional.typedGuestEmail === 'string' ? optional.typedGuestEmail : '';
+  const guestEmailPrefill = pendingAccountEmail || typedGuestEmail;
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
@@ -153,14 +156,14 @@ export default async function WizardStepPage({ params }: PageProps) {
           <Step1Entity
             filing={filing}
             needsGuestEmail={needsGuestEmail}
-            initialGuestEmail={pendingAccountEmail}
+            initialGuestEmail={guestEmailPrefill}
           />
         )}
         {stepNum === 2 && (
           <Step2Name
             filing={filing}
             needsGuestEmail={needsGuestEmail}
-            initialGuestEmail={pendingAccountEmail}
+            initialGuestEmail={guestEmailPrefill}
           />
         )}
         {stepNum === 3 && <Step3Tier filing={filing} />}

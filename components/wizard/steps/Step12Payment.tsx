@@ -158,6 +158,7 @@ export function Step12Payment({
           amountCents: finalTotal,
           cardholderName,
           filingId: filing.id,
+          couponCode: appliedCoupon?.code,
         });
         if ('error' in result) {
           return { ok: false, error: result.error };

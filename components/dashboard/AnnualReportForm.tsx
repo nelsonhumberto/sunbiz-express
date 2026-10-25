@@ -177,6 +177,8 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
         amountCents: totalCents,
         cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
         filingId: props.filingId,
+        purpose: 'annual_report',
+        useOurRa,
         savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
       });
       if ('error' in stripeResult) { toast.error(stripeResult.error); return; }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -18,9 +18,9 @@ import {
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
 
 /**
- * Logged-out /start. Opens a guest draft and the wizard without a sign-up form.
- * The effect does not run on a Next.js prefetch, so hovering a link does not
- * create a filing. Mobile and desktop use this same path.
+ * /start launch. A guest user and draft are created only when the visitor
+ * submits, via the openGuestDraft server action. Loading, prefetch, and
+ * crawlers do not create either.
  */
 export function GuestStartLaunch({
   defaultState,
@@ -39,7 +39,7 @@ export function GuestStartLaunch({
 }) {
   const t = useTranslations('start');
   const router = useRouter();
-  const [pending, setPending] = useState(true);
+  const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [choice, setChoice] = useState<DraftNameChoice | null>(null);
 
@@ -78,13 +78,6 @@ export function GuestStartLaunch({
       setPending(false);
     }
   }
-
-  useEffect(() => {
-    if (choice) return;
-    void run();
-    // Open once when the visitor actually lands. Query props are stable for this page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="space-y-8">
@@ -137,9 +130,6 @@ export function GuestStartLaunch({
             </div>
           ) : (
             <div className="space-y-4 text-center">
-              <p className="text-sm text-ink-muted">
-                {pending ? t('opening') : t('subhead')}
-              </p>
               <Button
                 type="button"
                 size="lg"
@@ -150,11 +140,11 @@ export function GuestStartLaunch({
                 {pending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('opening')}
+                    {t('starting')}
                   </>
                 ) : (
                   <>
-                    {t('retry')}
+                    {t('continue')}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </>
                 )}

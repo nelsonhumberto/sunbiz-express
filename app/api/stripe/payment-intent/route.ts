@@ -5,11 +5,14 @@ import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { getWizardActor } from '@/lib/guest';
-import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
+import { getGuestUser } from '@/lib/guest';
+import { CHECKOUT_ACCOUNT_REQUIRED } from '@/lib/guest-identity';
 import { safeParseJson } from '@/lib/utils';
 import {
+  ADD_ON_BY_SLUG,
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
   computeCost,
+  RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
@@ -29,6 +32,8 @@ import {
 } from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
+  annualComplianceFor,
+  getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -53,20 +58,24 @@ function asStateCode(input: string | null | undefined): StateCode {
   return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
 }
 
+interface PaymentBody {
+  filingId?: string;
+  posthogDistinctId?: string;
+  certificateSlug?: string;
+  purpose?: string;
+  couponCode?: string;
+  raServiceId?: string;
+  useOurRa?: boolean;
+}
+
 /**
  * POST /api/stripe/payment-intent
  *
- * Creates a Stripe PaymentIntent for a filing checkout.
- *
- * Hardened against card-testing and amount tampering:
- *  - requires an authenticated user OR an active guest session,
- *  - rate-limited per IP,
- *  - when a filingId is supplied, verifies ownership and computes the expected
- *    amount SERVER-SIDE - the client-supplied amount may only be ≤ that total
- *    (coupons reduce it; it can never inflate or undercut beyond the discount).
+ * Auth is decided before the body is read. No session is 401. A guest cookie
+ * with no account is 403. The signed-in user must own the filing. The amount
+ * is computed here and the client amount is ignored.
  */
 export async function POST(request: NextRequest) {
-  // Rate limit PI creation hard - this is the classic card-testing surface.
   const limit = rateLimit(`payment-intent:${clientIp()}`, 10, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(
@@ -75,184 +84,67 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  try {
-    const stripe = getStripe();
-    const body = await request.json();
-    const { amountCents, filingId, posthogDistinctId, certificateSlug } = body as {
-      amountCents: number;
-      filingId?: string;
-      /** Browser PostHog distinct id. The only client field copied onto the PI. */
-      posthogDistinctId?: string;
-      /** Dashboard certificate order. Priced server-side, not as formation checkout. */
-      certificateSlug?: string;
-      metadata?: Record<string, string>;
-    };
-
-    if (!amountCents || amountCents < 50) {
-      return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
-    }
-
-    // Must be a known actor (real user or guest with a cookie). No anonymous PIs.
-    const session = await auth();
-    const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-    if (!actor) {
-      return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
-    }
-    if (!checkoutAllowsPayment(actor.kind)) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) {
+    const guest = await getGuestUser();
+    if (guest) {
       return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
     }
+    return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
+  }
+
+  try {
+    const stripe = getStripe();
+    const body = (await request.json()) as PaymentBody;
+    const { filingId, posthogDistinctId, certificateSlug, purpose, couponCode, raServiceId } = body;
 
     if (isCertificateAddOnSlug(certificateSlug)) {
       return createCertificatePaymentIntent({
         stripe,
-        actorId: actor.id,
-        amountCents,
+        actorId: userId,
         filingId,
         slug: certificateSlug,
         posthogDistinctId,
       });
     }
 
-    // When tied to a filing: verify ownership and bound the amount to the
-    // server-computed total so the client can't mint arbitrary charges.
-    let verifiedFilingId: string | undefined;
-    let storedCheckoutPaymentIntentId: string | null = null;
-    let attributionFiling: {
-      utmSource: string | null;
-      utmMedium: string | null;
-      utmCampaign: string | null;
-      utmContent: string | null;
-      utmTerm: string | null;
-    } | null = null;
-    if (filingId) {
-      const filing = await prisma.filing.findUnique({
-        where: { id: filingId },
-        include: { filingAdditionalServices: { include: { service: true } } },
-      });
-      if (!filing || filing.userId !== actor.id) {
-        return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
-      }
-      const optionalDetails = safeParseJson<Record<string, unknown> | null>(
-        filing.optionalDetails,
-        null,
-      );
-      const processingOptionId =
-        optionalDetails && typeof optionalDetails.processingOption === 'string'
-          ? (optionalDetails.processingOption as string)
-          : undefined;
-      const breakdown = computeCost({
-        entityType: filing.entityType as 'LLC' | 'CORP',
-        tier: filing.serviceTier as TierSlug,
-        addOnSlugs: filing.filingAdditionalServices.map(
-          (fas) => fas.service.serviceSlug as AddOnSlug,
-        ),
-        state: asStateCode(filing.state),
-        processingOptionId,
-      });
-      // Allow the requested amount only up to the computed total (+1c rounding).
-      // Coupons reduce the amount client-side; processCheckout re-verifies the
-      // exact discounted total before finalizing.
-      if (amountCents > breakdown.totalCents + 1) {
-        logger.error(
-          'payment-intent amount exceeds computed total',
-          { area: 'stripe', entityId: filing.id, tag: 'pi-amount' },
-          { amountCents, computed: breakdown.totalCents },
-        );
-        return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
-      }
-      const stateFeeMinimum = tierBundledStateFeeCents(
-        filing.serviceTier as TierSlug,
-        filing.entityType as EntityType,
-        asStateCode(filing.state),
-      );
-      if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
-        logger.error(
-          'payment-intent amount below tier state fee',
-          { area: 'stripe', entityId: filing.id, tag: 'pi-amount-min' },
-          { amountCents, stateFeeMinimum },
-        );
-        return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
-      }
-      verifiedFilingId = filing.id;
-      storedCheckoutPaymentIntentId = filing.checkoutPaymentIntentId;
-      attributionFiling = filing;
-    }
+    const priced = await priceOwnedCharge({
+      userId,
+      filingId,
+      purpose,
+      couponCode,
+      raServiceId,
+      useOurRa: body.useOurRa === true,
+    });
+    if (priced instanceof NextResponse) return priced;
 
-    // UTMs come from the lf_utm cookie (set by middleware), not from the
-    // client body. The PostHog distinct id only exists in the browser, so we
-    // accept that one field after sanitizing, and fall back to the posthog-js
-    // persistence cookie when the client didn't send it.
-    let cookieUtm: ReturnType<typeof getServerUtmAttribution> = null;
-    let cookieDistinctId: string | null = null;
-    try {
-      cookieUtm = getServerUtmAttribution();
-      const cookieName = posthogPersistenceCookieName(process.env.NEXT_PUBLIC_POSTHOG_KEY);
-      if (cookieName) {
-        cookieDistinctId = distinctIdFromPosthogCookie(cookies().get(cookieName)?.value);
-      }
-    } catch (err) {
-      logger.warn('payment-intent attribution unavailable', {
-        area: 'stripe',
-        tag: 'pi-attribution',
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    // Attach/create a Stripe Customer for authed users so saved methods reuse.
-    let customerId: string | undefined;
-    if (actor.kind === 'user') {
-      const user = await prisma.user.findUnique({
-        where: { id: actor.id },
-        select: { id: true, email: true, firstName: true, lastName: true, stripeCustomerId: true },
-      });
-      if (user) {
-        if (user.stripeCustomerId) {
-          customerId = user.stripeCustomerId;
-        } else {
-          const customer = await stripe.customers.create({
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-            metadata: { userId: user.id },
-          });
-          customerId = customer.id;
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { stripeCustomerId: customerId },
-          });
-        }
-      }
-    }
-
+    const customerId = await ensureStripeCustomer(stripe, userId);
+    const attribution = readPaymentAttribution(posthogDistinctId);
     const intentParams = {
-      amount: amountCents,
+      amount: priced.amountCents,
       currency: 'usd' as const,
-      // Attach the Customer AND flag the card for future off-session reuse so
-      // Registered Agent renewals (and other post-checkout charges) can bill
-      // the saved method. Guests have no Customer, and Stripe rejects
-      // setup_future_usage without one - so only set both together.
       ...(customerId
         ? { customer: customerId, setup_future_usage: 'off_session' as const }
         : {}),
       automatic_payment_methods: { enabled: true },
-      // Metadata is set server-side. Client `metadata` is ignored. UTMs are
-      // copied from the visitor cookie (filing columns fill gaps) and the
-      // PostHog distinct id is the sanitized browser value.
       metadata: {
-        ...(verifiedFilingId ? { filingId: verifiedFilingId } : {}),
-        userId: actor.id,
+        ...(priced.filingId ? { filingId: priced.filingId } : {}),
+        ...(priced.purpose ? { purpose: priced.purpose } : {}),
+        userId,
         ...checkoutAttributionMetadata({
-          cookie: cookieUtm,
-          filing: attributionFiling,
-          posthogDistinctId: sanitizeDistinctId(posthogDistinctId) ?? cookieDistinctId,
+          cookie: attribution.cookieUtm,
+          filing: priced.attributionFiling,
+          posthogDistinctId: attribution.distinctId,
         }),
       },
     };
 
     const paymentIntent = await resolveCheckoutPaymentIntent({
       stripe,
-      filingId: verifiedFilingId,
-      storedPaymentIntentId: storedCheckoutPaymentIntentId,
-      amountCents,
+      filingId: priced.reuseFilingCheckout ? priced.filingId : undefined,
+      storedPaymentIntentId: priced.storedPaymentIntentId,
+      amountCents: priced.amountCents,
       intentParams,
     });
 
@@ -264,6 +156,189 @@ export async function POST(request: NextRequest) {
     logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
     return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
   }
+}
+
+interface PricedCharge {
+  amountCents: number;
+  filingId?: string;
+  purpose?: string;
+  storedPaymentIntentId: string | null;
+  reuseFilingCheckout: boolean;
+  attributionFiling: {
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmContent: string | null;
+    utmTerm: string | null;
+  } | null;
+}
+
+async function priceOwnedCharge(input: {
+  userId: string;
+  filingId?: string;
+  purpose?: string;
+  couponCode?: string;
+  raServiceId?: string;
+  useOurRa: boolean;
+}): Promise<PricedCharge | NextResponse> {
+  if (input.purpose === 'ra_renewal') {
+    if (!input.raServiceId) {
+      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    }
+    const service = await prisma.registeredAgentService.findUnique({
+      where: { id: input.raServiceId },
+      include: {
+        filing: {
+          select: {
+            id: true,
+            userId: true,
+            utmSource: true,
+            utmMedium: true,
+            utmCampaign: true,
+            utmContent: true,
+            utmTerm: true,
+          },
+        },
+      },
+    });
+    if (!service || service.filing.userId !== input.userId) {
+      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    }
+    return {
+      amountCents: service.renewalPriceCents,
+      purpose: 'ra_renewal',
+      storedPaymentIntentId: null,
+      reuseFilingCheckout: false,
+      attributionFiling: service.filing,
+    };
+  }
+
+  if (!input.filingId) {
+    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+  }
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: input.filingId },
+    include: { filingAdditionalServices: { include: { service: true } } },
+  });
+  if (!filing || filing.userId !== input.userId) {
+    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+  }
+
+    if (input.purpose === 'ein') {
+    return {
+      amountCents: ADD_ON_BY_SLUG.ein.serviceMarginCents,
+      purpose: 'ein',
+      storedPaymentIntentId: null,
+      reuseFilingCheckout: false,
+      attributionFiling: filing,
+    };
+  }
+
+  if (input.purpose === 'annual_report') {
+    const compliance = annualComplianceFor(
+      getFormationState(filing.state),
+      filing.entityType === 'CORP' ? 'CORP' : 'LLC',
+    );
+    const raFee = input.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
+    return {
+      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + compliance.baseFeeCents + raFee,
+      filingId: filing.id,
+      purpose: 'annual_report',
+      storedPaymentIntentId: null,
+      reuseFilingCheckout: false,
+      attributionFiling: filing,
+    };
+  }
+
+  const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
+  const processingOptionId =
+    optionalDetails && typeof optionalDetails.processingOption === 'string'
+      ? optionalDetails.processingOption
+      : undefined;
+  const breakdown = computeCost({
+    entityType: filing.entityType as 'LLC' | 'CORP',
+    tier: filing.serviceTier as TierSlug,
+    addOnSlugs: filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
+    state: asStateCode(filing.state),
+    processingOptionId,
+  });
+  const discount = await formationCouponDiscount(input.couponCode, breakdown.totalCents);
+  if (!discount.ok) {
+    return NextResponse.json({ error: 'This coupon code is invalid.' }, { status: 400 });
+  }
+  const amountCents = Math.max(0, breakdown.totalCents - discount.discountCents);
+  const stateFeeMinimum = tierBundledStateFeeCents(
+    filing.serviceTier as TierSlug,
+    filing.entityType as EntityType,
+    asStateCode(filing.state),
+  );
+  if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
+    return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
+  }
+  return {
+    amountCents,
+    filingId: filing.id,
+    storedPaymentIntentId: filing.checkoutPaymentIntentId,
+    reuseFilingCheckout: true,
+    attributionFiling: filing,
+  };
+}
+
+async function formationCouponDiscount(
+  code: string | undefined,
+  subtotalCents: number,
+): Promise<{ ok: true; discountCents: number } | { ok: false }> {
+  if (!code?.trim()) return { ok: true, discountCents: 0 };
+  const coupon = await prisma.coupon.findUnique({
+    where: { code: code.trim().toUpperCase() },
+  });
+  if (!coupon || !coupon.active) return { ok: false };
+  if (coupon.expiresAt && coupon.expiresAt < new Date()) return { ok: false };
+  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return { ok: false };
+  const raw = coupon.type === 'PERCENT' ? Math.round((subtotalCents * coupon.value) / 100) : coupon.value;
+  return { ok: true, discountCents: Math.min(Math.max(raw, 0), subtotalCents) };
+}
+
+function readPaymentAttribution(posthogDistinctId?: string) {
+  let cookieUtm: ReturnType<typeof getServerUtmAttribution> = null;
+  let cookieDistinctId: string | null = null;
+  try {
+    cookieUtm = getServerUtmAttribution();
+    const cookieName = posthogPersistenceCookieName(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+    if (cookieName) {
+      cookieDistinctId = distinctIdFromPosthogCookie(cookies().get(cookieName)?.value);
+    }
+  } catch (err) {
+    logger.warn('payment-intent attribution unavailable', {
+      area: 'stripe',
+      tag: 'pi-attribution',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+  return {
+    cookieUtm,
+    distinctId: sanitizeDistinctId(posthogDistinctId) ?? cookieDistinctId,
+  };
+}
+
+async function ensureStripeCustomer(stripe: Stripe, userId: string): Promise<string | undefined> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, firstName: true, lastName: true, stripeCustomerId: true },
+  });
+  if (!user) return undefined;
+  if (user.stripeCustomerId) return user.stripeCustomerId;
+  const customer = await stripe.customers.create({
+    email: user.email,
+    name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+    metadata: { userId: user.id },
+  });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { stripeCustomerId: customer.id },
+  });
+  return customer.id;
 }
 
 /**
@@ -340,12 +415,11 @@ async function resolveCheckoutPaymentIntent(input: {
 async function createCertificatePaymentIntent(input: {
   stripe: Stripe;
   actorId: string;
-  amountCents: number;
   filingId?: string;
   slug: 'cert_status' | 'cert_copy';
   posthogDistinctId?: string;
 }) {
-  const { stripe, actorId, amountCents, filingId, slug } = input;
+  const { stripe, actorId, filingId, slug } = input;
   if (!filingId) {
     return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
   }
@@ -384,48 +458,8 @@ async function createCertificatePaymentIntent(input: {
   const entityType = filingEntityType(filing.entityType);
   const state = filingFormationState(filing.state);
   const quote = certificateOrderQuote(slug, entityType, state);
-  if (Math.abs(amountCents - quote.totalCents) > 1) {
-    logger.error(
-      'certificate payment-intent amount mismatch',
-      { area: 'stripe', entityId: filing.id, tag: 'certificate-pi' },
-      { amountCents, computed: quote.totalCents, slug },
-    );
-    return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
-  }
-
-  let cookieUtm: ReturnType<typeof getServerUtmAttribution> = null;
-  let cookieDistinctId: string | null = null;
-  try {
-    cookieUtm = getServerUtmAttribution();
-    const cookieName = posthogPersistenceCookieName(process.env.NEXT_PUBLIC_POSTHOG_KEY);
-    if (cookieName) {
-      cookieDistinctId = distinctIdFromPosthogCookie(cookies().get(cookieName)?.value);
-    }
-  } catch (err) {
-    logger.warn('certificate payment-intent attribution unavailable', {
-      area: 'stripe',
-      tag: 'certificate-pi',
-      message: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: actorId },
-    select: { id: true, email: true, firstName: true, lastName: true, stripeCustomerId: true },
-  });
-  let customerId = user?.stripeCustomerId ?? undefined;
-  if (user && !customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-      metadata: { userId: user.id },
-    });
-    customerId = customer.id;
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { stripeCustomerId: customerId },
-    });
-  }
+  const attribution = readPaymentAttribution(input.posthogDistinctId);
+  const customerId = await ensureStripeCustomer(stripe, actorId);
 
   const paymentIntent = await stripe.paymentIntents.create(
     {
@@ -443,9 +477,9 @@ async function createCertificatePaymentIntent(input: {
         serviceCents: String(quote.serviceCents),
         stateFeeCents: String(quote.stateFeeCents),
         ...checkoutAttributionMetadata({
-          cookie: cookieUtm,
+          cookie: attribution.cookieUtm,
           filing,
-          posthogDistinctId: sanitizeDistinctId(input.posthogDistinctId) ?? cookieDistinctId,
+          posthogDistinctId: attribution.distinctId,
         }),
       },
     },

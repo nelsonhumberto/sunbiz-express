@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { withLocaleMeta } from '@/lib/locale-seo';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
@@ -14,9 +11,6 @@ import {
   ACTIVE_FORMATION_STATES,
   type StateCode,
 } from '@/lib/formation-states';
-import { filingUtmCreateFields } from '@/lib/utm-attribution';
-import { syncSCorpElectionAddOn } from '@/actions/wizard';
-import type { TierSlug } from '@/lib/pricing';
 import { pageTitle } from '@/lib/seo-title';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 
@@ -77,36 +71,6 @@ interface StartPageProps {
 }
 
 export default async function StartPage({ searchParams }: StartPageProps) {
-  const session = await auth();
-  // If already signed in, skip the guest form: spin up a draft directly in
-  // the chosen state and jump them straight into the wizard.
-  if (session?.user?.id) {
-    const requested = (searchParams?.state ?? 'FL').toUpperCase();
-    const stateCode = (ACTIVE_FORMATION_STATES.includes(requested as StateCode)
-      ? requested
-      : 'FL') as StateCode;
-    const { entityType, taxElection } = resolveEntityParam(searchParams?.entity);
-    const seededName = normalizeNameCheckQuery(searchParams?.name) || null;
-    const serviceTier = resolveTier(searchParams?.tier);
-    const filing = await prisma.filing.create({
-      data: {
-        userId: session.user.id,
-        entityType,
-        taxElection,
-        state: stateCode,
-        serviceTier,
-        // Step 1 (entity + state) is already done. A name from ?name= is
-        // saved so step 2 can check it on arrival instead of skipping ahead.
-        businessName: seededName,
-        currentStep: 2,
-        completedSteps: JSON.stringify([1]),
-        ...filingUtmCreateFields(),
-      },
-    });
-    await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/2`);
-  }
-
   const t = await getTranslations('start');
   const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();

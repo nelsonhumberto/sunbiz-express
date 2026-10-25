@@ -4,15 +4,17 @@ import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
-import { getGuestUser, newGuestToken, setGuestCookie, clearGuestCookie, GUEST_COOKIE } from '@/lib/guest';
+import { getGuestUser, clearGuestCookie, GUEST_COOKIE } from '@/lib/guest';
 import {
   isPlaceholderGuestEmail,
   planGuestDraftAttach,
   planGuestEmailWrite,
+  readTypedGuestEmail,
   shouldAttachGuestDraft,
   wizardHrefForDraft,
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
+import { guestResumeUrl } from '@/lib/draft-recovery';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { safeParseJson } from '@/lib/utils';
 import { storedLocale } from '@/lib/stored-locale';
@@ -26,10 +28,18 @@ export interface GuestEmailResult {
   ownerId?: string;
 }
 
-async function writePendingAccountEmail(filingId: string, email: string | null, existing: string | null) {
+async function writeGuestEmailAside(
+  filingId: string,
+  existing: string | null,
+  patch: { pendingAccountEmail?: string | null; typedGuestEmail?: string | null },
+) {
   const prev = safeParseJson<Record<string, unknown>>(existing, {}) ?? {};
-  if (email) prev.pendingAccountEmail = email;
-  else delete prev.pendingAccountEmail;
+  for (const key of ['pendingAccountEmail', 'typedGuestEmail'] as const) {
+    if (!(key in patch)) continue;
+    const value = patch[key];
+    if (value) prev[key] = value;
+    else delete prev[key];
+  }
   await prisma.filing.update({
     where: { id: filingId },
     data: { optionalDetails: JSON.stringify(prev) },
@@ -39,8 +49,9 @@ async function writePendingAccountEmail(filingId: string, email: string | null, 
 /**
  * Store the email the visitor typed on the guest draft.
  * A free mailbox is written to User.email (what the resume drip sends to).
- * Another guest with that mailbox adopts this draft.
- * An existing account is not overwritten. Checkout asks them to sign in.
+ * Another guest or account keeps this draft on this browser. The typed
+ * address is stored on this filing only, so the drip can still mail it
+ * with this guest's own resume token. Nothing is revealed about the other row.
  */
 export async function saveGuestEmail(filingId: string, rawEmail: string): Promise<GuestEmailResult> {
   const t = await getTranslations('wizard');
@@ -60,7 +71,7 @@ export async function saveGuestEmail(filingId: string, rawEmail: string): Promis
 
   const existing = await prisma.user.findUnique({
     where: { email: normalized },
-    select: { id: true, accountStatus: true, guestToken: true },
+    select: { id: true, accountStatus: true },
   });
 
   let owner: GuestEmailOwner = 'free';
@@ -72,8 +83,19 @@ export async function saveGuestEmail(filingId: string, rawEmail: string): Promis
   const plan = planGuestEmailWrite(owner);
 
   if (plan === 'hold_for_signin') {
-    await writePendingAccountEmail(filing.id, normalized, filing.optionalDetails);
+    await writeGuestEmailAside(filing.id, filing.optionalDetails, {
+      pendingAccountEmail: normalized,
+      typedGuestEmail: normalized,
+    });
     return { ok: false, needsSignIn: true, error: t('guestEmailHasAccount') };
+  }
+
+  if (plan === 'keep_own') {
+    await writeGuestEmailAside(filing.id, filing.optionalDetails, {
+      pendingAccountEmail: null,
+      typedGuestEmail: normalized,
+    });
+    return { ok: true, ownerId: guest.id };
   }
 
   if (plan === 'write') {
@@ -83,32 +105,10 @@ export async function saveGuestEmail(filingId: string, rawEmail: string): Promis
     });
   }
 
-  if (plan === 'adopt_guest' && existing) {
-    let token = existing.guestToken;
-    if (!token) {
-      token = newGuestToken();
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: { guestToken: token },
-      });
-    }
-    await prisma.filing.update({
-      where: { id: filing.id },
-      data: { userId: existing.id },
-    });
-    const remaining = await prisma.filing.count({ where: { userId: guest.id } });
-    if (remaining === 0) {
-      await prisma.user.update({
-        where: { id: guest.id },
-        data: { accountStatus: 'DELETED', guestToken: null },
-      });
-    }
-    setGuestCookie(token);
-    await writePendingAccountEmail(filing.id, null, filing.optionalDetails);
-    return { ok: true, ownerId: existing.id };
-  }
-
-  await writePendingAccountEmail(filing.id, null, filing.optionalDetails);
+  await writeGuestEmailAside(filing.id, filing.optionalDetails, {
+    pendingAccountEmail: null,
+    typedGuestEmail: null,
+  });
   return { ok: true, ownerId: guest.id };
 }
 
@@ -121,24 +121,35 @@ export async function sendGuestCheckoutLink(
   const saved = await saveGuestEmail(filingId, rawEmail);
   if (!saved.ok || saved.needsSignIn || !saved.ownerId) return saved;
 
+  const typed = normalizeEmail(rawEmail);
   const owner = await prisma.user.findUnique({
     where: { id: saved.ownerId },
-    select: { id: true, email: true, firstName: true, accountStatus: true },
+    select: { id: true, email: true, firstName: true, accountStatus: true, guestToken: true },
   });
-  if (!owner || isPlaceholderGuestEmail(owner.email)) {
+  if (!owner || !isDeliverableEmail(typed)) {
     return { ok: false, error: t('guestEmailInvalid') };
   }
 
   const locale = await storedLocale();
-  const link = await createLoginLink(owner.id, `/wizard/${filingId}/11`);
+  const ownsMailbox =
+    !isPlaceholderGuestEmail(owner.email) && normalizeEmail(owner.email) === typed;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+  const resumeUrl =
+    ownsMailbox
+      ? await createLoginLink(owner.id, `/wizard/${filingId}/11`)
+      : owner.accountStatus === 'GUEST' && owner.guestToken
+        ? guestResumeUrl(siteUrl, filingId, owner.guestToken)
+        : null;
+  if (!resumeUrl) return { ok: false, error: t('guestEmailInvalid') };
+
   await sendEmail({
     type: 'CHECKOUT_LOGIN_LINK',
-    to: owner.email,
+    to: ownsMailbox ? owner.email : typed,
     userId: owner.id,
     filingId,
     context: {
       firstName: owner.firstName?.trim() || undefined,
-      resumeUrl: link,
+      resumeUrl,
       locale: locale ?? undefined,
       linkExpiresInDays: LOGIN_LINK_TTL_DAYS,
     },
@@ -171,15 +182,26 @@ export async function attachGuestDraftsToAccount(
     where: { id: accountUserId },
     select: { id: true, email: true },
   });
-  if (!account || !shouldAttachGuestDraft({ guestEmail: guest.email, accountEmail: account.email })) {
-    return { movedIds: [], resumeHref: null };
-  }
+  if (!account) return { movedIds: [], resumeHref: null };
 
   const drafts = await prisma.filing.findMany({
     where: { userId: guest.id, status: 'DRAFT' },
     orderBy: { updatedAt: 'desc' },
-    select: { id: true, currentStep: true },
+    select: { id: true, currentStep: true, optionalDetails: true },
   });
+  const typedEmails = drafts
+    .map((draft) => readTypedGuestEmail(draft.optionalDetails))
+    .filter((email): email is string => Boolean(email));
+  if (
+    !shouldAttachGuestDraft({
+      guestEmail: guest.email,
+      accountEmail: account.email,
+      typedEmails,
+    })
+  ) {
+    return { movedIds: [], resumeHref: null };
+  }
+
   const plan = planGuestDraftAttach({
     guestUserId: guest.id,
     accountUserId: account.id,

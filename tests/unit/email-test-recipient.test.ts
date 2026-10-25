@@ -103,6 +103,21 @@ describe('test-address suppression', () => {
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: 'buyer@example.com' }));
   });
 
+  it('refuses a .invalid address before Resend, including the direct helper', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failed = await sendEmail({
+      type: 'WELCOME',
+      to: 'guest.abc@guest.launchforma.invalid',
+    });
+    expect(failed.status).toBe('FAILED');
+    expect(send).not.toHaveBeenCalled();
+    await expect(deliverEmailDirect('user@bar.invalid', 'Subject', '<p>Hi</p>')).rejects.toThrow(
+      /Invalid recipient/,
+    );
+    expect(send).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
   it('skips a test recipient on the direct helper and still sends other local parts', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const skipped = await deliverEmailDirect('qa+direct@example.com', 'Subject', '<p>Hi</p>');

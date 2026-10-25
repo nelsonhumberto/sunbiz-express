@@ -24,6 +24,9 @@ describe('recipient validation', () => {
     expect(isDeliverableEmail('a@b')).toBe(false);
     expect(isDeliverableEmail('bad yuki.t@example.com')).toBe(false);
     expect(isDeliverableEmail('')).toBe(false);
+    expect(isDeliverableEmail('user@bar.invalid')).toBe(false);
+    expect(isDeliverableEmail('guest.abc@guest.launchforma.invalid')).toBe(false);
+    expect(isDeliverableEmail('qa+buyer@example.com')).toBe(true);
   });
 });
 

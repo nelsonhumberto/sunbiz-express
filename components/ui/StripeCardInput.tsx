@@ -41,6 +41,11 @@ export interface ConfirmOptions {
   cardholderName: string;
   /** Optional - stored in Stripe PI metadata for reconciliation. */
   filingId?: string;
+  /**
+   * Dashboard certificate order (`cert_status` or `cert_copy`). The server
+   * prices this from the filing instead of the formation checkout total.
+   */
+  certificateSlug?: string;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
@@ -62,7 +67,7 @@ const InnerCard = forwardRef(function InnerCard(
 
   useImperativeHandle(ref, () => ({
     async confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }> {
-      const { amountCents, cardholderName, filingId, savedPaymentMethodId } = opts;
+      const { amountCents, cardholderName, filingId, savedPaymentMethodId, certificateSlug } = opts;
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
       // 1. Create PaymentIntent server-side
@@ -72,6 +77,7 @@ const InnerCard = forwardRef(function InnerCard(
         body: JSON.stringify({
           amountCents,
           ...(filingId ? { filingId } : {}),
+          ...(certificateSlug ? { certificateSlug } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
         }),

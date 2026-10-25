@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  Award,
+  FileCheck,
   FileText,
   Mail,
   ShieldCheck,
@@ -36,6 +38,14 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { canOrderEin, filingIncludesEin } from '@/lib/ein';
+import {
+  CERTIFICATE_ADDON_SLUGS,
+  certificateOffer,
+  certificateOrderPath,
+  certificateOrderQuote,
+  filingEntityType,
+  filingFormationState,
+} from '@/lib/certificate-addons';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +59,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
   const t = await getTranslations('filingDetail');
   const tWizard = await getTranslations('wizard');
   const tDocs = await getTranslations('documentTypes');
+  const tCert = await getTranslations('certificates');
 
   const filing = await prisma.filing.findUnique({
     where: { id: params.id },
@@ -341,6 +352,42 @@ export default async function FilingDetailPage({ params }: PageProps) {
         );
       })()}
 
+      {CERTIFICATE_ADDON_SLUGS.map((slug) => {
+        const offer = certificateOffer({
+          slug,
+          status: filing.status,
+          tier: filing.serviceTier,
+          filingSource: filing.filingSource,
+          addOnSlugs: filingAddOnSlugs,
+          documents: filing.documents,
+        });
+        if (offer.kind === 'hidden') return null;
+        const quote = certificateOrderQuote(
+          slug,
+          filingEntityType(filing.entityType),
+          filingFormationState(filing.state),
+        );
+        const isCopy = slug === 'cert_copy';
+        return (
+          <CertificateAddonCard
+            key={slug}
+            href={certificateOrderPath(filing.id, slug)}
+            icon={isCopy ? <FileCheck className="h-5 w-5" /> : <Award className="h-5 w-5" />}
+            title={isCopy ? tCert('copyTitle') : tCert('statusTitle')}
+            body={isCopy ? tCert('copyCardBody') : tCert('statusCardBody')}
+            priceLabel={tCert('priceSplit', {
+              service: formatCurrency(quote.serviceCents),
+              stateFee: formatCurrency(quote.stateFeeCents),
+              state: stateRule.name,
+            })}
+            cta={isCopy ? tCert('orderCtaCopy') : tCert('orderCtaStatus')}
+            includedLabel={tCert('alreadyIncluded')}
+            pendingNote={offer.kind === 'included' && offer.pending ? tCert('pendingNote') : null}
+            orderable={offer.kind === 'orderable'}
+          />
+        );
+      })}
+
       {/* BOI note. Anchor target for the checkout-success `#boi` link. */}
       <Card id="boi" className="scroll-mt-24">
         <CardContent className="p-6">
@@ -595,6 +642,52 @@ export default async function FilingDetailPage({ params }: PageProps) {
         </Card>
       </div>
     </div>
+  );
+}
+
+function CertificateAddonCard({
+  href,
+  icon,
+  title,
+  body,
+  priceLabel,
+  cta,
+  includedLabel,
+  pendingNote,
+  orderable,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  priceLabel: string;
+  cta: string;
+  includedLabel: string;
+  pendingNote: string | null;
+  orderable: boolean;
+}) {
+  return (
+    <Card className="border-primary/15">
+      <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <h3 className="font-semibold text-ink">{title}</h3>
+          <p className="text-sm text-ink-muted">{orderable ? body : pendingNote ?? body}</p>
+          {orderable ? (
+            <p className="text-xs text-ink-subtle">{priceLabel}</p>
+          ) : (
+            <p className="text-xs font-medium text-ink">{includedLabel}</p>
+          )}
+        </div>
+        {orderable ? (
+          <Button asChild className="shrink-0">
+            <Link href={href}>{cta}</Link>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 

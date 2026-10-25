@@ -512,6 +512,21 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 {t('uploadStateDocs')}
               </h3>
               <p className="text-sm text-ink-muted mb-4">{t('uploadStateDocsDesc')}</p>
+              {(() => {
+                const waiting = filing.filingAdditionalServices.filter((fas) => {
+                  const slug = fas.service.serviceSlug;
+                  if (slug !== 'cert_status' && slug !== 'cert_copy') return false;
+                  const type = slug === 'cert_status' ? 'CERT_STATUS' : 'CERT_COPY';
+                  return filing.documents.some((doc) => doc.documentType === type && doc.pendingState);
+                });
+                if (waiting.length === 0) return null;
+                return (
+                  <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-4">
+                    Certificate order waiting on the state PDF:{' '}
+                    {waiting.map((fas) => fas.service.serviceName).join(', ')}. Upload it below.
+                  </p>
+                );
+              })()}
               <div className="space-y-4">
                 {expectableUploadTypes.map((type) => {
                   const pending = pendingDocs.find((d) => d.documentType === type);
@@ -713,9 +728,10 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                         </span>
                       </div>
                       {/* Breakdown */}
-                      {p.stateFilingFeeCents > 0 && (
+                      {(p.stateFilingFeeCents > 0 || p.certificatesCopiesCents > 0) && (
                         <div className="text-xs text-ink-subtle space-y-0.5 pt-1 border-t border-border">
-                          <div className="flex justify-between"><span>State fee</span><span>{formatCurrency(p.stateFilingFeeCents)}</span></div>
+                          {p.stateFilingFeeCents > 0 && <div className="flex justify-between"><span>State fee</span><span>{formatCurrency(p.stateFilingFeeCents)}</span></div>}
+                          {p.certificatesCopiesCents > 0 && <div className="flex justify-between"><span>Certificate service fee</span><span>{formatCurrency(p.certificatesCopiesCents)}</span></div>}
                           {p.formationServiceFeeCents > 0 && <div className="flex justify-between"><span>Service fee</span><span>{formatCurrency(p.formationServiceFeeCents)}</span></div>}
                           {p.registeredAgentY1Cents > 0 && <div className="flex justify-between"><span>Registered Agent</span><span>{formatCurrency(p.registeredAgentY1Cents)}</span></div>}
                         </div>

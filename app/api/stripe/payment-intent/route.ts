@@ -16,6 +16,14 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import {
+  CERTIFICATE_ORDER_PURPOSE,
+  certificateOffer,
+  certificateOrderQuote,
+  filingEntityType,
+  filingFormationState,
+  isCertificateAddOnSlug,
+} from '@/lib/certificate-addons';
+import {
   CHECKOUT_BELOW_STATE_FEE_ERROR,
   checkoutBelowStateFee,
 } from '@/lib/checkout-guard';
@@ -70,11 +78,13 @@ export async function POST(request: NextRequest) {
   try {
     const stripe = getStripe();
     const body = await request.json();
-    const { amountCents, filingId, posthogDistinctId } = body as {
+    const { amountCents, filingId, posthogDistinctId, certificateSlug } = body as {
       amountCents: number;
       filingId?: string;
       /** Browser PostHog distinct id. The only client field copied onto the PI. */
       posthogDistinctId?: string;
+      /** Dashboard certificate order. Priced server-side, not as formation checkout. */
+      certificateSlug?: string;
       metadata?: Record<string, string>;
     };
 
@@ -90,6 +100,17 @@ export async function POST(request: NextRequest) {
     }
     if (!checkoutAllowsPayment(actor.kind)) {
       return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
+    }
+
+    if (isCertificateAddOnSlug(certificateSlug)) {
+      return createCertificatePaymentIntent({
+        stripe,
+        actorId: actor.id,
+        amountCents,
+        filingId,
+        slug: certificateSlug,
+        posthogDistinctId,
+      });
     }
 
     // When tied to a filing: verify ownership and bound the amount to the
@@ -309,4 +330,130 @@ async function resolveCheckoutPaymentIntent(input: {
     });
   }
   return created;
+}
+
+/**
+ * PaymentIntent for a dashboard certificate of status or certified copy.
+ * The amount is the catalog service fee plus that filing's state fee.
+ * This does not reuse or replace the formation checkout PaymentIntent.
+ */
+async function createCertificatePaymentIntent(input: {
+  stripe: Stripe;
+  actorId: string;
+  amountCents: number;
+  filingId?: string;
+  slug: 'cert_status' | 'cert_copy';
+  posthogDistinctId?: string;
+}) {
+  const { stripe, actorId, amountCents, filingId, slug } = input;
+  if (!filingId) {
+    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+  }
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    include: {
+      filingAdditionalServices: { include: { service: true } },
+      documents: { select: { documentType: true, pendingState: true } },
+    },
+  });
+  if (!filing || filing.userId !== actorId) {
+    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+  }
+
+  const offer = certificateOffer({
+    slug,
+    status: filing.status,
+    tier: filing.serviceTier,
+    filingSource: filing.filingSource,
+    addOnSlugs: filing.filingAdditionalServices.map((row) => row.service.serviceSlug),
+    documents: filing.documents,
+  });
+  if (offer.kind !== 'orderable') {
+    return NextResponse.json(
+      {
+        error:
+          offer.kind === 'included'
+            ? 'This document is already included.'
+            : 'This document can be ordered once your company is filed.',
+      },
+      { status: 400 },
+    );
+  }
+
+  const entityType = filingEntityType(filing.entityType);
+  const state = filingFormationState(filing.state);
+  const quote = certificateOrderQuote(slug, entityType, state);
+  if (Math.abs(amountCents - quote.totalCents) > 1) {
+    logger.error(
+      'certificate payment-intent amount mismatch',
+      { area: 'stripe', entityId: filing.id, tag: 'certificate-pi' },
+      { amountCents, computed: quote.totalCents, slug },
+    );
+    return NextResponse.json({ error: 'Invalid amount.' }, { status: 400 });
+  }
+
+  let cookieUtm: ReturnType<typeof getServerUtmAttribution> = null;
+  let cookieDistinctId: string | null = null;
+  try {
+    cookieUtm = getServerUtmAttribution();
+    const cookieName = posthogPersistenceCookieName(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+    if (cookieName) {
+      cookieDistinctId = distinctIdFromPosthogCookie(cookies().get(cookieName)?.value);
+    }
+  } catch (err) {
+    logger.warn('certificate payment-intent attribution unavailable', {
+      area: 'stripe',
+      tag: 'certificate-pi',
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { id: true, email: true, firstName: true, lastName: true, stripeCustomerId: true },
+  });
+  let customerId = user?.stripeCustomerId ?? undefined;
+  if (user && !customerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+      metadata: { userId: user.id },
+    });
+    customerId = customer.id;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { stripeCustomerId: customerId },
+    });
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: quote.totalCents,
+      currency: 'usd',
+      ...(customerId
+        ? { customer: customerId, setup_future_usage: 'off_session' as const }
+        : {}),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        filingId: filing.id,
+        userId: actorId,
+        addOnSlug: slug,
+        purpose: CERTIFICATE_ORDER_PURPOSE,
+        serviceCents: String(quote.serviceCents),
+        stateFeeCents: String(quote.stateFeeCents),
+        ...checkoutAttributionMetadata({
+          cookie: cookieUtm,
+          filing,
+          posthogDistinctId: sanitizeDistinctId(input.posthogDistinctId) ?? cookieDistinctId,
+        }),
+      },
+    },
+    { idempotencyKey: `certificate_${filing.id}_${slug}_${quote.totalCents}`.slice(0, 255) },
+  );
+
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
 }

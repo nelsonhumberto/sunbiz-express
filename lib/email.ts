@@ -42,6 +42,7 @@ export type NotificationType =
   | 'RA_RENEWAL_7'
   | 'RA_RENEWED'
   | 'EIN_ORDERED'
+  | 'CERTIFICATE_ORDERED'
   | 'PAYMENT_CONFIRMATION'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
@@ -102,6 +103,12 @@ interface EmailContext {
   raCardLast4?: string;
   /** Deep link to the RA renewal page for this filing. */
   raRenewUrl?: string;
+  // ── Dashboard certificate order ──
+  certificateSlug?: 'cert_status' | 'cert_copy';
+  /** LaunchForma service fee, in cents. */
+  serviceCents?: number;
+  /** State certificate fee, in cents. */
+  stateFeeCents?: number;
   // ── Business-services inquiry (internal notify) ──
   inquiryName?: string;
   inquiryEmail?: string;
@@ -198,6 +205,62 @@ function raRenewalEmail(
       <p>Renew for <strong>${price}/year</strong> to keep your in-state address active and your home address off the public record. Cancel anytime.</p>
       <a class="cta" href="${renewUrl}">Renew now</a>
     `,
+  };
+}
+
+function certificateOrderedEmail(ctx: EmailContext): { subject: string; body: string } {
+  const spanish = ctx.locale === 'es';
+  const rawCompany = ctx.businessName?.trim() || (spanish ? 'tu empresa' : 'your company');
+  const company = escapeHtml(rawCompany);
+  const isCopy = ctx.certificateSlug === 'cert_copy';
+  const label = spanish
+    ? isCopy
+      ? 'copia certificada'
+      : 'certificado de estado'
+    : isCopy
+      ? 'certified copy'
+      : 'certificate of status';
+  const serviceLabel = spanish ? 'Tarifa de servicio' : 'Service fee';
+  const stateLabel = spanish ? 'Tarifa estatal' : 'State fee';
+  const totalLabel = spanish ? 'Total' : 'Total';
+  const subject = spanish
+    ? `Pedido de ${label} recibido para ${rawCompany}`
+    : `${label.charAt(0).toUpperCase()}${label.slice(1)} order received for ${rawCompany}`;
+  const greetingName = escapeHtml(ctx.firstName?.trim() || (spanish ? '' : 'there'));
+  const chargedFor = spanish
+    ? isCopy
+      ? `la copia certificada de <strong>${company}</strong>`
+      : `el certificado de estado de <strong>${company}</strong>`
+    : `the ${label} on <strong>${company}</strong>`;
+  const inner = `
+    <h1>${spanish ? 'Recibimos tu pedido' : 'We received your order'}</h1>
+    <p>${
+      spanish
+        ? `Hola${greetingName ? ` ${greetingName}` : ''}, gracias. Cobramos <strong>${formatCurrency(ctx.totalCents ?? 0)}</strong> por ${chargedFor}.`
+        : `Hi ${greetingName}, thank you. We charged <strong>${formatCurrency(ctx.totalCents ?? 0)}</strong> for ${chargedFor}.`
+    }</p>
+    <table class="meta">
+      <tr><td>${serviceLabel}</td><td>${formatCurrency(ctx.serviceCents ?? 0)}</td></tr>
+      <tr><td>${stateLabel}</td><td>${formatCurrency(ctx.stateFeeCents ?? 0)}</td></tr>
+      <tr><td>${totalLabel}</td><td>${formatCurrency(ctx.totalCents ?? 0)}</td></tr>
+    </table>
+    <p>${
+      spanish
+        ? 'Solicitaremos el documento al estado y te escribiremos cuando esté listo. También aparecerá en los documentos de tu panel.'
+        : 'We will request the document from the state and email you when it is ready. It will also appear in your dashboard documents.'
+    }</p>
+    <a class="cta" href="${escapeHtml(ctx.resumeUrl ?? `${siteUrl}/dashboard`)}">${
+      spanish ? 'Ver mi empresa' : 'View my company'
+    }</a>
+    <p class="muted">${
+      spanish
+        ? '¿Preguntas? Responde a este correo o escribe a <a href="mailto:help@launchforma.com">help@launchforma.com</a>.'
+        : 'Questions? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a>.'
+    }</p>
+  `;
+  return {
+    subject: subject.replace(/[\r\n]+/g, ' '),
+    body: wrap(inner, { locale: spanish ? 'es' : 'en' }),
   };
 }
 
@@ -346,6 +409,7 @@ const TEMPLATES: Record<
       `,
     };
   },
+  CERTIFICATE_ORDERED: (ctx) => certificateOrderedEmail(ctx),
   PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`

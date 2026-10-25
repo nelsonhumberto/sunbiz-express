@@ -27,48 +27,32 @@ import {
 } from '@/lib/sunbiz';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
+import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
+import { sendEmail } from '@/lib/email';
+import {
+  AnnualReportDraftFields,
+  annualReportSaveRetry,
+  refineAnnualReportDraft,
+} from '@/lib/annual-report-draft';
 
-const AddressSchema = z.object({
-  street1: z.string().min(1),
-  street2: z.string().optional(),
-  city: z.string().min(1),
-  state: z.string().min(2).max(2),
-  zip: z.string().min(5),
-});
-
-const OfficerSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1),
-  title: z.string().min(1),
-});
-
-const SubmitSchema = z.object({
+const SubmitFields = AnnualReportDraftFields.extend({
   filingId: z.string().min(1),
   annualReportId: z.string().min(1),
-
-  ein: z.string().optional(),
-  registeredAgentName: z.string().min(1),
-  registeredAgentAddress: AddressSchema,
-  useOurRa: z.boolean(),
-
-  principalAddress: AddressSchema,
-  mailingAddress: AddressSchema,
-
-  officers: z.array(OfficerSchema).min(1),
-  signingOfficerName: z.string().min(1),
-
-  // Real Stripe PaymentIntent confirmed on the client
   paymentIntentId: z.string().min(1),
 });
 
+const SubmitSchema = SubmitFields.superRefine(refineAnnualReportDraft);
+
 // Guest schema - no auth required
-const GuestSubmitSchema = SubmitSchema.omit({ filingId: true, annualReportId: true }).extend({
-  documentNumber: z.string().min(1),
-  guestEmail: z.string().email(),
-  companyName: z.string().min(1),
-  entityType: z.enum(['LLC', 'CORP']),
-  reportYear: z.number().int(),
-});
+const GuestSubmitSchema = SubmitFields.omit({ filingId: true, annualReportId: true })
+  .extend({
+    documentNumber: z.string().min(1),
+    guestEmail: z.string().email(),
+    companyName: z.string().min(1),
+    entityType: z.enum(['LLC', 'CORP']),
+    reportYear: z.number().int(),
+  })
+  .superRefine(refineAnnualReportDraft);
 
 /** Resolve the real DB user record - tries by id first, then falls back to email. */
 async function resolveUserId(
@@ -94,12 +78,15 @@ function quoteAnnualReport(
   stateCode: StateCode,
   entityType: 'LLC' | 'CORP',
   useOurRa: boolean,
+  reportYear: number,
   now: Date = new Date(),
 ) {
   const raFee = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const base = annualComplianceFor(getFormationState(stateCode), entityType);
   const florida =
-    stateCode === 'FL' ? getFloridaAnnualReportStateFees(now, { entityType }) : null;
+    stateCode === 'FL'
+      ? getFloridaAnnualReportStateFees(reportYear, now, { entityType })
+      : null;
   const filingFeeCents = florida ? florida.filingFeeCents : base.baseFeeCents;
   const lateFeeCents = florida ? florida.lateFeeCents : 0;
   const stateFilingFeeCents = filingFeeCents + lateFeeCents;
@@ -112,8 +99,56 @@ function quoteAnnualReport(
   };
 }
 
-export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
-  const data = SubmitSchema.parse(input);
+const RETRY_AFTER_CHARGE =
+  'Your card was charged, but we could not finish saving the filing. Submit again on this page. You will not be charged twice.';
+
+async function alertUnsavedAnnualReport(detail: string, filingId?: string) {
+  logger.error('Annual report charged but not saved', {
+    area: 'annual-report',
+    tag: 'unsaved-charge',
+    entityId: filingId,
+    detail,
+  });
+  try {
+    await sendEmail({
+      type: 'ANNUAL_REPORT_UNSAVED',
+      to: INQUIRY_NOTIFY_EMAIL,
+      filingId,
+      context: { unsavedChargeDetail: detail },
+    });
+  } catch (err) {
+    logger.error('Admin alert for unsaved annual report failed', { area: 'annual-report' }, err);
+  }
+}
+
+function paymentIntentIdFrom(input: unknown): string | null {
+  if (!input || typeof input !== 'object' || !('paymentIntentId' in input)) return null;
+  const value = (input as { paymentIntentId?: unknown }).paymentIntentId;
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+export async function submitAnnualReport(input: unknown) {
+  const parsed = SubmitSchema.safeParse(input);
+  if (!parsed.success) {
+    const piId = paymentIntentIdFrom(input);
+    if (piId) {
+      try {
+        const pi = await getStripe().paymentIntents.retrieve(piId);
+        if (pi.status === 'succeeded') {
+          await alertUnsavedAnnualReport(
+            `Validation failed after charge ${piId}: ${parsed.error.issues[0]?.message ?? 'invalid form'}`,
+          );
+        }
+      } catch {
+        // No succeeded charge to reconcile.
+      }
+    }
+    return {
+      ok: false as const,
+      error: parsed.error.issues[0]?.message ?? 'Check the form and try again.',
+    };
+  }
+  const data = parsed.data;
   const session = await auth();
   if (!session?.user?.id) {
     return { ok: false as const, error: 'Sign in to continue.' };
@@ -144,7 +179,16 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   if (!annualReport || annualReport.filingId !== data.filingId) {
     return { ok: false as const, error: 'Annual report not found.' };
   }
-  if (annualReport.status === 'FILED') {
+  const existingPayment = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: data.paymentIntentId },
+    select: { id: true },
+  });
+  const retry = annualReportSaveRetry({
+    paymentExists: !!existingPayment,
+    reportFiled: annualReport.status === 'FILED',
+  });
+  if (retry === 'done') return { ok: true as const };
+  if (retry === 'blocked') {
     return { ok: false as const, error: 'This annual report has already been filed.' };
   }
 
@@ -173,7 +217,12 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   // FL LLC = $138.75, FL corp = $150, plus $400 after May 1 Eastern.
   // WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225 minimum.
   const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
-  const quote = quoteAnnualReport(filingStateCode, entityType, data.useOurRa);
+  const quote = quoteAnnualReport(
+    filingStateCode,
+    entityType,
+    data.useOurRa,
+    annualReport.reportYear,
+  );
   if (Math.abs(pi.amount - quote.totalCents) > 1) {
     return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
   }
@@ -240,36 +289,71 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
         },
       });
 
-      await tx.payment.create({
-        data: {
-          filingId: data.filingId,
-          userId,
-          stripePaymentIntentId: pi.id,
-          stripePaymentMethodId: pmId,
-          amountCents: pi.amount,
-          status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
-          stateFilingFeeCents: quote.stateFilingFeeCents,
-          formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
-          registeredAgentY1Cents: quote.raFee,
-          operatingAgreementCents: 0,
-          einCents: 0,
-          domainCents: 0,
-          certificatesCopiesCents: 0,
-          otherServicesCents: 0,
-          cardLast4,
-          cardBrand,
-          cardholderName: pmCardholderName,
-          completedAt: new Date(),
-        },
-      });
+      // A previous attempt already stored this PaymentIntent. Finish the
+      // report on that row instead of inserting a second payment.
+      if (retry !== 'finish') {
+        await tx.payment.create({
+          data: {
+            filingId: data.filingId,
+            userId,
+            stripePaymentIntentId: pi.id,
+            stripePaymentMethodId: pmId,
+            amountCents: pi.amount,
+            status: 'SUCCEEDED',
+            isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+            stateFilingFeeCents: quote.stateFilingFeeCents,
+            formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
+            registeredAgentY1Cents: quote.raFee,
+            operatingAgreementCents: 0,
+            einCents: 0,
+            domainCents: 0,
+            certificatesCopiesCents: 0,
+            otherServicesCents: 0,
+            cardLast4,
+            cardBrand,
+            cardholderName: pmCardholderName,
+            completedAt: new Date(),
+          },
+        });
+      }
     });
 
     revalidatePath(`/dashboard/filings/${data.filingId}`);
     revalidatePath('/dashboard');
     return { ok: true as const };
-  } catch {
-    return { ok: false as const, error: 'Something went wrong. Please try again.' };
+  } catch (err) {
+    const saved = await prisma.payment.findUnique({
+      where: { stripePaymentIntentId: pi.id },
+      select: { id: true },
+    });
+    const report = await prisma.annualReport.findUnique({
+      where: { id: data.annualReportId },
+      select: { status: true },
+    });
+    if (saved && report?.status === 'FILED') return { ok: true as const };
+    if (saved && report && report.status !== 'FILED') {
+      try {
+        await prisma.annualReport.update({
+          where: { id: data.annualReportId },
+          data: {
+            status: 'FILED',
+            filedDate: new Date(),
+            filingFeeCents: quote.filingFeeCents,
+            lateFeeCents: quote.lateFeeCents,
+            totalCostCents: quote.totalCents,
+          },
+        });
+        return { ok: true as const };
+      } catch (retryErr) {
+        logger.error('Annual report retry after charge failed', { area: 'annual-report' }, retryErr);
+      }
+    }
+    await alertUnsavedAnnualReport(
+      `filing ${data.filingId} report ${data.annualReportId} payment ${pi.id}`,
+      data.filingId,
+    );
+    logger.error('Annual report save failed after charge', { area: 'annual-report' }, err);
+    return { ok: false as const, error: RETRY_AFTER_CHARGE };
   }
 }
 
@@ -351,7 +435,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
 
   // Guest annual reports are Florida-only (Sunbiz lookup). The server quote
   // includes the $400 late fee after May 1 so the client cannot skip it.
-  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa);
+  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa, data.reportYear);
   const email = data.guestEmail.toLowerCase().trim();
 
   // Verify Stripe amount matches our expected total (±1 cent for rounding)

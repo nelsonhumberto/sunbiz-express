@@ -263,28 +263,38 @@ function floridaCalendarDate(now: Date): { year: number; month: number; day: num
   return { year: read('year'), month: read('month'), day: read('day') };
 }
 
+/** Calendar year in America/New_York. */
+export function floridaEasternYear(now: Date = new Date()): number {
+  return floridaCalendarDate(now).year;
+}
+
 /**
- * True when Sunbiz would assess the late fee.
- * May 1 is on time through 11:59 PM Eastern. May 2 through December 31 is late.
- * January 1 opens the next filing year, so a January date has no late fee.
+ * True when Sunbiz would assess the late fee for this report year.
+ * The deadline is May 1, 11:59:59 PM Eastern of `reportYear`.
+ * May 1 itself is on time. May 2 of that year is late.
+ * A later calendar year is also late. A future report year is not.
  *
  * Source: https://dos.fl.gov/sunbiz/forms/fees/
  * LLC annual report $138.75, or $538.75 if received after May 1.
  * Profit corporation annual report $150.00, or $550.00 if received after May 1.
  */
-function isFloridaAnnualReportLate(now: Date): boolean {
-  const { month, day } = floridaCalendarDate(now);
-  if (month > 5) return true;
-  return month === 5 && day > 1;
+function isFloridaAnnualReportLate(now: Date, reportYear: number): boolean {
+  const today = floridaCalendarDate(now);
+  if (today.year > reportYear) return true;
+  if (today.year < reportYear) return false;
+  if (today.month > 5) return true;
+  if (today.month < 5) return false;
+  return today.day > 1;
 }
 
 /**
- * Florida annual-report state fees for a report received at `now`.
- * Returns the on-time fee plus a separate $400 late-fee line when the
- * America/New_York date is after May 1 and {@link FL_AR_LATE_FEE_ENABLED}
+ * Florida annual-report state fees for `reportYear`, received at `now`.
+ * Adds a separate $400 late-fee line only when `now` in America/New_York
+ * is after May 1 of that report year and {@link FL_AR_LATE_FEE_ENABLED}
  * is true. The late fee is a state fee. It is not part of our service fee.
  */
 export function getFloridaAnnualReportStateFees(
+  reportYear: number,
   now: Date = new Date(),
   options?: FloridaAnnualReportStateFeeOptions,
 ): FloridaAnnualReportStateFees {
@@ -293,7 +303,7 @@ export function getFloridaAnnualReportStateFees(
   const compliance = annualComplianceFor(FORMATION_STATES.FL, entityType);
   const filingFeeCents = compliance.baseFeeCents;
   const lateFeeCents =
-    enabled && isFloridaAnnualReportLate(now) ? compliance.lateFeeCents : 0;
+    enabled && isFloridaAnnualReportLate(now, reportYear) ? compliance.lateFeeCents : 0;
   return {
     filingFeeCents,
     lateFeeCents,

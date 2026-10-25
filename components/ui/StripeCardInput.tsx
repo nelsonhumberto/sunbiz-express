@@ -57,6 +57,10 @@ export interface ConfirmOptions {
   couponCode?: string;
   raServiceId?: string;
   useOurRa?: boolean;
+  /** Dashboard annual report row. The server prices the late fee from this year. */
+  annualReportId?: string;
+  /** Draft validated on the server before a PaymentIntent is created. */
+  annualReport?: unknown;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
@@ -95,6 +99,8 @@ const InnerCard = forwardRef(function InnerCard(
         raServiceId,
         useOurRa,
         email,
+        annualReportId,
+        annualReport,
       } = opts;
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
@@ -111,6 +117,8 @@ const InnerCard = forwardRef(function InnerCard(
           ...(raServiceId ? { raServiceId } : {}),
           ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
           ...(email ? { email } : {}),
+          ...(annualReportId ? { annualReportId } : {}),
+          ...(annualReport ? { annualReport } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
         }),

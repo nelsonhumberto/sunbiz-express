@@ -69,7 +69,8 @@ export type NotificationType =
   | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
   | 'OA_TEMPLATE_CONFIRM'
-  | 'OA_TEMPLATE_DOWNLOAD';
+  | 'OA_TEMPLATE_DOWNLOAD'
+  | 'ANNUAL_REPORT_UNSAVED';
 
 interface EmailContext {
   firstName?: string;
@@ -168,6 +169,8 @@ interface EmailContext {
   oaMultiPdfUrl?: string;
   oaMultiDocxUrl?: string;
   oaUnsubscribeUrl?: string;
+  /** Admin-only detail when an annual-report charge did not finish saving. */
+  unsavedChargeDetail?: string;
 }
 
 export interface SendEmailArgs {
@@ -812,6 +815,14 @@ const TEMPLATES: Record<
       `,
     };
   },
+  ANNUAL_REPORT_UNSAVED: (ctx) => ({
+    subject: 'Annual report charged but not saved',
+    body: html`
+      <h1>Annual report charge needs a save</h1>
+      <p>A customer was charged for an annual report, and the filing did not finish saving. Ask them to submit the same page again. The retry uses the same payment and does not charge the card again.</p>
+      <p>${escapeHtml(ctx.unsavedChargeDetail?.trim() || 'No extra detail was recorded.')}</p>
+    `,
+  }),
   OA_TEMPLATE_DOWNLOAD: (ctx) => {
     const singlePdf = escapeHtml(ctx.oaSinglePdfUrl ?? '#');
     const singleDocx = escapeHtml(ctx.oaSingleDocxUrl ?? '#');

@@ -9,6 +9,7 @@ import {
   ChevronDown, User, CreditCard,
 } from 'lucide-react';
 import { submitAnnualReport } from '@/actions/annual-report';
+import { annualReportDraftError } from '@/lib/annual-report-draft';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,6 +133,7 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
   const [officers, setOfficers] = useState<Officer[]>(props.officers);
   const [signingOfficer, setSigningOfficer] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // ── Edit mode ──
   const [editEin, setEditEin] = useState(false);
@@ -157,51 +159,90 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
   const cardRef = useRef<StripeCardHandle>(null);
 
   // ── Dynamic total ──
-  // Same helper the payment-intent route uses, so the summary matches the charge.
-  const stateFees = getFloridaAnnualReportStateFees(new Date(), { entityType: props.entityType });
+  // Same helper the payment-intent route uses, keyed on this report's year.
+  const stateFees = getFloridaAnnualReportStateFees(props.reportYear, new Date(), {
+    entityType: props.entityType,
+  });
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents + raAddon;
+  const chargedPaymentIntentKey = `ar-pi:${props.annualReportId}`;
 
-  // ── Submit validation ──
-  const canSubmit =
-    signingOfficer.length > 0 &&
-    termsAccepted &&
-    officers.length > 0 &&
-    (useSavedCard || cardholderName.trim().length >= 2);
+  const draft = {
+    ein: ein || undefined,
+    registeredAgentName: raName,
+    registeredAgentAddress: raAddr,
+    useOurRa,
+    principalAddress: principal,
+    mailingAddress: mailing,
+    officers,
+    signingOfficerName: signingOfficer,
+    termsAccepted,
+  };
 
   const onSubmit = () => {
-    if (!signingOfficer) { toast.error(t('selectOfficerRequired')); return; }
-    if (!termsAccepted) { toast.error(t('termsRequired')); return; }
-    if (!useSavedCard && !cardholderName.trim()) { toast.error(t('cardholderRequired')); return; }
+    const draftError = annualReportDraftError(draft);
+    if (draftError) {
+      setFormError(draftError);
+      toast.error(draftError);
+      return;
+    }
+    if (!useSavedCard && cardholderName.trim().length < 2) {
+      const message = t('cardholderRequired');
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+    setFormError(null);
 
     startTransition(async () => {
-      // 1. Confirm payment with Stripe
-      const stripeResult = await cardRef.current!.confirm({
-        amountCents: totalCents,
-        cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
-        filingId: props.filingId,
-        purpose: 'annual_report',
-        useOurRa,
-        savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
-      });
-      if ('error' in stripeResult) { toast.error(stripeResult.error); return; }
+      let chargedPaymentIntentId: string | null = null;
+      try {
+        chargedPaymentIntentId = sessionStorage.getItem(chargedPaymentIntentKey);
+      } catch {
+        chargedPaymentIntentId = null;
+      }
 
-      // 2. Record the filing + payment server-side
+      if (!chargedPaymentIntentId) {
+        const stripeResult = await cardRef.current!.confirm({
+          amountCents: totalCents,
+          cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
+          filingId: props.filingId,
+          purpose: 'annual_report',
+          useOurRa,
+          annualReportId: props.annualReportId,
+          annualReport: { ...draft, termsAccepted: true },
+          savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
+        });
+        if ('error' in stripeResult) {
+          toast.error(stripeResult.error);
+          return;
+        }
+        chargedPaymentIntentId = stripeResult.paymentIntentId;
+        try {
+          sessionStorage.setItem(chargedPaymentIntentKey, chargedPaymentIntentId);
+        } catch {
+          // The id still covers this submit. A reload may need the stored copy.
+        }
+      }
+
       const res = await submitAnnualReport({
+        ...draft,
+        termsAccepted: true,
         filingId: props.filingId,
         annualReportId: props.annualReportId,
-        ein: ein || undefined,
-        registeredAgentName: raName,
-        registeredAgentAddress: raAddr,
-        useOurRa,
-        principalAddress: principal,
-        mailingAddress: mailing,
-        officers,
-        signingOfficerName: signingOfficer,
-        paymentIntentId: stripeResult.paymentIntentId,
+        paymentIntentId: chargedPaymentIntentId,
       });
 
-      if (!res.ok) { toast.error(res.error); return; }
+      if (!res.ok) {
+        setFormError(res.error);
+        toast.error(res.error);
+        return;
+      }
+      try {
+        sessionStorage.removeItem(chargedPaymentIntentKey);
+      } catch {
+        // The filing is saved. A leftover id is ignored on the next visit.
+      }
       toast.success(t('successToast'));
       router.push(`/dashboard/filings/${props.filingId}?filed=1`);
     });
@@ -481,10 +522,11 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
               By checking this box, I certify that I am an authorized representative empowered to file this annual report and that all information is true and accurate. I understand that LaunchForma will file this with the Florida Department of State on my behalf and that submitting false information constitutes a third degree felony.
             </p>
           </label>
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
           <div className="flex gap-3">
             <Button variant="outline" type="button" onClick={() => router.back()} className="flex-1">Back</Button>
             <Button type="button" className="flex-1" size="lg"
-              disabled={!canSubmit || pending} onClick={onSubmit}>
+              disabled={pending} onClick={onSubmit}>
               {pending
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</>
                 : `Checkout - ${formatCurrency(totalCents)}`}

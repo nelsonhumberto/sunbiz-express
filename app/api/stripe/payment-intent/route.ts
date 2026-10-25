@@ -61,6 +61,7 @@ import {
   type PaymentIntentErrorCode,
 } from '@/lib/payment-intent-errors';
 import { resolveRequestLocale } from '@/lib/request-locale';
+import { AnnualReportDraftSchema } from '@/lib/annual-report-draft';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -111,6 +112,8 @@ interface PaymentBody {
   useOurRa?: boolean;
   /** Real mailbox a guest types on the payment step. Ignored for signed-in users. */
   email?: string;
+  annualReportId?: string;
+  annualReport?: unknown;
 }
 
 /**
@@ -164,6 +167,8 @@ export async function POST(request: NextRequest) {
       couponCode,
       raServiceId,
       useOurRa: body.useOurRa === true,
+      annualReportId: body.annualReportId,
+      annualReport: body.annualReport,
     });
     if (priced instanceof NextResponse) return priced;
 
@@ -409,6 +414,8 @@ async function priceOwnedCharge(input: {
   couponCode?: string;
   raServiceId?: string;
   useOurRa: boolean;
+  annualReportId?: string;
+  annualReport?: unknown;
 }): Promise<PricedCharge | NextResponse> {
   if (input.purpose === 'ra_renewal') {
     if (!input.raServiceId) {
@@ -468,13 +475,37 @@ async function priceOwnedCharge(input: {
   }
 
   if (input.purpose === 'annual_report') {
+    // Reject an incomplete form before Stripe creates a PaymentIntent.
+    const draft = AnnualReportDraftSchema.safeParse(input.annualReport);
+    if (!draft.success) {
+      return NextResponse.json(
+        { error: draft.error.issues[0]?.message ?? 'Check the form and try again.' },
+        { status: 400 },
+      );
+    }
+    if (!input.annualReportId) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    const report = await prisma.annualReport.findUnique({
+      where: { id: input.annualReportId },
+      select: { id: true, filingId: true, status: true, reportYear: true },
+    });
+    if (!report || report.filingId !== filing.id) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    if (report.status === 'FILED') {
+      return NextResponse.json(
+        { error: 'This annual report has already been filed.' },
+        { status: 409 },
+      );
+    }
     const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
     const rule = getFormationState(filing.state);
-    const raFee = input.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-    // Florida's late fee is computed here, not from the client amount.
+    const raFee = draft.data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
+    // The report year comes from the database. A client year cannot skip the fee.
     const stateFeeCents =
       rule.code === 'FL'
-        ? getFloridaAnnualReportStateFees(new Date(), { entityType }).totalCents
+        ? getFloridaAnnualReportStateFees(report.reportYear, new Date(), { entityType }).totalCents
         : annualComplianceFor(rule, entityType).baseFeeCents;
     return {
       amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFeeCents + raFee,

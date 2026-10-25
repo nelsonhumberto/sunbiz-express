@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import {
   ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  floridaEasternYear,
   getFloridaAnnualReportStateFees,
   RA_ANNUAL_SERVICE_FEE_CENTS,
 } from '@/lib/pricing';
@@ -167,11 +168,12 @@ export function GuestAnnualReportForm() {
   // Stripe
   const cardRef = useRef<StripeCardHandle>(null);
 
-  // Same helper the server action uses, so the summary matches the charge.
-  const stateFees = getFloridaAnnualReportStateFees(new Date(), { entityType });
+  // Same helper the server action uses, for the Eastern year being sold.
+  const now = new Date();
+  const reportYear = floridaEasternYear(now);
+  const stateFees = getFloridaAnnualReportStateFees(reportYear, now, { entityType });
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
   const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents + raAddon;
-  const reportYear = new Date().getFullYear();
 
   const onSubmit = () => {
     if (!signingOfficer) { toast.error(t('selectOfficer')); return; }
@@ -203,6 +205,7 @@ export function GuestAnnualReportForm() {
         mailingAddress: mailing,
         officers,
         signingOfficerName: signingOfficer,
+        termsAccepted: true,
         paymentIntentId: stripeResult.paymentIntentId,
       });
 

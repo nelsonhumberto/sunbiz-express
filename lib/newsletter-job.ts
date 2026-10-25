@@ -3,6 +3,7 @@ import 'server-only';
 import { prisma } from '@/lib/db';
 import { normalizeEmail } from '@/lib/email-address';
 import { sendEmail } from '@/lib/email';
+import { isRecordedEmailStatus } from '@/lib/email-status';
 import { isWeeklyNewsletterEnabled } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
 import { planMarketingClaim } from '@/lib/marketing-send-claim';
@@ -138,10 +139,10 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
       continue;
     }
     const sent001 = prior.some(
-      (item) => item.email === email && item.issueNumber === '001' && item.status === 'SENT',
+      (item) => item.email === email && item.issueNumber === '001' && isRecordedEmailStatus(item.status),
     );
     const sent002 = prior.some(
-      (item) => item.email === email && item.issueNumber === '002' && item.status === 'SENT',
+      (item) => item.email === email && item.issueNumber === '002' && isRecordedEmailStatus(item.status),
     );
     const issue = newsletterDueIssue({
       now,
@@ -169,10 +170,14 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
         listUnsubscribeUrl: unsubscribeUrl,
         context: { locale, unsubscribeUrl, newsletterIssue: issue },
       });
-      if (result.status === 'SENT') {
+      if (isRecordedEmailStatus(result.status)) {
         await prisma.newsletterSend.update({
           where: { issueNumber_email: { issueNumber: issue, email } },
-          data: { status: 'SENT', sentAt: new Date(), locale },
+          data: {
+            status: result.status,
+            sentAt: result.status === 'SENT' ? new Date() : null,
+            locale,
+          },
         });
         sent += 1;
       } else {

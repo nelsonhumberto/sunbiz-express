@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { resolveDripLocale } from '@/lib/draft-recovery';
 import { normalizeEmail } from '@/lib/email-address';
 import { sendEmail, type NotificationType } from '@/lib/email';
+import { isRecordedEmailStatus } from '@/lib/email-status';
 import { isPostFormationSeriesEnabled } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
 import { planMarketingClaim } from '@/lib/marketing-send-claim';
@@ -171,10 +172,14 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
             linkFilingId: filing.id,
           },
         });
-        if (result.status === 'SENT') {
+        if (isRecordedEmailStatus(result.status)) {
           await prisma.postFormationSend.update({
             where: { filingId_step: { filingId: filing.id, step } },
-            data: { status: 'SENT', sentAt: new Date(), locale },
+            data: {
+              status: result.status,
+              sentAt: result.status === 'SENT' ? new Date() : null,
+              locale,
+            },
           });
           sent += 1;
         } else {

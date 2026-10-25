@@ -304,6 +304,7 @@ describe('marketing send idempotency', () => {
   it('inserts once, skips a sent or fresh claim, and reclaims a failure', () => {
     expect(planMarketingClaim(null, now)).toBe('insert');
     expect(planMarketingClaim({ status: 'SENT', claimedAt: fresh }, now)).toBe('skip');
+    expect(planMarketingClaim({ status: 'SKIPPED_TEST', claimedAt: fresh }, now)).toBe('skip');
     expect(planMarketingClaim({ status: 'PENDING', claimedAt: fresh }, now)).toBe('skip');
     expect(planMarketingClaim({ status: 'PENDING', claimedAt: stale }, now)).toBe('reclaim');
     expect(planMarketingClaim({ status: 'FAILED', claimedAt: fresh }, now)).toBe('reclaim');

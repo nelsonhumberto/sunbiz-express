@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import type { DripLocale } from '@/lib/drip-copy';
 import { normalizeEmail } from '@/lib/email-address';
 import { sendEmail } from '@/lib/email';
+import { EMAIL_STATUS_SKIPPED_TEST, isRecordedEmailStatus } from '@/lib/email-status';
 import { logger } from '@/lib/logger';
 import { unsubscribeLink, unsubscribeSigningSecret } from '@/lib/unsubscribe';
 import {
@@ -37,7 +38,7 @@ async function deliverChecklist(lead: {
     where: {
       recipientEmail: lead.email,
       notificationType: 'CHECKLIST_DELIVERY',
-      status: 'SENT',
+      status: { in: ['SENT', EMAIL_STATUS_SKIPPED_TEST] },
     },
     select: { id: true },
   });
@@ -58,7 +59,7 @@ async function deliverChecklist(lead: {
         unsubscribeUrl,
       },
     });
-    if (sent.status !== 'SENT') return false;
+    if (!isRecordedEmailStatus(sent.status)) return false;
   }
   await prisma.checklistSignup.update({
     where: { id: lead.id },
@@ -137,7 +138,7 @@ export async function savePendingChecklistLead(input: {
       checklistConfirmUrl: checklistConfirmUrl(token, SITE_URL),
     },
   });
-  if (sent.status !== 'SENT') {
+  if (!isRecordedEmailStatus(sent.status)) {
     logger.error('checklist confirm email failed', {
       area: 'marketing',
       tag: 'checklist-confirm',

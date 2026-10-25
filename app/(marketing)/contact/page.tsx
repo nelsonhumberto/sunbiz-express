@@ -8,6 +8,15 @@ import {
   CONTACT_PHONE_E164,
 } from '@/lib/constants';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { serviceInquiryFromQuery } from '@/lib/service-inquiry';
+
+interface ContactPageProps {
+  searchParams?: { service?: string | string[] };
+}
+
+function pickFirst(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -29,8 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
   );
 }
 
-export default async function ContactPage() {
+export default async function ContactPage({ searchParams }: ContactPageProps) {
   const t = await getTranslations('contactPage');
+  const initialService = serviceInquiryFromQuery(pickFirst(searchParams?.service));
 
   return (
     <section className="py-12 md:py-16">
@@ -86,7 +96,15 @@ export default async function ContactPage() {
               {t('formHeading')}
             </h2>
             <p className="mt-3 text-ink-muted leading-relaxed">{t('formIntro')}</p>
-            <ServiceInquiryForm />
+            <ServiceInquiryForm
+              initialService={initialService}
+              companyServices={{
+                llc_reinstatement: t('serviceReinstatement'),
+                late_annual_report: t('serviceLateAnnualReport'),
+                documentNumberLabel: t('sunbizDocumentLabel'),
+                companyNameLabel: t('companyNameLabel'),
+              }}
+            />
           </div>
         </div>
       </div>

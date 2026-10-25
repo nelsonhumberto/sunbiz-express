@@ -102,7 +102,11 @@
     "phoneLabel": "Phone",
     "addressLabel": "Mailing address",
     "formHeading": "Tell us what you need",
-    "formIntro": "This is the same form we use for service requests. We will follow up by phone."
+    "formIntro": "This is the same form we use for service requests. We will follow up by phone.",
+    "serviceReinstatement": "LLC reinstatement (dissolved company)",
+    "serviceLateAnnualReport": "Late annual report",
+    "sunbizDocumentLabel": "Sunbiz document number",
+    "companyNameLabel": "Company name"
   },
   "disclosure": {
     "notAffiliated": "LaunchForma is a private business-filing service. We are not a government agency and are not affiliated with, endorsed by, or acting on behalf of any government agency. Government filing fees are set by the state and included in your package price.",

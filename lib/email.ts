@@ -130,6 +130,12 @@ interface EmailContext {
   inquiryEmail?: string;
   inquiryPhone?: string;
   inquiryService?: string;
+  /** `[Reinstatement]` or `[Late annual report]` for those contact inquiries. */
+  inquirySubjectPrefix?: string;
+  /** Optional Sunbiz document number collected with reinstatement or a late report. */
+  inquirySunbizDocumentNumber?: string;
+  /** Optional company name collected with reinstatement or a late report. */
+  inquiryCompanyName?: string;
   inquiryMessage?: string;
   inquiryLocale?: string;
   inquiryUtmSource?: string;
@@ -577,8 +583,14 @@ const TEMPLATES: Record<
   SERVICE_INQUIRY: (ctx) => {
     const cell = (value?: string) => escapeHtml(value?.trim() || 'Not provided');
     const message = ctx.inquiryMessage?.trim();
+    const label = (ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80);
+    const prefix = (ctx.inquirySubjectPrefix ?? '').replace(/[\r\n]/g, ' ').trim();
+    const knownPrefix = prefix === '[Reinstatement]' || prefix === '[Late annual report]';
+    const companyRows = knownPrefix
+      ? `<tr><td>Sunbiz document number</td><td>${cell(ctx.inquirySunbizDocumentNumber)}</td></tr><tr><td>Company name</td><td>${cell(ctx.inquiryCompanyName)}</td></tr>`
+      : '';
     return {
-      subject: `Service request: ${(ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80)}`,
+      subject: knownPrefix ? `${prefix} Service request: ${label}` : `Service request: ${label}`,
       body: html`
         <h1>New business-services request</h1>
         <p>Someone asked for a service from the ad landing page. Reply by phone or WhatsApp. Use email only when one is listed.</p>
@@ -587,6 +599,7 @@ const TEMPLATES: Record<
           <tr><td>Email</td><td>${cell(ctx.inquiryEmail)}</td></tr>
           <tr><td>Phone</td><td>${cell(ctx.inquiryPhone)}</td></tr>
           <tr><td>Service</td><td>${cell(ctx.inquiryService)}</td></tr>
+          ${companyRows}
           <tr><td>Language</td><td>${cell(ctx.inquiryLocale)}</td></tr>
           <tr><td>utm_source</td><td>${cell(ctx.inquiryUtmSource)}</td></tr>
           <tr><td>utm_medium</td><td>${cell(ctx.inquiryUtmMedium)}</td></tr>

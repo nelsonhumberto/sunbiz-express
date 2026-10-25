@@ -4,7 +4,6 @@ import {
   addOnPriceCents,
   computeCost,
   snapshotAddOnPriceCents,
-  type AddOnSlug,
 } from '@/lib/pricing';
 
 const STALE_CATALOG = {
@@ -14,12 +13,12 @@ const STALE_CATALOG = {
   domain_com: 1_200,
 } as const;
 
-const PRICED: AddOnSlug[] = [
+const PRICED = [
   'ein',
   'operating_agreement_single',
   'operating_agreement_multi',
   'domain_com',
-];
+] as const;
 
 describe('snapshotAddOnPriceCents', () => {
   afterEach(() => {

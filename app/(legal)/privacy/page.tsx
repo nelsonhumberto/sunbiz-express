@@ -24,7 +24,7 @@ We share information with the services that help us run LaunchForma:
 
 - **Florida Department of State (Sunbiz)**: to file your formation documents. Filings are public records.
 - **Stripe**: to process payments (PCI-DSS Level 1 certified). We also send Stripe basic campaign information (such as UTM tags) with your payment so we know which ad led to it.
-- **Our email delivery provider**: to send transactional emails and, if you sign up, our newsletter and checklist emails.
+- **Google (Gmail / Google Workspace), our email delivery provider**: to send transactional emails and, if you sign up, our newsletter and checklist emails.
 - **Vercel**: to host our website and app, and for basic site performance and visitor analytics.
 - **Supabase**: to host our database.
 - **PostHog**: for product analytics (pageviews and events) and session replay. Data is processed in the United States.

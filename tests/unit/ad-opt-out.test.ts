@@ -165,7 +165,7 @@ describe('privacy policy text', () => {
     expect(page).not.toContain('LegalDraftNotice');
     expect(page).toContain('Effective October 25, 2026');
     expect(page).toContain(
-      'Our email delivery provider**: to send transactional emails and, if you sign up, our newsletter and checklist emails.',
+      '**Google (Gmail / Google Workspace), our email delivery provider**: to send transactional emails and, if you sign up, our newsletter and checklist emails.',
     );
     expect(page).not.toContain('Resend');
     expect(page).not.toContain('SendGrid');
@@ -185,7 +185,7 @@ describe('privacy policy text', () => {
       'Política de privacidad de LaunchForma: qué recopilamos, para qué, con quién lo compartimos, cómo usamos la analítica y la medición de anuncios, y cómo ejercer tus derechos de GDPR y CCPA.',
     );
     expect(es.legalPrivacy.body).toContain(
-      'Nuestro proveedor de envío de correo**: para enviar correos transaccionales y, si te suscribes, nuestro boletín y los correos de la lista de verificación.',
+      '**Google (Gmail / Google Workspace), nuestro proveedor de envío de correo**: para enviar correos transaccionales y, si te suscribes, nuestro boletín y los correos de la lista de verificación.',
     );
     expect(es.legalPrivacy.body).not.toContain('Resend');
     expect(es.legalPrivacy.body).not.toContain('SendGrid');

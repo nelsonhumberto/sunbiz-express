@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
-import { ADD_ON_BY_SLUG } from '@/lib/pricing';
+import { ADD_ON_BY_SLUG, snapshotAddOnPriceCents } from '@/lib/pricing';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { getStripe } from '@/lib/stripe';
 import {
@@ -193,7 +193,12 @@ export async function purchaseCertificateAddOn(
         data: {
           filingId: filing.id,
           serviceId: service.id,
-          priceCents: quote.totalCents,
+          priceCents: snapshotAddOnPriceCents({
+            slug,
+            dbPriceCents: service.priceCents,
+            entityType,
+            state,
+          }),
           status: 'ACTIVE',
           purchasedAt: new Date(),
         },

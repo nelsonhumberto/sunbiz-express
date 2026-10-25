@@ -1,0 +1,6 @@
+# An entry needs Nelson's explicit OK.
+# One migration folder name per line.
+# Blank lines and lines that start with # are ignored.
+
+# Already on main. Drops NOT NULL on ServiceInquiry.email.
+20261024140000_service_inquiry_optional_email

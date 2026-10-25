@@ -1,7 +1,8 @@
-import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { Link, redirect } from '@/i18n/navigation';
+import { pickLocale } from '@/lib/pick-locale';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +30,11 @@ export default async function CertificateOrderPage({ params }: PageProps) {
   const slug = params.slug;
 
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  const requestLocale = pickLocale(await getLocale(), null);
+  if (!session?.user?.id) {
+    redirect({ href: '/sign-in', locale: requestLocale });
+  }
+  if (!session?.user?.id) notFound();
   const t = await getTranslations('certificates');
 
   const filing = await prisma.filing.findUnique({
@@ -51,6 +56,7 @@ export default async function CertificateOrderPage({ params }: PageProps) {
     },
   });
   if (!filing || filing.userId !== session.user.id) notFound();
+  const locale = pickLocale(requestLocale, filing.locale);
 
   const offer = certificateOffer({
     slug,
@@ -60,7 +66,9 @@ export default async function CertificateOrderPage({ params }: PageProps) {
     addOnSlugs: filing.filingAdditionalServices.map((row) => row.service.serviceSlug),
     documents: filing.documents,
   });
-  if (offer.kind === 'hidden') redirect(`/dashboard/filings/${filing.id}`);
+  if (offer.kind === 'hidden') {
+    redirect({ href: `/dashboard/filings/${filing.id}`, locale });
+  }
 
   const entityType = filingEntityType(filing.entityType);
   const state = filingFormationState(filing.state);
@@ -84,6 +92,7 @@ export default async function CertificateOrderPage({ params }: PageProps) {
     <div className="container max-w-2xl py-10 space-y-6">
       <Link
         href={`/dashboard/filings/${filing.id}`}
+        locale={locale}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -98,7 +107,9 @@ export default async function CertificateOrderPage({ params }: PageProps) {
           {isCopy ? t('copyTitle') : t('statusTitle')}
         </h1>
         <p className="text-sm text-ink-muted mt-2">
-          {isCopy ? t('copyIntro', { company }) : t('statusIntro', { company })}
+          {offer.kind === 'included'
+            ? t(isCopy ? 'copyIntroIncluded' : 'statusIntroIncluded', { company })
+            : t(isCopy ? 'copyIntro' : 'statusIntro', { company })}
         </p>
       </div>
 
@@ -124,6 +135,7 @@ export default async function CertificateOrderPage({ params }: PageProps) {
           stateFeeCents={quote.stateFeeCents}
           totalCents={quote.totalCents}
           savedCard={savedCard}
+          filingLocale={filing.locale}
         />
       )}
     </div>

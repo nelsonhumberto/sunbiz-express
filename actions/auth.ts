@@ -2,14 +2,17 @@
 
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { redirect } from 'next/navigation';
+import { redirect as exactRedirect } from 'next/navigation';
+import { redirect as localeRedirect } from '@/i18n/navigation';
+import { hrefForLocale } from '@/lib/app-href';
+import { localeForRedirect, localizedNextParam } from '@/lib/locale-redirect';
+import { pickLocale } from '@/lib/pick-locale';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { AuthError } from 'next-auth';
 import { userUtmCreateFields } from '@/lib/utm-attribution';
 import { checkActionRateLimit } from '@/lib/rate-limit';
-import { safeRedirectPath } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
 import { storedLocale } from '@/lib/stored-locale';
 import { attachGuestDraftsToAccount } from '@/actions/guest-email';
@@ -105,7 +108,8 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
   } catch (err) {
     // ignore - will redirect to sign-in
   }
-  redirect(attached.resumeHref ?? '/dashboard');
+  await redirectAfterAuth(formData.get('next'), attached.resumeHref);
+  throw new Error('Redirect did not stop execution.');
 }
 
 let dummyHashPromise: Promise<string> | null = null;
@@ -169,13 +173,41 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
   // Redirect admins straight to the admin panel. Honor an optional `next`
   // param (e.g. when we sent the user to /sign-in mid-checkout) so they
   // land back where they were trying to go. Restrict to same-origin paths.
-  const safeNext = safeRedirectPath(String(formData.get('next') ?? ''));
   const attached =
     account.role === 'ADMIN' ? null : await attachGuestDraftsToAccount(account.id);
   if (account.role === 'ADMIN') {
-    redirect('/admin');
+    exactRedirect('/admin');
+    throw new Error('Redirect did not stop execution.');
   }
-  redirect(safeNext ?? attached?.resumeHref ?? '/dashboard');
+  await redirectAfterAuth(formData.get('next'), attached?.resumeHref ?? null);
+  throw new Error('Redirect did not stop execution.');
+}
+
+/** Honor a same-origin next= path, then the attached draft, in that draft's locale. */
+async function redirectAfterAuth(
+  rawNext: FormDataEntryValue | null,
+  resumeHref: string | null,
+): Promise<never> {
+  const filingLocale = await localeOnWizardHref(resumeHref);
+  const next = await localizedNextParam(typeof rawNext === 'string' ? rawNext : null, filingLocale);
+  const target = next ?? (resumeHref ? hrefForLocale(resumeHref, pickLocale(null, filingLocale)) : null);
+  if (target && (target.startsWith('/es/') || target === '/es' || target.startsWith('/es?'))) {
+    exactRedirect(target);
+    throw new Error('Redirect did not stop execution.');
+  }
+  const locale = await localeForRedirect(filingLocale);
+  localeRedirect({ href: target ?? '/dashboard', locale });
+  throw new Error('Redirect did not stop execution.');
+}
+
+async function localeOnWizardHref(href: string | null): Promise<string | null> {
+  const match = href?.match(/\/wizard\/([^/?#]+)/);
+  if (!match) return null;
+  const filing = await prisma.filing.findUnique({
+    where: { id: match[1] },
+    select: { locale: true },
+  });
+  return filing?.locale ?? null;
 }
 
 export async function signOutAction() {

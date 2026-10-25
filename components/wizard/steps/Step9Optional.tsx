@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
@@ -227,7 +227,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   );
 
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   let dateError: string | undefined;
   if (effectiveDate) {

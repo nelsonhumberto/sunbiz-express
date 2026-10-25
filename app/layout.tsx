@@ -20,6 +20,7 @@ import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
 import { openAiPixelBootstrap } from '@/lib/openai-pixel';
 import { openAiPixelId } from '@/lib/tracking-ids';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
+import { ChunkReload } from '@/components/ChunkReload';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -90,6 +91,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <HtmlLang />
+        <ChunkReload />
         {loadOpenAiPixel && openAiId ? (
           <Script id="openai-ads-pixel" strategy="beforeInteractive">
             {openAiPixelBootstrap(openAiId)}

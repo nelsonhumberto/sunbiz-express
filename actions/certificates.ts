@@ -160,7 +160,7 @@ export async function purchaseCertificateAddOn(
     await prisma.$transaction(async (tx) => {
       const service = await tx.additionalService.upsert({
         where: { serviceSlug: slug },
-        update: {},
+        update: { serviceName: def.name },
         create: {
           serviceName: def.name,
           serviceSlug: slug,

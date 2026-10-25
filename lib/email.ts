@@ -14,6 +14,7 @@
 
 import { prisma } from './db';
 import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from './email-address';
+import { EMAIL_STATUS_SKIPPED_TEST } from './email-status';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
@@ -968,6 +969,23 @@ export async function sendEmail(args: SendEmailArgs) {
 
   try {
     await deliverEmail(recipient, subject, body, { replyTo, headers });
+    if (testRecipient) {
+      await prisma.emailNotification.update({
+        where: { id: record.id },
+        data: {
+          status: EMAIL_STATUS_SKIPPED_TEST,
+          subject,
+          htmlBody: body,
+          recipientEmail: recipient,
+        },
+      });
+      return {
+        ...record,
+        status: EMAIL_STATUS_SKIPPED_TEST,
+        sentAt: null,
+        errorMessage: null as string | null,
+      };
+    }
     const sentAt = new Date();
     await prisma.emailNotification.update({
       where: { id: record.id },

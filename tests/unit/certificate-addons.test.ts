@@ -1,11 +1,14 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 import {
+  adminAddOnLabel,
   certificateIncluded,
   certificateOffer,
   certificateOrderPath,
   certificateOrderQuote,
+  displayedCertificateTitle,
   type CertificateAddOnSlug,
 } from '@/lib/certificate-addons';
 import {
@@ -19,6 +22,10 @@ import {
   certifiedCopyFeeCents,
   type StateCode,
 } from '@/lib/formation-states';
+
+function source(rel: string): string {
+  return readFileSync(rel, 'utf8');
+}
 
 const SLUGS: CertificateAddOnSlug[] = ['cert_status', 'cert_copy'];
 const STATES: StateCode[] = ['FL', 'WY', 'DE'];
@@ -142,12 +149,43 @@ describe('certificate dashboard eligibility', () => {
     ).toEqual({ kind: 'orderable' });
   });
 
-  it('uses the dashboard URL for each add-on', () => {
+  it('uses the dashboard URL for each add-on and keeps Spanish', () => {
     expect(certificateOrderPath('fil_1', 'cert_status')).toBe(
       '/dashboard/filings/fil_1/certificates/cert_status',
     );
     expect(certificateOrderPath('fil_1', 'cert_copy')).toBe(
       '/dashboard/filings/fil_1/certificates/cert_copy',
+    );
+    expect(certificateOrderPath('fil_1', 'cert_status', 'es')).toBe(
+      '/es/dashboard/filings/fil_1/certificates/cert_status',
+    );
+    expect(certificateOrderPath('fil_1', 'cert_copy', 'es')).toBe(
+      '/es/dashboard/filings/fil_1/certificates/cert_copy',
+    );
+  });
+
+  it('shows a translated certificate title and leaves other documents alone', () => {
+    expect(
+      displayedCertificateTitle('CERT_STATUS', 'Certificate of Status', {
+        CERT_STATUS: 'Certificado de estado',
+        CERT_COPY: 'Copia certificada',
+      }),
+    ).toBe('Certificado de estado');
+    expect(
+      displayedCertificateTitle('CERT_COPY', 'Certified Copy of Articles', {
+        CERT_COPY: 'Copia certificada',
+      }),
+    ).toBe('Copia certificada');
+    expect(displayedCertificateTitle('RECEIPT', 'Receipt', {})).toBe('Receipt');
+  });
+
+  it('labels the admin add-on without the Handling suffix', () => {
+    expect(adminAddOnLabel('cert_status', 'Certificate of Status Handling')).toBe(
+      'Certificate of Status',
+    );
+    expect(adminAddOnLabel('cert_copy', 'Certified Copy Handling')).toBe('Certified Copy');
+    expect(adminAddOnLabel('registered_agent', 'Registered Agent Service')).toBe(
+      'Registered Agent Service',
     );
   });
 });
@@ -204,5 +242,25 @@ describe('certificate copy', () => {
     expect(es.certificates.alreadyIncluded).toBe('Ya incluido');
     expect(es.certificates.statusTitle).toMatch(/certificado de estado/i);
     expect(es.certificates.copyTitle).toMatch(/copia certificada/i);
+    expect(en.certificates.statusIntroIncluded).not.toMatch(/pay the state fee/i);
+    expect(en.certificates.copyIntroIncluded).not.toMatch(/pay the state fee/i);
+    expect(es.certificates.statusIntroIncluded).not.toMatch(/pagamos la tarifa/i);
+    expect(es.certificates.copyIntroIncluded).not.toMatch(/pagamos la tarifa/i);
+    expect(en.certificates.statusIntro).toMatch(/pay the state fee/i);
+  });
+
+  it('keeps certificate links and hidden-offer redirects on the locale', () => {
+    const filing = source('app/(app)/dashboard/filings/[id]/page.tsx');
+    const order = source('app/(app)/dashboard/filings/[id]/certificates/[slug]/page.tsx');
+    expect(filing).toContain("from '@/i18n/navigation'");
+    expect(filing).toContain('LocaleLink');
+    expect(filing).toContain('certificateOrderPath(filing.id, slug)');
+    expect(filing).toContain('locale={locale}');
+    expect(order).toContain("from '@/i18n/navigation'");
+    expect(order).toContain('redirect({ href: `/dashboard/filings/${filing.id}`, locale })');
+    expect(order).toContain('redirect({ href: \'/sign-in\', locale: requestLocale })');
+    expect(order).not.toContain('redirect(`/dashboard/filings/');
+    expect(order).toContain('statusIntroIncluded');
+    expect(order).toContain('copyIntroIncluded');
   });
 });

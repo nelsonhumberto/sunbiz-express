@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
@@ -177,7 +177,7 @@ export function Step7CorpRoles({
   const [showTitleHelp, setShowTitleHelp] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   // Pull address sources from earlier wizard steps so officer cards
   // can one-tap copy the principal/mailing/RA address.

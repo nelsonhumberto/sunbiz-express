@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
+import { displayedCertificateTitle } from '@/lib/certificate-addons';
 import {
   filingHasOperatingAgreement,
   type AddOnSlug,
@@ -111,7 +112,12 @@ export default async function DocumentsPage() {
                             <Clock className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{doc.title}</p>
+                            <p className="text-sm font-medium truncate">
+                              {displayedCertificateTitle(doc.documentType, doc.title, {
+                                CERT_STATUS: tDocs('CERT_STATUS'),
+                                CERT_COPY: tDocs('CERT_COPY'),
+                              })}
+                            </p>
                             <p className="text-xs text-ink-muted">
                               {TYPE_LABEL[doc.documentType] ?? doc.documentType} ·{' '}
                               {tWizard('documentPendingState')}
@@ -133,10 +139,15 @@ export default async function DocumentsPage() {
                             <FileText className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{doc.title}</p>
-                            <p className="text-xs text-ink-muted">
-                              {TYPE_LABEL[doc.documentType] ?? doc.documentType} · {formatDate(doc.generatedAt)}
-                            </p>
+                          <p className="text-sm font-medium truncate">
+                            {displayedCertificateTitle(doc.documentType, doc.title, {
+                              CERT_STATUS: tDocs('CERT_STATUS'),
+                              CERT_COPY: tDocs('CERT_COPY'),
+                            })}
+                          </p>
+                          <p className="text-xs text-ink-muted">
+                            {TYPE_LABEL[doc.documentType] ?? doc.documentType} · {formatDate(doc.generatedAt)}
+                          </p>
                           </div>
                           <Download className="h-4 w-4 text-ink-subtle" />
                         </a>

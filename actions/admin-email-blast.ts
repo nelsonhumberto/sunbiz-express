@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail, type NotificationType } from '@/lib/email';
+import { isQaOrE2eRecipient } from '@/lib/email-address';
+import { EMAIL_STATUS_SKIPPED_TEST } from '@/lib/email-status';
 
 async function requireAdmin() {
   const session = await auth();
@@ -100,8 +102,9 @@ export async function sendCustomEmail(formData: FormData): Promise<BlastResult> 
     </p>
   </body></html>`;
 
-  // Record in outbox
+  // Record in outbox. A qa+ or e2e+ address is not a real send.
   const user = await prisma.user.findUnique({ where: { email: to }, select: { id: true } });
+  const skipped = isQaOrE2eRecipient(to);
   await prisma.emailNotification.create({
     data: {
       notificationType: 'COMPLIANCE_ALERT',
@@ -109,17 +112,16 @@ export async function sendCustomEmail(formData: FormData): Promise<BlastResult> 
       subject,
       templateName: 'custom',
       htmlBody: html,
-      status: 'SENT',
-      sentAt: new Date(),
+      status: skipped ? EMAIL_STATUS_SKIPPED_TEST : 'SENT',
+      ...(skipped ? {} : { sentAt: new Date() }),
       userId: user?.id,
     },
   });
 
-  // Deliver
   const { deliverEmailDirect } = await import('@/lib/email');
   await deliverEmailDirect(to, subject, html);
 
-  return { ok: true, sent: 1 };
+  return { ok: true, sent: skipped ? 0 : 1 };
 }
 
 export async function updateStateFees(formData: FormData): Promise<BlastResult> {

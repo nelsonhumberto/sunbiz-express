@@ -300,6 +300,7 @@ export function NameCheckWidget({
           heldNameRef.current = combinedName;
           setCooldownUntil(rateLimitCooldownUntil(Date.now()));
         }
+        onChange(combinedName, null, assessment);
         setLoading(false);
         return;
       }

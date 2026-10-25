@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
-import { localizedHref } from '@/lib/locale-paths';
 
 interface PricingTableProps {
   showHeader?: boolean;
@@ -67,8 +66,7 @@ export function PricingTable({
   feeNote,
 }: PricingTableProps) {
   const t = useTranslations('pricing');
-  const locale = useLocale();
-  const oaGuideHref = localizedHref('/guides/florida-llc-operating-agreement', locale);
+  const oaGuideHref = '/guides/florida-llc-operating-agreement';
   const formationState = getFormationState(state.code);
   const footnoteCopy = t('footnote', { state: formationState.name });
   // Headline price shown on each card is the LLC price for the active state
@@ -166,7 +164,7 @@ export function PricingTable({
                   {formationState.code === 'FL' && tier.slug === 'BASIC' && prices.corpDiffers && (
                     <p className="mt-1 text-xs leading-snug">
                       <Link
-                        href={localizedHref('/guides/how-to-form-a-florida-corporation', locale)}
+                        href="/guides/how-to-form-a-florida-corporation"
                         className="font-medium text-primary hover:underline"
                       >
                         {t('corpGuide')}

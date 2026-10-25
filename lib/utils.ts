@@ -38,7 +38,7 @@ export function formatDateLong(date: Date | string | null | undefined) {
   return formatDate(date, { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export function formatRelative(date: Date | string) {
+export function formatRelative(date: Date | string, locale: 'en' | 'es' = 'en') {
   const d = typeof date === 'string' ? new Date(date) : date;
   const now = Date.now();
   const diff = now - d.getTime();
@@ -46,11 +46,16 @@ export function formatRelative(date: Date | string) {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-  if (seconds < 60) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return formatDate(d);
+  const spanish = locale === 'es';
+  if (seconds < 60) return spanish ? 'ahora mismo' : 'just now';
+  if (minutes < 60) return spanish ? `hace ${minutes} min` : `${minutes}m ago`;
+  if (hours < 24) return spanish ? `hace ${hours} h` : `${hours}h ago`;
+  if (days < 7) return spanish ? `hace ${days} d` : `${days}d ago`;
+  return d.toLocaleDateString(spanish ? 'es' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /**

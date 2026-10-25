@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { openGuestDraft, type DraftNameChoice } from '@/actions/guest-start';
@@ -38,7 +37,6 @@ export function GuestStartLaunch({
   entityLabel: string;
 }) {
   const t = useTranslations('start');
-  const router = useRouter();
   const [pending, setPending] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [choice, setChoice] = useState<DraftNameChoice | null>(null);
@@ -70,7 +68,7 @@ export function GuestStartLaunch({
     } catch (err) {
       const href = redirectHrefFromError(err);
       if (href) {
-        router.push(href);
+        window.location.assign(href);
         return;
       }
       if (isRedirectError(err)) return;

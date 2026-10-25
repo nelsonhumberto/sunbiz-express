@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
 import { X, Loader2, Mail, CheckCircle2, ArrowRight } from 'lucide-react';
 import {
   Dialog,
@@ -31,12 +33,15 @@ export function GuestSaveExitDialog({
   email,
   label,
   filingId,
+  returnStep,
 }: {
   email: string;
   label: string;
   filingId: string;
+  returnStep: number;
 }) {
   const t = useTranslations('wizard');
+  const locale = pickLocale(useLocale(), null);
   const usableEmail = isPlaceholderGuestEmail(email) ? '' : email;
   const [open, setOpen] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(usableEmail.length === 0);
@@ -45,7 +50,8 @@ export function GuestSaveExitDialog({
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ClaimResult>({});
 
-  const resumeHref = state.resumeHref || `/wizard/${filingId}`;
+  const resumeHref =
+    state.resumeHref || hrefForLocale(`/wizard/${filingId}/${returnStep}`, locale);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -124,12 +130,18 @@ export function GuestSaveExitDialog({
 
               {state.error && (
                 <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
-                  {state.error}
+                  {state.error}{' '}
+                  {state.signInHref ? (
+                    <a href={state.signInHref} className="font-medium underline">
+                      {t('accountGateSignInButton')}
+                    </a>
+                  ) : null}
                 </p>
               )}
 
               <form onSubmit={onSubmit} className="space-y-3">
                 <input type="hidden" name="filingId" value={filingId} />
+                <input type="hidden" name="returnStep" value={returnStep} />
                 {showEmailEditor ? (
                   <div className="space-y-1.5">
                     <Label htmlFor="save-exit-email">{t('saveExitEmailLabel')}</Label>

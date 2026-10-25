@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   Lock,
@@ -106,7 +106,7 @@ export function Step12Payment({
     return d;
   });
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const cardRef = useRef<StripeCardHandle>(null);
 
   // Coupon state
@@ -248,7 +248,7 @@ export function Step12Payment({
             <div className="flex items-center justify-between rounded-md bg-success/10 border border-success/20 px-3 py-2 text-sm text-success">
               <span className="flex items-center gap-1.5">
                 <Tag className="h-3.5 w-3.5" />
-                <strong>{appliedCoupon.code}</strong> applied
+                <strong>{appliedCoupon.code}</strong> {t('couponApplied')}
                 {appliedCoupon.description && <span className="text-xs opacity-70"> - {appliedCoupon.description}</span>}
               </span>
               <button type="button" onClick={removeCoupon} className="hover:opacity-70">
@@ -257,7 +257,7 @@ export function Step12Payment({
             </div>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-xs text-ink-muted flex items-center gap-1"><Tag className="h-3 w-3" /> Have a coupon code?</p>
+              <p className="text-xs text-ink-muted flex items-center gap-1"><Tag className="h-3 w-3" /> {t('couponPrompt')}</p>
               <div className="flex gap-2">
                 <Input
                   value={couponInput}
@@ -274,7 +274,7 @@ export function Step12Payment({
                   disabled={couponPending || !couponInput.trim()}
                   className="shrink-0"
                 >
-                  {couponPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
+                  {couponPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('couponApply')}
                 </Button>
               </div>
               {couponError && <p className="text-xs text-destructive">{couponError}</p>}
@@ -311,6 +311,7 @@ export function Step12Payment({
           filingId={filing.id}
           email={guestEmail}
           pendingAccountEmail={pendingAccountEmail}
+          filingLocale={filing.locale}
         />
       )}
 

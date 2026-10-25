@@ -1,7 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
+import { pickLocale } from '@/lib/pick-locale';
+import { safeRedirectPath } from '@/lib/utils';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -93,7 +96,10 @@ async function getFilingForUser(filingId: string) {
   // Resolve the actor - authenticated NextAuth user OR a GUEST identified by
   // the signed cookie. Guests are first-class participants in the wizard.
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-  if (!actor) redirect('/sign-in');
+  if (!actor) {
+    const next = safeRedirectPath(storedEntryPath());
+    return await redirectLocalized(next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in');
+  }
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: { managersMembers: { orderBy: { position: 'asc' } } },
@@ -162,18 +168,24 @@ const Step1Schema = z.object({
   contactEmail: z.string().max(254).optional(),
 });
 
+async function wizardCopy(filingLocale?: string | null) {
+  const locale = pickLocale(await storedLocale(), filingLocale);
+  return getTranslations({ locale, namespace: 'wizard' });
+}
+
 async function persistGuestEmail(
   actor: { kind: 'user' | 'guest'; email?: string | null },
   filingId: string,
   contactEmail: string | undefined,
   required: boolean,
+  filingLocale?: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (actor.kind !== 'guest') return { ok: true };
   const email = contactEmail?.trim() ?? '';
   const placeholder = isPlaceholderGuestEmail(actor.email);
   if (!email) {
     if (required && placeholder) {
-      const t = await getTranslations('wizard');
+      const t = await wizardCopy(filingLocale);
       return { ok: false, error: t('guestEmailRequired') };
     }
     return { ok: true };
@@ -181,7 +193,7 @@ async function persistGuestEmail(
   const saved = await saveGuestEmail(filingId, email);
   if (saved.needsSignIn) return { ok: true };
   if (!saved.ok) {
-    const t = await getTranslations('wizard');
+    const t = await wizardCopy(filingLocale);
     return { ok: false, error: saved.error ?? t('guestEmailInvalid') };
   }
   return { ok: true };
@@ -190,7 +202,7 @@ async function persistGuestEmail(
 export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const data = Step1Schema.parse(input);
   const { filing, actor } = await getFilingForUser(data.filingId);
-  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, false);
+  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, false, filing.locale);
   if (!emailSaved.ok) return emailSaved;
   const nextState = data.state ?? asStateCode(filing.state);
   const taxElection = data.taxElection ?? null;
@@ -258,6 +270,7 @@ const Step2Schema = z.object({
   filingId: z.string(),
   businessName: z.string().min(2).max(100),
   available: z.boolean().optional(),
+  nameStatus: z.enum(['available', 'exact_conflict', 'similar_conflict', 'restricted']).optional(),
   contactEmail: z.string().max(254).optional(),
 });
 
@@ -272,8 +285,15 @@ export async function saveStep2(input: z.infer<typeof Step2Schema>) {
   }
   const data = parsed.data;
   const { filing, actor } = await getFilingForUser(data.filingId);
-  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, true);
+  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, true, filing.locale);
   if (!emailSaved.ok) return emailSaved;
+  if (data.nameStatus === 'exact_conflict') {
+    const t = await wizardCopy(filing.locale);
+    return {
+      ok: false as const,
+      error: t('nameTakenBlock'),
+    };
+  }
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const businessName = canonicalFiledName(data.businessName, entityType);
 
@@ -1099,7 +1119,10 @@ async function reconcileOwnershipPercentages(filingId: string) {
 export async function getWizardFiling(filingId: string) {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-  if (!actor) redirect('/sign-in');
+  if (!actor) {
+    const next = safeRedirectPath(storedEntryPath());
+    return await redirectLocalized(next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in');
+  }
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: {
@@ -1109,7 +1132,7 @@ export async function getWizardFiling(filingId: string) {
   });
   // Guests cannot navigate to /dashboard; we send them home instead.
   if (!filing || filing.userId !== actor.id) {
-    redirect(actor.kind === 'guest' ? '/' : '/dashboard');
+    return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard', filing?.locale);
   }
   return filing;
 }

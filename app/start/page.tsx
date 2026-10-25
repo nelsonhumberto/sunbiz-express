@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -88,6 +89,8 @@ export default async function StartPage({ searchParams }: StartPageProps) {
     const { entityType, taxElection } = resolveEntityParam(searchParams?.entity);
     const seededName = normalizeNameCheckQuery(searchParams?.name) || null;
     const serviceTier = resolveTier(searchParams?.tier);
+    const locale = await storedLocale();
+    const entryPath = storedEntryPath();
     const filing = await prisma.filing.create({
       data: {
         userId: session.user.id,
@@ -100,11 +103,13 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         businessName: seededName,
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
+        ...(locale ? { locale } : {}),
+        ...(entryPath ? { entryPath } : {}),
         ...filingUtmCreateFields(),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/2`);
+    return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
 
   const t = await getTranslations('start');

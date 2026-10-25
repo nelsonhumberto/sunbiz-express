@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
 import { saveStep2 } from '@/actions/wizard';
@@ -28,7 +28,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
-import { nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
+import { nameCheckBlocksContinue, nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
 export function Step2Name({
   filing,
@@ -48,7 +48,7 @@ export function Step2Name({
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [showNameError, setShowNameError] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
@@ -58,7 +58,8 @@ export function Step2Name({
   // not pass. A failed name lookup does not disable Continue.
   const isHardBlocked = assessment ? !assessment.valid : false;
   const nameTooShort = !nameHasMinimumSubstance(name);
-  const canContinue = !nameTooShort && !isHardBlocked;
+  const nameTaken = nameCheckBlocksContinue(result);
+  const canContinue = !nameTooShort && !isHardBlocked && !nameTaken;
 
   const saveAndAdvance = () => {
     run(async () => {
@@ -66,6 +67,7 @@ export function Step2Name({
         filingId: filing.id,
         businessName: name,
         available: result?.available ?? undefined,
+        nameStatus: result?.status,
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
       if (!res.ok) return { ok: false, error: res.error };
@@ -81,7 +83,7 @@ export function Step2Name({
     if (!canContinue) return;
     // If the state lookup says the name is taken, confirm via an accessible
     // dialog (keyboard + screen-reader friendly) instead of window.confirm().
-    if (result && !result.available) {
+    if (result && !result.available && !nameCheckBlocksContinue(result)) {
       setShowUnavailable(true);
       return;
     }

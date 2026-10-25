@@ -14,6 +14,16 @@ export function MarkdownBody({
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
+        blockquote: ({ children }) => (
+          <blockquote>
+            {locale === 'es' ? (
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Texto oficial en inglés
+              </p>
+            ) : null}
+            {children}
+          </blockquote>
+        ),
         a: ({ href, children }) => {
           const next = href ? localizedHref(href, locale) : href;
           const external = Boolean(next?.startsWith('http'));

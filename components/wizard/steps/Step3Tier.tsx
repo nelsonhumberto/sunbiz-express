@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { Check, Minus, Sparkles } from 'lucide-react';
 import { saveStep3, upgradeTier } from '@/actions/wizard';
@@ -22,7 +22,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const persistGen = useRef(0);
   const desiredTier = useRef<TierSlug>(filing.serviceTier as TierSlug);
   const stateCode: StateCode = isActiveFormationState(filing.state)

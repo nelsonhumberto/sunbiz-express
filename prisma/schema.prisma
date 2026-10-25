@@ -417,7 +417,7 @@ model EmailNotification {
   subject          String
   templateName     String
   htmlBody         String   // rendered preview
-  status           String   @default("QUEUED") // QUEUED | PENDING | SENT | FAILED | BOUNCED
+  status           String   @default("QUEUED") // QUEUED | PENDING | SENT | FAILED | BOUNCED | SKIPPED_TEST
   sentAt           DateTime?
   openedAt         DateTime?
   clickedAt        DateTime?

@@ -1,18 +1,16 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
+import { useErrorLocale } from '@/components/i18n/useErrorLocale';
 import { Button } from '@/components/ui/button';
+import { ERROR_PAGE_COPY } from '@/lib/error-page-copy';
 import { logger } from '@/lib/logger';
 
 /**
- * Wizard-scoped error boundary. Previously the wizard caught its own
- * exceptions silently, which the May 2026 audit identified as the
- * source of the empty-string console errors accumulating during a
- * single session. This boundary now logs every failure with `logger`
- * (so it lands in our central log sink) and surfaces a recoverable UI
- * instead of leaving the visitor on a half-rendered page.
+ * Wizard-scoped error boundary. The public URL decides the language
+ * because a rewritten /es path does not always show up in usePathname.
  */
 export default function WizardError({
   error,
@@ -21,6 +19,9 @@ export default function WizardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useErrorLocale();
+  const copy = ERROR_PAGE_COPY[locale];
+
   useEffect(() => {
     logger.error('Wizard render failure', {
       area: 'wizard',
@@ -36,26 +37,20 @@ export default function WizardError({
           <AlertTriangle className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h1 className="font-display text-2xl font-medium">
-            Something stalled in the filing wizard.
-          </h1>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            We logged the error and the LaunchForma team will pick it up.
-            Your draft is saved - try again, or head back to your
-            dashboard to resume from the last completed step.
-          </p>
+          <h1 className="font-display text-2xl font-medium">{copy.wizardTitle}</h1>
+          <p className="text-sm text-ink-muted leading-relaxed">{copy.wizardBody}</p>
         </div>
         {error.digest && (
           <p className="text-[11px] font-mono text-ink-subtle">
-            Error ref: {error.digest}
+            {copy.ref}: {error.digest}
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Button type="button" onClick={() => reset()}>
-            <RefreshCw className="h-4 w-4" /> Try again
+            <RefreshCw className="h-4 w-4" /> {copy.tryAgain}
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard">Back to dashboard</Link>
+            <Link href="/dashboard" locale={locale}>{copy.dashboard}</Link>
           </Button>
         </div>
       </div>

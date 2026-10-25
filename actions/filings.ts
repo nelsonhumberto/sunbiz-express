@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
@@ -80,7 +81,7 @@ export async function createFiling(input?: {
     filingId: filing.id,
   });
 
-  redirect(`/wizard/${filing.id}/1`);
+  return await redirectLocalized(`/wizard/${filing.id}/1`, locale);
 }
 
 export async function deleteDraftFiling(filingId: string) {

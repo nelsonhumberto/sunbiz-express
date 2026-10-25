@@ -8,11 +8,12 @@ import {
   serviceOrderIdempotencyKey,
 } from '@/lib/service-order';
 import {
-  floridaAnnualReportYearIsLate,
   floridaCivilDate,
   quoteReinstatement,
   ReinstatementQuoteError,
 } from '@/lib/reinstatement-quote';
+import { customerSunbizMessage } from '@/lib/sunbiz-public-error';
+import { SunbizError } from '@/lib/sunbiz';
 import { guestAnnualReportPrice } from '@/lib/guest-service-price';
 import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
 
@@ -24,62 +25,70 @@ function source(path: string): string {
   return readFileSync(path, 'utf8');
 }
 
+const SUNBIZ_AMOUNT_NOTE_EN = 'If Sunbiz requires a different amount when we file, we will contact you before filing. We never charge more without your OK.';
+const SUNBIZ_AMOUNT_NOTE_ES = 'Si Sunbiz exige un monto diferente al presentar, te contactaremos antes de presentar. Nunca cobramos más sin tu aprobación.';
+
 describe('reinstatement fee math', () => {
   it('keeps the approved service fee at $149', () => {
     expect(REINSTATEMENT_SERVICE_FEE).toBe(149);
     expect(REINSTATEMENT_SERVICE_FEE_CENTS).toBe(14_900);
     expect(FL.fees.reinstatementLLC).toBe(10_000);
     expect(FL.fees.annualReportLLC).toBe(13_875);
-    expect(FL.fees.annualReportLateFee).toBe(40_000);
   });
 
-  it('reads May 1 and May 2 in America/New_York', () => {
-    expect(floridaCivilDate(MAY_1_LATE_EVENING)).toEqual({ year: 2026, month: 5, day: 1 });
-    expect(floridaCivilDate(MAY_2_EARLY)).toEqual({ year: 2026, month: 5, day: 2 });
-    expect(floridaAnnualReportYearIsLate(2026, MAY_1_LATE_EVENING)).toBe(false);
-    expect(floridaAnnualReportYearIsLate(2026, MAY_2_EARLY)).toBe(true);
+  it('prices one year due at $387.75 before and after May 1', () => {
+    for (const now of [APRIL_15, MAY_1_LATE_EVENING, MAY_2_EARLY]) {
+      const quote = quoteReinstatement({ years: [2026], now });
+      expect(quote.annualReportCents).toBe(13_875);
+      expect(quote.stateFeeCents).toBe(10_000 + 13_875);
+      expect(quote.totalCents).toBe(38_775);
+      expect(quote.lines.map((line) => line.kind)).toEqual(['service', 'reinstatement', 'annual_report']);
+      expect(quote.lines.filter((line) => line.statePassThrough).map((line) => line.kind)).toEqual([
+        'reinstatement',
+        'annual_report',
+      ]);
+    }
   });
 
-  it('prices one year before May 1 with no late fee', () => {
-    const quote = quoteReinstatement({ years: [2026], now: APRIL_15 });
-    expect(quote.lateYears).toEqual([]);
-    expect(quote.lateFeeCents).toBe(0);
-    expect(quote.annualReportCents).toBe(13_875);
-    expect(quote.stateFeeCents).toBe(10_000 + 13_875);
-    expect(quote.totalCents).toBe(14_900 + 10_000 + 13_875);
-    expect(quote.lines.filter((line) => line.statePassThrough).every((line) => line.kind !== 'service')).toBe(true);
-    expect(quote.lines.some((line) => line.kind === 'late_fee')).toBe(false);
-  });
-
-  it('prices one year after May 1 with the $400 state late fee', () => {
-    const before = quoteReinstatement({ years: [2026], now: MAY_1_LATE_EVENING });
-    const after = quoteReinstatement({ years: [2026], now: MAY_2_EARLY });
-    expect(before.totalCents).toBe(14_900 + 10_000 + 13_875);
-    expect(after.lateYears).toEqual([2026]);
-    expect(after.lateFeeCents).toBe(40_000);
-    expect(after.stateFeeCents).toBe(10_000 + 13_875 + 40_000);
-    expect(after.totalCents).toBe(before.totalCents + 40_000);
-    const late = after.lines.find((line) => line.kind === 'late_fee');
-    expect(late?.statePassThrough).toBe(true);
-    expect(late?.cents).toBe(40_000);
-  });
-
-  it('prices several years and only marks the ones past May 1', () => {
-    const early = quoteReinstatement({ years: [2026, 2024, 2025], now: APRIL_15 });
-    expect(early.years).toEqual([2024, 2025, 2026]);
-    expect(early.lateYears).toEqual([2024, 2025]);
-    expect(early.annualReportCents).toBe(13_875 * 3);
-    expect(early.lateFeeCents).toBe(40_000 * 2);
-    expect(early.totalCents).toBe(14_900 + 10_000 + 13_875 * 3 + 40_000 * 2);
-
-    const later = quoteReinstatement({ years: [2024, 2025, 2026], now: MAY_2_EARLY });
-    expect(later.lateYears).toEqual([2024, 2025, 2026]);
-    expect(later.lateFeeCents).toBe(40_000 * 3);
-    expect(later.totalCents).toBe(early.totalCents + 40_000);
+  it('prices two years due at $526.50', () => {
+    const quote = quoteReinstatement({ years: [2025, 2026], now: MAY_2_EARLY });
+    expect(quote.years).toEqual([2025, 2026]);
+    expect(quote.annualReportCents).toBe(27_750);
+    expect(quote.stateFeeCents).toBe(10_000 + 27_750);
+    expect(quote.totalCents).toBe(52_650);
+    expect(quote.lines.filter((line) => line.kind === 'annual_report')).toHaveLength(2);
   });
 
   it('rejects a future year', () => {
     expect(() => quoteReinstatement({ years: [2027], now: APRIL_15 })).toThrow(ReinstatementQuoteError);
+  });
+
+  it('charges no $400 late fee anywhere in reinstatement', () => {
+    const files = [
+      'lib/reinstatement-quote.ts',
+      'lib/reinstatement-fulfill.ts',
+      'lib/service-order.ts',
+      'components/marketing/ReinstatementOrderForm.tsx',
+      'app/(marketing)/reinstate-llc/page.tsx',
+      'app/(marketing)/reinstate-llc/confirmation/page.tsx',
+      'app/(admin)/admin/filings/[id]/page.tsx',
+    ];
+    for (const file of files) {
+      const text = source(file);
+      expect(text, file).not.toMatch(/\$400|40_000|late_fee|lateFeeCents|annualReportLateFee|feeLate/);
+    }
+    const email = source('lib/email.ts');
+    const receipt = email.slice(email.indexOf('REINSTATEMENT_ORDER_ADMIN'), email.indexOf('OA_TEMPLATE_CONFIRM'));
+    expect(receipt).not.toMatch(/\$400|Late fee|late fee|Recargo por presentación tardía/);
+    const en = JSON.parse(source('messages/en.json')).reinstateLlc;
+    const es = JSON.parse(source('messages/es.json')).reinstateLlc;
+    expect(JSON.stringify(en)).not.toMatch(/\$400|late fee|feeLate|yearLate/i);
+    expect(JSON.stringify(es)).not.toMatch(/\$400|reinstalación|feeLate|yearLate/);
+    expect(en.sunbizAmountNote).toBe(SUNBIZ_AMOUNT_NOTE_EN);
+    expect(es.sunbizAmountNote).toBe(SUNBIZ_AMOUNT_NOTE_ES);
+    expect(source('app/(marketing)/reinstate-llc/page.tsx')).toContain("t('sunbizAmountNote')");
+    expect(source('components/marketing/ReinstatementOrderForm.tsx')).toContain("t('sunbizAmountNote')");
+    expect(floridaCivilDate(MAY_1_LATE_EVENING)).toEqual({ year: 2026, month: 5, day: 1 });
   });
 });
 
@@ -409,6 +418,15 @@ describe('checkout boundaries', () => {
     expect(source('actions/annual-report.ts')).not.toContain('quoteReinstatement');
     expect(source('components/dashboard/AnnualReportForm.tsx')).not.toContain('lateFee');
     expect(source('components/wizard/steps/Step12Payment.tsx')).not.toContain('service-order');
+    expect(source('components/marketing/ReinstatementOrderForm.tsx')).toContain("setLookupError(t('lookupFailed'))");
+    expect(source('components/marketing/ReinstatementOrderForm.tsx')).not.toContain('res.error');
+    expect(customerSunbizMessage(new SunbizError(
+      'not_configured',
+      'Entity lookup requires SUNBIZDAILY_API_KEY, or set LINK_ENTITY_ALLOW_SEED_LOOKUP=true for local seed data.',
+    ))).toBe('Could not load that record. Please try again.');
+    expect(customerSunbizMessage(new SunbizError('not_found', 'No match in Sunbiz for that document number.'))).toBe(
+      'No match in Sunbiz for that document number.',
+    );
     const guest = source('components/marketing/GuestAnnualReportForm.tsx');
     expect(guest).toContain("intentPath: '/api/stripe/service-order'");
     expect(guest).toContain("type: 'annual-report'");

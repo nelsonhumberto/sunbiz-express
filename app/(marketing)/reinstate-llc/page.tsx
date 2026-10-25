@@ -44,12 +44,12 @@ export default async function ReinstateLlcPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>{t('feeReinstatement')}</li>
             <li>{t('feeAnnual')}</li>
-            <li>{t('feeLate')}</li>
           </ul>
+          <p>{t('sunbizAmountNote')}</p>
           <p>
             {t('sourcesBefore')}{' '}
-            <a className="underline" href="https://dos.fl.gov/sunbiz/forms/fees/llc-fees/" target="_blank" rel="noopener noreferrer">
-              dos.fl.gov/sunbiz/forms/fees/llc-fees
+            <a className="underline" href="https://dos.fl.gov/sunbiz/forms/fees/" target="_blank" rel="noopener noreferrer">
+              dos.fl.gov/sunbiz/forms/fees
             </a>
             {' · '}
             <a className="underline" href="https://dos.fl.gov/sunbiz/manage-business/efile/reinstatement/" target="_blank" rel="noopener noreferrer">

@@ -1,17 +1,15 @@
 /**
  * Florida LLC reinstatement quote.
  *
- * State fees are calculated here, not in the annual-report checkout. A later
- * change can switch the annual-report lines over to getFloridaAnnualReportStateFees
- * once that helper is on main. Until then, the figures below match the
- * Division of Corporations fee schedule:
- *   https://dos.fl.gov/sunbiz/forms/fees/llc-fees/
+ * State fees are calculated here. Reinstatement does not add an annual-report
+ * late fee. The total is the LaunchForma service fee plus
+ * Florida's reinstatement fee plus $138.75 for each annual report year due:
  *   https://dos.fl.gov/sunbiz/manage-business/efile/reinstatement/
+ *   https://dos.fl.gov/sunbiz/forms/fees/
  *
+ *   - LaunchForma service fee: $149
  *   - LLC reinstatement fee: $100
- *   - Annual report: $138.75 for each unpaid year
- *   - Late fee: $400 for each unpaid year filed after May 1 of that year
- *     (America/New_York). May 1 itself is still on time.
+ *   - Annual report: $138.75 for each year due
  */
 
 import { FL } from '@/lib/florida';
@@ -46,20 +44,6 @@ export function floridaCivilDate(now: Date = new Date()): FloridaCivilDate {
   return { year: read('year'), month: read('month'), day: read('day') };
 }
 
-/**
- * True when an annual report for `reportYear` is filed after May 1 of that
- * year. Compared as a civil date in America/New_York, so May 1 at 11:59 p.m.
- * Eastern is still on time and May 2 is late.
- */
-export function floridaAnnualReportYearIsLate(reportYear: number, now: Date = new Date()): boolean {
-  const today = floridaCivilDate(now);
-  if (today.year > reportYear) return true;
-  if (today.year < reportYear) return false;
-  if (today.month > 5) return true;
-  if (today.month === 5 && today.day > 1) return true;
-  return false;
-}
-
 /** Years the reinstatement form can offer, newest first. */
 export function reinstatementYearChoices(now: Date = new Date(), span = 10): number[] {
   const { year } = floridaCivilDate(now);
@@ -72,7 +56,7 @@ export function reinstatementYearChoices(now: Date = new Date(), span = 10): num
 
 export interface ReinstatementFeeLine {
   id: string;
-  kind: 'service' | 'reinstatement' | 'annual_report' | 'late_fee';
+  kind: 'service' | 'reinstatement' | 'annual_report';
   year?: number;
   cents: number;
   /** Florida fee passed through at cost. The service line is ours. */
@@ -84,9 +68,7 @@ export interface ReinstatementQuote {
   reinstatementFeeCents: number;
   annualReportCents: number;
   annualReportYearCount: number;
-  lateFeeCents: number;
-  lateYears: number[];
-  /** Reinstatement fee + annual reports + late fees. */
+  /** Reinstatement fee + annual reports. No late fee. */
   stateFeeCents: number;
   totalCents: number;
   years: number[];
@@ -109,8 +91,6 @@ export function quoteReinstatement(input: { years: number[]; now?: Date }): Rein
   const serviceCents = REINSTATEMENT_SERVICE_FEE_CENTS;
   const reinstatementFeeCents = FL.fees.reinstatementLLC;
   const perYear = FL.fees.annualReportLLC;
-  const lateEach = FL.fees.annualReportLateFee;
-  const lateYears = years.filter((year) => floridaAnnualReportYearIsLate(year, now));
 
   const lines: ReinstatementFeeLine[] = [
     { id: 'service', kind: 'service', cents: serviceCents, statePassThrough: false },
@@ -129,27 +109,15 @@ export function quoteReinstatement(input: { years: number[]; now?: Date }): Rein
       cents: perYear,
       statePassThrough: true,
     });
-    if (lateYears.includes(year)) {
-      lines.push({
-        id: `late-${year}`,
-        kind: 'late_fee',
-        year,
-        cents: lateEach,
-        statePassThrough: true,
-      });
-    }
   }
 
   const annualReportCents = perYear * years.length;
-  const lateFeeCents = lateEach * lateYears.length;
-  const stateFeeCents = reinstatementFeeCents + annualReportCents + lateFeeCents;
+  const stateFeeCents = reinstatementFeeCents + annualReportCents;
   return {
     serviceCents,
     reinstatementFeeCents,
     annualReportCents,
     annualReportYearCount: years.length,
-    lateFeeCents,
-    lateYears,
     stateFeeCents,
     totalCents: serviceCents + stateFeeCents,
     years,
@@ -163,7 +131,6 @@ export interface ReinstatementOrderSnapshot {
   companyName: string;
   sunbizStatus: string | null;
   years: number[];
-  lateYears: number[];
   contactName: string;
   email: string;
   phone: string;
@@ -174,7 +141,6 @@ export interface ReinstatementOrderSnapshot {
   serviceCents: number;
   reinstatementFeeCents: number;
   annualReportCents: number;
-  lateFeeCents: number;
   stateFeeCents: number;
   totalCents: number;
 }

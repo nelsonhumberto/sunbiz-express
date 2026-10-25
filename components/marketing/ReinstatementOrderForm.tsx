@@ -14,7 +14,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from '@/i18n/navigation';
 import type { FloridaEntityDetail } from '@/lib/sunbiz';
 import {
-  floridaAnnualReportYearIsLate,
   quoteReinstatement,
   ReinstatementQuoteError,
   reinstatementYearChoices,
@@ -80,7 +79,7 @@ export function ReinstatementOrderForm() {
       const res = await lookupEntityPublic(query);
       setLookupAttempted(true);
       if (!res.ok) {
-        setLookupError(res.error || t('lookupFailed'));
+        setLookupError(t('lookupFailed'));
         setStatus('');
         setIsCorporation(false);
         return;
@@ -194,7 +193,6 @@ export function ReinstatementOrderForm() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {yearChoices.map((year) => {
-              const late = floridaAnnualReportYearIsLate(year);
               const checked = selectedYears.includes(year);
               return (
                 <label key={year} className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm cursor-pointer">
@@ -204,10 +202,7 @@ export function ReinstatementOrderForm() {
                     checked={checked}
                     onChange={() => toggleYear(year)}
                   />
-                  <span>
-                    <span className="font-medium">{year}</span>
-                    {late && <span className="block text-xs text-ink-subtle">{t('yearLate')}</span>}
-                  </span>
+                  <span className="font-medium">{year}</span>
                 </label>
               );
             })}
@@ -261,7 +256,6 @@ export function ReinstatementOrderForm() {
                     {line.kind === 'service' && t('serviceFee')}
                     {line.kind === 'reinstatement' && t('reinstatementFee')}
                     {line.kind === 'annual_report' && t('annualReportFee', { year: line.year ?? '' })}
-                    {line.kind === 'late_fee' && t('lateFee', { year: line.year ?? '' })}
                     {line.statePassThrough && (
                       <span className="block text-xs text-ink-subtle">{t('statePassThrough')}</span>
                     )}
@@ -277,6 +271,7 @@ export function ReinstatementOrderForm() {
           ) : (
             <p className="text-sm text-ink-muted">{t('selectYearsForTotal')}</p>
           )}
+          <p className="text-xs text-ink-muted leading-relaxed">{t('sunbizAmountNote')}</p>
 
           <div className="grid gap-3">
             <div className="space-y-1.5">

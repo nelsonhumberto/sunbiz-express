@@ -50,14 +50,9 @@ function lineSummary(order: Extract<PricedServiceOrder, { type: 'reinstatement' 
         ? `Tarifa de reactivación de Florida (tarifa estatal, al costo): ${money(line.cents)}`
         : `Florida reinstatement fee (state fee, passed through at cost): ${money(line.cents)}`;
     }
-    if (line.kind === 'annual_report') {
-      return es
-        ? `Reporte anual ${line.year} (tarifa estatal, al costo): ${money(line.cents)}`
-        : `Annual report ${line.year} (state fee, passed through at cost): ${money(line.cents)}`;
-    }
     return es
-      ? `Recargo por presentación tardía ${line.year} (tarifa estatal, al costo): ${money(line.cents)}`
-      : `Late fee ${line.year} (state fee, passed through at cost): ${money(line.cents)}`;
+      ? `Reporte anual ${line.year} (tarifa estatal, al costo): ${money(line.cents)}`
+      : `Annual report ${line.year} (state fee, passed through at cost): ${money(line.cents)}`;
   });
   const total = es ? `Total: ${money(order.amountCents)}` : `Total: ${money(order.amountCents)}`;
   return [...rows, total].join('\n');
@@ -73,7 +68,6 @@ function snapshotFor(
     companyName: input.companyName.trim(),
     sunbizStatus: blankToNull(input.sunbizStatus),
     years: order.quote.years,
-    lateYears: order.quote.lateYears,
     contactName: input.contactName.trim(),
     email: order.email,
     phone: input.phone.trim(),
@@ -84,7 +78,6 @@ function snapshotFor(
     serviceCents: order.quote.serviceCents,
     reinstatementFeeCents: order.quote.reinstatementFeeCents,
     annualReportCents: order.quote.annualReportCents,
-    lateFeeCents: order.quote.lateFeeCents,
     stateFeeCents: order.quote.stateFeeCents,
     totalCents: order.amountCents,
   };
@@ -198,7 +191,6 @@ export async function fulfillReinstatementOrder(
             `Document: ${snap.documentNumber}`,
             `Sunbiz status: ${snap.sunbizStatus ?? 'Not provided'}`,
             `Years: ${snap.years.join(', ')}`,
-            `Late years: ${snap.lateYears.join(', ') || 'None'}`,
             `Officer: ${snap.officerName}, ${snap.officerTitle}`,
             snap.changeNote ? `Officer/manager changes: ${snap.changeNote}` : 'Officer/manager changes: none noted',
             `Total cents: ${snap.totalCents}`,

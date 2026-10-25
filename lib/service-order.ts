@@ -216,7 +216,6 @@ export function reinstatementInquiryMessage(order: Extract<PricedServiceOrder, {
     `Company: ${input.companyName.trim()}`,
     `Sunbiz status: ${input.sunbizStatus?.trim() || 'Not provided'}`,
     `Years: ${order.quote.years.join(', ')}`,
-    `Late years: ${order.quote.lateYears.join(', ') || 'None'}`,
     `Contact: ${input.contactName.trim()}`,
     `Email: ${order.email}`,
     `Phone: ${input.phone.trim()}`,

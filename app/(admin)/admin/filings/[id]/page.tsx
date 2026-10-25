@@ -265,7 +265,6 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <p><span className="text-ink-subtle">Document:</span> <span className="font-mono">{order.documentNumber}</span></p>
                 <p><span className="text-ink-subtle">Sunbiz status:</span> {order.sunbizStatus ?? 'Not provided'}</p>
                 <p><span className="text-ink-subtle">Years:</span> {(order.years ?? []).join(', ')}</p>
-                <p><span className="text-ink-subtle">Late years:</span> {(order.lateYears ?? []).join(', ') || 'None'}</p>
                 <p><span className="text-ink-subtle">Contact:</span> {order.contactName}</p>
                 <p><span className="text-ink-subtle">Email:</span> {order.email}</p>
                 <p><span className="text-ink-subtle">Phone:</span> {order.phone}</p>

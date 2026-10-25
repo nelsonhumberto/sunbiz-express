@@ -66,6 +66,18 @@ function addrFrom(a?: { address_1?: string; city?: string; state?: string; zip?:
   return { street1: a?.address_1 ?? '', city: a?.city ?? '', state: a?.state ?? 'FL', zip: a?.zip ?? '' };
 }
 
+function publicLookupError(error: string, fallback: string): string {
+  if (
+    /SUNBIZDAILY_API_KEY|LINK_ENTITY_ALLOW_SEED_LOOKUP|SUNBIZ_SCRAPER_PROXY|SUNBIZ_LOCAL_PROXY/.test(error) ||
+    error === 'Could not load that record. Please try again.' ||
+    error === 'Could not load that entity. Please try again.' ||
+    error === 'Search failed. Please try again.'
+  ) {
+    return fallback;
+  }
+  return error;
+}
+
 export function GuestAnnualReportForm() {
   const t = useTranslations('annualReportForm');
   const locale = useLocale() === 'es' ? 'es' : 'en';
@@ -95,7 +107,7 @@ export function GuestAnnualReportForm() {
       startLookup(async () => {
         setLookupError('');
         const res = await lookupEntityPublic(q);
-        if (!res.ok) { setLookupError(res.error); return; }
+        if (!res.ok) { setLookupError(publicLookupError(res.error, t('lookupFailed'))); return; }
         setDocNumber(q);
         populateForm(res.detail);
       });
@@ -105,7 +117,7 @@ export function GuestAnnualReportForm() {
     // Name search → show result list
     startSearch(async () => {
       const res = await searchEntitiesByName(q);
-      if (!res.ok) { setSearchError(res.error); return; }
+      if (!res.ok) { setSearchError(publicLookupError(res.error, t('lookupFailed'))); return; }
       if (res.results.length === 0) {
         setSearchError(t('searchNone'));
         return;
@@ -119,7 +131,7 @@ export function GuestAnnualReportForm() {
     startLookup(async () => {
       setLookupError('');
       const res = await lookupEntityPublic(hit.documentNumber);
-      if (!res.ok) { setLookupError(res.error); return; }
+      if (!res.ok) { setLookupError(publicLookupError(res.error, t('lookupFailed'))); return; }
       setDocNumber(hit.documentNumber);
       populateForm(res.detail);
     });

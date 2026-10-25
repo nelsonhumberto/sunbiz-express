@@ -1,7 +1,8 @@
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import Link from 'next/link';
 import { Mail, Phone, ShieldCheck, KeyRound, CreditCard } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,9 +14,10 @@ export const metadata = { title: 'Account settings' };
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
   const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -28,7 +30,7 @@ export default async function SettingsPage() {
       stripeCustomerId: true,
     },
   });
-  if (!user) redirect('/sign-in');
+  if (!user) return await redirectLocalized('/sign-in');
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -92,7 +94,7 @@ export default async function SettingsPage() {
               <h2 className="font-semibold text-ink">{t('billingTitle')}</h2>
               <p className="text-sm text-ink-muted">{t('billingSubtitle')}</p>
               <Link
-                href="/dashboard/billing"
+                href={hrefForLocale('/dashboard/billing', locale)}
                 className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-primary hover:underline"
               >
                 {t('openBilling')}
@@ -121,7 +123,7 @@ export default async function SettingsPage() {
           </span>
           <span className="ml-auto">
             {t('memberSince', {
-              date: user.createdAt.toLocaleDateString('en-US', {
+              date: user.createdAt.toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', {
                 year: 'numeric',
                 month: 'long',
               }),

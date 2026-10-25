@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import {
   CheckCircle2,
   FileText,
@@ -36,9 +37,10 @@ export default async function CheckoutSuccessPage({
   searchParams: { filing?: string | string[]; session_id?: string | string[] };
 }) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
   const t = await getTranslations('checkoutSuccess');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const sessionId = readQueryParam(searchParams.session_id);
   const urlFilingId = readQueryParam(searchParams.filing);
 
@@ -49,6 +51,7 @@ export default async function CheckoutSuccessPage({
         title={t('confirmingTitle')}
         body={t('confirmingBody')}
         dashboardLabel={t('goDashboard')}
+        locale={locale}
       />
     );
   }
@@ -92,6 +95,7 @@ export default async function CheckoutSuccessPage({
         title={t('confirmingTitle')}
         body={t('confirmingBody')}
         dashboardLabel={t('goDashboard')}
+        locale={locale}
       />
     );
   }
@@ -129,6 +133,7 @@ export default async function CheckoutSuccessPage({
           title={t('confirmedTitle')}
           body={t('confirmedBody')}
           dashboardLabel={t('goDashboard')}
+          locale={locale}
         />
       </>
     );
@@ -198,13 +203,13 @@ export default async function CheckoutSuccessPage({
           {/* Quick actions */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild size="lg">
-              <Link href={`/dashboard/filings/${filing.id}`}>
+              <Link href={hrefForLocale(`/dashboard/filings/${filing.id}`, locale)}>
                 {t('viewDetails')}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/dashboard">{t('goDashboard')}</Link>
+              <Link href={hrefForLocale('/dashboard', locale)}>{t('goDashboard')}</Link>
             </Button>
           </div>
         </div>
@@ -294,11 +299,13 @@ function OrderNotice({
   body,
   dashboardLabel,
   pending,
+  locale,
 }: {
   title: string;
   body: string;
   dashboardLabel: string;
   pending?: boolean;
+  locale: 'en' | 'es';
 }) {
   return (
     <div className="min-h-screen bg-surface">
@@ -323,7 +330,7 @@ function OrderNotice({
           <p className="mt-3 text-lg text-ink-muted">{body}</p>
           <div className="mt-8">
             <Button asChild size="lg">
-              <Link href="/dashboard">{dashboardLabel}</Link>
+              <Link href={hrefForLocale('/dashboard', locale)}>{dashboardLabel}</Link>
             </Button>
           </div>
         </div>

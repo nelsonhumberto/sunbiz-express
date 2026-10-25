@@ -23,10 +23,14 @@ export function formatCents(cents: number) {
   }).format(cents / 100);
 }
 
-export function formatDate(date: Date | string | null | undefined, opts?: Intl.DateTimeFormatOptions) {
+export function formatDate(
+  date: Date | string | null | undefined,
+  opts?: Intl.DateTimeFormatOptions,
+  locale: 'en' | 'es' = 'en',
+) {
   if (!date) return '-';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -34,8 +38,11 @@ export function formatDate(date: Date | string | null | undefined, opts?: Intl.D
   });
 }
 
-export function formatDateLong(date: Date | string | null | undefined) {
-  return formatDate(date, { month: 'long', day: 'numeric', year: 'numeric' });
+export function formatDateLong(
+  date: Date | string | null | undefined,
+  locale: 'en' | 'es' = 'en',
+) {
+  return formatDate(date, { month: 'long', day: 'numeric', year: 'numeric' }, locale);
 }
 
 export function formatRelative(date: Date | string, locale: 'en' | 'es' = 'en') {

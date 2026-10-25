@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
+import { localizedRedirectHref } from '@/lib/app-href';
 import {
   hasInternalTrafficCookie,
   internalTrafficCookie,
@@ -7,7 +9,9 @@ import {
   isInternalBrowserSignal,
   isInternalTrafficUser,
   isInternalUserAgent,
+  signInHrefPreservingInternal,
 } from '@/lib/internal-traffic';
+import { middleware } from '../../middleware';
 
 describe('internal PostHog traffic', () => {
   it('flags admins, company domains, and the named mailboxes', () => {
@@ -63,5 +67,28 @@ describe('internal PostHog traffic', () => {
     const flag = readFileSync('components/analytics/InternalTrafficFlag.tsx', 'utf8');
     expect(flag).toContain('isInternalTrafficUser');
     expect(flag).toContain('markInternalTraffic');
+  });
+
+  it('forwards only lf_internal=1 onto the dashboard sign-in redirect', () => {
+    expect(signInHrefPreservingInternal(false)).toBe('/sign-in');
+    expect(signInHrefPreservingInternal(true)).toBe('/sign-in?lf_internal=1');
+    expect(localizedRedirectHref('/sign-in?lf_internal=1', 'en')).toBe('/sign-in?lf_internal=1');
+    expect(localizedRedirectHref('/sign-in?lf_internal=1', 'es')).toBe('/es/sign-in?lf_internal=1');
+
+    function forwarded(path: string) {
+      const request = new NextRequest(new URL(path, 'https://launchforma.com'), {
+        headers: { host: 'launchforma.com' },
+      });
+      return middleware(request).headers.get('x-middleware-request-x-lf-internal');
+    }
+
+    expect(forwarded('/dashboard?lf_internal=1&utm_source=google&gclid=abc')).toBe('1');
+    expect(forwarded('/es/dashboard?utm_campaign=qa&lf_internal=1')).toBe('1');
+    expect(forwarded('/dashboard?utm_source=google&gclid=abc')).toBeNull();
+    expect(forwarded('/es/dashboard?lf_internal=0')).toBeNull();
+
+    const gate = readFileSync('lib/sign-in-gate.ts', 'utf8');
+    expect(gate).toContain('signInHrefPreservingInternal');
+    expect(gate).toContain('redirectLocalized');
   });
 });

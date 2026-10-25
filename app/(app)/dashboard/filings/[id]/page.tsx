@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { hrefForLocale } from '@/lib/app-href';
-import { pickLocale } from '@/lib/pick-locale';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import {
   ArrowLeft,
   Building2,
@@ -59,10 +59,11 @@ interface PageProps {
 
 export default async function FilingDetailPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
   const t = await getTranslations('filingDetail');
   const tWizard = await getTranslations('wizard');
   const tDocs = await getTranslations('documentTypes');
+  const tEin = await getTranslations('einForm');
   const tCert = await getTranslations('certificates');
 
   const filing = await prisma.filing.findUnique({
@@ -78,7 +79,19 @@ export default async function FilingDetailPage({ params }: PageProps) {
     },
   });
   if (!filing || filing.userId !== session.user.id) notFound();
-  const locale = pickLocale(await getLocale(), filing.locale);
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
+  const documentTitles: Record<string, string> = {
+    ARTICLES_ORG: tDocs('ARTICLES_ORG'),
+    ARTICLES_INC: tDocs('ARTICLES_INC'),
+    OPERATING_AGREEMENT: tDocs('OPERATING_AGREEMENT'),
+    COVER_LETTER: tDocs('COVER_LETTER'),
+    SUNBIZ_COVER_PAGE: tDocs('SUNBIZ_COVER_PAGE'),
+    FILE_PACKAGE: tDocs('FILE_PACKAGE'),
+    EIN_LETTER: tEin('docEinLetter'),
+    CERT_STATUS: tDocs('CERT_STATUS'),
+    CERT_COPY: tDocs('CERT_COPY'),
+    RECEIPT: tDocs('RECEIPT'),
+  };
 
   // Resolve the formation state - defaults to FL for legacy filings that
   // pre-date the multi-state launch. We use the registry for state-specific
@@ -143,7 +156,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
   return (
     <div className="container max-w-5xl py-10 space-y-8">
       <Link
-        href="/dashboard"
+        href={hrefForLocale('/dashboard', locale)}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -178,7 +191,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
           </div>
         </div>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/documents">
+          <Link href={hrefForLocale('/dashboard/documents', locale)}>
             <Download className="h-4 w-4" />
             {t('allDocuments')}
           </Link>
@@ -205,7 +218,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                     {t('arFiledBody', { year: filedReport.reportYear })}
                   </p>
                   <div className="text-xs text-ink-subtle space-y-0.5 pt-1">
-                    <p>{t('arFiledDate')}: {filedReport.filedDate ? formatDate(filedReport.filedDate) : '-'}</p>
+                    <p>{t('arFiledDate')}: {filedReport.filedDate ? formatDate(filedReport.filedDate, undefined, locale) : '-'}</p>
                     <p>{t('arFiledAmount')}: {formatCurrency(filedReport.totalCostCents)}</p>
                     {filedReport.notes && <p>{filedReport.notes}</p>}
                   </div>
@@ -220,7 +233,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                   <h3 className="font-semibold text-ink">{t('linkedAnnualTitle')}</h3>
                   <p className="text-sm text-ink-muted">{t('linkedAnnualBody')}</p>
                   <Button asChild>
-                    <Link href={`/dashboard/filings/${filing.id}/annual-report`}>
+                    <Link href={hrefForLocale(`/dashboard/filings/${filing.id}/annual-report`, locale)}>
                       {t('fileAnnualReport')}
                     </Link>
                   </Button>
@@ -235,7 +248,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                   <h3 className="font-semibold text-ink">{t('linkedAnnualTitle')}</h3>
                   <p className="text-sm text-ink-muted">{t('linkedAnnualBody')}</p>
                   <Button asChild>
-                    <Link href={`/dashboard/filings/${filing.id}/annual-report`}>
+                    <Link href={hrefForLocale(`/dashboard/filings/${filing.id}/annual-report`, locale)}>
                       {t('fileAnnualReport')}
                     </Link>
                   </Button>
@@ -303,7 +316,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                   </p>
                 </div>
                 <Button asChild className="shrink-0">
-                  <Link href={`/dashboard/filings/${filing.id}/ein`}>Get my EIN</Link>
+                  <Link href={hrefForLocale(`/dashboard/filings/${filing.id}/ein`, locale)}>Get my EIN</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -339,7 +352,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               <p className="text-sm text-ink-muted">{body}</p>
               {status === 'needs_info' && (
                 <Button asChild size="sm">
-                  <Link href={`/dashboard/filings/${filing.id}/ein`}>Add EIN details</Link>
+                  <Link href={hrefForLocale(`/dashboard/filings/${filing.id}/ein`, locale)}>Add EIN details</Link>
                 </Button>
               )}
               {ein?.responsiblePartyType === 'us' && ein.taxIdLast4 && (
@@ -425,7 +438,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               title={`Submitted to ${stateRule.name} ${stateRule.code === 'DE' ? 'Division of Corporations' : 'Secretary of State'}`}
               detail={
                 filing.sunbizSubmittedAt
-                  ? formatDateLong(filing.sunbizSubmittedAt)
+                  ? formatDateLong(filing.sunbizSubmittedAt, locale)
                   : t('filingPending')
               }
               done={!!filing.sunbizSubmittedAt}
@@ -435,7 +448,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               title={`${stateRule.name} approved`}
               detail={
                 filing.sunbizApprovedAt
-                  ? formatDateLong(filing.sunbizApprovedAt)
+                  ? formatDateLong(filing.sunbizApprovedAt, locale)
                   : t('approvalEstimate')
               }
               done={!!filing.sunbizApprovedAt}
@@ -488,10 +501,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {displayedCertificateTitle(doc.documentType, doc.title, {
-                              CERT_STATUS: tDocs('CERT_STATUS'),
-                              CERT_COPY: tDocs('CERT_COPY'),
-                            })}
+                            {displayedCertificateTitle(doc.documentType, doc.title, documentTitles)}
                           </p>
                           <p className="text-xs text-amber-700">{tWizard('documentPendingState')}</p>
                         </div>
@@ -512,12 +522,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {displayedCertificateTitle(doc.documentType, doc.title, {
-                              CERT_STATUS: tDocs('CERT_STATUS'),
-                              CERT_COPY: tDocs('CERT_COPY'),
-                            })}
+                            {displayedCertificateTitle(doc.documentType, doc.title, documentTitles)}
                           </p>
-                          <p className="text-xs text-ink-subtle">{formatDate(doc.generatedAt)}</p>
+                          <p className="text-xs text-ink-subtle">{formatDate(doc.generatedAt, undefined, locale)}</p>
                         </div>
                         <Download className="h-4 w-4 text-ink-subtle" />
                       </a>
@@ -646,7 +653,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-ink-muted">{t('date')}</span>
-                    <span>{formatDate(latest.completedAt ?? latest.createdAt)}</span>
+                    <span>{formatDate(latest.completedAt ?? latest.createdAt, undefined, locale)}</span>
                   </div>
                   {succeeded.length > 1 && (
                     <p className="text-xs text-ink-subtle">{succeeded.length} payments total</p>

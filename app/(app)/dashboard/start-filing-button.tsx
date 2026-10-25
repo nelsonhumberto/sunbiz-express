@@ -27,20 +27,20 @@ export function StartFilingButton({ entityType, state: initialState }: StartFili
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex items-stretch">
+    <div className="flex items-stretch w-full min-w-0">
       <form
         action={async () => {
           start(async () => {
             await createFiling({ entityType, state: selectedState.code });
           });
         }}
-        className="flex-1"
+        className="flex-1 min-w-0"
       >
         <Button
           type="submit"
           size="lg"
           disabled={pending}
-          className="group rounded-r-none w-full"
+          className="group rounded-r-none w-full min-w-0 whitespace-normal h-auto min-h-12 px-3 sm:px-8 text-center"
         >
           <Plus className="h-4 w-4" />
           {pending ? t('starting') : t('startFiling')}

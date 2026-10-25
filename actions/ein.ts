@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -67,7 +67,7 @@ const SaveEinSchema = z
 async function getFilingForUser(filingId: string) {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-  if (!actor) redirect('/sign-in');
+  if (!actor) return await redirectLocalized('/sign-in');
   const filing = await prisma.filing.findUnique({
     where: { id: filingId },
     include: {

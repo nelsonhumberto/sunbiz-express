@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { hrefForLocale } from '@/lib/app-href';
+import { englishPathname } from '@/lib/locale-paths';
 import {
   LayoutDashboard,
   FileText,
@@ -26,7 +28,9 @@ interface DashboardNavProps {
 export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
   const t = useTranslations('dashboard');
   const tNav = useTranslations('nav');
-  const pathname = usePathname();
+  const pathname = englishPathname(usePathname() || '/');
+  const locale = useLocale() === 'es' ? 'es' : 'en';
+  const homeHref = hrefForLocale('/', locale);
 
   const NAV = [
     { href: '/dashboard', label: t('navOverview'), icon: LayoutDashboard },
@@ -45,9 +49,9 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
       {/* Mobile top bar - the sidebar is hidden < md, so without this the
           dashboard sub-pages are unreachable on phones. Horizontally scrollable
           so every destination is one tap away. */}
-      <div className="md:hidden sticky top-0 z-40 border-b border-border bg-white">
+      <div className="md:hidden sticky top-0 z-40 w-full min-w-0 max-w-full border-b border-border bg-white">
         <div className="flex items-center justify-between px-4 py-3">
-          <Logo size="sm" />
+          <Logo size="sm" href={homeHref} />
           <form action={signOutAction}>
             <button
               type="submit"
@@ -59,17 +63,18 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
           </form>
         </div>
         <nav
-          aria-label="Dashboard"
-          className="flex gap-1 overflow-x-auto px-3 pb-2 -mt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label={tNav('dashboard')}
+          className="flex min-w-0 max-w-full gap-1 overflow-x-auto px-3 pb-2 -mt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {NAV_WITH_ADMIN.map((item) => {
+            const href = item.href === '/admin' ? item.href : hrefForLocale(item.href, locale);
             const active =
               pathname === item.href ||
               (item.href !== '/dashboard' && pathname.startsWith(item.href));
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
@@ -88,18 +93,19 @@ export function DashboardNav({ isAdmin, user }: DashboardNavProps) {
 
       <aside className="hidden md:flex w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-white">
       <div className="px-6 py-5 border-b border-border">
-        <Logo size="sm" />
+        <Logo size="sm" href={homeHref} />
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav aria-label={tNav('dashboard')} className="flex-1 px-3 py-4 space-y-1">
         {NAV.map((item) => {
+          const href = hrefForLocale(item.href, locale);
           const active =
             pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
                 active

@@ -20,6 +20,7 @@ import { openAiPixelBootstrap } from '@/lib/openai-pixel';
 import { openAiPixelId } from '@/lib/tracking-ids';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
+import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -91,6 +92,9 @@ export default async function RootLayout({
       >
         <HtmlLang />
         <ChunkReload />
+        <Script id="strip-li-fat-id" strategy="beforeInteractive">
+          {LI_FAT_ID_STRIP_SCRIPT}
+        </Script>
         {loadOpenAiPixel && openAiId ? (
           <Script id="openai-ads-pixel" strategy="beforeInteractive">
             {openAiPixelBootstrap(openAiId)}

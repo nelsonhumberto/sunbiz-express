@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { hrefForLocale } from '@/lib/app-href';
+import { englishPathname } from '@/lib/locale-paths';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { pickLocale } from '@/lib/pick-locale';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
@@ -401,6 +402,8 @@ export async function claimGuestAccount(
   _prev: ClaimResult,
   formData: FormData,
 ): Promise<ClaimResult> {
+  const uiLocale = (await storedLocale()) === 'es' ? 'es' : 'en';
+  const t = await getTranslations({ locale: uiLocale, namespace: 'wizard' });
   const parsed = ClaimSchema.safeParse({
     email: formData.get('email'),
     password: formData.get('password'),
@@ -411,36 +414,45 @@ export async function claimGuestAccount(
     const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
       const k = String(issue.path[0] ?? '');
-      if (!fieldErrors[k]) fieldErrors[k] = issue.message;
+      if (!fieldErrors[k]) {
+        fieldErrors[k] =
+          k === 'password'
+            ? t('saveExitPasswordInvalid')
+            : k === 'email'
+              ? t('guestEmailInvalid')
+              : t('guestCheckDetails');
+      }
     }
     return {
-      error: fieldErrors.password ?? fieldErrors.email ?? 'Please check your details.',
+      error: fieldErrors.password ?? fieldErrors.email ?? t('guestCheckDetails'),
       fieldErrors,
     };
   }
   const newEmail = parsed.data.email.toLowerCase().trim();
   const password = parsed.data.password;
   if (isPlaceholderGuestEmail(newEmail)) {
-    return { error: 'Enter a valid email.', fieldErrors: { email: 'Enter a valid email.' } };
+    return { error: t('guestEmailInvalid'), fieldErrors: { email: t('guestEmailInvalid') } };
   }
 
   const guest = await getGuestUser();
-  if (!guest) return { error: 'Your guest session has expired. Please start again.' };
+  if (!guest) return { error: t('guestSessionExpired') };
 
   // If the customer typed a different email than the one already on the
   // guest record, check that it is not already taken by an ACTIVE account.
   if (newEmail !== guest.email) {
     const collision = await prisma.user.findUnique({ where: { email: newEmail } });
     if (collision && collision.id !== guest.id) {
-      const next = await draftResumeHref(guest.id, parsed.data.filingId, parsed.data.returnStep);
-      const signInLocale = next.startsWith('/es') ? 'es' : 'en';
+      const next = hrefForLocale(
+        englishPathname(await draftResumeHref(guest.id, parsed.data.filingId, parsed.data.returnStep)),
+        uiLocale,
+      );
       return {
         needsSignIn: true,
         signInHref: hrefForLocale(
           `/sign-in?email=${encodeURIComponent(newEmail)}&next=${encodeURIComponent(next)}`,
-          signInLocale,
+          uiLocale,
         ),
-        error: 'That email already has an account. Sign in and we will attach this draft.',
+        error: t('guestEmailHasAccount'),
       };
     }
   }

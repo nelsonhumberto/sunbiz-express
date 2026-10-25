@@ -443,9 +443,11 @@ describe('approved copy', () => {
     expect(english.pageTitle).toBe('Starting Your LLC: A One-Page Checklist');
     expect(english.sections[0]?.items[0]).toContain('Pick your state of formation');
     expect(english.closerCta).toBe('Start your LLC at LaunchForma');
+    expect(english.thanksTitle).toBe('Almost done!');
     expect(english.thanksBody).toBe(
       "Check your inbox and click the link to confirm, then we'll send your checklist.",
     );
+    expect(checklistCopy('es').thanksTitle).toBe('¡Ya casi!');
     expect(checklistCopy('es').thanksBody).toBe(
       'Revisa tu correo y toca el enlace para confirmar; luego te enviamos la lista.',
     );

@@ -1,3 +1,7 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
+
 /**
  * "Skip to main content" link required by WCAG 2.2 (2.4.1 Bypass Blocks).
  * Invisible until it receives keyboard focus, at which point it becomes a
@@ -11,17 +15,18 @@
  */
 export function SkipLink({
   href = '#main-content',
-  label = 'Skip to main content',
+  label,
 }: {
   href?: string;
   label?: string;
 }) {
+  const t = useTranslations('common');
   return (
     <a
       href={href}
       className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:inline-flex focus:items-center focus:gap-1.5 focus:px-4 focus:py-2 focus:rounded-md focus:bg-primary focus:text-white focus:font-semibold focus:shadow-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2"
     >
-      {label}
+      {label ?? t('skipToContent')}
     </a>
   );
 }

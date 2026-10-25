@@ -95,13 +95,16 @@ export function messagesForPath(
 }
 
 /**
- * Client components on `/contact`: nav, footer, chat, and the inquiry form.
- * Legal and account namespaces stay on the server so help@, legal@, and
- * privacy@ never reach the contact page HTML.
+ * Client components on `/contact`: nav, footer, chat, the inquiry form, and
+ * the skip link. Legal and account namespaces stay on the server so help@,
+ * legal@, and privacy@ never reach the contact page HTML.
+ * The business-services payload is the other slim catalog. Its skip link
+ * passes a label, so it does not read `common`.
  */
 const CONTACT_CLIENT_NAMESPACES = [
   'assistant',
   'businessServices',
+  'common',
   'disclosure',
   'footer',
   'nav',

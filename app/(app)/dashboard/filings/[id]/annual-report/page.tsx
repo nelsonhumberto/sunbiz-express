@@ -1,6 +1,9 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { getLocale } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { safeParseJson } from '@/lib/utils';
@@ -47,7 +50,8 @@ function snapshotAddrToAddr(a: SnapshotAddress | undefined): Address {
 
 export default async function AnnualReportPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const filing = await prisma.filing.findUnique({
     where: { id: params.id },
@@ -76,7 +80,7 @@ export default async function AnnualReportPage({ params }: PageProps) {
     const currentYear = new Date().getFullYear();
     const alreadyFiled = filing.annualReports.some((r) => r.reportYear === currentYear && r.status === 'FILED');
     if (alreadyFiled) {
-      redirect(`/dashboard/filings/${params.id}`);
+      return await redirectLocalized(`/dashboard/filings/${params.id}`);
     }
     const stateFee =
       filing.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
@@ -171,7 +175,7 @@ export default async function AnnualReportPage({ params }: PageProps) {
   return (
     <div className="container max-w-2xl py-10 space-y-6">
       <Link
-        href={`/dashboard/filings/${params.id}`}
+        href={hrefForLocale(`/dashboard/filings/${params.id}`, locale)}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />

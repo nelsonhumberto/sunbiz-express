@@ -54,10 +54,10 @@ export function certificateOrderPath(
 export function displayedCertificateTitle(
   documentType: string,
   storedTitle: string,
-  titles: { CERT_STATUS?: string; CERT_COPY?: string },
+  titles: Partial<Record<string, string | undefined>>,
 ): string {
-  if (documentType === 'CERT_STATUS' && titles.CERT_STATUS) return titles.CERT_STATUS;
-  if (documentType === 'CERT_COPY' && titles.CERT_COPY) return titles.CERT_COPY;
+  const translated = titles[documentType];
+  if (translated) return translated;
   return storedTitle;
 }
 

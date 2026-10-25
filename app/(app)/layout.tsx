@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { auth } from '@/lib/auth';
+import { redirectToSignIn } from '@/lib/sign-in-gate';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
@@ -13,18 +13,18 @@ export const metadata: Metadata = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) redirect('/sign-in');
+  if (!session?.user) return await redirectToSignIn();
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <div className="min-h-screen flex flex-col md:flex-row bg-surface">
+      <div className="min-h-screen w-full min-w-0 max-w-full flex flex-col md:flex-row bg-surface">
         <SkipLink />
         <DashboardNav
           isAdmin={session.user.role === 'ADMIN'}
           user={{ name: session.user.name, email: session.user.email }}
         />
-        <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="flex-1 w-full min-w-0 max-w-full overflow-x-clip focus:outline-none">
           {children}
         </main>
         <ChatWidget />

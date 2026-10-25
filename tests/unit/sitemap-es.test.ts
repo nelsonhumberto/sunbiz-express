@@ -9,6 +9,7 @@ const ES_PATHS = [
   '/es/faq',
   '/es/services',
   '/es/about',
+  '/es/contacto',
   '/es/file-annual-report',
   '/es/states',
   '/es/states/florida',

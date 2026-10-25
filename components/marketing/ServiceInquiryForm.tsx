@@ -24,7 +24,7 @@ const SERVICE_LABEL_KEY = {
 export function ServiceInquiryForm() {
   const t = useTranslations('businessServices');
   const locale = useLocale();
-  const [service, setService] = useState<ServiceInquiryOption>('compliance_alerts');
+  const [service, setService] = useState<ServiceInquiryOption | ''>('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<'invalid' | 'generic' | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
@@ -186,10 +186,12 @@ export function ServiceInquiryForm() {
           value={service}
           aria-invalid={fieldErrors.service ? true : undefined}
           onChange={(event) => {
-            if (isServiceInquiryOption(event.target.value)) setService(event.target.value);
+            const next = event.target.value;
+            setService(isServiceInquiryOption(next) ? next : '');
           }}
           className="flex h-12 w-full rounded-md border border-input bg-card px-4 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
         >
+          <option value="">{t('servicePlaceholder')}</option>
           {SERVICE_INQUIRY_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {t(SERVICE_LABEL_KEY[option])}

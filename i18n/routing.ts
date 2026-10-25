@@ -10,4 +10,15 @@ export const routing = defineRouting({
   defaultLocale: 'en',
   localePrefix: 'as-needed',
   localeDetection: false,
+  /**
+   * Only slugs that differ by language live here. Every other public URL
+   * stays the same under `/es`. Middleware rewrites `/es/contacto` to the
+   * `/contact` page and 308s the non-canonical slugs.
+   */
+  pathnames: {
+    '/contact': {
+      en: '/contact',
+      es: '/contacto',
+    },
+  },
 });

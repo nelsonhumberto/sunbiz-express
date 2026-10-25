@@ -84,6 +84,18 @@
     "statesWeServe": "States we serve",
     "copyright": "© {year} {company} · {address} · LaunchForma is not a law firm and does not provide legal advice."
   },
+  "contactPage": {
+    "metaTitle": "Contact",
+    "metaDescription": "Call LaunchForma at {phone} or send a service inquiry. A person on the team will get back to you.",
+    "ogTitle": "Contact",
+    "ogDescription": "Call us or send a service inquiry. We are here to help with your filing.",
+    "heading": "Contact",
+    "intro": "Questions about a filing, a registered agent, or a service we offer? Call us or send a note. A person on the team will get back to you.",
+    "phoneLabel": "Phone",
+    "addressLabel": "Mailing address",
+    "formHeading": "Tell us what you need",
+    "formIntro": "This is the same form we use for service requests. We will follow up by phone."
+  },
   "disclosure": {
     "notAffiliated": "LaunchForma is a private business-filing service. We are not a government agency and are not affiliated with, endorsed by, or acting on behalf of any government agency. Government filing fees are set by the state and included in your package price.",
     "notAffiliatedShort": "LaunchForma is a private filing service - not a government agency, and not affiliated with any government agency.",
@@ -390,6 +402,7 @@
     "phoneWhatsappLabel": "Phone or WhatsApp",
     "phonePlaceholder": "+1 305 555 0100",
     "phoneError": "Enter a phone or WhatsApp number.",
+    "servicePlaceholder": "Choose a service",
     "serviceError": "Choose a service.",
     "successHeadline": "We received your request.",
     "successBody": "We will contact you by phone or WhatsApp within one business day.",

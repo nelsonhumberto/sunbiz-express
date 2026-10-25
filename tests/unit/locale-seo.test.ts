@@ -12,6 +12,8 @@ describe('Spanish URL paths', () => {
   it('maps the homepage to /es and never back to /', () => {
     expect(toSpanishUrl('/')).toBe('/es');
     expect(toSpanishUrl('/about')).toBe('/es/about');
+    expect(toSpanishUrl('/contact')).toBe('/es/contacto');
+    expect(toSpanishUrl('/contact?utm_source=ig')).toBe('/es/contacto?utm_source=ig');
     expect(toSpanishUrl('/states/florida')).toBe('/es/states/florida');
     expect(toSpanishUrl('/pricing?state=WY')).toBe('/es/pricing?state=WY');
     expect(toSpanishUrl('/?state=TX')).toBe('/es?state=TX');
@@ -28,12 +30,17 @@ describe('Spanish URL paths', () => {
     expect(pathForLocale('/guides/florida-llc-operating-agreement', 'es')).toBe(
       '/es/guides/florida-llc-operating-agreement',
     );
+    expect(pathForLocale('/contact', 'es')).toBe('/es/contacto');
+    expect(pathForLocale('/es/contacto', 'en')).toBe('/contact');
+    expect(pathForLocale('/es/contacto?utm_source=ig', 'en')).toBe('/contact?utm_source=ig');
   });
 
   it('prefixes in-app links only while Spanish is active', () => {
     expect(localizedHref('/pricing', 'es')).toBe('/es/pricing');
     expect(localizedHref('/start?state=FL', 'es')).toBe('/es/start?state=FL');
     expect(localizedHref('/pricing', 'en')).toBe('/pricing');
+    expect(localizedHref('/contact', 'es')).toBe('/es/contacto');
+    expect(localizedHref('/contact', 'en')).toBe('/contact');
     expect(localizedHref('mailto:hello@launchforma.com', 'es')).toBe(
       'mailto:hello@launchforma.com',
     );
@@ -86,6 +93,19 @@ describe('hreflang alternates', () => {
     expect(alternates.languages).not.toHaveProperty('en');
   });
 
+  it('pairs /contact with /es/contacto', () => {
+    const fromEnglish = localeAlternates('/contact', '/contact');
+    const fromSpanish = localeAlternates('/contact', '/es/contacto');
+    expect(fromEnglish.canonical).toBe('/contact');
+    expect(fromSpanish.canonical).toBe('/es/contacto');
+    expect(fromSpanish.languages).toEqual({
+      en: '/contact',
+      es: '/es/contacto',
+      'x-default': '/contact',
+    });
+    expect(fromEnglish.languages).toEqual(fromSpanish.languages);
+  });
+
   it('gives /es/start its own canonical and an English alternate', () => {
     const fromSpanish = localeAlternates('/start', '/es/start');
     expect(fromSpanish.canonical).toBe('/es/start');
@@ -129,6 +149,7 @@ describe('new Spanish copy', () => {
       'legalDisclaimer',
       'legalRefund',
       'stateTiming',
+      'contactPage',
     ] as const;
     const messages = es as Record<string, unknown>;
     for (const name of namespaces) {

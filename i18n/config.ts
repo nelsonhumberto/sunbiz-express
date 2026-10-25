@@ -89,7 +89,31 @@ export function messagesForPath(
       },
     };
   }
+  // x-lf-pathname is the unprefixed route, so /es/contacto is `/contact` here.
+  if (pathname === '/contact') return pick(messages, CONTACT_CLIENT_NAMESPACES);
   return omitPrivateNamespaces(messages);
+}
+
+/**
+ * Client components on `/contact`: nav, footer, chat, and the inquiry form.
+ * Legal and account namespaces stay on the server so help@, legal@, and
+ * privacy@ never reach the contact page HTML.
+ */
+const CONTACT_CLIENT_NAMESPACES = [
+  'assistant',
+  'businessServices',
+  'disclosure',
+  'footer',
+  'nav',
+] as const;
+
+/** Lodash-style pick. Missing keys are omitted. */
+function pick(messages: AbstractIntlMessages, keys: readonly string[]): AbstractIntlMessages {
+  const out: AbstractIntlMessages = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(messages, key)) out[key] = messages[key];
+  }
+  return out;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

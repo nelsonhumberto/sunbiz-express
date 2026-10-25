@@ -84,6 +84,18 @@
     "statesWeServe": "Estados que atendemos",
     "copyright": "© {year} {company} · {address} · LaunchForma no es un bufete de abogados y no proporciona asesoramiento legal."
   },
+  "contactPage": {
+    "metaTitle": "Contacto",
+    "metaDescription": "Llámanos al {phone} o cuéntanos qué necesitas. Te responde alguien del equipo de LaunchForma.",
+    "ogTitle": "Contacto",
+    "ogDescription": "Llámanos o usa el formulario. Te ayudamos con tu trámite.",
+    "heading": "Contacto",
+    "intro": "Si tienes una duda sobre tu trámite, el agente registrado o algún servicio, llámanos o déjanos un mensaje. Te responde alguien del equipo.",
+    "phoneLabel": "Teléfono",
+    "addressLabel": "Dirección postal",
+    "formHeading": "Cuéntanos qué necesitas",
+    "formIntro": "Es el mismo formulario de servicios. Te llamamos para confirmar los detalles."
+  },
   "disclosure": {
     "notAffiliated": "LaunchForma es un servicio privado de gestión de trámites empresariales. No somos una agencia gubernamental ni estamos afiliados, respaldados ni actuando en nombre de ninguna agencia gubernamental. Las tarifas de presentación son fijadas por el estado y están incluidas en el precio de tu paquete.",
     "notAffiliatedShort": "LaunchForma es un servicio privado - no es una agencia gubernamental ni está afiliado a ninguna.",
@@ -390,6 +402,7 @@
     "phoneWhatsappLabel": "Teléfono o WhatsApp",
     "phonePlaceholder": "+1 305 555 0100",
     "phoneError": "Escribe un teléfono o WhatsApp.",
+    "servicePlaceholder": "Elige un servicio",
     "serviceError": "Elige un servicio.",
     "successHeadline": "Recibimos tu solicitud.",
     "successBody": "Te contactaremos por teléfono o WhatsApp en un día hábil.",

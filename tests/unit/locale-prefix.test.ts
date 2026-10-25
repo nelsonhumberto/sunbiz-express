@@ -30,6 +30,30 @@ describe('stripSpanishPrefix', () => {
     expect(messagesForPath('/pricing', messages)).toHaveProperty('offer');
   });
 
+  it('limits the contact page to the client namespaces that page renders', () => {
+    const messages = {
+      assistant: { title: 'Chat' },
+      businessServices: { submit: 'Send' },
+      disclosure: { notAffiliated: 'Private' },
+      footer: { contact: 'Contact' },
+      nav: { pricing: 'Pricing' },
+      legalTerms: { body: 'mailto:legal@launchforma.com' },
+      auth: { sidePanelSocial: 'help@launchforma.com' },
+      offer: { headline1: 'Form your business' },
+    };
+    const slim = messagesForPath('/contact', messages);
+    expect(Object.keys(slim).sort()).toEqual([
+      'assistant',
+      'businessServices',
+      'disclosure',
+      'footer',
+      'nav',
+    ]);
+    expect(JSON.stringify(slim)).not.toMatch(/@launchforma\.com|mailto:/);
+    expect(messagesForPath('/about', messages)).toHaveProperty('legalTerms');
+    expect(messagesForPath('/about', messages)).toHaveProperty('offer');
+  });
+
   it('rewrites a prefixed path and leaves ordinary paths alone', () => {
     expect(stripSpanishPrefix('/es/business-services')).toBe('/business-services');
     expect(stripSpanishPrefix('/es/business-services/thank-you')).toBe(

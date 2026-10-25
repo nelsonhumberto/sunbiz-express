@@ -5,6 +5,8 @@ import {
   inquiryFieldErrors,
   inquiryHoneypotTripped,
 } from '@/lib/service-inquiry';
+import en from '../../messages/en.json';
+import es from '../../messages/es.json';
 
 describe('service inquiry', () => {
   it('accepts name, phone, and service without an email', () => {
@@ -54,6 +56,16 @@ describe('service inquiry', () => {
     expect(form).toContain("trackEvent('form_submitted', { service, success: false }");
     expect(form).toContain('data-testid="service-inquiry-success"');
     expect(form).toContain('data-testid="service-inquiry-error"');
+    expect(form).toContain("useState<ServiceInquiryOption | ''>('')");
+    expect(form).toContain('<option value="">{t(\'servicePlaceholder\')}</option>');
+    expect(form).toContain('required');
+    expect(
+      inquiryFieldErrors({ name: 'Ana Ruiz', phone: '+1 305 555 0100', service: '' }),
+    ).toEqual({ service: true });
+    expect(en.businessServices.servicePlaceholder).toBe('Choose a service');
+    expect(en.businessServices.serviceError).toBe('Choose a service.');
+    expect(es.businessServices.servicePlaceholder).toBe('Elige un servicio');
+    expect(es.businessServices.serviceError).toBe('Elige un servicio.');
 
     const action = readFileSync('actions/service-inquiry.ts', 'utf8');
     expect(action).toContain('prisma.serviceInquiry.create');

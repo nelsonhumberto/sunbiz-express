@@ -1,18 +1,22 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { CalendarClock, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatDateLong, cn } from '@/lib/utils';
-import { formatDueLabel } from '@/lib/due-label';
+import { formatCurrency, cn } from '@/lib/utils';
+import { formatDueLabel, formatLongDate } from '@/lib/due-label';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CompliancePage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
+  const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const reports = await prisma.annualReport.findMany({
     where: { filing: { userId: session.user.id } },
@@ -25,22 +29,17 @@ export default async function CompliancePage() {
   const filed = reports.filter((r) => r.status === 'FILED');
 
   return (
-    <div className="container max-w-4xl py-10 space-y-8">
-      <div>
-        <h1 className="font-display text-4xl font-medium tracking-tight">Compliance Calendar</h1>
-        <p className="mt-2 text-ink-muted">
-          Florida requires annual reports between January 1 and May 1 each year. Miss the deadline
-          and the state charges a non-waivable $400 late fee.
-        </p>
+    <div className="container max-w-4xl min-w-0 py-10 space-y-8">
+      <div className="min-w-0">
+        <h1 className="font-display text-4xl font-medium tracking-tight break-words">{t('complianceTitle')}</h1>
+        <p className="mt-2 text-ink-muted">{t('complianceSubtitle')}</p>
       </div>
 
       {reports.length === 0 ? (
         <Card>
           <CardContent className="p-10 text-center">
             <CalendarClock className="h-10 w-10 mx-auto text-ink-subtle mb-3" />
-            <p className="text-ink-muted">
-              Compliance deadlines appear here once you have an approved filing.
-            </p>
+            <p className="text-ink-muted">{t('complianceEmpty')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -48,7 +47,7 @@ export default async function CompliancePage() {
           {upcoming.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-                Upcoming
+                {t('upcoming')}
               </h2>
               <div className="space-y-3">
                 {upcoming.map((report) => {
@@ -79,24 +78,24 @@ export default async function CompliancePage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline justify-between gap-3 flex-wrap">
                             <Link
-                              href={`/dashboard/filings/${report.filingId}`}
+                              href={hrefForLocale(`/dashboard/filings/${report.filingId}`, locale)}
                               className="font-semibold text-ink hover:text-primary"
                             >
                               {report.filing.businessName}
                             </Link>
                             <Badge variant={overdue ? 'danger' : urgent ? 'warn' : 'secondary'}>
                               {overdue
-                                ? `${Math.abs(daysUntil)} days overdue`
-                                : `${daysUntil} days`}
+                                ? t('daysOverdue', { days: Math.abs(daysUntil) })
+                                : t('daysRemaining', { days: daysUntil })}
                             </Badge>
                           </div>
                           <p className="text-sm text-ink-muted mt-1">
-                            {report.reportYear} Annual Report ·{' '}
-                            <strong>{formatDueLabel('Due', report.dueDate)}</strong>
+                            {t('complianceAnnual', { year: report.reportYear })} ·{' '}
+                            <strong>{formatDueLabel(t('due'), report.dueDate, locale)}</strong>
                           </p>
                           <p className="text-xs text-ink-subtle mt-1">
-                            State fee: {formatCurrency(report.filingFeeCents)} ·{' '}
-                            {overdue ? `+ $400 late fee applies` : 'On-time filing avoids $400 late fee'}
+                            {t('stateFee')}: {formatCurrency(report.filingFeeCents)} ·{' '}
+                            {overdue ? t('lateFeeApplies') : t('onTime')}
                           </p>
                         </div>
                         <ChevronRight className="h-5 w-5 text-ink-subtle shrink-0 mt-1" />
@@ -111,18 +110,21 @@ export default async function CompliancePage() {
           {filed.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-                Filed
+                {t('filed')}
               </h2>
               <div className="space-y-2">
                 {filed.map((report) => (
                   <div
                     key={report.id}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-success-subtle/40 border border-success/20"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 rounded-lg bg-success-subtle/40 border border-success/20 min-w-0"
                   >
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                    <span className="text-sm font-medium">{report.filing.businessName}</span>
-                    <span className="text-xs text-ink-muted ml-auto">
-                      {report.reportYear} · Filed {formatDateLong(report.filedDate ?? report.createdAt)}
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                    <span className="text-sm font-medium min-w-0">{report.filing.businessName}</span>
+                    <span className="text-xs text-ink-muted sm:ml-auto">
+                      {report.reportYear} ·{' '}
+                      {t('complianceFiledOn', {
+                        date: formatLongDate(report.filedDate ?? report.createdAt, locale),
+                      })}
                     </span>
                   </div>
                 ))}
@@ -132,22 +134,15 @@ export default async function CompliancePage() {
         </>
       )}
 
-      {/* Tips card */}
       <Card>
         <CardContent className="p-6">
-          <h3 className="font-semibold text-ink mb-3">📅 Florida compliance basics</h3>
+          <h3 className="font-semibold text-ink mb-3">{t('complianceTipsTitle')}</h3>
           <ul className="space-y-2 text-sm text-ink-muted">
-            <li>· Annual reports due between January 1 and May 1 each year (11:59 PM ET)</li>
-            <li>· LLC fee: $138.75 · Corporation fee: $150.00</li>
-            <li>
-              · <strong className="text-ink">$400 late fee is non-waivable</strong> - there is no
-              hardship exception
-            </li>
-            <li>
-              · Failure to file by the third Friday in September results in administrative
-              dissolution
-            </li>
-            <li>· Reinstatement costs $100 (LLC) or $600 (Corp) plus all back fees</li>
+            <li>· {t('complianceTip1')}</li>
+            <li>· {t('complianceTip2')}</li>
+            <li>· {t('complianceTip3')}</li>
+            <li>· {t('complianceTip4')}</li>
+            <li>· {t('complianceTip5')}</li>
           </ul>
         </CardContent>
       </Card>

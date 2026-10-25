@@ -14,6 +14,7 @@ import {
 } from '@/lib/pricing';
 import { getFormationState, type StateCode } from '@/lib/formation-states';
 import { addOnNameKey, recurringKey } from '@/lib/pricing-i18n';
+import { localizedPackageLabel } from '@/lib/tier-display';
 import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency } from '@/lib/utils';
 
@@ -195,9 +196,12 @@ export function localizedLineLabel(
   tPricing: (key: string) => string,
 ): string {
   if (line.category === 'package' && line.tierSlug) {
-    // line.label already contains the state-aware label from computeCost
-    // (e.g. "Popular - Wyoming LLC"), so use it directly.
-    return line.label;
+    return localizedPackageLabel({
+      storedLabel: line.label,
+      tierSlug: line.tierSlug,
+      entityType,
+      translate: tPricing,
+    });
   }
   if (line.category === 'addon' && line.addOnSlug) {
     return tWizard(addOnNameKey(line.addOnSlug));

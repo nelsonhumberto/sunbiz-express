@@ -3,7 +3,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { checkActionRateLimit } from '@/lib/rate-limit';
@@ -128,5 +128,5 @@ export async function resetPassword(
     }),
   ]);
 
-  redirect('/sign-in?reset=1');
+  return await redirectLocalized('/sign-in?reset=1');
 }

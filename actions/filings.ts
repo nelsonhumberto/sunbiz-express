@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -50,7 +49,7 @@ export async function createFiling(input?: {
   state?: string;
 }) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
   const requestedState = (input?.state ?? 'FL').toUpperCase();
   const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
@@ -86,7 +85,7 @@ export async function createFiling(input?: {
 
 export async function deleteDraftFiling(filingId: string) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
   const filing = await prisma.filing.findUnique({ where: { id: filingId } });
   if (!filing || filing.userId !== session.user.id) throw new Error('Not found');
   if (filing.status !== 'DRAFT') throw new Error('Cannot delete a submitted filing.');
@@ -117,7 +116,7 @@ export async function submitFilingToState(
   } else {
     const session = await auth();
     const actor = await getWizardActor(session?.user?.id, session?.user?.email);
-    if (!actor) redirect('/sign-in');
+    if (!actor) return await redirectLocalized('/sign-in');
     actorId = actor.id;
     actorEmail = actor.email ?? null;
   }

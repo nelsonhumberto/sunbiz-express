@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import Link from 'next/link';
 import {
   CreditCard,
@@ -8,7 +8,8 @@ import {
   ExternalLink,
   ArrowRight,
 } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,8 +21,9 @@ export const metadata = { title: 'Billing' };
 
 export default async function BillingPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
   const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const [user, payments, raServices] = await Promise.all([
     prisma.user.findUnique({
@@ -129,7 +131,7 @@ export default async function BillingPage() {
                         {svc.filing.state ?? 'FL'} RA
                       </span>
                       <Link
-                        href={`/dashboard/filings/${svc.filingId}`}
+                        href={hrefForLocale(`/dashboard/filings/${svc.filingId}`, locale)}
                         className="font-medium hover:text-primary"
                       >
                         {svc.filing.businessName ?? '-'}
@@ -138,10 +140,10 @@ export default async function BillingPage() {
                     <span className="text-right whitespace-nowrap">
                       <span className="text-xs text-ink-subtle inline-flex items-center gap-1">
                         <CalendarClock className="h-3 w-3" />
-                        {t('renewsOn')} {formatDate(svc.renewalDate)}
+                        {t('renewsOn')} {formatDate(svc.renewalDate, undefined, locale)}
                       </span>
                       <Link
-                        href={`/dashboard/filings/${svc.filingId}/registered-agent`}
+                        href={hrefForLocale(`/dashboard/filings/${svc.filingId}/registered-agent`, locale)}
                         className="mt-0.5 block text-xs font-medium text-primary hover:underline"
                       >
                         {t('raRenewNow')}
@@ -181,7 +183,7 @@ export default async function BillingPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={`/dashboard/filings/${payment.filingId}`}
+                      href={hrefForLocale(`/dashboard/filings/${payment.filingId}`, locale)}
                       className="font-medium text-ink hover:text-primary truncate"
                     >
                       {payment.filing.businessName ?? '-'}
@@ -192,7 +194,7 @@ export default async function BillingPage() {
                           {payment.cardBrand} ending {payment.cardLast4} ·{' '}
                         </>
                       ) : null}
-                      {formatDate(payment.completedAt ?? payment.createdAt)}
+                      {formatDate(payment.completedAt ?? payment.createdAt, undefined, locale)}
                       {payment.couponCode && <> · coupon {payment.couponCode}</>}
                     </p>
                   </div>

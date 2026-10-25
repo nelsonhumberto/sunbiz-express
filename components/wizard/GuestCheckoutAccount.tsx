@@ -67,7 +67,7 @@ export function GuestCheckoutAccount({
       );
       if (saved.needsSignIn) {
         setNeedsSignIn(true);
-        setError(saved.error ?? t('guestEmailHasAccount'));
+        setError(null);
         setPending(false);
         return;
       }
@@ -84,7 +84,7 @@ export function GuestCheckoutAccount({
       const claimed = await withActionTimeout(claimGuestAccount({}, fd), WIZARD_ACTION_TIMEOUT_MS);
       if (claimed.needsSignIn) {
         setNeedsSignIn(true);
-        setError(claimed.error ?? t('guestEmailHasAccount'));
+        setError(null);
         setPending(false);
         return;
       }
@@ -119,7 +119,7 @@ export function GuestCheckoutAccount({
       );
       if (result.needsSignIn) {
         setNeedsSignIn(true);
-        setError(result.error ?? t('guestEmailHasAccount'));
+        setError(null);
         return;
       }
       if (!result.ok || !result.sent) {
@@ -193,7 +193,7 @@ export function GuestCheckoutAccount({
       </form>
       {needsSignIn && (
         <div className="space-y-2 text-sm">
-          <p className="text-ink-muted leading-relaxed">{t('accountGateSignIn')}</p>
+          <p className="text-ink-muted leading-relaxed">{t('guestEmailHasAccount')}</p>
           <Button asChild variant="outline" className="w-full">
             <a href={signInHref}>{t('accountGateSignInButton')}</a>
           </Button>

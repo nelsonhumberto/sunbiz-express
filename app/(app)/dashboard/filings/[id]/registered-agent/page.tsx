@@ -1,7 +1,9 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
@@ -24,8 +26,9 @@ function plusOneYear(date: Date): Date {
 
 export default async function RegisteredAgentRenewalPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
   const t = await getTranslations('dashboard');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const filing = await prisma.filing.findUnique({
     where: { id: params.id },
@@ -53,7 +56,7 @@ export default async function RegisteredAgentRenewalPage({ params }: PageProps) 
 
   const svc = filing.raServices[0];
   // Nothing to renew (customer is their own agent, or service cancelled).
-  if (!svc) redirect(`/dashboard/filings/${params.id}`);
+  if (!svc) return await redirectLocalized(`/dashboard/filings/${params.id}`);
 
   const agentAddress = [
     svc.street1,
@@ -81,7 +84,7 @@ export default async function RegisteredAgentRenewalPage({ params }: PageProps) 
   return (
     <div className="container max-w-2xl py-10 space-y-6">
       <Link
-        href={`/dashboard/filings/${params.id}`}
+        href={hrefForLocale(`/dashboard/filings/${params.id}`, locale)}
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />

@@ -241,7 +241,7 @@ describe('purchase_completed event properties', () => {
     const trackerMount = page.indexOf('<CheckoutConversionTracker');
     expect(confirming).toBeGreaterThan(-1);
     expect(trackerMount).toBeGreaterThan(confirming);
-    expect(page).toContain('href="/dashboard"');
+    expect(page).toContain("hrefForLocale('/dashboard', locale)");
   });
 });
 

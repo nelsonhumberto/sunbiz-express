@@ -90,8 +90,13 @@ export function Step1Entity({
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
       if (res && res.ok === false) {
-        setNeedsSignIn(Boolean(res.needsSignIn));
-        setEmailError(res.error);
+        if (res.needsSignIn) {
+          setNeedsSignIn(true);
+          setEmailError(null);
+          return;
+        }
+        setNeedsSignIn(false);
+        setEmailError(res.error ?? null);
         return res;
       }
       router.push(`/wizard/${filing.id}/2`);

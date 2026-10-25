@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Download, FileText, Folder, Clock } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +19,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function DocumentsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/sign-in');
+  if (!session?.user?.id) return await redirectLocalized('/sign-in');
+  const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const tDash = await getTranslations('dashboard');
   const tWizard = await getTranslations('wizard');
   const tDetail = await getTranslations('filingDetail');
@@ -29,6 +31,9 @@ export default async function DocumentsPage() {
     ARTICLES_ORG: tDocs('ARTICLES_ORG'),
     ARTICLES_INC: tDocs('ARTICLES_INC'),
     OPERATING_AGREEMENT: tDocs('OPERATING_AGREEMENT'),
+    COVER_LETTER: tDocs('COVER_LETTER'),
+    SUNBIZ_COVER_PAGE: tDocs('SUNBIZ_COVER_PAGE'),
+    FILE_PACKAGE: tDocs('FILE_PACKAGE'),
     EIN_LETTER: tEin('docEinLetter'),
     CERT_STATUS: tDocs('CERT_STATUS'),
     CERT_COPY: tDocs('CERT_COPY'),
@@ -90,7 +95,7 @@ export default async function DocumentsPage() {
                 <div className="border-b border-border px-6 py-4 flex items-baseline justify-between flex-wrap gap-2">
                   <div>
                     <Link
-                      href={`/dashboard/filings/${filing.id}`}
+                      href={hrefForLocale(`/dashboard/filings/${filing.id}`, locale)}
                       className="font-semibold text-ink hover:text-primary transition-colors"
                     >
                       {filing.businessName}
@@ -113,10 +118,7 @@ export default async function DocumentsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {displayedCertificateTitle(doc.documentType, doc.title, {
-                                CERT_STATUS: tDocs('CERT_STATUS'),
-                                CERT_COPY: tDocs('CERT_COPY'),
-                              })}
+                              {displayedCertificateTitle(doc.documentType, doc.title, TYPE_LABEL)}
                             </p>
                             <p className="text-xs text-ink-muted">
                               {TYPE_LABEL[doc.documentType] ?? doc.documentType} ·{' '}
@@ -140,13 +142,10 @@ export default async function DocumentsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {displayedCertificateTitle(doc.documentType, doc.title, {
-                              CERT_STATUS: tDocs('CERT_STATUS'),
-                              CERT_COPY: tDocs('CERT_COPY'),
-                            })}
+                            {displayedCertificateTitle(doc.documentType, doc.title, TYPE_LABEL)}
                           </p>
                           <p className="text-xs text-ink-muted">
-                            {TYPE_LABEL[doc.documentType] ?? doc.documentType} · {formatDate(doc.generatedAt)}
+                              {TYPE_LABEL[doc.documentType] ?? doc.documentType} · {formatDate(doc.generatedAt, undefined, locale)}
                           </p>
                           </div>
                           <Download className="h-4 w-4 text-ink-subtle" />

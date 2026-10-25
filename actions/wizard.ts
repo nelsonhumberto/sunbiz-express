@@ -1135,7 +1135,7 @@ export async function getWizardFiling(filingId: string) {
   });
   // Guests cannot navigate to /dashboard; we send them home instead.
   if (!filing || filing.userId !== actor.id) {
-    return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard', filing?.locale);
+    return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard');
   }
   return filing;
 }

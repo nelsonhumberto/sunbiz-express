@@ -35,6 +35,9 @@ import {
   ensureFilingTouchUtm,
   ensureUserFirstTouchUtm,
 } from '@/lib/utm-attribution';
+import { capturePurchaseCompletedServer, type PurchaseIntentLike } from '@/lib/posthog-server';
+import { isInternalTrafficUser } from '@/lib/internal-traffic';
+import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -141,6 +144,7 @@ export async function processCheckout(input: {
   let pmId: string | null = null;
   let stripeIntentId: string;
   let livemode: boolean | null = null;
+  let paidIntent: PurchaseIntentLike;
 
   if (isTesterBypass) {
     // Synthetic payment - no Stripe call
@@ -148,6 +152,16 @@ export async function processCheckout(input: {
     cardLast4 = '4242';
     cardBrand = 'Visa';
     cardholderName = 'Test User';
+    paidIntent = {
+      id: stripeIntentId,
+      amount: expectedTotal,
+      currency: 'usd',
+      metadata: {
+        filingId: filing.id,
+        userId: actor.id,
+        ...checkoutAttributionMetadata({ filing }),
+      },
+    };
   } else {
     // Verify the PaymentIntent with Stripe
     let pi;
@@ -188,6 +202,14 @@ export async function processCheckout(input: {
     pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
     stripeIntentId = pi.id;
     livemode = pi.livemode;
+    paidIntent = {
+      id: pi.id,
+      amount: pi.amount,
+      amount_received: pi.amount_received,
+      currency: pi.currency,
+      created: pi.created,
+      metadata: pi.metadata,
+    };
   }
 
   await prisma.payment.create({
@@ -209,6 +231,16 @@ export async function processCheckout(input: {
       discountCents,
       completedAt: new Date(),
     },
+  });
+
+  // The Payment insert is the transition to paid. The webhook captures only
+  // when it wins that insert, so a succeeded PaymentIntent is one event.
+  const buyer = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { role: true, email: true },
+  });
+  await capturePurchaseCompletedServer(paidIntent, {
+    internal: isInternalTrafficUser(buyer ?? { email: actor.email }),
   });
 
   // Server default matches the checkout checkbox: off unless this request

@@ -23,12 +23,14 @@ const CSP = [
   // (us.i.posthog.com, us-assets.i.posthog.com) and the OpenAI ads pixel
   // (bzr.openai.com, bzrcdn.openai.com). googleads.g.doubleclick.net is listed
   // explicitly next to *.doubleclick.net so the conversion hosts stay allowed.
-  "img-src 'self' data: blob: https://*.stripe.com https://images.unsplash.com https://avatars.githubusercontent.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.vercel.app https://*.vercel-insights.com https://www.google-analytics.com https://www.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com",
+  // Google's Ads CSP also sends conversion pixels to pagead2 (img) and
+  // googletagmanager (frame). https://developers.google.com/tag-platform/security/guides/csp
+  "img-src 'self' data: blob: https://*.stripe.com https://images.unsplash.com https://avatars.githubusercontent.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.vercel.app https://*.vercel-insights.com https://www.google-analytics.com https://www.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://pagead2.googlesyndication.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live https://www.googletagmanager.com https://www.google-analytics.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://px.ads.linkedin.com https://snap.licdn.com https://bzrcdn.openai.com",
   "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.posthog.com https://*.i.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://vitals.vercel-insights.com https://*.vercel-insights.com https://www.google-analytics.com https://analytics.google.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com https://pagead2.googlesyndication.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com https://www.linkedin.com https://bzr.openai.com https://bzrcdn.openai.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.googletagmanager.com https://ad.doubleclick.net https://*.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://px.ads.linkedin.com https://px4.ads.linkedin.com https://snap.licdn.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   'upgrade-insecure-requests',
@@ -91,6 +93,10 @@ const nextConfig = {
       // statusCode 308 (permanent: true is also 308, but keep it explicit).
       ...RETIRED_STATE_REDIRECTS,
       { source: '/wizard', destination: '/start', permanent: true },
+      // Old login URLs. The app route is /sign-in; /es/sign-in is the Spanish
+      // rewrite of that same page.
+      { source: '/login', destination: '/sign-in', permanent: true },
+      { source: '/es/login', destination: '/es/sign-in', permanent: true },
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/why-us', destination: '/about#why', permanent: true },
       { source: '/annual-report-help', destination: '/file-annual-report', permanent: true },

@@ -59,11 +59,12 @@ export function identifyUser(userId: string, traits?: Record<string, unknown>) {
  * events. `identify` and `setPersonProperties` set the person property so
  * the account can be filtered out.
  */
-export function markInternalTraffic(userId: string, email?: string | null) {
+export function markInternalTraffic(userId?: string | null, email?: string | null) {
   const apply = () => {
     const client = ph();
-    if (!client || !userId.trim()) return;
+    if (!client) return;
     client.register({ is_internal: true });
+    if (!userId?.trim()) return;
     const traits: Record<string, unknown> = { is_internal: true };
     if (email?.trim()) traits.email = email.trim();
     client.identify(userId, traits);

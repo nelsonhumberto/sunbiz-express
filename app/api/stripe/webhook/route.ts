@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { isTestPayment } from '@/lib/payment-test';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
+import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
 
 export const dynamic = 'force-dynamic';
@@ -64,9 +65,6 @@ export async function POST(request: NextRequest) {
   try {
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object as Stripe.PaymentIntent;
-      // Analytics only. capturePurchaseCompletedServer never throws, and a
-      // failure here must not change the webhook outcome.
-      await capturePurchaseCompletedServer(pi);
       const reconciled = await reconcilePaidFiling(pi);
       if (reconciled === 'defer') {
         // Too soon - let the client checkout finish. Non-2xx makes Stripe
@@ -154,6 +152,14 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     }
     throw err;
   }
+
+  // This insert is the filing's transition to paid. A retry that lost the
+  // unique PaymentIntent race returned above and does not capture again.
+  const buyer = await prisma.user.findUnique({
+    where: { id: filing.userId },
+    select: { role: true, email: true },
+  });
+  await capturePurchaseCompletedServer(pi, { internal: isInternalTrafficUser(buyer) });
 
   await prisma.filing.update({
     where: { id: filing.id },

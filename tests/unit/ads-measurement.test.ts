@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
-import { buildPurchaseCompletedCapture } from '@/lib/posthog-server';
+import {
+  buildPurchaseCompletedCapture,
+  posthogServerCaptureEnabled,
+  posthogServerEventProperties,
+  shouldCapturePaidTransition,
+} from '@/lib/posthog-server';
 import { distinctIdFromPosthogCookie, sanitizeDistinctId } from '@/lib/posthog-distinct-id';
 
 function directive(source: string, name: string): string {
@@ -61,6 +66,8 @@ describe('ads conversion CSP', () => {
       expect(connect).toContain(host);
     }
 
+    expect(img).toContain('https://pagead2.googlesyndication.com');
+    expect(frame).toContain('https://www.googletagmanager.com');
     expect(script).toContain('https://bzrcdn.openai.com');
     expect(connect).toContain('https://bzr.openai.com');
     expect(connect).toContain('https://bzrcdn.openai.com');
@@ -126,24 +133,60 @@ describe('purchase_completed_server payload', () => {
     expect(body).toMatchObject({
       event: 'purchase_completed_server',
       distinct_id: 'ph-user-1',
+      context: { filing_id: 'filing_1' },
       properties: {
         order_id: 'filing_1',
+        filing_id: 'filing_1',
+        payment_intent_id: 'pi_123',
         amount: 224,
         currency: 'USD',
-        $insert_id: 'pi_123',
+        $insert_id: 'filing_1',
         utm_source: 'linkedin',
         utm_medium: 'paid-social',
         utm_campaign: 'en-fl-llc',
         utm_content: 'creative-1',
         utm_term: 'form a llc',
+        ...posthogServerEventProperties(),
       },
     });
+    expect(body?.properties.is_internal).toBeUndefined();
   });
 
-  it('falls back to the payment intent id when no visitor id was stored', () => {
+  it('falls back to the payment intent id when no filing id was stored', () => {
     const body = buildPurchaseCompletedCapture({ id: 'pi_abc', amount_received: 100, currency: 'usd' });
     expect(body?.distinct_id).toBe('pi_abc');
+    expect(body?.context.filing_id).toBe('pi_abc');
     expect(body?.properties.order_id).toBe('pi_abc');
+    expect(body?.properties.$insert_id).toBe('pi_abc');
     expect(body?.properties.amount).toBe(1);
+  });
+
+  it('marks internal buyers and skips a capture that did not insert the payment', () => {
+    const body = buildPurchaseCompletedCapture(
+      { id: 'pi_123', amount: 100, metadata: { filingId: 'filing_1' } },
+      undefined,
+      { internal: true },
+    );
+    expect(body?.properties.is_internal).toBe(true);
+    expect(shouldCapturePaidTransition(true)).toBe(true);
+    expect(shouldCapturePaidTransition(false)).toBe(false);
+  });
+
+  it('sends server captures only when VERCEL_ENV is production', () => {
+    const previous = process.env.VERCEL_ENV;
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = 'ph_test';
+    process.env.VERCEL_ENV = 'preview';
+    expect(posthogServerCaptureEnabled()).toBe(false);
+    process.env.VERCEL_ENV = 'development';
+    expect(posthogServerCaptureEnabled()).toBe(false);
+    delete process.env.VERCEL_ENV;
+    expect(posthogServerCaptureEnabled()).toBe(false);
+    process.env.VERCEL_ENV = 'production';
+    expect(posthogServerCaptureEnabled()).toBe(true);
+    if (previous === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = previous;
+    if (key === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    else process.env.NEXT_PUBLIC_POSTHOG_KEY = key;
   });
 });

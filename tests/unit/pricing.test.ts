@@ -3,6 +3,8 @@ import {
   addOnPriceCents,
   addOnPriceParts,
   computeCost,
+  TIER_BY_SLUG,
+  tierBundledAddOns,
   tierPackagePriceCents,
   tierPriceParts,
   type TierSlug,
@@ -67,6 +69,17 @@ describe('computeCost', () => {
     expect(annualComplianceFor(rule, 'CORP').baseFeeCents).toBe(15_000);
     expect(annualComplianceFor(rule, 'LLC').entityType).toBe('LLC');
     expect(annualComplianceFor(rule, 'CORP').entityType).toBe('CORP');
+  });
+
+  it('does not list or bundle a .com domain on Essential', () => {
+    const labels = TIER_BY_SLUG.BASIC.features.map((feature) => feature.label);
+    expect(labels.some((label) => /domain/i.test(label))).toBe(false);
+    expect(tierBundledAddOns('BASIC')).not.toContain('domain_com');
+    const without = computeCost({ ...base, tier: 'BASIC', addOnSlugs: [] });
+    const withDomain = computeCost({ ...base, tier: 'BASIC', addOnSlugs: ['domain_com'] });
+    expect(withDomain.totalCents - without.totalCents).toBe(
+      addOnPriceCents('domain_com', 'LLC', 'FL'),
+    );
   });
 
   it('every line item has a non-negative integer cent amount', () => {

@@ -90,7 +90,6 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
       { label: 'Filing within 1 business day', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
-      { label: 'Free .com domain', included: false },
     ],
   },
   {

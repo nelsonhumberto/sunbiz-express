@@ -10,6 +10,7 @@ import {
   PUBLIC_PATH_HEADER,
 } from '@/lib/locale-paths';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
+import { INTERNAL_TRAFFIC_HEADER, internalTrafficQueryRequested } from '@/lib/internal-traffic';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
 
 const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
@@ -147,6 +148,9 @@ export function middleware(request: NextRequest) {
     LOCALE_HEADER,
     effectiveLocale === 'es' ? 'es' : routing.defaultLocale,
   );
+  if (internalTrafficQueryRequested(request.nextUrl.search)) {
+    requestHeaders.set(INTERNAL_TRAFFIC_HEADER, '1');
+  }
   const requestInit = { request: { headers: requestHeaders } };
 
   let response: NextResponse;

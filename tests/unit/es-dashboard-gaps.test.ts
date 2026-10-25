@@ -21,8 +21,10 @@ describe('Spanish dashboard and wizard gaps', () => {
     expect(nav).not.toContain('aria-label="Dashboard"');
 
     const layout = source('app/(app)/layout.tsx');
-    expect(layout).toContain("redirectLocalized('/sign-in')");
+    expect(layout).toContain('redirectToSignIn()');
     expect(layout).not.toContain("redirect('/sign-in')");
+    expect(layout).not.toContain("redirectLocalized('/sign-in')");
+    expect(source('app/(app)/dashboard/page.tsx')).toContain('redirectToSignIn()');
     expect(layout).toContain('overflow-x-clip');
     expect(layout).toContain('min-w-0');
 
@@ -93,6 +95,27 @@ describe('Spanish dashboard and wizard gaps', () => {
     expect(en.wizard.guestEmailHasAccount).not.toMatch(/at checkout/i);
     expect(es.wizard.guestEmailHasAccount).not.toMatch(/al pagar/);
     expect(es.wizard.guestEmailHasAccount).toMatch(/Entra/);
+    expect(es.auth.signInTitle).toBe('Qué bueno verte de nuevo');
+    for (const value of [
+      es.common.skipToContent,
+      es.notFound.title,
+      es.notFound.body,
+      es.notFound.home,
+      es.pricing.feat_articles,
+      es.pricing.feat_certCopy,
+      es.dashboard.documentsSubtitle,
+      es.dashboard.complianceFiledOn,
+      es.dashboard.complianceAnnual,
+      es.wizard.guestEmailHasAccount,
+      es.wizard.guestCheckDetails,
+      es.wizard.guestSessionExpired,
+      es.wizard.nameGuaranteeTitle,
+      es.wizard.nameGuaranteeBody,
+      es.auth.signInTitle,
+    ]) {
+      expect(value).not.toMatch(/Bienvenid/);
+      expect(value).not.toMatch(/\u2014|\u2013/);
+    }
     expect(source('components/wizard/steps/Step2Name.tsx')).toContain("t('nameGuaranteeTitle')");
     expect(source('components/wizard/steps/Step2Name.tsx')).not.toContain('Our name approval guarantee');
     const step2 = source('components/wizard/steps/Step2Name.tsx');

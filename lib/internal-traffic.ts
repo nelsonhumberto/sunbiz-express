@@ -7,6 +7,9 @@ const INTERNAL_DOMAINS = ['launchforma.com', 'intelepeer.ai', 'aqurio.com'] as c
 /** Cookie and localStorage flag set by `?lf_internal=1`. */
 export const INTERNAL_TRAFFIC_FLAG = 'lf_internal';
 
+/** Request header set when the incoming URL asks for the internal flag. */
+export const INTERNAL_TRAFFIC_HEADER = 'x-lf-internal';
+
 const INTERNAL_UA = /HeadlessChrome|Playwright|Puppeteer|lf-qa/i;
 
 /** Staff, company accounts, and the named partner mailboxes. */
@@ -34,6 +37,11 @@ export function internalTrafficQueryRequested(search: string | null | undefined)
   const raw = search ?? '';
   const query = raw.startsWith('?') ? raw.slice(1) : raw;
   return new URLSearchParams(query).get('lf_internal') === '1';
+}
+
+/** Sign-in path that keeps `?lf_internal=1` and drops every other query param. */
+export function signInHrefPreservingInternal(requested: boolean): string {
+  return requested ? '/sign-in?lf_internal=1' : '/sign-in';
 }
 
 export function hasInternalTrafficCookie(cookie: string | null | undefined): boolean {

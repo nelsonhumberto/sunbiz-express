@@ -14,6 +14,7 @@ import {
   sessionRecordingPrivacy,
   sessionReplayAllowed,
 } from '@/lib/session-replay';
+import { stripLiFatIdFromLocation } from '@/lib/strip-li-fat-id';
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
@@ -135,6 +136,7 @@ function installSessionReplayRouteListener(): void {
  * Replay is masked everywhere and is not started on customer-data routes.
  */
 if (typeof window !== 'undefined') {
+  stripLiFatIdFromLocation();
   persistInternalQueryFlag();
 }
 if (typeof window !== 'undefined' && POSTHOG_KEY && POSTHOG_ENV === 'production') {

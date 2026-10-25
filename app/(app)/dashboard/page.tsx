@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { hrefForLocale } from '@/lib/app-href';
-import { redirectLocalized } from '@/lib/locale-redirect';
+import { redirectToSignIn } from '@/lib/sign-in-gate';
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
 import {
   ArrowRight,
@@ -33,7 +33,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) return await redirectLocalized('/sign-in');
+  if (!session?.user?.id) return await redirectToSignIn();
   const t = await getTranslations('dashboard');
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { auth } from '@/lib/auth';
-import { redirectLocalized } from '@/lib/locale-redirect';
+import { redirectToSignIn } from '@/lib/sign-in-gate';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) return await redirectLocalized('/sign-in');
+  if (!session?.user) return await redirectToSignIn();
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
 
   return (

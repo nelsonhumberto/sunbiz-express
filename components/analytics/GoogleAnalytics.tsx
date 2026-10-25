@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -31,8 +32,11 @@ export function GoogleAnalytics() {
     if (!GA_MEASUREMENT_ID || untracked) return;
     if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
 
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.delete('li_fat_id');
+    const query = params.toString();
     let url = pathname;
-    if (searchParams?.toString()) url += `?${searchParams.toString()}`;
+    if (query) url += `?${query}`;
 
     window.gtag('event', 'page_view', {
       page_path: url,
@@ -50,6 +54,7 @@ export function GoogleAnalytics() {
       />
       <Script id="google-analytics" strategy="afterInteractive">
         {`
+          ${LI_FAT_ID_STRIP_SCRIPT}
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           window.gtag = gtag;

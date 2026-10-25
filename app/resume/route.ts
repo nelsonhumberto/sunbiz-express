@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { GUEST_COOKIE } from '@/lib/guest';
+import { guestResumeAllowed } from '@/lib/guest-identity';
 import { resumeWizardPath } from '@/lib/wizard-constants';
 
 export const dynamic = 'force-dynamic';
@@ -22,19 +23,29 @@ export async function GET(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { guestToken: token },
-    select: { id: true, accountStatus: true },
+    select: { id: true, accountStatus: true, guestToken: true },
   });
-  if (!user || user.accountStatus !== 'GUEST') return fail();
 
-  const filing = await prisma.filing.findUnique({
-    where: { id: filingId },
-    select: { id: true, userId: true, currentStep: true, status: true },
-  });
-  if (!filing || filing.userId !== user.id) return fail();
+  const filing = user
+    ? await prisma.filing.findUnique({
+        where: { id: filingId },
+        select: { id: true, userId: true, currentStep: true, status: true },
+      })
+    : null;
 
-  // Submitted filings can't be resumed in the wizard - send to /start which
-  // will route appropriately.
-  if (filing.status !== 'DRAFT') return fail();
+  if (
+    !guestResumeAllowed({
+      accountStatus: user?.accountStatus,
+      guestToken: user?.guestToken,
+      token,
+      filingUserId: filing?.userId,
+      guestUserId: user?.id,
+      filingStatus: filing?.status,
+    }) ||
+    !filing
+  ) {
+    return fail();
+  }
 
   const res = NextResponse.redirect(
     new URL(resumeWizardPath(filing.id, filing.currentStep), request.url),

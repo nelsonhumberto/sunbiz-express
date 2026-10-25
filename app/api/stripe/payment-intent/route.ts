@@ -6,6 +6,7 @@ import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getWizardActor } from '@/lib/guest';
+import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
 import { safeParseJson } from '@/lib/utils';
 import {
   computeCost,
@@ -86,6 +87,9 @@ export async function POST(request: NextRequest) {
     const actor = await getWizardActor(session?.user?.id, session?.user?.email);
     if (!actor) {
       return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
+    }
+    if (!checkoutAllowsPayment(actor.kind)) {
+      return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
     }
 
     // When tied to a filing: verify ownership and bound the amount to the

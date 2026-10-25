@@ -49,7 +49,14 @@ export const RECOVERY_SKIP_EMAILS = ['nelsonhumberto@gmail.com'] as const;
  * admin@ and social@ on launchforma.com are included. A subdomain or a
  * lookalike host is not.
  */
-export const RECOVERY_SKIP_DOMAINS = ['launchforma.com', 'intelepeer.ai', 'aqurio.com'] as const;
+export const RECOVERY_SKIP_DOMAINS = [
+  'launchforma.com',
+  'intelepeer.ai',
+  'aqurio.com',
+  // Placeholder mailbox on a guest row before the visitor types a real email.
+  // The drip reads User.email. This domain keeps that row out of the queue.
+  'guest.launchforma.invalid',
+] as const;
 
 function mailboxDomain(email: string): string {
   const at = email.lastIndexOf('@');

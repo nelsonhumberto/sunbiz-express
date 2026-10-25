@@ -41,7 +41,7 @@ export default async function LoginLinkPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-medium tracking-tight">
-          Welcome back, {link.user.firstName}
+          {link.user.firstName?.trim() ? `Welcome back, ${link.user.firstName.trim()}` : 'Welcome back'}
         </h1>
         <p className="text-sm text-ink-muted">
           {toCheckout

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { claimGuestAccount, type ClaimResult } from '@/actions/guest-start';
+import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
 import {
   ActionTimeoutError,
   isRedirectError,
@@ -36,9 +37,10 @@ export function GuestSaveExitDialog({
   filingId: string;
 }) {
   const t = useTranslations('wizard');
+  const usableEmail = isPlaceholderGuestEmail(email) ? '' : email;
   const [open, setOpen] = useState(false);
-  const [showEmailEditor, setShowEmailEditor] = useState(false);
-  const [editableEmail, setEditableEmail] = useState(email);
+  const [showEmailEditor, setShowEmailEditor] = useState(usableEmail.length === 0);
+  const [editableEmail, setEditableEmail] = useState(usableEmail);
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ClaimResult>({});

@@ -12,6 +12,7 @@ import { checkActionRateLimit } from '@/lib/rate-limit';
 import { safeRedirectPath } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
 import { storedLocale } from '@/lib/stored-locale';
+import { attachGuestDraftsToAccount } from '@/actions/guest-email';
 
 const SignUpSchema = z
   .object({
@@ -92,6 +93,8 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
     context: { firstName: user.firstName },
   });
 
+  const attached = await attachGuestDraftsToAccount(user.id);
+
   // Auto sign-in
   try {
     await signIn('credentials', {
@@ -102,7 +105,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
   } catch (err) {
     // ignore - will redirect to sign-in
   }
-  redirect('/dashboard');
+  redirect(attached.resumeHref ?? '/dashboard');
 }
 
 let dummyHashPromise: Promise<string> | null = null;
@@ -167,10 +170,12 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
   // param (e.g. when we sent the user to /sign-in mid-checkout) so they
   // land back where they were trying to go. Restrict to same-origin paths.
   const safeNext = safeRedirectPath(String(formData.get('next') ?? ''));
+  const attached =
+    account.role === 'ADMIN' ? null : await attachGuestDraftsToAccount(account.id);
   if (account.role === 'ADMIN') {
     redirect('/admin');
   }
-  redirect(safeNext ?? '/dashboard');
+  redirect(safeNext ?? attached?.resumeHref ?? '/dashboard');
 }
 
 export async function signOutAction() {

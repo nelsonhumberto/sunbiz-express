@@ -7,6 +7,7 @@ import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
+import { GuestEmailField } from '../GuestEmailField';
 import { cn } from '@/lib/utils';
 import {
   ACTIVE_FORMATION_STATES,
@@ -17,7 +18,15 @@ import type { WizardFiling } from '../types';
 
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
 
-export function Step1Entity({ filing }: { filing: WizardFiling }) {
+export function Step1Entity({
+  filing,
+  needsGuestEmail = false,
+  initialGuestEmail = '',
+}: {
+  filing: WizardFiling;
+  needsGuestEmail?: boolean;
+  initialGuestEmail?: string;
+}) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
   const isSCorp = filing.taxElection === 'S_CORP';
@@ -29,6 +38,8 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
   const [sCorpEntity, setSCorpEntity] = useState<'LLC' | 'CORP'>(
     isSCorp ? (filing.entityType as 'LLC' | 'CORP') : 'LLC',
   );
+  const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [stateCode, setStateCode] = useState<StateCode>(
     (filing.state && ACTIVE_FORMATION_STATES.includes(filing.state as StateCode)
       ? filing.state
@@ -67,7 +78,17 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
     const entityType = selected === 'SCORP' ? sCorpEntity : selected;
     const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
     run(async () => {
-      await saveStep1({ filingId: filing.id, entityType, state: stateCode, taxElection });
+      const res = await saveStep1({
+        filingId: filing.id,
+        entityType,
+        state: stateCode,
+        taxElection,
+        contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
+      });
+      if (res && res.ok === false) {
+        setEmailError(res.error);
+        return res;
+      }
       router.push(`/wizard/${filing.id}/2`);
     });
   };
@@ -225,6 +246,17 @@ export function Step1Entity({ filing }: { filing: WizardFiling }) {
             {t('sCorpUnderlyingHelp')}
           </p>
         </div>
+      )}
+
+      {needsGuestEmail && (
+        <GuestEmailField
+          value={guestEmail}
+          onChange={(value) => {
+            setGuestEmail(value);
+            setEmailError(null);
+          }}
+          error={emailError}
+        />
       )}
 
       <p className="text-xs text-ink-subtle leading-relaxed">{t('entityHint')}</p>

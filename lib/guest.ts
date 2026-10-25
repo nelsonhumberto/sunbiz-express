@@ -10,9 +10,11 @@
 //   3. The cookie matches a User with accountStatus = 'GUEST' and a non-null
 //      `guestToken`.
 //
-// Once the visitor "claims" the account (popup or sign-up), we set their
-// password hash, flip accountStatus to 'ACTIVE', clear `guestToken`, and let
-// the normal NextAuth credentials provider take over from there.
+// Once the visitor "claims" the account (popup, checkout password, magic
+// link, or sign-up), we set their password hash or consume a login link,
+// flip accountStatus to 'ACTIVE', clear `guestToken`, and let the normal
+// NextAuth session take over. Until they type a real email, User.email is a
+// placeholder the resume drip skips.
 
 import crypto from 'crypto';
 import { cookies } from 'next/headers';

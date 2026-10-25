@@ -14,6 +14,13 @@ import { getFormationState } from '@/lib/formation-states';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { TOTAL_DISPLAYED_STEPS, TOTAL_STEPS } from '@/lib/wizard-constants';
+import {
+  premiumDomainAdminUrl,
+  readDomainRegisteredAt,
+  readPreferredDomain,
+  showsManualDomainBadge,
+  withDomainRegisteredMark,
+} from '@/lib/premium-domain';
 
 async function requireAdmin() {
   const session = await auth();
@@ -317,6 +324,61 @@ export async function toggleAdminArchiveFiling(filingId: string) {
 }
 
 /**
+ * Mark (or clear) that the included Premium .com was registered by hand.
+ * Stored on Filing.optionalDetails.domainRegisteredAt. That column is already
+ * JSON, and wizard saves spread unknown keys, so this needs no migration.
+ * A value that is not a JSON object is left untouched.
+ */
+export async function toggleDomainRegistered(filingId: string) {
+  const session = await requireAdmin();
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: {
+      id: true,
+      optionalDetails: true,
+      serviceTier: true,
+      isTest: true,
+      businessName: true,
+      payments: { select: { status: true, isTest: true } },
+    },
+  });
+  if (!filing) throw new Error('Filing not found');
+  if (!showsManualDomainBadge(filing)) {
+    throw new Error('This filing is not a paid Premium order.');
+  }
+
+  const registeredAt = readDomainRegisteredAt(filing.optionalDetails);
+  const nextRegistered = !registeredAt;
+  const merged = withDomainRegisteredMark(
+    filing.optionalDetails,
+    nextRegistered,
+    new Date().toISOString(),
+  );
+  if (!merged.ok) {
+    throw new Error('Filing details could not be read. The domain mark was not saved.');
+  }
+
+  await prisma.filing.update({
+    where: { id: filingId },
+    data: { optionalDetails: merged.json },
+  });
+  await prisma.adminAction.create({
+    data: {
+      adminUserId: session.user!.id,
+      filingId,
+      actionType: nextRegistered ? 'DOMAIN_REGISTERED' : 'DOMAIN_REGISTERED_CLEARED',
+      description: nextRegistered
+        ? `Marked .com domain registered: ${filing.businessName ?? filingId}`
+        : `Cleared .com domain registered mark: ${filing.businessName ?? filingId}`,
+    },
+  });
+
+  revalidatePath('/admin/filings');
+  revalidatePath(`/admin/filings/${filingId}`);
+  return { registered: nextRegistered };
+}
+
+/**
  * Re-attempt delivery of a previously FAILED/QUEUED email notification,
  * re-rendering the template with current branding. Used after SMTP/Resend
  * credentials are fixed so real customers (e.g. Cafecito Tech) get their mail.
@@ -339,9 +401,10 @@ export async function resendEmailNotification(notificationId: string) {
           sunbizTrackingNumber: true,
           sunbizPin: true,
           totalCents: true,
+          optionalDetails: true,
         },
       },
-      user: { select: { id: true, firstName: true, email: true } },
+      user: { select: { id: true, firstName: true, lastName: true, email: true } },
     },
   });
   if (!existing) throw new Error('Email notification not found');
@@ -365,6 +428,19 @@ export async function resendEmailNotification(notificationId: string) {
     });
   }
 
+  const domainContext =
+    type === 'DOMAIN_REGISTER' && existing.filing
+      ? {
+          domainFilingId: existing.filing.id,
+          domainCustomerName:
+            `${existing.user?.firstName ?? ''} ${existing.user?.lastName ?? ''}`.replace(/\s+/g, ' ').trim() ||
+            undefined,
+          domainCustomerEmail: existing.user?.email,
+          domainAdminUrl: premiumDomainAdminUrl(existing.filing.id),
+          domainPreferred: readPreferredDomain(existing.filing.optionalDetails) ?? undefined,
+        }
+      : {};
+
   const result = await sendEmail({
     type,
     to: existing.recipientEmail,
@@ -381,6 +457,7 @@ export async function resendEmailNotification(notificationId: string) {
       loginEmail,
       tempPassword,
       resumeUrl: filingUrl,
+      ...domainContext,
     },
   });
 

@@ -65,7 +65,8 @@ export type NotificationType =
   | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
   | 'OA_TEMPLATE_CONFIRM'
-  | 'OA_TEMPLATE_DOWNLOAD';
+  | 'OA_TEMPLATE_DOWNLOAD'
+  | 'DOMAIN_REGISTER';
 
 interface EmailContext {
   firstName?: string;
@@ -152,6 +153,13 @@ interface EmailContext {
   oaMultiPdfUrl?: string;
   oaMultiDocxUrl?: string;
   oaUnsubscribeUrl?: string;
+  // ── Premium .com domain, internal admin alert ──
+  domainFilingId?: string;
+  domainCustomerName?: string;
+  domainCustomerEmail?: string;
+  domainAdminUrl?: string;
+  /** Present only when the filing already stored a hostname. */
+  domainPreferred?: string;
 }
 
 export interface SendEmailArgs {
@@ -672,6 +680,36 @@ const TEMPLATES: Record<
         <p><a href="${multiDocx}">Multi-member Word</a></p>
         <p class="muted">The sample is general information, not legal advice. Have an attorney review it before you use it. LaunchForma is not a law firm.</p>
         <p class="muted"><a href="${unsub}">Unsubscribe</a></p>
+      `,
+    };
+  },
+  DOMAIN_REGISTER: (ctx) => {
+    const label = (
+      ctx.businessName?.replace(/[\r\n]+/g, ' ').trim() ||
+      ctx.domainFilingId ||
+      'order'
+    ).slice(0, 120);
+    const cell = (value?: string) => escapeHtml(value?.trim() || 'Not provided');
+    const filingId = ctx.domainFilingId?.trim() || '';
+    const adminUrl = ctx.domainAdminUrl?.trim();
+    const filingCell =
+      adminUrl && filingId
+        ? `<a href="${escapeHtml(adminUrl)}">${escapeHtml(filingId)}</a>`
+        : cell(filingId);
+    const preferred = ctx.domainPreferred?.replace(/[\r\n]/g, '').trim();
+    return {
+      subject: `[Domain to register] Premium order ${label}`,
+      body: html`
+        <h1>Register the included .com domain</h1>
+        <p>A Premium formation order was paid. The .com domain is included for year 1 and has to be registered by hand.</p>
+        <table class="meta">
+          <tr><td>Customer</td><td>${cell(ctx.domainCustomerName)}</td></tr>
+          <tr><td>Email</td><td>${cell(ctx.domainCustomerEmail)}</td></tr>
+          <tr><td>Company</td><td>${cell(ctx.businessName)}</td></tr>
+          <tr><td>Filing</td><td>${filingCell}</td></tr>
+          <tr><td>Preferred domain</td><td>${preferred ? escapeHtml(preferred) : 'Not collected'}</td></tr>
+        </table>
+        <p class="muted">This alert is sent once per filing. A webhook retry does not send it again.</p>
       `,
     };
   },

@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
+import { DomainRegistrationRow } from '@/components/admin/DomainRegistrationRow';
 import { adminRevenuePaymentWhere } from '@/lib/payment-test';
+import { readDomainRegisteredAt, readPreferredDomain, showsManualDomainBadge } from '@/lib/premium-domain';
 import { formatCurrency, formatRelative } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +29,7 @@ export default async function AdminFilingsPage({
       _count: { select: { documents: true } },
       payments: {
         where: adminRevenuePaymentWhere,
-        select: { amountCents: true },
+        select: { amountCents: true, status: true, isTest: true },
       },
       annualReports: {
         select: { status: true, reportYear: true, totalCostCents: true },
@@ -149,6 +151,14 @@ export default async function AdminFilingsPage({
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={filing.status} />
+                        {showsManualDomainBadge(filing) ? (
+                          <DomainRegistrationRow
+                            filingId={filing.id}
+                            registered={Boolean(readDomainRegisteredAt(filing.optionalDetails))}
+                            preferredDomain={readPreferredDomain(filing.optionalDetails)}
+                            compact
+                          />
+                        ) : null}
                       </td>
                       <td className="px-6 py-4">
                         {filing.filingSource === 'LINKED' ? (

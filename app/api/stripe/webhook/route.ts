@@ -6,6 +6,7 @@ import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { submitFilingToState } from '@/actions/filings';
 import { sendEmail } from '@/lib/email';
+import { notifyPremiumDomainRegistrationSafely } from '@/lib/premium-domain';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { isTestPayment } from '@/lib/payment-test';
@@ -90,10 +91,18 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   if (!filingId) return 'noop'; // not a formation checkout
 
   // Already recorded by processCheckout (or a prior webhook delivery)? Done.
+  // Still attempt the domain alert: checkout may have stored the payment and
+  // died before the email, and a retry must not send a second copy.
   const existing = await prisma.payment.findUnique({
     where: { stripePaymentIntentId: pi.id },
   });
-  if (existing) return 'noop';
+  if (existing) {
+    await notifyPremiumDomainRegistrationSafely({
+      filingId,
+      paymentIsTest: existing.isTest,
+    });
+    return 'noop';
+  }
 
   const filing = await prisma.filing.findUnique({ where: { id: filingId } });
   if (!filing) return 'noop';
@@ -107,6 +116,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   if (piAgeMs < BACKSTOP_GRACE_MS) return 'defer';
 
   const amountCents = pi.amount_received || pi.amount || filing.totalCents;
+  const paymentIsTest = isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode });
 
   // Best-effort card metadata from the charge.
   let cardLast4: string | null = null;
@@ -136,7 +146,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
         stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
         amountCents,
         status: 'SUCCEEDED',
-        isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+        isTest: paymentIsTest,
         stateFilingFeeCents: filing.stateFeeCents,
         formationServiceFeeCents: filing.serviceFeeCents,
         otherServicesCents: filing.addOnsTotalCents,
@@ -148,10 +158,19 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   } catch (err: unknown) {
     // Unique-constraint race with processCheckout → already handled elsewhere.
     if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
+      await notifyPremiumDomainRegistrationSafely({
+        filingId: filing.id,
+        paymentIsTest,
+      });
       return 'noop';
     }
     throw err;
   }
+
+  await notifyPremiumDomainRegistrationSafely({
+    filingId: filing.id,
+    paymentIsTest,
+  });
 
   // This insert is the filing's transition to paid. A retry that lost the
   // unique PaymentIntent race returned above and does not capture again.

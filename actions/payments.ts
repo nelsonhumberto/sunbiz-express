@@ -29,6 +29,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { sendEmail } from '@/lib/email';
+import { notifyPremiumDomainRegistrationSafely } from '@/lib/premium-domain';
 import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
@@ -239,6 +240,14 @@ export async function processCheckout(input: {
       discountCents,
       completedAt: new Date(),
     },
+  });
+
+  // Premium includes a .com that we register by hand. Idempotent, and skipped
+  // for test filings and test payments. A webhook retry of this same charge
+  // finds the EmailNotification row and does not send again.
+  await notifyPremiumDomainRegistrationSafely({
+    filingId: filing.id,
+    paymentIsTest: isTestPayment({ stripePaymentIntentId: stripeIntentId, livemode }),
   });
 
   // The Payment insert is the transition to paid. The webhook captures only

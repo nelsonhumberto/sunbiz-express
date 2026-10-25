@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
@@ -9,8 +9,6 @@ import { getGuestUser } from '@/lib/guest';
 import { CHECKOUT_ACCOUNT_REQUIRED } from '@/lib/guest-identity';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
 import {
-  GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
-  GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
   authorizeGuestFormationPayment,
   filingCheckoutEmailDetails,
 } from '@/lib/guest-checkout';
@@ -56,9 +54,46 @@ import {
   planCheckoutPaymentIntent,
   checkoutPaymentIntentIdempotencyKey,
 } from '@/lib/checkout-payment-intent';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import {
+  paymentIntentErrorMessage,
+  type PaymentIntentErrorCode,
+} from '@/lib/payment-intent-errors';
+import { resolveRequestLocale } from '@/lib/request-locale';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
+
+function checkoutRequestLocale(): 'en' | 'es' {
+  try {
+    const headerStore = headers();
+    // The API path has no locale. The wizard address bar is the Referer.
+    // Cookie and Accept-Language are not read.
+    return (
+      resolveRequestLocale({
+        referer: headerStore.get('referer'),
+        nextUrl: headerStore.get('next-url'),
+        publicPath: headerStore.get(PUBLIC_PATH_HEADER),
+        localeHeader: headerStore.get(LOCALE_HEADER),
+        allowedHost: headerStore.get('host'),
+        serverAction: true,
+      }) ?? 'en'
+    );
+  } catch {
+    return 'en';
+  }
+}
+
+function paymentError(code: PaymentIntentErrorCode, status: number) {
+  const locale = checkoutRequestLocale();
+  const error =
+    code === 'account_required' && locale !== 'es'
+      ? CHECKOUT_ACCOUNT_REQUIRED
+      : code === 'below_state_fee' && locale !== 'es'
+        ? CHECKOUT_BELOW_STATE_FEE_ERROR
+        : paymentIntentErrorMessage(code, locale);
+  return NextResponse.json({ error, code }, { status });
+}
 
 function asStateCode(input: string | null | undefined): StateCode {
   const upper = (input ?? 'FL').toUpperCase();
@@ -89,10 +124,7 @@ interface PaymentBody {
 export async function POST(request: NextRequest) {
   const limit = rateLimit(`payment-intent:${clientIp()}`, 10, 60 * 1000);
   if (!limit.ok) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Please wait a moment.' },
-      { status: 429 },
-    );
+    return paymentError('rate_limited', 429);
   }
 
   const session = await auth();
@@ -100,13 +132,13 @@ export async function POST(request: NextRequest) {
   if (!userId) {
     const guest = await getGuestUser();
     if (!guest) {
-      return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
+      return paymentError('start_filing_first', 401);
     }
     try {
       return await createGuestFormationPaymentIntent(request, guest);
     } catch (err) {
       logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
-      return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
+      return paymentError('create_failed', 500);
     }
   }
 
@@ -170,7 +202,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
-    return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
+    return paymentError('create_failed', 500);
   }
 }
 
@@ -187,7 +219,7 @@ async function createGuestFormationPaymentIntent(
   try {
     body = (await request.json()) as PaymentBody;
   } catch {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 400 });
+    return paymentError('filing_not_found', 400);
   }
 
   if (
@@ -197,11 +229,11 @@ async function createGuestFormationPaymentIntent(
     body.purpose === 'ra_renewal' ||
     Boolean(body.raServiceId)
   ) {
-    return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
+    return paymentError('account_required', 403);
   }
 
   if (!body.filingId) {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    return paymentError('filing_not_found', 404);
   }
 
   const filing = await prisma.filing.findUnique({
@@ -238,30 +270,18 @@ async function createGuestFormationPaymentIntent(
       if (filing && filing.userId === guest.id) {
         await rememberCheckoutEmail(filing.id, filing.optionalDetails, normalized, true);
       }
-      return NextResponse.json(
-        {
-          error: 'This email already has an account. Sign in and we will attach this draft.',
-          code: GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
-        },
-        { status: 403 },
-      );
+      return paymentError('existing_account', 403);
     }
     if (decision.reason === 'email_held') {
-      return NextResponse.json(
-        {
-          error: 'That email can\'t be used. Enter a different one to pay.',
-          code: GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
-        },
-        { status: 409 },
-      );
+      return paymentError('email_unavailable', 409);
     }
     if (decision.reason === 'not_owner' || !filing) {
-      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+      return paymentError('filing_not_found', 404);
     }
     if (decision.reason === 'already_paid' || decision.reason === 'not_draft') {
-      return NextResponse.json({ error: 'This filing has already been paid.' }, { status: 409 });
+      return paymentError('already_paid', 409);
     }
-    return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
+    return paymentError('invalid_email', 400);
   }
 
   if (normalizeEmail(guest.email) !== decision.email) {
@@ -277,21 +297,9 @@ async function createGuestFormationPaymentIntent(
         select: { id: true, accountStatus: true },
       });
       if (winner && winner.id !== guest.id && winner.accountStatus !== 'GUEST') {
-        return NextResponse.json(
-          {
-            error: 'This email already has an account. Sign in and we will attach this draft.',
-            code: GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE,
-          },
-          { status: 403 },
-        );
+        return paymentError('existing_account', 403);
       }
-      return NextResponse.json(
-        {
-          error: 'That email can\'t be used. Enter a different one to pay.',
-          code: GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE,
-        },
-        { status: 409 },
-      );
+      return paymentError('email_unavailable', 409);
     }
   }
 
@@ -403,7 +411,7 @@ async function priceOwnedCharge(input: {
 }): Promise<PricedCharge | NextResponse> {
   if (input.purpose === 'ra_renewal') {
     if (!input.raServiceId) {
-      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+      return paymentError('filing_not_found', 404);
     }
     const service = await prisma.registeredAgentService.findUnique({
       where: { id: input.raServiceId },
@@ -422,7 +430,7 @@ async function priceOwnedCharge(input: {
       },
     });
     if (!service || service.filing.userId !== input.userId) {
-      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+      return paymentError('filing_not_found', 404);
     }
     return {
       amountCents: service.renewalPriceCents,
@@ -434,7 +442,7 @@ async function priceOwnedCharge(input: {
   }
 
   if (!input.filingId) {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    return paymentError('filing_not_found', 404);
   }
 
   const filing = await prisma.filing.findUnique({
@@ -445,7 +453,7 @@ async function priceOwnedCharge(input: {
     },
   });
   if (!filing || filing.userId !== input.userId) {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    return paymentError('filing_not_found', 404);
   }
 
     if (input.purpose === 'ein') {
@@ -475,7 +483,7 @@ async function priceOwnedCharge(input: {
   }
 
   if (filing.status !== 'DRAFT' || filing.payments.length > 0) {
-    return NextResponse.json({ error: 'This filing has already been paid.' }, { status: 409 });
+    return paymentError('already_paid', 409);
   }
 
   const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
@@ -492,7 +500,7 @@ async function priceOwnedCharge(input: {
   });
   const discount = await formationCouponDiscount(input.couponCode, breakdown.totalCents);
   if (!discount.ok) {
-    return NextResponse.json({ error: 'This coupon code is invalid.' }, { status: 400 });
+    return paymentError('invalid_coupon', 400);
   }
   const amountCents = Math.max(0, breakdown.totalCents - discount.discountCents);
   const stateFeeMinimum = tierBundledStateFeeCents(
@@ -501,7 +509,7 @@ async function priceOwnedCharge(input: {
     asStateCode(filing.state),
   );
   if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
-    return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
+    return paymentError('below_state_fee', 400);
   }
   return {
     amountCents,
@@ -648,7 +656,7 @@ async function createCertificatePaymentIntent(input: {
 }) {
   const { stripe, actorId, filingId, slug } = input;
   if (!filingId) {
-    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+    return paymentError('company_not_found', 404);
   }
 
   const filing = await prisma.filing.findUnique({
@@ -659,7 +667,7 @@ async function createCertificatePaymentIntent(input: {
     },
   });
   if (!filing || filing.userId !== actorId) {
-    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+    return paymentError('company_not_found', 404);
   }
 
   const offer = certificateOffer({
@@ -671,15 +679,7 @@ async function createCertificatePaymentIntent(input: {
     documents: filing.documents,
   });
   if (offer.kind !== 'orderable') {
-    return NextResponse.json(
-      {
-        error:
-          offer.kind === 'included'
-            ? 'This document is already included.'
-            : 'This document can be ordered once your company is filed.',
-      },
-      { status: 400 },
-    );
+    return paymentError(offer.kind === 'included' ? 'document_included' : 'document_not_ready', 400);
   }
 
   const entityType = filingEntityType(filing.entityType);

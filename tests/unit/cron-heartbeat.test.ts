@@ -71,6 +71,23 @@ describe('cron heartbeat row', () => {
     expect(row.failedCount).toBe(1);
   });
 
+  it('folds post-formation and newsletter counts into the heartbeat and keeps their error', () => {
+    const row = buildRecoveryCronRun({
+      startedAt,
+      finishedAt: startedAt,
+      drafts: { scanned: 1, sent: 1, skipped: 0, failed: 0, disabled: false },
+      ra: { scanned: 0, sent: 0 },
+      postFormation: { scanned: 4, sent: 2, skipped: 1, failed: 1 },
+      newsletter: { scanned: 3, sent: 3, skipped: 0, failed: 0 },
+      error: 'newsletter boom',
+    });
+    expect(row.eligibleCount).toBe(8);
+    expect(row.sentCount).toBe(6);
+    expect(row.skippedCount).toBe(1);
+    expect(row.failedCount).toBe(1);
+    expect(row.error).toBe('newsletter boom');
+  });
+
   it('stores a thrown error without secrets and counts the invocation as failed', () => {
     const secret = 'super-secret-token';
     const previous = process.env.DATABASE_URL;

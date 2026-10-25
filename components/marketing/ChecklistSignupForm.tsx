@@ -68,7 +68,7 @@ export function ChecklistSignupForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full" noValidate>
+    <form onSubmit={onSubmit} className="w-full min-w-0" noValidate>
       <label className="sr-only" aria-hidden="true">
         <input
           type="text"
@@ -107,7 +107,7 @@ export function ChecklistSignupForm() {
         </Button>
       </div>
 
-      <label className="mt-4 flex items-start gap-3 text-sm leading-relaxed text-ink-muted">
+      <label className="mt-4 flex min-w-0 items-start gap-3 text-sm leading-relaxed text-ink-muted">
         <input
           type="checkbox"
           name="consent"
@@ -115,7 +115,7 @@ export function ChecklistSignupForm() {
           required
           className="mt-1 h-4 w-4 shrink-0 accent-primary"
         />
-        <span>
+        <span className="min-w-0 break-words">
           {copy.consentBefore}
           <a href={privacyHref} className="font-medium text-primary underline-offset-2 hover:underline">
             {copy.consentLink}

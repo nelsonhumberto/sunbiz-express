@@ -1,7 +1,6 @@
 /**
- * Env gates for the resume-order sequence and the checklist signup form.
- * Both default off. Any value other than the truthy set below is off,
- * including a missing variable.
+ * Env gates for marketing email. All default off. Any value other than
+ * the truthy set below is off, including a missing variable.
  */
 
 function envEnabled(value: string | undefined): boolean {
@@ -15,6 +14,16 @@ export function isResumeDripEnabled(env: NodeJS.ProcessEnv = process.env): boole
 
 export function isSignupCaptureEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return envEnabled(env.SIGNUP_CAPTURE_ENABLED);
+}
+
+/** Post-approval day 3 / 14 / 30 sequence. Default off. */
+export function isPostFormationSeriesEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return envEnabled(env.POST_FORMATION_SERIES_ENABLED);
+}
+
+/** Weekly notes for confirmed checklist subscribers. Default off. */
+export function isWeeklyNewsletterEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return envEnabled(env.WEEKLY_NEWSLETTER_ENABLED);
 }
 
 /** Reply-To for the resume sequence. From is unchanged. */

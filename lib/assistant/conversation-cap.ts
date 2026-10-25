@@ -7,6 +7,7 @@ import {
   ASSISTANT_MESSAGE_RATE_WINDOW_MS,
   ASSISTANT_NEW_CONVERSATION_WINDOW_MS,
   allowNewAssistantConversation,
+  assistantIpHashPrefix,
   assistantMaxNewConversationsPerHour,
   assistantMaxNewConversationsPerIp,
   assistantMaxTurnsPerConversation,
@@ -45,8 +46,13 @@ function tooFastResponse(): Response {
   return Response.json({ error: TOO_FAST }, { status: 429 });
 }
 
-function logNewConversationCap(layer: string) {
-  logger.info('new conversation cap', { area: 'assistant', tag: 'cap', layer });
+function logNewConversationCap(layer: 'ip' | 'global' | 'actor', ip: string) {
+  logger.info('new conversation cap', {
+    area: 'assistant',
+    tag: 'cap',
+    layer,
+    ipHash: assistantIpHashPrefix(ip),
+  });
 }
 
 /**
@@ -101,7 +107,7 @@ async function openFresh(opts: {
 }): Promise<{ ok: true; row: ConversationRow } | { ok: false }> {
   const id = newAssistantConversationId();
   if (!allowNewAssistantConversation(opts.ip, id)) {
-    logNewConversationCap('memory');
+    logNewConversationCap('ip', opts.ip);
     return { ok: false };
   }
 
@@ -110,13 +116,13 @@ async function openFresh(opts: {
   const actorCap = assistantMaxNewConversationsPerIp();
   const globalBefore = await conversationsSince(since);
   if (globalBefore >= hourCap) {
-    logNewConversationCap('global');
+    logNewConversationCap('global', opts.ip);
     return { ok: false };
   }
   if (opts.actor) {
     const actorBefore = await conversationsSince(since, opts.actor.id);
     if (actorBefore >= actorCap) {
-      logNewConversationCap('actor');
+      logNewConversationCap('actor', opts.ip);
       return { ok: false };
     }
   }
@@ -134,13 +140,13 @@ async function openFresh(opts: {
 
   const globalAfter = await conversationsSince(since);
   if (globalAfter > hourCap) {
-    logNewConversationCap('global');
+    logNewConversationCap('global', opts.ip);
     return { ok: false };
   }
   if (opts.actor) {
     const actorAfter = await conversationsSince(since, opts.actor.id);
     if (actorAfter > actorCap) {
-      logNewConversationCap('actor');
+      logNewConversationCap('actor', opts.ip);
       return { ok: false };
     }
   }
@@ -188,8 +194,9 @@ async function reserveUserTurn(
  * A missing id and an id that is not in the database are ignored. The signed
  * cookie, then a new server id, decides the row. An id that exists and is
  * not owned is never written: no model call for that row, no message, no
- * filingId change. A fresh server conversation is started instead, still
- * subject to the new-conversation caps.
+ * filingId change. If that conversation is already at the turn cap, the
+ * caller gets the limit reply and no new conversation. Otherwise a fresh
+ * server conversation is started, still subject to the new-conversation caps.
  */
 export async function prepareAssistantTurn(opts: {
   requestedId: unknown;
@@ -215,7 +222,16 @@ export async function prepareAssistantTurn(opts: {
     if (requested) {
       const row = await loadConversation(requested);
       if (row && callerOwns(row, opts.actor, cookieId)) conversation = row;
-      else if (row) forceFresh = true;
+      else if (row) {
+        const turns = await prisma.assistantMessage.count({
+          where: { conversationId: row.id, role: 'user' },
+        });
+        if (turns >= assistantMaxTurnsPerConversation()) {
+          logger.info('assistant turn cap', { area: 'assistant', tag: 'cap' });
+          return { kind: 'deny', response: assistantLimitResponse(opts.locale) };
+        }
+        forceFresh = true;
+      }
     }
 
     if (!conversation && !forceFresh && cookieId && cookieId !== requested) {

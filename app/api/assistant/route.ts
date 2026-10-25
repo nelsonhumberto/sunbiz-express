@@ -23,6 +23,8 @@ import { buildAssistantTools, type AssistantActor } from '@/lib/assistant/tools'
 import { assistantMaxOutputTokens } from '@/lib/assistant/limits';
 import { prepareAssistantTurn } from '@/lib/assistant/conversation-cap';
 import { attachAssistantSession } from '@/lib/assistant/chat-cookie';
+import { stripAssistantDashPart, stripAssistantDashes } from '@/lib/assistant/dashes';
+import { assistantDailyRestResponse, recordAssistantUsage } from '@/lib/assistant/spend-day';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,6 +86,21 @@ export async function POST(request: Request) {
     : null;
 
   const locale = body.locale === 'es' ? 'es' : 'en';
+
+  // Daily cap is checked before a turn is stored. A resting day does not
+  // open a conversation or call the model. Unset ASSISTANT_DAILY_CAP_USD
+  // means there is no cap.
+  try {
+    const resting = await assistantDailyRestResponse(locale);
+    if (resting) return resting;
+  } catch (err) {
+    logger.error('assistant daily cap lookup failed', { area: 'assistant', tag: 'cap' }, err);
+    return NextResponse.json(
+      { error: 'The assistant had a problem. Please try again.' },
+      { status: 500 },
+    );
+  }
+
   const recent = body.messages.slice(-20);
   const lastUserText = messageText([...recent].reverse().find((m) => m.role === 'user'));
 
@@ -153,24 +170,37 @@ export async function POST(request: Request) {
       system,
       messages: modelMessages,
       tools,
+      abortSignal: request.signal,
+      experimental_transform: () =>
+        new TransformStream({
+          transform(part, controller) {
+            controller.enqueue(stripAssistantDashPart(part));
+          },
+        }),
       maxOutputTokens: assistantMaxOutputTokens(),
       stopWhen: stepCountIs(6),
-      onFinish: async ({ text, finishReason, steps }) => {
+      onFinish: async ({ text, finishReason, steps, totalUsage }) => {
         if (finishReason === 'length' || steps.some((step) => step.finishReason === 'length')) {
           logger.warn('assistant output length', { area: 'assistant', tag: 'length' });
         }
-        const assistantText = text?.trim();
-        if (!assistantText) return;
+        const assistantText = stripAssistantDashes(text ?? '').trim();
+        if (assistantText) {
+          try {
+            await prisma.assistantConversation.update({
+              where: { id: conversationId },
+              data: { updatedAt: new Date(), filingId },
+            });
+            await prisma.assistantMessage.create({
+              data: { conversationId, role: 'assistant', content: assistantText },
+            });
+          } catch (err) {
+            logger.error('assistant transcript persist failed', { area: 'assistant', tag: 'persist' }, err);
+          }
+        }
         try {
-          await prisma.assistantConversation.update({
-            where: { id: conversationId },
-            data: { updatedAt: new Date(), filingId },
-          });
-          await prisma.assistantMessage.create({
-            data: { conversationId, role: 'assistant', content: assistantText },
-          });
+          await recordAssistantUsage(totalUsage);
         } catch (err) {
-          logger.error('assistant transcript persist failed', { area: 'assistant', tag: 'persist' }, err);
+          logger.error('assistant usage record failed', { area: 'assistant', tag: 'usage' }, err);
         }
       },
     });

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { rateLimit } from '@/lib/rate-limit';
 
 /**
@@ -23,9 +24,9 @@ export const DEFAULT_ASSISTANT_MAX_OUTPUT_TOKENS = 6144;
 export const DEFAULT_ASSISTANT_MAX_TURNS_PER_CONVERSATION = 20;
 
 /**
- * New conversations accepted per IP per window on this instance. The server
- * assigns the id. A few refreshes still fit, and rotating chats cannot skip
- * the turn cap. The database hour count is the cross-instance backstop.
+ * New conversations accepted per IP per window on this instance. Best effort
+ * only: the bucket is not shared across instances. A durable per-IP cap would
+ * need an additive ipHash column, which this build does not add.
  */
 export const DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_IP = 12;
 
@@ -34,10 +35,10 @@ export const ASSISTANT_NEW_CONVERSATION_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * AssistantConversation rows allowed in the last hour, across instances.
- * Counted from createdAt. There is no IP column, so anonymous chats share
- * this ceiling. Logged-in and guest users also have a per-actor count.
+ * Counted from createdAt. There is no IP column, so every chat shares this
+ * ceiling. Logged-in and guest users also have a per-actor count.
  */
-export const DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR = 120;
+export const DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR = 40;
 
 /**
  * User messages stored in the last minute, across every chat and instance.
@@ -115,11 +116,19 @@ function sweepRecentNewConversations(now: number) {
  * The same id from the same IP inside the window counts once. A different
  * id consumes another slot.
  *
- * The bucket lives on this server instance only. It resets on a cold start
- * and is not shared across instances. The route also counts
- * AssistantConversation.createdAt in the last hour so another instance
- * cannot skip the ceiling.
+ * Best effort only. The bucket lives on this server instance, resets on a
+ * cold start, and is not shared. The database hour count is what holds
+ * across instances. A real per-IP cap needs an additive ipHash column.
  */
+export function assistantIpHashPrefix(ip: string): string {
+  const salt =
+    process.env.NEXTAUTH_SECRET?.trim() ||
+    process.env.AUTH_SECRET?.trim() ||
+    (process.env.NODE_ENV === 'production' ? '' : 'launchforma-dev-assistant-chat');
+  if (!salt) return 'no-salt1';
+  return createHash('sha256').update(`lf-assistant-ip-v1:${salt}:${ip}`).digest('hex').slice(0, 8);
+}
+
 export function allowNewAssistantConversation(ip: string, conversationId: string): boolean {
   const now = Date.now();
   sweepRecentNewConversations(now);

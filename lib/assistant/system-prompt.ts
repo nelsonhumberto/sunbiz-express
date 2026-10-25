@@ -79,6 +79,10 @@ CONVERSION (gentle, never pushy)
   field). Suggest a relevant add-on only when it genuinely fits the conversation, once,
   as a soft suggestion - never repeatedly, never as a hard sell.
 
+PUNCTUATION
+- Never use an em dash (U+2014) or an en dash (U+2013). Use a comma, a period, or a hyphen.
+- Write the sentence so it still reads naturally after a comma or a hyphen is substituted.
+
 KNOWLEDGE BASE
 ${opts.knowledge}${context}`;
 }

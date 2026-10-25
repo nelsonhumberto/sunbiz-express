@@ -30,6 +30,9 @@ const getWizardActor = vi.hoisted(() => vi.fn());
 const filingFindUnique = vi.hoisted(() => vi.fn());
 const cookieJar = vi.hoisted(() => ({ value: undefined as string | undefined }));
 const headerBox = vi.hoisted(() => ({ forwarded: '203.0.113.10', real: '', vercel: '' }));
+const deliverEmailDirect = vi.hoisted(() =>
+  vi.fn(async (_to: string, _subject: string, _html: string) => ({ ok: true })),
+);
 const db = vi.hoisted(() => ({
   convos: [] as Convo[],
   messages: [] as Msg[],
@@ -37,9 +40,11 @@ const db = vi.hoisted(() => ({
   events: [] as string[],
   findUniqueError: false,
   raceExtraOnCreate: false,
+  spend: new Map<string, bigint>(),
 }));
 
 vi.mock('server-only', () => ({}));
+vi.mock('@/lib/email', () => ({ deliverEmailDirect }));
 
 vi.mock('next/headers', () => ({
   headers: () => {
@@ -166,9 +171,28 @@ vi.mock('@/lib/db', () => {
         throw new Error('createMany should not run');
       },
     },
+    assistantSpendDay: {
+      findUnique: async ({ where }: { where: { day: Date } }) => {
+        const key = where.day.toISOString().slice(0, 10);
+        if (!db.spend.has(key)) return null;
+        return { day: where.day, costMicroUsd: db.spend.get(key) };
+      },
+    },
     filing: { findUnique: filingFindUnique },
-    $queryRaw: async () => {
-      db.events.push('lock');
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const sql = Array.from(strings).join(' ');
+      if (sql.includes('FOR UPDATE')) {
+        db.events.push('lock');
+        return [];
+      }
+      if (sql.includes('AssistantSpendDay')) {
+        const day = values[0] as Date;
+        const delta = BigInt(values[1] as bigint);
+        const key = day.toISOString().slice(0, 10);
+        const next = (db.spend.get(key) ?? 0n) + delta;
+        db.spend.set(key, next);
+        return [{ costMicroUsd: next }];
+      }
       return [];
     },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(api),
@@ -185,7 +209,13 @@ vi.mock('ai', async () => {
 });
 
 import { POST } from '@/app/api/assistant/route';
-import { DEFAULT_ASSISTANT_MAX_OUTPUT_TOKENS } from '@/lib/assistant/limits';
+import { assistantRestMessage } from '@/lib/assistant/limit-reply';
+import {
+  DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR,
+  DEFAULT_ASSISTANT_MAX_OUTPUT_TOKENS,
+} from '@/lib/assistant/limits';
+import { assistantSpendDayDate } from '@/lib/assistant/spend-day';
+import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
 import {
   assistantChatSetCookie,
   readAssistantConversationId,
@@ -205,6 +235,7 @@ function resetDb() {
   db.events.length = 0;
   db.findUniqueError = false;
   db.raceExtraOnCreate = false;
+  db.spend.clear();
 }
 
 function nextIp() {
@@ -317,6 +348,8 @@ beforeEach(() => {
   delete process.env.ASSISTANT_MAX_NEW_CONVERSATIONS_PER_IP;
   delete process.env.ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR;
   delete process.env.ASSISTANT_MAX_USER_MESSAGES_PER_MINUTE;
+  delete process.env.ASSISTANT_DAILY_CAP_USD;
+  deliverEmailDirect.mockClear();
   auth.mockReset();
   getWizardActor.mockReset();
   filingFindUnique.mockReset();
@@ -493,10 +526,7 @@ describe('assistant spend caps', () => {
     expect(streamText).not.toHaveBeenCalled();
     expect(db.convos).toHaveLength(1);
     expect(second.headers.get('x-assistant-conversation-id')).toBeNull();
-    expect(info).toHaveBeenCalledWith(
-      'new conversation cap',
-      expect.objectContaining({ area: 'assistant', tag: 'cap' }),
-    );
+    expectNewConversationCap(info, 'ip');
   });
 
   it('continues the same server conversation on retry without opening another one', async () => {
@@ -513,8 +543,10 @@ describe('assistant spend caps', () => {
     expect(db.messages.filter((row) => row.role === 'user')).toHaveLength(2);
   });
 
-  it('blocks a new conversation when the database hour count is already at the ceiling', async () => {
+  it('blocks a new conversation from the database hour count even when this instance still has IP room', async () => {
+    process.env.ASSISTANT_MAX_NEW_CONVERSATIONS_PER_IP = '50';
     process.env.ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR = '1';
+    expect(DEFAULT_ASSISTANT_MAX_NEW_CONVERSATIONS_PER_HOUR).toBe(40);
     seedConversation({ id: 'conv_recent', actorId: 'someone_else', userTurns: 0 });
     const info = vi.spyOn(logger, 'info').mockImplementation(() => {});
     const res = await ask({ conversationId: '' });
@@ -523,10 +555,7 @@ describe('assistant spend caps', () => {
     expect(streamText).not.toHaveBeenCalled();
     expect(db.convos.map((row) => row.id)).toEqual(['conv_recent']);
     expect(res.headers.get('set-cookie')).toBeNull();
-    expect(info).toHaveBeenCalledWith(
-      'new conversation cap',
-      expect.objectContaining({ layer: 'global' }),
-    );
+    expectNewConversationCap(info, 'global');
   });
 
   it('does not hand back a conversation id when the hour count is crossed while creating it', async () => {
@@ -541,10 +570,7 @@ describe('assistant spend caps', () => {
     expect(res.headers.get('set-cookie')).toBeNull();
     expect(db.convos.length).toBeGreaterThan(1);
     expect(db.messages).toHaveLength(0);
-    expect(info).toHaveBeenCalledWith(
-      'new conversation cap',
-      expect.objectContaining({ layer: 'global' }),
-    );
+    expectNewConversationCap(info, 'global');
   });
 
   it('blocks a logged-in user when their own recent conversations already hit the cap', async () => {
@@ -556,10 +582,7 @@ describe('assistant spend caps', () => {
     expect(text).toBe(en.assistant.conversationLimit);
     expect(streamText).not.toHaveBeenCalled();
     expect(db.convos.map((row) => row.id)).toEqual(['conv_mine']);
-    expect(info).toHaveBeenCalledWith(
-      'new conversation cap',
-      expect.objectContaining({ layer: 'actor' }),
-    );
+    expectNewConversationCap(info, 'actor');
   });
 
   it('keeps the user turn when the model throws, and does not call it again', async () => {
@@ -619,6 +642,175 @@ describe('assistant spend caps', () => {
     expect(body.error).toBe('The assistant had a problem. Please try again.');
     expect(body.error).not.toContain(TEST_KEY);
   });
+
+  it('returns the limit reply for a capped conversation when the cookie is gone', async () => {
+    auth.mockResolvedValue(null);
+    getWizardActor.mockResolvedValue(null);
+    seedConversation({
+      id: 'conv_anon',
+      actorId: null,
+      actorKind: null,
+      filingId: 'filing_keep',
+      userTurns: 20,
+    });
+    const res = await ask({ conversationId: 'conv_anon', locale: 'es' });
+    const text = await visibleAssistantText(res);
+    expect(text).toBe(es.assistant.conversationLimit);
+    expect(streamText).not.toHaveBeenCalled();
+    expect(db.convos).toHaveLength(1);
+    expect(db.messages).toHaveLength(20);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(res.headers.get('x-assistant-conversation-id')).toBeNull();
+    expect(db.convos[0]?.filingId).toBe('filing_keep');
+  });
+
+  it('opens a fresh conversation when an unowned chat is still under the turn cap', async () => {
+    auth.mockResolvedValue(null);
+    getWizardActor.mockResolvedValue(null);
+    seedConversation({
+      id: 'conv_anon',
+      actorId: null,
+      actorKind: null,
+      filingId: 'filing_keep',
+      userTurns: 1,
+    });
+    const res = await ask({ conversationId: 'conv_anon' });
+    expect(await res.text()).toBe('model-stream');
+    expect(streamText).toHaveBeenCalledTimes(1);
+    const id = res.headers.get('x-assistant-conversation-id');
+    expect(id).toBeTruthy();
+    expect(id).not.toBe('conv_anon');
+    expect(db.messages.filter((row) => row.conversationId === 'conv_anon')).toHaveLength(1);
+    expect(db.convos.find((row) => row.id === 'conv_anon')?.filingId).toBe('filing_keep');
+    const cookie = res.headers.get('set-cookie') ?? '';
+    expect(cookie).toContain(id ?? 'missing');
+    expect(cookie).not.toContain('conv_anon');
+  });
+
+  it('passes the request abort signal so a cancelled chat stops model spend', async () => {
+    seedConversation({ id: 'conv_owned', userTurns: 1 });
+    const request = new Request('http://localhost/api/assistant', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: 'u1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'What is a registered agent?' }],
+          },
+        ],
+        conversationId: 'conv_owned',
+        locale: 'en',
+      }),
+    });
+    await POST(request);
+    expect(streamText).toHaveBeenCalledTimes(1);
+    const opts = streamText.mock.calls[0]?.[0] as { abortSignal?: AbortSignal };
+    expect(opts.abortSignal).toBe(request.signal);
+  });
+
+  it('strips em dashes and en dashes from the stream and the stored reply', async () => {
+    seedConversation({ id: 'conv_owned', userTurns: 1 });
+    let finished = Promise.resolve();
+    streamText.mockImplementation(
+      (opts: {
+        experimental_transform?: () => TransformStream<Record<string, unknown>>;
+        onFinish?: (event: unknown) => Promise<void>;
+      }) => {
+        const transform = opts.experimental_transform?.();
+        finished = (async () => {
+          if (!transform) throw new Error('missing dash transform');
+          const writer = transform.writable.getWriter();
+          const reader = transform.readable.getReader();
+          const read = reader.read();
+          await writer.write({ type: 'text-delta', id: 'd1', text: 'Hello\u2014there\u2013now' });
+          const chunk = await read;
+          expect(chunk.done).toBe(false);
+          expect(chunk.value).toMatchObject({ type: 'text-delta', text: 'Hello,there-now' });
+          await writer.close();
+          await opts.onFinish?.({
+            text: 'Hello\u2014there',
+            finishReason: 'stop',
+            steps: [{ finishReason: 'stop' }],
+            totalUsage: { inputTokens: 0, outputTokens: 0 },
+          });
+        })();
+        return { toUIMessageStreamResponse: () => new Response('model-stream', { status: 200 }) };
+      },
+    );
+    await ask();
+    await finished;
+    expect(db.messages.filter((row) => row.role === 'assistant').map((row) => row.content)).toEqual([
+      'Hello,there',
+    ]);
+  });
+
+  it('rests for the day before calling the model when the spend cap is already reached', async () => {
+    process.env.ASSISTANT_DAILY_CAP_USD = '1';
+    db.spend.set(assistantSpendDayDate().toISOString().slice(0, 10), 1_000_000n);
+    const res = await ask({ conversationId: '', locale: 'es' });
+    const text = await visibleAssistantText(res);
+    expect(text).toBe(assistantRestMessage('es'));
+    expect(streamText).not.toHaveBeenCalled();
+    expect(db.convos).toHaveLength(0);
+    expect(db.messages).toHaveLength(0);
+  });
+
+  it('rests when the daily cap is zero even with no spend row', async () => {
+    process.env.ASSISTANT_DAILY_CAP_USD = '0';
+    const res = await ask({ conversationId: '' });
+    const text = await visibleAssistantText(res);
+    expect(text).toBe(assistantRestMessage('en'));
+    expect(streamText).not.toHaveBeenCalled();
+    expect(db.convos).toHaveLength(0);
+  });
+
+  it('calls the model when the daily cap is unset', async () => {
+    db.spend.set(assistantSpendDayDate().toISOString().slice(0, 10), 50_000_000n);
+    seedConversation({ id: 'conv_owned', userTurns: 1 });
+    const res = await ask();
+    expect(await res.text()).toBe('model-stream');
+    expect(streamText).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the model when the daily cap env is not a USD amount', async () => {
+    process.env.ASSISTANT_DAILY_CAP_USD = 'nope';
+    seedConversation({ id: 'conv_owned', userTurns: 1 });
+    const res = await ask();
+    expect(await res.text()).toBe('model-stream');
+    expect(streamText).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds the turn cost and emails once when the daily cap is crossed', async () => {
+    process.env.ASSISTANT_DAILY_CAP_USD = '1';
+    seedConversation({ id: 'conv_owned', userTurns: 1 });
+    let finished = Promise.resolve();
+    streamText.mockImplementation((opts: { onFinish?: (event: unknown) => Promise<void> }) => {
+      finished = Promise.resolve(
+        opts.onFinish?.({
+          text: 'priced',
+          finishReason: 'stop',
+          steps: [{ finishReason: 'stop' }],
+          totalUsage: {
+            inputTokens: 0,
+            outputTokens: 1_000_000,
+            inputTokenDetails: { noCacheTokens: 0, cacheReadTokens: 0 },
+          },
+        }),
+      ).then(() => undefined);
+      return { toUIMessageStreamResponse: () => new Response('model-stream', { status: 200 }) };
+    });
+    await ask();
+    await finished;
+    expect(db.spend.size).toBe(1);
+    const total = [...db.spend.values()][0];
+    expect([1_980_000n, 3_960_000n]).toContain(total);
+    expect(deliverEmailDirect).toHaveBeenCalledTimes(1);
+    const [to, subject, html] = deliverEmailDirect.mock.calls[0] as unknown as [string, string, string];
+    expect(to).toBe(INQUIRY_NOTIFY_EMAIL);
+    expect(`${subject} ${html}`).not.toMatch(/[\u2014\u2013]/);
+  });
 });
 
 describe('assistant client ip', () => {
@@ -665,6 +857,19 @@ describe('assistant limit copy', () => {
     expect(es.assistant.conversationLimit).toContain('](/es/contacto)');
     expect(en.assistant.conversationLimit).not.toContain('—');
     expect(es.assistant.conversationLimit).not.toContain('—');
+    expect(assistantRestMessage('en')).toBe(
+      "Our assistant is resting for today. Email admin@launchforma.com and we'll help you.",
+    );
+    expect(assistantRestMessage('es')).toBe(
+      'Nuestro asistente descansa por hoy. Escríbenos a admin@launchforma.com y te ayudamos.',
+    );
+    expect(assistantRestMessage('en')).not.toMatch(/[\u2014\u2013]/);
+    expect(assistantRestMessage('es')).not.toMatch(/[\u2014\u2013]/);
+    expect(JSON.stringify(en.assistant)).not.toContain('@launchforma.com');
+    expect(JSON.stringify(es.assistant)).not.toContain('@launchforma.com');
+    const prompt = readFileSync('lib/assistant/system-prompt.ts', 'utf8');
+    expect(prompt).toContain('Never use an em dash');
+    expect(prompt).not.toMatch(/[\u2014\u2013]/);
     const widget = readFileSync('components/assistant/ChatWidget.tsx', 'utf8');
     expect(widget).toContain("url.startsWith('/')");
     expect(widget).toContain('<ReactMarkdown');
@@ -679,4 +884,19 @@ describe('assistant limit copy', () => {
 
 function adoptedValue(res: Response): string | undefined {
   return (res.headers.get('set-cookie') ?? '').match(/LF_CHAT=([^;]+)/)?.[1];
+}
+
+function expectNewConversationCap(
+  info: { mock: { calls: unknown[][] } },
+  layer: 'ip' | 'global' | 'actor',
+) {
+  const call = info.mock.calls.find(
+    (entry) =>
+      entry[0] === 'new conversation cap' &&
+      (entry[1] as { layer?: string } | undefined)?.layer === layer,
+  );
+  expect(call).toBeTruthy();
+  const ctx = call?.[1] as { ipHash: string };
+  expect(ctx.ipHash).toMatch(/^[0-9a-f]{8}$/);
+  expect(JSON.stringify(ctx)).not.toContain(headerBox.forwarded);
 }

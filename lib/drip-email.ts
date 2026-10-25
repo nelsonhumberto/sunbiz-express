@@ -89,3 +89,26 @@ ${footerBlock({
 })}`;
   return { subject: copy.subject, inner };
 }
+
+export function buildChecklistConfirmEmail(args: {
+  locale?: string | null;
+  firstName?: string | null;
+  confirmUrl: string;
+  unsubscribeUrl?: string;
+}): { subject: string; inner: string } {
+  const locale: DripLocale = resolveDripLocale(args.locale);
+  const copy = checklistCopy(locale);
+  const inner = `${preheader(copy.confirmPreview)}
+<p>${escapeHtml(copy.greeting(args.firstName))}</p>
+<p>${escapeHtml(copy.confirmBody)}</p>
+<a class="cta" href="${escapeHtml(args.confirmUrl)}">${escapeHtml(copy.confirmCta)}</a>
+<p>${escapeHtml(copy.confirmExpiry)}</p>
+<p>${escapeHtml(copy.thanks)}<br/>${escapeHtml(copy.team)}</p>
+${footerBlock({
+  reason: copy.disclaimer,
+  unsubscribeLabel: copy.unsubscribe,
+  unsubscribeUrl: args.unsubscribeUrl,
+  address: copy.address,
+})}`;
+  return { subject: copy.confirmSubject, inner };
+}

@@ -82,7 +82,6 @@ export async function submitServiceInquiry(
         inquiryUtmContent: utm?.utm_content,
         inquiryUtmTerm: utm?.utm_term,
         inquiryGclid: utm?.gclid,
-        inquiryLiFatId: utm?.li_fat_id,
       },
     });
   } catch (err) {

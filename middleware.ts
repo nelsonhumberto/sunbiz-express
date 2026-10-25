@@ -158,7 +158,7 @@ export function middleware(request: NextRequest) {
     response = NextResponse.next(requestInit);
   }
 
-  // Capture UTMs plus click IDs (`gclid`, `li_fat_id`) into one JSON cookie so
+  // Capture UTMs plus the Google click ID (`gclid`) into one JSON cookie so
   // attribution survives page navigations and lands on sign-up / inquiries.
   // A new UTM set replaces the previous utm_* keys (last touch). Click IDs
   // overlay, so a later URL that omits them does not wipe the ones we have.

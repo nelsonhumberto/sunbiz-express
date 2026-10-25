@@ -15,7 +15,6 @@ import { auth } from '@/lib/auth';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
-import { LinkedInInsight } from '@/components/analytics/LinkedInInsight';
 import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
 import { openAiPixelBootstrap } from '@/lib/openai-pixel';
 import { openAiPixelId } from '@/lib/tracking-ids';
@@ -118,7 +117,6 @@ export default async function RootLayout({
           <SpeedInsights />
           <Suspense fallback={null}>
             <GoogleAnalytics />
-            <LinkedInInsight />
             <OpenAiPixel />
           </Suspense>
         </PostHogProvider>

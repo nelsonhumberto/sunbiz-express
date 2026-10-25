@@ -206,25 +206,6 @@ export function trackGoogleLead(input?: { service?: string }) {
   );
 }
 
-/**
- * LinkedIn conversion. No-op until the matching conversion ID env var is set.
- * Retries briefly so the call lands after the Insight Tag stub is installed.
- */
-export function trackLinkedInConversion(kind: 'purchase' | 'lead') {
-  const raw =
-    kind === 'purchase'
-      ? process.env.NEXT_PUBLIC_LINKEDIN_CONVERSION_ID_PURCHASE
-      : process.env.NEXT_PUBLIC_LINKEDIN_CONVERSION_ID_LEAD;
-  const id = Number(raw);
-  if (!raw || !Number.isFinite(id) || id <= 0) return;
-  whenReady(
-    () => typeof window.lintrk === 'function',
-    () => {
-      window.lintrk?.('track', { conversion_id: id });
-    },
-  );
-}
-
 /** OpenAI Ads `lead_created` on the business-services thank-you page. */
 export function trackOpenAiLead() {
   whenReady(

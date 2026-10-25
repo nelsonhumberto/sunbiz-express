@@ -19,7 +19,11 @@ import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
-import { buildChecklistEmail, buildResumeEmail } from './drip-email';
+import { buildChecklistConfirmEmail, buildChecklistEmail, buildResumeEmail } from './drip-email';
+import { buildNewsletterEmail } from './newsletter-email';
+import { buildPostFormationEmail } from './post-formation-email';
+import type { NewsletterIssueNumber } from './newsletter';
+import type { PostFormationStepId } from './post-formation';
 import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
 import { isResumeDripType, RESUME_DRIP_MAX_ATTEMPTS } from './resume-drip-claim';
@@ -36,7 +40,12 @@ export type NotificationType =
   | 'RESUME_1H'
   | 'RESUME_1D'
   | 'RESUME_3D'
+  | 'CHECKLIST_CONFIRM'
   | 'CHECKLIST_DELIVERY'
+  | 'POST_FORMATION_DAY_3'
+  | 'POST_FORMATION_DAY_14'
+  | 'POST_FORMATION_DAY_30'
+  | 'WEEKLY_NEWSLETTER'
   | 'DRAFT_REENGAGE'
   | 'RA_RENEWAL_60'
   | 'RA_RENEWAL_30'
@@ -84,6 +93,12 @@ interface EmailContext {
   locale?: string;
   /** Signed unsubscribe URL for marketing mail. */
   unsubscribeUrl?: string;
+  /** Signed confirm link for the checklist double opt-in. */
+  checklistConfirmUrl?: string;
+  /** Weekly issue. Defaults to 001 when missing. */
+  newsletterIssue?: NewsletterIssueNumber;
+  /** Filing id used in post-formation certificate links. */
+  linkFilingId?: string;
   // ── Manual draft re-engagement ──
   /** State name shown next to the entity type (e.g. "Florida"). */
   stateName?: string;
@@ -123,7 +138,6 @@ interface EmailContext {
   inquiryUtmContent?: string;
   inquiryUtmTerm?: string;
   inquiryGclid?: string;
-  inquiryLiFatId?: string;
   // ── Operating agreement sample (double opt-in) ──
   oaLocale?: 'en' | 'es';
   oaConfirmUrl?: string;
@@ -149,6 +163,8 @@ export interface SendEmailArgs {
    * The resume drip claims the row (PENDING) before delivery.
    */
   notificationId?: string;
+  /** Stored on EmailNotification.step. The weekly issue number uses this. */
+  step?: string;
 }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -328,6 +344,21 @@ const TEMPLATES: Record<
   RESUME_1H: (ctx) => resumeDripTemplate('RESUME_1H', ctx),
   RESUME_1D: (ctx) => resumeDripTemplate('RESUME_1D', ctx),
   RESUME_3D: (ctx) => resumeDripTemplate('RESUME_3D', ctx),
+  CHECKLIST_CONFIRM: (ctx) => {
+    const built = buildChecklistConfirmEmail({
+      locale: ctx.locale,
+      firstName: ctx.firstName,
+      confirmUrl: ctx.checklistConfirmUrl ?? `${siteUrl}/checklist`,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+    });
+    return {
+      subject: built.subject,
+      body: wrap(built.inner, {
+        locale: dripShellLocale(ctx.locale),
+        preferencesUrl: ctx.unsubscribeUrl,
+      }),
+    };
+  },
   CHECKLIST_DELIVERY: (ctx) => {
     const built = buildChecklistEmail({
       locale: ctx.locale,
@@ -337,7 +368,27 @@ const TEMPLATES: Record<
     });
     return {
       subject: built.subject,
-      body: wrap(built.inner, { locale: dripShellLocale(ctx.locale) }),
+      body: wrap(built.inner, {
+        locale: dripShellLocale(ctx.locale),
+        preferencesUrl: ctx.unsubscribeUrl,
+      }),
+    };
+  },
+  POST_FORMATION_DAY_3: (ctx) => postFormationTemplate('DAY_3', ctx),
+  POST_FORMATION_DAY_14: (ctx) => postFormationTemplate('DAY_14', ctx),
+  POST_FORMATION_DAY_30: (ctx) => postFormationTemplate('DAY_30', ctx),
+  WEEKLY_NEWSLETTER: (ctx) => {
+    const issue: NewsletterIssueNumber = ctx.newsletterIssue === '002' ? '002' : '001';
+    const locale = dripShellLocale(ctx.locale);
+    const built = buildNewsletterEmail({
+      issue,
+      locale,
+      siteUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl ?? `${siteUrl}/unsubscribe`,
+    });
+    return {
+      subject: built.subject,
+      body: wrap(built.inner, { locale, preferencesUrl: ctx.unsubscribeUrl }),
     };
   },
   DRAFT_REENGAGE: ({
@@ -543,7 +594,6 @@ const TEMPLATES: Record<
           <tr><td>utm_content</td><td>${cell(ctx.inquiryUtmContent)}</td></tr>
           <tr><td>utm_term</td><td>${cell(ctx.inquiryUtmTerm)}</td></tr>
           <tr><td>gclid</td><td>${cell(ctx.inquiryGclid)}</td></tr>
-          <tr><td>li_fat_id</td><td>${cell(ctx.inquiryLiFatId)}</td></tr>
         </table>
         ${message ? `<p><strong>Message</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>` : ''}
       `,
@@ -729,6 +779,26 @@ function wrap(
 </html>`;
 }
 
+function postFormationTemplate(
+  step: PostFormationStepId,
+  ctx: EmailContext,
+): { subject: string; body: string } {
+  const locale = dripShellLocale(ctx.locale);
+  const built = buildPostFormationEmail({
+    step,
+    locale,
+    firstName: ctx.firstName,
+    businessName: ctx.businessName,
+    filingId: ctx.linkFilingId ?? '',
+    siteUrl,
+    unsubscribeUrl: ctx.unsubscribeUrl ?? `${siteUrl}/unsubscribe`,
+  });
+  return {
+    subject: built.subject,
+    body: wrap(built.inner, { locale, preferencesUrl: ctx.unsubscribeUrl }),
+  };
+}
+
 function resumeDripTemplate(
   step: ResumeStepId,
   ctx: EmailContext,
@@ -773,6 +843,43 @@ export function renderTemplate(
 //   EMAIL_FROM=LaunchForma <admin@launchforma.com>
 
 const FROM = process.env.EMAIL_FROM ?? 'LaunchForma <no-reply@launchforma.com>';
+
+/** Pause between marketing sends in one cron run so SMTP is not flooded. */
+export const MARKETING_SEND_GAP_MS = 200;
+
+export function waitBetweenMarketingSends(ms = MARKETING_SEND_GAP_MS): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type SmtpSender = {
+  sendMail: (message: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
+  }) => Promise<unknown>;
+};
+
+/** One SMTP connection for the life of this server instance (one cron run). */
+let smtpTransportPromise: Promise<SmtpSender> | null = null;
+
+async function sharedSmtpTransport(host: string, user: string, pass: string): Promise<SmtpSender> {
+  if (!smtpTransportPromise) {
+    const nodemailer = await import('nodemailer');
+    smtpTransportPromise = Promise.resolve(
+      nodemailer.createTransport({
+        host,
+        port: Number(process.env.SMTP_PORT ?? 587),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user, pass },
+      }),
+    );
+  }
+  return smtpTransportPromise;
+}
 
 interface DeliveryOptions {
   replyTo?: string;
@@ -828,13 +935,9 @@ async function deliverEmail(
 
   if (smtpHost && smtpUser && smtpPass) {
     // ── Option 2: SMTP (Google Workspace, etc.) ───────────────────────────
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user: smtpUser, pass: smtpPass },
-    });
+    // Reuse one transport for every message in this process, including a
+    // cron run that sends the newsletter and the post-formation series.
+    const transporter = await sharedSmtpTransport(smtpHost, smtpUser, smtpPass);
     await transporter.sendMail({
       from: FROM,
       to,
@@ -893,7 +996,11 @@ export async function sendEmail(args: SendEmailArgs) {
         notificationType: args.type,
         filingId: args.filingId,
         userId: args.userId,
-        ...(isResumeDripType(args.type) ? { step: args.type } : {}),
+        ...(args.step
+          ? { step: args.step }
+          : isResumeDripType(args.type)
+            ? { step: args.type }
+            : {}),
       },
     });
   }

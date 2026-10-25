@@ -17,10 +17,10 @@ export async function ChecklistSignupSection() {
     <section aria-labelledby="checklist-signup-heading" className="border-t border-border bg-muted/40">
       <div className="container py-12 md:py-16">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-8 md:grid-cols-2 md:items-center md:gap-12">
-          <div>
+          <div className="min-w-0">
             <h2
               id="checklist-signup-heading"
-              className="font-display text-3xl font-medium leading-tight tracking-tight md:text-4xl"
+              className="text-balance font-display text-3xl font-medium leading-tight tracking-tight md:text-4xl"
             >
               {copy.headline}
             </h2>

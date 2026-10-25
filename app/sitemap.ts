@@ -128,11 +128,9 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
   const entry: MetadataRoute.Sitemap[number] = {
     url: absoluteUrl(path),
     lastModified:
-      page.path === '/guides/florida-fictitious-name-dba'
-        ? '2026-10-25'
-        : page.path === OA_GUIDE_PATH
-          ? new Date(OA_SITEMAP_LASTMOD)
-          : contentLastModified(page.file),
+      page.path === OA_GUIDE_PATH
+        ? new Date(OA_SITEMAP_LASTMOD)
+        : contentLastModified(page.file),
     changeFrequency: page.changeFrequency,
     priority: page.priority,
   };

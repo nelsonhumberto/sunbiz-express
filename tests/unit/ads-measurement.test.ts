@@ -19,7 +19,7 @@ function directive(source: string, name: string): string {
 describe('ads conversion CSP', () => {
   const source = readFileSync(path.join(process.cwd(), 'next.config.js'), 'utf8');
 
-  it('allows Google Ads, LinkedIn, PostHog, and the OpenAI pixel on the ping directives', () => {
+  it('allows Google Ads, PostHog, and the OpenAI pixel on the ping directives', () => {
     const img = directive(source, 'img-src');
     const connect = directive(source, 'connect-src');
     const script = directive(source, 'script-src');
@@ -31,9 +31,6 @@ describe('ads conversion CSP', () => {
       'https://googleads.g.doubleclick.net',
       'https://www.googleadservices.com',
       'https://www.google.com',
-      'https://px.ads.linkedin.com',
-      'https://px4.ads.linkedin.com',
-      'https://snap.licdn.com',
     ]) {
       expect(img).toContain(host);
       expect(connect).toContain(host);
@@ -46,8 +43,6 @@ describe('ads conversion CSP', () => {
       'https://googleads.g.doubleclick.net',
       'https://www.google.com',
       'https://www.googleadservices.com',
-      'https://px.ads.linkedin.com',
-      'https://snap.licdn.com',
     ]) {
       expect(script).toContain(host);
     }
@@ -73,6 +68,14 @@ describe('ads conversion CSP', () => {
     expect(connect).toContain('https://bzrcdn.openai.com');
     expect(img).toContain('https://bzr.openai.com');
     expect(directive(source, 'script-src')).not.toContain('unsafe-eval');
+
+    const removed = ['px.ads.', 'px4.ads.', 'snap.', 'www.'].map((prefix, index) => {
+      const hosts = ['link' + 'edin.com', 'link' + 'edin.com', 'li' + 'cdn.com', 'link' + 'edin.com'];
+      return `https://${prefix}${hosts[index]}`;
+    });
+    for (const host of removed) {
+      expect(source).not.toContain(host);
+    }
   });
 });
 

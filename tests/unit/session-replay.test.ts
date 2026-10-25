@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SESSION_REPLAY_BLOCKED_EXACT,
   SESSION_REPLAY_BLOCKED_MEDIA,
@@ -9,8 +9,6 @@ import {
   sessionRecordingPrivacy,
   sessionReplayAllowed,
 } from '@/lib/session-replay';
-import { syncSessionReplay } from '@/lib/posthog-browser';
-
 const posthog = vi.hoisted(() => ({
   __loaded: true,
   init: vi.fn(),
@@ -170,7 +168,10 @@ describe('session replay masking', () => {
     expect(init).toBeGreaterThan(gate);
     expect(browser).toContain('capture_pageview: \'history_change\'');
     expect(browser).toContain('client.register({ is_internal: true })');
-    expect(browser).toContain('disable_session_recording: isSessionReplayBlockedPath(window.location.pathname)');
+    expect(browser).toContain(
+      'replayStoppedByRoute = isSessionReplayBlockedPath(window.location.pathname)',
+    );
+    expect(browser).toContain('disable_session_recording: replayStoppedByRoute');
     expect(browser).toContain('maskAllInputs: sessionRecordingPrivacy.maskAllInputs');
     expect(browser).toContain('maskTextSelector: sessionRecordingPrivacy.maskTextSelector');
     expect(browser).toContain('blockSelector: sessionRecordingPrivacy.blockSelector');
@@ -189,18 +190,39 @@ describe('session replay masking', () => {
 });
 
 describe('syncSessionReplay', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    posthog.stopSessionRecording.mockClear();
-    posthog.startSessionRecording.mockClear();
+  const envKeys = ['NEXT_PUBLIC_POSTHOG_KEY', 'NEXT_PUBLIC_VERCEL_ENV'] as const;
+  const previousEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+
+  beforeEach(() => {
+    vi.resetModules();
+    posthog.__loaded = true;
+    posthog.init.mockReset();
+    posthog.stopSessionRecording.mockReset();
+    posthog.startSessionRecording.mockReset();
+    for (const key of envKeys) delete process.env[key];
   });
 
-  function at(pathname: string) {
-    vi.stubGlobal('window', { location: { pathname } });
-    syncSessionReplay(pathname);
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    for (const key of envKeys) {
+      if (previousEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = previousEnv[key];
+    }
+  });
+
+  async function loadSync() {
+    const { syncSessionReplay } = await import('@/lib/posthog-browser');
+    return syncSessionReplay;
   }
 
-  it('starts recording only after this code stopped it for a sensitive route', () => {
+  it('starts recording only after this code stopped it for a sensitive route', async () => {
+    const syncSessionReplay = await loadSync();
+
+    function at(pathname: string) {
+      vi.stubGlobal('window', { location: { pathname } });
+      syncSessionReplay(pathname);
+    }
+
     at('/pricing');
     at('/faq');
     expect(posthog.startSessionRecording).not.toHaveBeenCalled();
@@ -221,5 +243,42 @@ describe('syncSessionReplay', () => {
     expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(2);
     at('/');
     expect(posthog.startSessionRecording).toHaveBeenCalledTimes(2);
+  });
+
+  it('remembers a blocked landing and resumes only after leaving it', async () => {
+    const location = { pathname: '/dashboard', search: '', protocol: 'https:' };
+    const history = { pushState: vi.fn(), replaceState: vi.fn() };
+    vi.stubGlobal('window', {
+      location,
+      navigator: { userAgent: 'Mozilla/5.0' },
+      localStorage: { getItem: () => null, setItem: () => undefined },
+      history,
+      addEventListener: vi.fn(),
+    });
+    vi.stubGlobal('document', { cookie: '' });
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
+    process.env.NEXT_PUBLIC_VERCEL_ENV = 'production';
+    posthog.__loaded = false;
+    posthog.init.mockImplementation(() => {
+      posthog.__loaded = true;
+    });
+
+    await import('@/lib/posthog-browser');
+
+    expect(posthog.init).toHaveBeenCalledWith(
+      'phc_test',
+      expect.objectContaining({ disable_session_recording: true }),
+    );
+    expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
+    expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+
+    location.pathname = '/pricing';
+    history.pushState({}, '', '/pricing');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+
+    location.pathname = '/faq';
+    history.pushState({}, '', '/faq');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+    expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
   });
 });

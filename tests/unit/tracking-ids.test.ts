@@ -1,27 +1,21 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  LINKEDIN_PARTNER_ID_FALLBACK,
-  OPENAI_PIXEL_ID_FALLBACK,
-  openAiPixelId,
-  publicEnvOrFallback,
-} from '@/lib/tracking-ids';
+import { OPENAI_PIXEL_ID_FALLBACK, openAiPixelId, publicEnvOrFallback } from '@/lib/tracking-ids';
 
 const OPENAI_PIXEL_ENV = 'NEXT_PUBLIC_OPENAI_ADS_PIXEL_ID';
 const LAUNCHFORMA_PIXEL_ID = 'HLuEiBiKzL32aoTo43Z5BV';
 
 describe('public tracking id fallbacks', () => {
-  it('uses the known production ids when the env var is unset', () => {
-    expect(publicEnvOrFallback(undefined, LINKEDIN_PARTNER_ID_FALLBACK)).toBe('9874554');
+  it('uses the known production id when the env var is unset', () => {
     expect(publicEnvOrFallback(undefined, OPENAI_PIXEL_ID_FALLBACK)).toBe(LAUNCHFORMA_PIXEL_ID);
   });
 
   it('disables the tag when the env var is empty', () => {
-    expect(publicEnvOrFallback('', LINKEDIN_PARTNER_ID_FALLBACK)).toBeNull();
+    expect(publicEnvOrFallback('', OPENAI_PIXEL_ID_FALLBACK)).toBeNull();
     expect(publicEnvOrFallback('   ', OPENAI_PIXEL_ID_FALLBACK)).toBeNull();
   });
 
   it('prefers an explicit override', () => {
-    expect(publicEnvOrFallback('111', LINKEDIN_PARTNER_ID_FALLBACK)).toBe('111');
+    expect(publicEnvOrFallback('CustomPixelId123', 'fallback')).toBe('CustomPixelId123');
   });
 });
 

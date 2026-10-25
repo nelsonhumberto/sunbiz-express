@@ -123,7 +123,6 @@ interface EmailContext {
   inquiryUtmContent?: string;
   inquiryUtmTerm?: string;
   inquiryGclid?: string;
-  inquiryLiFatId?: string;
   // ── Operating agreement sample (double opt-in) ──
   oaLocale?: 'en' | 'es';
   oaConfirmUrl?: string;
@@ -543,7 +542,6 @@ const TEMPLATES: Record<
           <tr><td>utm_content</td><td>${cell(ctx.inquiryUtmContent)}</td></tr>
           <tr><td>utm_term</td><td>${cell(ctx.inquiryUtmTerm)}</td></tr>
           <tr><td>gclid</td><td>${cell(ctx.inquiryGclid)}</td></tr>
-          <tr><td>li_fat_id</td><td>${cell(ctx.inquiryLiFatId)}</td></tr>
         </table>
         ${message ? `<p><strong>Message</strong><br/>${escapeHtml(message).replace(/\n/g, '<br/>')}</p>` : ''}
       `,

@@ -96,6 +96,9 @@ describe('Spanish dashboard and wizard gaps', () => {
     expect(es.wizard.guestEmailHasAccount).not.toMatch(/al pagar/);
     expect(es.wizard.guestEmailHasAccount).toMatch(/Entra/);
     expect(es.auth.signInTitle).toBe('Qué bueno verte de nuevo');
+    expect(es.auth.sidePanelBadge).toBe('☀️ Te damos la bienvenida');
+    expect(es.dashboard.emptyTitle).toBe('Qué bueno tenerte aquí');
+    expect(source('messages/es.json')).not.toMatch(/Bienvenido|Bienvenida/);
     for (const value of [
       es.common.skipToContent,
       es.notFound.title,

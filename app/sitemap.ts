@@ -14,6 +14,8 @@ interface PageDef {
   priority: number;
   /** Spanish-only article. The English path redirects to /es and stays out of the sitemap. */
   spanishOnly?: boolean;
+  /** English-only article. No /es URL and no es hreflang until a translation exists. */
+  englishOnly?: boolean;
   /** Emit en, es, and x-default xhtml:link alternates on both URLs. */
   hreflang?: boolean;
 }
@@ -41,6 +43,13 @@ const STATIC_PAGES: PageDef[] = [
     changeFrequency: 'monthly',
     priority: 0.7,
     hreflang: true,
+  },
+  {
+    path: '/guides/florida-fictitious-name-dba',
+    file: 'app/(marketing)/guides/florida-fictitious-name-dba/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
   },
   {
     path: '/guides/florida-annual-report',
@@ -112,13 +121,15 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
   const entry: MetadataRoute.Sitemap[number] = {
     url: absoluteUrl(path),
     lastModified:
-      page.path === OA_GUIDE_PATH
-        ? new Date(OA_SITEMAP_LASTMOD)
-        : contentLastModified(page.file),
+      page.path === '/guides/florida-fictitious-name-dba'
+        ? '2026-10-25'
+        : page.path === OA_GUIDE_PATH
+          ? new Date(OA_SITEMAP_LASTMOD)
+          : contentLastModified(page.file),
     changeFrequency: page.changeFrequency,
     priority: page.priority,
   };
-  if (page.hreflang && !page.spanishOnly) {
+  if (page.hreflang && !page.spanishOnly && !page.englishOnly) {
     const en = absoluteUrl(page.path);
     const es = absoluteUrl(toSpanishUrl(page.path));
     entry.alternates = {
@@ -135,7 +146,7 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
 export default function sitemap(): MetadataRoute.Sitemap {
   // Every indexable /states page. Coming-soon slugs are noindex, and
   // Delaware / Wyoming URLs are excluded (they 308 to Florida). Each
-  // English URL is mirrored under /es.
+  // English URL is mirrored under /es, except englishOnly guides.
   const statePages: PageDef[] = ALL_MARKETING_STATES.filter(
     (s) => s.availability === 'active',
   ).map((s) => ({
@@ -150,6 +161,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   );
   return [
     ...pages.filter((page) => !page.spanishOnly).map((page) => toEntry(page, false)),
-    ...pages.map((page) => toEntry(page, true)),
+    ...pages.filter((page) => !page.englishOnly).map((page) => toEntry(page, true)),
   ];
 }

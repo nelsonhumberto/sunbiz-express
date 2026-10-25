@@ -55,6 +55,13 @@ const GUIDES = [
     readingMinutes: 8,
   },
   {
+    slug: 'florida-fictitious-name-dba',
+    title: 'Florida Fictitious Name (DBA): How to Register One',
+    description:
+      'How to register a fictitious name (DBA) in Florida: who needs one, the $50 Sunbiz fee, the newspaper ad, 5-year renewal and how to cancel it.',
+    readingMinutes: 5,
+  },
+  {
     slug: 'florida-annual-report',
     title: 'Florida Annual Report: Deadline, Fees, and How to File',
     description:

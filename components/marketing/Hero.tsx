@@ -8,10 +8,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState, type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { trackCtaClicked, trackEvent } from '@/lib/analytics';
 import { localizedHref } from '@/lib/locale-paths';
 import { nameCheckSubmittedEvent, startHrefForNameCheck } from '@/lib/name-check';
@@ -42,7 +43,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
   return (
     <section
       data-marketing-state={state.code}
-      className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden"
+      className="relative pt-4 pb-24 sm:pt-12 md:pt-20 md:pb-32 overflow-hidden"
     >
       <div className="absolute inset-0 mesh-bg" />
       <div className="aurora" />
@@ -60,7 +61,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
         >
           <Link
             href={localizedHref('/about', locale)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 sm:mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
             {state.code === 'FL' ? t('badge') : t('badgeState', { state: stateLabel })}
@@ -73,11 +74,11 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
-          <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+          <p className="mt-4 sm:mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
             {state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel })}
           </p>
 
-          <p className="mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+          <p className="mt-3 sm:mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
             {t('formaLine')}
           </p>
 
@@ -141,6 +142,15 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
   );
 }
 
+/**
+ * Shared by the homepage hero name field and its submit button so they
+ * stay the same height. Mobile is 56px (at least 52px). From the `sm`
+ * breakpoint up, including desktop, the control is 60px. Width stays on
+ * the existing layout classes. min-height matches that size so a stacked
+ * flex row cannot collapse the field.
+ */
+const HERO_NAME_CONTROL_HEIGHT = 'h-14 min-h-14 sm:h-[60px] sm:min-h-[60px]';
+
 function HeroNameCheck({ stateCode }: { stateCode: string }) {
   const t = useTranslations('hero');
   const locale = useLocale();
@@ -161,11 +171,11 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 mx-auto w-full max-w-xl text-left">
-      <label htmlFor="hero-business-name" className="sr-only">
+    <form onSubmit={onSubmit} className="mt-4 sm:mt-8 mx-auto w-full max-w-xl text-left">
+      <Label htmlFor="hero-business-name" className="mb-2 block">
         {t('nameCheckLabel')}
-      </label>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      </Label>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           id="hero-business-name"
           type="text"
@@ -182,9 +192,18 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
             setValue(e.target.value.slice(0, 100));
             if (missing) setMissing(false);
           }}
-          className="h-12 w-full min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base text-ink"
+          className={cn(
+            HERO_NAME_CONTROL_HEIGHT,
+            'w-full min-w-0 appearance-none sm:flex-1 rounded-lg border border-input bg-card px-5 text-lg text-ink shadow-sm',
+            'placeholder:text-ink-subtle',
+            'focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          )}
         />
-        <Button type="submit" size="lg" className="w-full shrink-0 sm:w-auto">
+        <Button
+          type="submit"
+          size="lg"
+          className={cn(HERO_NAME_CONTROL_HEIGHT, 'w-full shrink-0 sm:w-auto')}
+        >
           {t('checkName')}
         </Button>
       </div>

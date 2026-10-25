@@ -14,6 +14,7 @@
 
 import { prisma } from './db';
 import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from './email-address';
+import { EMAIL_STATUS_SKIPPED_TEST } from './email-status';
 import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
@@ -788,6 +789,10 @@ async function deliverEmail(
   html: string,
   options?: DeliveryOptions,
 ): Promise<{ ok: true }> {
+  if (!isDeliverableEmail(to)) {
+    throw new Error('Invalid recipient address.');
+  }
+
   // QA and end-to-end fixtures (local part qa+ or e2e+, any case) are not
   // handed to Resend or SMTP. Transactional, drip, and abandoned-cart mail
   // all reach this helper, as does direct delivery. Callers treat the return
@@ -968,6 +973,23 @@ export async function sendEmail(args: SendEmailArgs) {
 
   try {
     await deliverEmail(recipient, subject, body, { replyTo, headers });
+    if (testRecipient) {
+      await prisma.emailNotification.update({
+        where: { id: record.id },
+        data: {
+          status: EMAIL_STATUS_SKIPPED_TEST,
+          subject,
+          htmlBody: body,
+          recipientEmail: recipient,
+        },
+      });
+      return {
+        ...record,
+        status: EMAIL_STATUS_SKIPPED_TEST,
+        sentAt: null,
+        errorMessage: null as string | null,
+      };
+    }
     const sentAt = new Date();
     await prisma.emailNotification.update({
       where: { id: record.id },

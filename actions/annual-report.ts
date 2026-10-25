@@ -341,7 +341,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
     // attacker plant records in a victim's dashboard. Require sign-in instead.
     const session = await auth();
     let user = await prisma.user.findUnique({ where: { email } });
-    if (user && user.accountStatus !== 'GUEST' && session?.user?.id !== user.id) {
+    if (user && session?.user?.id !== user.id) {
       return {
         ok: false as const,
         error:

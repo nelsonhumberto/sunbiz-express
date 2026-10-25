@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getGuestUser } from '@/lib/guest';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { storedEntryPath } from '@/lib/stored-locale';
+import { safeRedirectPath } from '@/lib/utils';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
 
@@ -21,7 +23,10 @@ export default async function WizardLayout({ children }: { children: React.React
   const session = await auth();
   if (!session?.user) {
     const guest = await getGuestUser();
-    if (!guest) redirect('/sign-in');
+    if (!guest) {
+      const next = safeRedirectPath(storedEntryPath());
+      return await redirectLocalized(next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in');
+    }
   }
 
   return (

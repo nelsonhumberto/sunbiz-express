@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { Check, MapPin } from 'lucide-react';
 import { saveStep5 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
@@ -34,7 +34,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
   const [address, setAddress] = useState<AddressValue>(initialAddress);
   const [showMissing, setShowMissing] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
 
   const valid = !!(
     sameAsPrincipal ||

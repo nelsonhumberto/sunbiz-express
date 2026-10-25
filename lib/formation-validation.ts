@@ -417,19 +417,11 @@ export function computeNextAnnualCompliance(
 
   const { month, day } = compliance.deadline; // 1-indexed month
   const formationYear = formationDate.getFullYear();
-  let reportYear = now.getFullYear();
-  const thisYearDeadline = new Date(reportYear, month - 1, day, 23, 59, 0);
-  if (now > thisYearDeadline) reportYear = reportYear + 1;
-  // FL deferral rule: entities formed Oct-Dec defer the first annual report.
-  if (
-    rule.code === 'FL' &&
-    formationDate.getMonth() >= 9 &&
-    formationYear === reportYear - 1
-  ) {
-    reportYear = formationYear + 2;
-  } else if (reportYear < formationYear + 1) {
-    reportYear = formationYear + 1;
-  }
+  // First fixed-date report is the calendar year after formation.
+  // A deadline at 23:59 means the morning of that day is still due.
+  let reportYear = formationYear + 1;
+  const deadline = (year: number) => new Date(year, month - 1, day, 23, 59, 0);
+  while (now > deadline(reportYear)) reportYear += 1;
 
   const close = new Date(reportYear, month - 1, day, 23, 59, 0);
   const open = new Date(reportYear, 0, 1);

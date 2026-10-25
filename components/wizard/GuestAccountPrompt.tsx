@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Sparkles, ShieldCheck, FolderOpen, KeyRound, Loader2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +38,7 @@ interface Props {
   firstName: string;
   email: string;
   filingId: string;
+  returnStep?: number;
 }
 
 /**
@@ -43,8 +46,9 @@ interface Props {
  * Dismissal is stored in localStorage. A failed sign-in does not send them
  * to /sign-in; the guest cookie still opens this filing.
  */
-export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
+export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: Props) {
   const t = useTranslations('wizard');
+  const locale = pickLocale(useLocale(), null);
   const [open, setOpen] = useState(false);
   const [showEmailEditor, setShowEmailEditor] = useState(false);
   const [editableEmail, setEditableEmail] = useState(email);
@@ -52,7 +56,9 @@ export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ClaimResult>({});
 
-  const resumeHref = state.resumeHref || `/wizard/${filingId}`;
+  const resumeHref =
+    state.resumeHref ||
+    hrefForLocale(`/wizard/${filingId}/${returnStep && returnStep >= 1 ? returnStep : 2}`, locale);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -162,12 +168,18 @@ export function GuestAccountPrompt({ firstName, email, filingId }: Props) {
 
             {state.error && (
               <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
-                {state.error}
+                {state.error}{' '}
+                {state.signInHref ? (
+                  <a href={state.signInHref} className="font-medium underline">
+                    {t('accountGateSignInButton')}
+                  </a>
+                ) : null}
               </p>
             )}
 
             <form onSubmit={onSubmit} className="space-y-3 pt-2">
               <input type="hidden" name="filingId" value={filingId} />
+              {returnStep ? <input type="hidden" name="returnStep" value={returnStep} /> : null}
               {showEmailEditor ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="claim-email">{t('saveExitEmailLabel')}</Label>

@@ -2,17 +2,33 @@ import 'server-only';
 
 import { headers } from 'next/headers';
 import { getLocale } from 'next-intl/server';
-import { PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { LOCALE_HEADER, localeFromPublicPath, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
 
-/** Site language for this request, stored on the user and the new filing. */
+/**
+ * Site language for this request, stored on the user and the new filing.
+ * The public path wins, same as i18n/request.ts, so a server action whose
+ * getLocale() falls back to English still records Spanish for /es.
+ */
 export async function storedLocale(): Promise<'en' | 'es' | null> {
+  try {
+    const path = headers().get(PUBLIC_PATH_HEADER);
+    if (path) return localeFromPublicPath(path);
+  } catch {
+    /* headers() is unavailable outside a request */
+  }
+  try {
+    const hinted = headers().get(LOCALE_HEADER);
+    if (hinted === 'en' || hinted === 'es') return hinted;
+  } catch {
+    /* ignore */
+  }
   try {
     const locale = await getLocale();
     if (locale === 'en' || locale === 'es') return locale;
-    return null;
   } catch {
-    return null;
+    /* ignore */
   }
+  return null;
 }
 
 /** Public path for this request, including a leading /es when present. */

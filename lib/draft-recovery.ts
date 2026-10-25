@@ -6,7 +6,8 @@
  */
 import { prisma } from './db';
 import { renderTemplate, sendEmail, type NotificationType } from './email';
-import { isQaOrE2eRecipient, normalizeEmail } from './email-address';
+import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
+import { readTypedGuestEmail } from './guest-identity';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
 import { isSpanishPublicPath } from './locale-paths';
 import { captureResumeEmailSent } from './posthog-server';
@@ -83,12 +84,33 @@ function domainIsSkipped(domain: string): boolean {
 
 export function isRecoverySkipAddress(email: string): boolean {
   const normalized = stripEmailPlusTag(email);
+  if (isReservedMailbox(normalized)) return true;
   if ((RECOVERY_SKIP_EMAILS as readonly string[]).includes(normalized)) return true;
   return domainIsSkipped(mailboxDomain(normalized));
 }
 
-function recoverySkipFilters() {
-  const domainFilters = RECOVERY_SKIP_DOMAINS.map((domain) => ({
+/**
+ * Mailbox the resume drip may send to. A real User.email wins. A placeholder
+ * guest is eligible only when this filing stores the address typed in this
+ * browser (`typedGuestEmail`), and that address is not reserved.
+ */
+export function resumeDripMailbox(
+  userEmail: string | null | undefined,
+  optionalDetails?: string | null,
+): string | null {
+  const direct = (userEmail ?? '').trim().toLowerCase();
+  if (direct && isDeliverableEmail(direct)) return direct;
+  const typed = readTypedGuestEmail(optionalDetails);
+  if (typed && isDeliverableEmail(typed)) return typed;
+  return null;
+}
+
+function recoverySkipFilters(options?: { placeholderDomain?: boolean }) {
+  const domains =
+    options?.placeholderDomain === false
+      ? RECOVERY_SKIP_DOMAINS.filter((domain) => domain !== 'guest.launchforma.invalid')
+      : RECOVERY_SKIP_DOMAINS;
+  const domainFilters = domains.map((domain) => ({
     NOT: {
       OR: [
         { email: { endsWith: `@${domain}`, mode: 'insensitive' as const } },
@@ -115,6 +137,57 @@ function recoverySkipFilters() {
     };
   });
   return [...domainFilters, ...mailboxFilters];
+}
+
+/**
+ * Placeholder guests and any `.invalid` mailbox stay out of the batch.
+ * A guest who typed a real address on this filing stays eligible, as does a
+ * guest whose User.email is already that real address.
+ */
+function resumeRecipientFilter() {
+  return {
+    OR: [
+      {
+        user: {
+          AND: [
+            {
+              NOT: {
+                OR: [
+                  { email: { endsWith: '.invalid', mode: 'insensitive' as const } },
+                  {
+                    email: {
+                      endsWith: '@guest.launchforma.invalid',
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      {
+        AND: [
+          { user: { accountStatus: 'GUEST' as const } },
+          { optionalDetails: { contains: '"typedGuestEmail":"' } },
+          { NOT: { optionalDetails: { contains: '.invalid' } } },
+          { NOT: { optionalDetails: { contains: '@guest.launchforma.invalid' } } },
+          { NOT: { optionalDetails: { contains: '@launchforma.com', mode: 'insensitive' as const } } },
+          { NOT: { optionalDetails: { contains: '@resend.dev', mode: 'insensitive' as const } } },
+          {
+            NOT: {
+              optionalDetails: { contains: '"typedGuestEmail":"qa+', mode: 'insensitive' as const },
+            },
+          },
+          {
+            NOT: {
+              optionalDetails: { contains: '"typedGuestEmail":"e2e+', mode: 'insensitive' as const },
+            },
+          },
+        ],
+      },
+    ],
+  };
 }
 
 export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
@@ -162,18 +235,20 @@ export async function runDraftRecovery(now: number) {
       updatedAt: { gte: oldestCutoff, lte: newestCutoff },
       user: {
         role: { not: 'ADMIN' },
-        NOT: {
-          email: { endsWith: '@launchforma.com', mode: 'insensitive' },
-        },
+        accountStatus: { not: 'DELETED' },
+        AND: recoverySkipFilters({ placeholderDomain: false }),
       },
+      AND: [resumeRecipientFilter()],
     },
     include: { user: true },
   });
 
   let sent = 0;
   for (const draft of drafts) {
-    // Belt and suspenders: never mail admins, @launchforma.com, or test/archived drafts.
-    if (shouldSkipDraftRecovery(draft)) continue;
+    const mailbox = resumeDripMailbox(draft.user.email, draft.optionalDetails);
+    if (!mailbox) continue;
+    // Belt and suspenders: never mail admins, reserved addresses, or test/archived drafts.
+    if (shouldSkipDraftRecovery({ ...draft, user: { ...draft.user, email: mailbox } })) continue;
     const ageHours = (now - draft.updatedAt.getTime()) / (60 * 60 * 1000);
     const bucket = DRAFT_BUCKETS.find(
       (b) => ageHours >= b.minHours && ageHours < b.maxHours,
@@ -200,7 +275,7 @@ export async function runDraftRecovery(now: number) {
 
     const delivery = await sendEmail({
       type: bucket.type,
-      to: draft.user.email,
+      to: mailbox,
       filingId: draft.id,
       userId: draft.userId,
       context: {
@@ -416,7 +491,7 @@ function blockingResumeNotification(type: ResumeDripType, nowMs: number) {
   return {
     notificationType: type,
     OR: [
-      { status: { in: ['SENT', 'BOUNCED'] as string[] } },
+      { status: { in: ['SENT', 'BOUNCED', 'SKIPPED_TEST'] as string[] } },
       { attemptCount: { gte: RESUME_DRIP_MAX_ATTEMPTS } },
       {
         AND: [
@@ -465,12 +540,13 @@ export function resumeDraftListArgs(now: number) {
         role: { not: 'ADMIN' as const },
         accountStatus: { not: 'DELETED' as const },
         AND: [
-          ...recoverySkipFilters(),
+          ...recoverySkipFilters({ placeholderDomain: false }),
           { NOT: { email: { startsWith: 'qa+', mode: 'insensitive' as const } } },
           { NOT: { email: { startsWith: 'e2e+', mode: 'insensitive' as const } } },
           { NOT: { email: { endsWith: '@resend.dev', mode: 'insensitive' as const } } },
         ],
       },
+      AND: [resumeRecipientFilter()],
       OR: RESUME_DRIP_STEPS.map((step) => ({
         updatedAt: resumeStepUpdatedAt(step, now),
         notifications: { none: blockingResumeNotification(step.type, now) },
@@ -542,6 +618,7 @@ async function attemptResumeDraft(
     isTest: boolean;
     adminArchivedAt: Date | null;
     userArchivedAt: Date | null;
+    optionalDetails: string | null;
     user: {
       email: string;
       firstName: string | null;
@@ -555,6 +632,8 @@ async function attemptResumeDraft(
   stepTypes: ResumeDripType[],
 ): Promise<'sent' | 'attempted' | 'skipped'> {
     try {
+      const mailbox = resumeDripMailbox(draft.user.email, draft.optionalDetails);
+      if (!mailbox) return 'skipped';
       const prior = await prisma.emailNotification.findMany({
         where: { filingId: draft.id, notificationType: { in: stepTypes } },
         select: {
@@ -566,7 +645,7 @@ async function attemptResumeDraft(
         },
       });
       const optedOut = await prisma.marketingOptOut.findUnique({
-        where: { email: normalizeEmail(draft.user.email) },
+        where: { email: normalizeEmail(mailbox) },
         select: { id: true },
       });
       const decision = planResumeDrip({
@@ -579,7 +658,7 @@ async function attemptResumeDraft(
         paid: draft.payments.length > 0,
         unsubscribed: Boolean(optedOut),
         deleted: draft.user.accountStatus === 'DELETED',
-        skip: shouldSkipDraftRecovery(draft),
+        skip: shouldSkipDraftRecovery({ ...draft, user: { ...draft.user, email: mailbox } }),
       });
       if (!decision.send) return 'skipped';
 
@@ -593,7 +672,7 @@ async function attemptResumeDraft(
             : signInResumeUrl(SITE_URL, wizardPath);
       const resumeUrl = withResumeUtms(rawResumeUrl, decision.send);
       const unsubscribeUrl = withResumeUtms(
-        unsubscribeLink(SITE_URL, draft.user.email),
+        unsubscribeLink(SITE_URL, mailbox),
         decision.send,
       );
       const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
@@ -609,7 +688,7 @@ async function attemptResumeDraft(
         filingId: draft.id,
         userId: draft.userId,
         type: decision.send,
-        recipientEmail: draft.user.email,
+        recipientEmail: mailbox,
         subject: rendered.subject,
         htmlBody: rendered.html,
         nowMs: now,
@@ -618,7 +697,7 @@ async function attemptResumeDraft(
 
       const delivery = await sendEmail({
         type: decision.send,
-        to: draft.user.email,
+        to: mailbox,
         filingId: draft.id,
         userId: draft.userId,
         replyTo: resumeEmailReplyTo(),

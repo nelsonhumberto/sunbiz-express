@@ -3,7 +3,10 @@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { redirect } from 'next/navigation';
+import { hrefForLocale } from '@/lib/app-href';
+import { redirectLocalized } from '@/lib/locale-redirect';
+import { pickLocale } from '@/lib/pick-locale';
+import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { auth, signIn } from '@/lib/auth';
@@ -27,7 +30,11 @@ import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume } from '@/lib/start-draft';
-import { isPlaceholderGuestEmail, placeholderGuestEmail } from '@/lib/guest-identity';
+import {
+  isPlaceholderGuestEmail,
+  placeholderGuestEmail,
+  planStartGuestSession,
+} from '@/lib/guest-identity';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 
 const StartSchema = z.object({
@@ -130,110 +137,49 @@ export async function startGuestFiling(
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    redirect(`/wizard/${filing.id}/2`);
+    return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
 
-  // Block reuse of an existing ACTIVE account from this entry path.
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing && existing.accountStatus !== 'GUEST') {
-    const next = encodeURIComponent('/dashboard');
-    redirect(
+  // An email that already belongs to anyone does not hand over that session.
+  // Accounts go to sign-in. Another guest gets a separate guest for this browser.
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, accountStatus: true },
+  });
+  const ownerKind = !existing ? 'free' : existing.accountStatus === 'GUEST' ? 'guest' : 'account';
+  const sessionPlan = planStartGuestSession(ownerKind);
+  if (sessionPlan === 'sign_in') {
+    const siteLocale = locale === 'es' ? 'es' : 'en';
+    const next = encodeURIComponent(hrefForLocale('/dashboard', siteLocale));
+    return await redirectLocalized(
       `/sign-in?email=${encodeURIComponent(email)}&from=start&next=${next}`,
+      locale,
     );
   }
 
-  // Create a fresh GUEST user (or reuse if the same email already started).
-  let guestUser = existing;
-  let token = guestUser?.guestToken ?? null;
-  if (!guestUser) {
-    token = newGuestToken();
-    // We MUST satisfy the non-null `passwordHash` constraint. Use a random
-    // unguessable hash that the credentials provider can never validate.
-    const placeholderPassword = await bcrypt.hash(
-      randomBytes(32).toString('hex'),
-      10,
-    );
-    guestUser = await prisma.user.create({
-      data: {
-        email,
-        firstName,
-        lastName,
-        passwordHash: placeholderPassword,
-        accountStatus: 'GUEST',
-        guestToken: token,
-        ...localeData,
-        ...userUtmCreateFields(),
-      },
-    });
-  } else if (!token) {
-    // Guest record exists but token is missing (shouldn't happen, but recover).
-    token = newGuestToken();
-    await prisma.user.update({
-      where: { id: guestUser.id },
-      data: { guestToken: token, firstName, lastName, ...localeData },
-    });
-  } else {
-    await prisma.user.update({
-      where: { id: guestUser.id },
-      data: { firstName, lastName, ...localeData },
-    });
-    await ensureUserFirstTouchUtm(guestUser.id);
-  }
+  const token = newGuestToken();
+  const placeholderPassword = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+  const guestUser = await prisma.user.create({
+    data: {
+      email: sessionPlan === 'separate' ? placeholderGuestEmail(token) : email,
+      firstName,
+      lastName,
+      passwordHash: placeholderPassword,
+      accountStatus: 'GUEST',
+      guestToken: token,
+      ...localeData,
+      ...userUtmCreateFields(),
+    },
+  });
 
-  setGuestCookie(token!);
+  setGuestCookie(token);
 
-  // Persist preferred state for the marketing chrome.
   cookies().set(PREFERRED_STATE_COOKIE, stateCode, {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',
   });
 
-  // Returning guest? Resume their existing draft instead of spawning a new one
-  // on every /start submit (prevents draft sprawl + loses no progress).
-  // A name from ?name= is written onto a blank draft, or the customer chooses
-  // when that draft already has a different name. "new" starts another filing.
-  if (existing && parsed.data.draftIntent !== 'new') {
-    const draft = await prisma.filing.findFirst({
-      where: { userId: guestUser.id, status: 'DRAFT' },
-      orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true },
-    });
-    if (draft && (!parsed.data.draftId || parsed.data.draftId === draft.id)) {
-      const decision = decideDraftNameResume({
-        existingName: draft.businessName,
-        proposedName: parsed.data.draftIntent === 'resume' ? null : seededName,
-        currentStep: draft.currentStep,
-      });
-      if (decision.action === 'apply' && seededName) {
-        await prisma.filing.update({
-          where: { id: draft.id },
-          data: {
-            businessName: seededName,
-            nameAvailable: null,
-            nameCheckedAt: null,
-          },
-        });
-        redirect(`/wizard/${draft.id}/2`);
-      }
-      if (decision.action === 'choose' && seededName) {
-        const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
-        return {
-          choice: {
-            draftId: draft.id,
-            existingName: draft.businessName?.trim() || '',
-            proposedName: seededName,
-            resumeHref: `/wizard/${draft.id}/${step}`,
-          },
-        };
-      }
-      const step = decision.action === 'resume' ? decision.step : 2;
-      redirect(`/wizard/${draft.id}/${step}`);
-    }
-  }
-
-  // Spin up a draft filing. Step 1 is already done, so we open step 2.
-  // A name from ?name= is prefilled there and checked on arrival.
   const filing = await prisma.filing.create({
     data: {
       userId: guestUser.id,
@@ -247,11 +193,14 @@ export async function startGuestFiling(
       ...localeData,
       ...entryData,
       ...filingUtmCreateFields(),
+      ...(sessionPlan === 'separate'
+        ? { optionalDetails: JSON.stringify({ typedGuestEmail: email }) }
+        : {}),
     },
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
 
-  redirect(`/wizard/${filing.id}/2`);
+  return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
 }
 
 /**
@@ -307,7 +256,7 @@ export async function openGuestDraft(input: {
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
     const step = seededName ? 2 : 1;
-    redirect(`/wizard/${filing.id}/${step}`);
+    return await redirectLocalized(`/wizard/${filing.id}/${step}`, locale);
   }
 
   const guest = await getGuestUser();
@@ -315,7 +264,7 @@ export async function openGuestDraft(input: {
     const draft = await prisma.filing.findFirst({
       where: { userId: guest.id, status: 'DRAFT' },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true },
+      select: { id: true, currentStep: true, businessName: true, locale: true },
     });
     if (draft && (!input.draftId || input.draftId === draft.id)) {
       const decision = decideDraftNameResume({
@@ -328,7 +277,7 @@ export async function openGuestDraft(input: {
           where: { id: draft.id },
           data: { businessName: seededName, nameAvailable: null, nameCheckedAt: null },
         });
-        redirect(`/wizard/${draft.id}/2`);
+        return await redirectLocalized(`/wizard/${draft.id}/2`, pickLocale(locale, draft.locale));
       }
       if (decision.action === 'choose' && seededName) {
         const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
@@ -337,12 +286,15 @@ export async function openGuestDraft(input: {
             draftId: draft.id,
             existingName: draft.businessName?.trim() || '',
             proposedName: seededName,
-            resumeHref: `/wizard/${draft.id}/${step}`,
+            resumeHref: hrefForLocale(
+              `/wizard/${draft.id}/${step}`,
+              pickLocale(locale, draft.locale),
+            ),
           },
         };
       }
       const step = decision.action === 'resume' ? decision.step : 2;
-      redirect(`/wizard/${draft.id}/${step}`);
+      return await redirectLocalized(`/wizard/${draft.id}/${step}`, pickLocale(locale, draft.locale));
     }
   }
 
@@ -405,7 +357,7 @@ export async function openGuestDraft(input: {
     return { error: t('errorStart') };
   }
 
-  redirect(`/wizard/${filingId}/${initialStep}`);
+  return await redirectLocalized(`/wizard/${filingId}/${initialStep}`, locale);
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────
@@ -419,6 +371,10 @@ const ClaimSchema = z.object({
     .regex(/[A-Z]/, 'Include at least one uppercase letter')
     .regex(/[0-9]/, 'Include at least one number'),
   filingId: z.string().optional(),
+  returnStep: z.preprocess(
+    (value) => (value === '' || value == null ? undefined : value),
+    z.coerce.number().int().min(1).max(TOTAL_STEPS).optional(),
+  ),
 });
 
 export interface ClaimResult {
@@ -427,6 +383,8 @@ export interface ClaimResult {
   message?: string;
   /** Wizard (or dashboard) path that still has this draft. */
   resumeHref?: string;
+  /** Same-origin sign-in URL when the email already has an account. */
+  signInHref?: string;
   signedIn?: boolean;
   fieldErrors?: Record<string, string>;
   /** The email belongs to an existing account. Sign in to attach the draft. */
@@ -447,6 +405,7 @@ export async function claimGuestAccount(
     email: formData.get('email'),
     password: formData.get('password'),
     filingId: (formData.get('filingId') as string) || undefined,
+    returnStep: formData.get('returnStep') || undefined,
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -473,21 +432,24 @@ export async function claimGuestAccount(
   if (newEmail !== guest.email) {
     const collision = await prisma.user.findUnique({ where: { email: newEmail } });
     if (collision && collision.id !== guest.id) {
-      if (collision.accountStatus !== 'GUEST') {
-        return {
-          needsSignIn: true,
-          error:
-            'That email already has an account. Sign in and we will attach this draft.',
-        };
-      }
+      const next = await draftResumeHref(guest.id, parsed.data.filingId, parsed.data.returnStep);
+      const signInLocale = next.startsWith('/es') ? 'es' : 'en';
       return {
-        error:
-          'That email already has a saved draft. Continue with it, or use a different email.',
+        needsSignIn: true,
+        signInHref: hrefForLocale(
+          `/sign-in?email=${encodeURIComponent(newEmail)}&next=${encodeURIComponent(next)}`,
+          signInLocale,
+        ),
+        error: 'That email already has an account. Sign in and we will attach this draft.',
       };
     }
   }
 
-  const resumeHref = await draftResumeHref(guest.id, parsed.data.filingId);
+  const resumeHref = await draftResumeHref(
+    guest.id,
+    parsed.data.filingId,
+    parsed.data.returnStep,
+  );
 
   // Set the password they chose, but stay a GUEST until sign-in succeeds.
   // Clearing the guest session first is what dropped people on /sign-in and
@@ -565,23 +527,33 @@ export async function claimGuestAccount(
   };
 }
 
-async function draftResumeHref(userId: string, filingId?: string): Promise<string> {
+async function draftResumeHref(
+  userId: string,
+  filingId?: string,
+  returnStep?: number,
+): Promise<string> {
+  const visibleStep =
+    returnStep && returnStep >= 1 && returnStep <= TOTAL_STEPS ? returnStep : null;
   if (filingId) {
     const owned = await prisma.filing.findFirst({
       where: { id: filingId, userId, status: 'DRAFT' },
-      select: { id: true, currentStep: true },
+      select: { id: true, currentStep: true, locale: true },
     });
     if (owned) {
-      const step = owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2;
-      return `/wizard/${owned.id}/${step}`;
+      const step =
+        visibleStep ?? (owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2);
+      return hrefForLocale(`/wizard/${owned.id}/${step}`, pickLocale(await storedLocale(), owned.locale));
     }
   }
   const draft = await prisma.filing.findFirst({
     where: { userId, status: 'DRAFT' },
     orderBy: { updatedAt: 'desc' },
-    select: { id: true, currentStep: true },
+    select: { id: true, currentStep: true, locale: true },
   });
-  if (!draft) return '/dashboard';
-  const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
-  return `/wizard/${draft.id}/${step}`;
+  if (!draft) {
+    return hrefForLocale('/dashboard', pickLocale(await storedLocale(), null));
+  }
+  const step =
+    visibleStep ?? (draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2);
+  return hrefForLocale(`/wizard/${draft.id}/${step}`, pickLocale(await storedLocale(), draft.locale));
 }

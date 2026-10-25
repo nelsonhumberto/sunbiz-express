@@ -50,10 +50,11 @@ export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
       return;
     }
     start(async () => {
-      // Confirm a PaymentIntent for exactly the renewal price. No filingId is
-      // passed so the amount isn't bounded to the (larger) formation total.
+      // The server charges this service's snapshotted renewal price.
       const result = await cardRef.current!.confirm({
         amountCents: props.renewalPriceCents,
+        purpose: 'ra_renewal',
+        raServiceId: props.raServiceId,
         cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
         savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
       });

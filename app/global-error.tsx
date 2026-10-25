@@ -1,18 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useErrorLocale } from '@/components/i18n/useErrorLocale';
+import { ERROR_PAGE_COPY } from '@/lib/error-page-copy';
 import { logger } from '@/lib/logger';
 
 /**
  * Last-resort error boundary that Next.js renders if the root layout
- * itself throws. We log the error to our central logger (which today
- * goes to `console.error` with a stable prefix - easy to grep in
- * Vercel logs and easy to forward to Sentry later) and show a clean
- * recovery UI instead of the default blank page.
- *
- * The May 2026 audit flagged that the wizard was silently catching
- * empty-string exceptions via a React boundary. Routing them through
- * `logger.error` ensures we no longer lose signal.
+ * itself throws. Copy follows the public URL because this boundary
+ * replaces the layout and has no next-intl provider.
  */
 export default function GlobalError({
   error,
@@ -21,6 +17,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useErrorLocale();
+  const copy = ERROR_PAGE_COPY[locale];
+
   useEffect(() => {
     logger.error('Unhandled root error', {
       area: 'app',
@@ -30,7 +29,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body>
         <main
           style={{
@@ -46,15 +45,13 @@ export default function GlobalError({
         >
           <div style={{ maxWidth: 480, textAlign: 'center' }}>
             <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 12 }}>
-              Something went wrong.
+              {copy.globalTitle}
             </h1>
             <p style={{ color: '#666', marginBottom: 24, lineHeight: 1.5 }}>
-              We&apos;ve been notified and are looking into it. You can try
-              again, or email{' '}
+              {copy.globalBody}{' '}
               <a href="mailto:help@launchforma.com" style={{ color: '#1d4ed8' }}>
                 help@launchforma.com
-              </a>{' '}
-              if it persists.
+              </a>
             </p>
             {error.digest && (
               <p
@@ -65,7 +62,7 @@ export default function GlobalError({
                   fontFamily: 'monospace',
                 }}
               >
-                Error ref: {error.digest}
+                {copy.ref}: {error.digest}
               </p>
             )}
             <button
@@ -81,7 +78,7 @@ export default function GlobalError({
                 cursor: 'pointer',
               }}
             >
-              Try again
+              {copy.tryAgain}
             </button>
           </div>
         </main>

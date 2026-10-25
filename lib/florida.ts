@@ -477,9 +477,10 @@ export function isValidEffectiveDate(date: Date): { valid: boolean; error?: stri
 // ─── Annual report deadline ──────────────────────────────────────────────
 
 /**
- * Compute the next Annual Report due date for a Florida entity.
- * Reports are due January 1 - May 1 of each year.
- * Entities formed Oct 1 - Dec 31 are not required to file in their formation year.
+ * Next Florida annual report. The first one is due between January 1 and
+ * May 1 of the calendar year after formation, then every year by May 1.
+ * May 1 itself is still due that day. An October formation is not pushed
+ * an extra year.
  */
 export function computeNextAnnualReport(formationDate: Date, now: Date = new Date()): {
   dueDate: Date;
@@ -487,17 +488,11 @@ export function computeNextAnnualReport(formationDate: Date, now: Date = new Dat
   filingWindow: { open: Date; close: Date };
 } {
   const formationYear = formationDate.getFullYear();
-  const formationMonth = formationDate.getMonth(); // 0-indexed (Oct = 9)
-  let reportYear = now.getFullYear() + (now.getMonth() >= 4 ? 1 : 0); // if past May, next year
+  let reportYear = formationYear + 1;
+  const deadline = (year: number) => new Date(year, 4, 1, 23, 59, 0);
+  while (now > deadline(reportYear)) reportYear += 1;
 
-  // Entities formed Oct-Dec defer first annual report by one year
-  if (formationMonth >= 9 && formationYear === reportYear - 1) {
-    reportYear = formationYear + 2;
-  } else if (reportYear < formationYear + 1) {
-    reportYear = formationYear + 1;
-  }
-
-  const open = new Date(reportYear, 0, 1); // Jan 1
-  const close = new Date(reportYear, 4, 1, 23, 59, 0); // May 1, 11:59pm
+  const open = new Date(reportYear, 0, 1);
+  const close = deadline(reportYear);
   return { dueDate: close, reportYear, filingWindow: { open, close } };
 }

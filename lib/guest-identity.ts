@@ -26,14 +26,44 @@ export function isPlaceholderGuestEmail(email: string | null | undefined): boole
 
 export type GuestEmailOwner = 'free' | 'self' | 'guest' | 'account';
 
-export type GuestEmailPlan = 'write' | 'noop' | 'adopt_guest' | 'hold_for_signin';
+/** keep_own never moves the draft or copies another guest's cookie. */
+export type GuestEmailPlan = 'write' | 'noop' | 'keep_own' | 'hold_for_signin';
 
 /** What to do with an email the visitor typed onto a guest draft. */
 export function planGuestEmailWrite(owner: GuestEmailOwner): GuestEmailPlan {
   if (owner === 'self') return 'noop';
   if (owner === 'free') return 'write';
-  if (owner === 'guest') return 'adopt_guest';
+  if (owner === 'guest') return 'keep_own';
   return 'hold_for_signin';
+}
+
+export type StartGuestOwner = 'free' | 'guest' | 'account';
+
+export type StartGuestSessionPlan = 'create' | 'separate' | 'sign_in';
+
+/**
+ * An email that already belongs to anyone gets a new guest for this browser,
+ * or a sign-in redirect. It never reuses that user's row or cookie.
+ */
+export function planStartGuestSession(owner: StartGuestOwner): StartGuestSessionPlan {
+  if (owner === 'account') return 'sign_in';
+  if (owner === 'guest') return 'separate';
+  return 'create';
+}
+
+/** Address this browser typed when it cannot be stored on the unique User.email. */
+export function readTypedGuestEmail(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { typedGuestEmail?: unknown };
+    if (typeof parsed?.typedGuestEmail !== 'string') return null;
+    const email = parsed.typedGuestEmail.trim().toLowerCase();
+    if (!email || email.endsWith('.invalid')) return null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+    return email;
+  } catch {
+    return null;
+  }
 }
 
 export function checkoutAllowsPayment(kind: 'user' | 'guest' | null | undefined): boolean {
@@ -74,9 +104,18 @@ export function planGuestDraftAttach(input: {
 export function shouldAttachGuestDraft(input: {
   guestEmail: string;
   accountEmail: string;
+  /** Real addresses this browser typed onto its own drafts. */
+  typedEmails?: string[];
 }): boolean {
-  if (isPlaceholderGuestEmail(input.guestEmail)) return true;
-  return input.guestEmail.trim().toLowerCase() === input.accountEmail.trim().toLowerCase();
+  const account = input.accountEmail.trim().toLowerCase();
+  if (!isPlaceholderGuestEmail(input.guestEmail)) {
+    return input.guestEmail.trim().toLowerCase() === account;
+  }
+  const typed = (input.typedEmails ?? [])
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email && !email.endsWith('.invalid') && !isPlaceholderGuestEmail(email));
+  if (typed.length === 0) return true;
+  return typed.includes(account);
 }
 
 export function wizardHrefForDraft(

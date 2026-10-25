@@ -1,3 +1,5 @@
+import { englishPathname } from './locale-paths';
+
 export type SpanishGuideLink = {
   href: string;
   /** Spanish page title. Must match the guide's `title` in messages/es.json. */
@@ -49,3 +51,15 @@ export const EN_GUIDES_INDEX_SPANISH_LINKS: readonly SpanishGuideLink[] = [
   SPANISH_GUIDE_LLC_VS_SOLE,
   SPANISH_GUIDE_LLC_APP,
 ];
+
+const SPANISH_ONLY_GUIDE_PATHS = EN_GUIDES_INDEX_SPANISH_LINKS.map((link) =>
+  englishPathname(link.href),
+);
+
+/** True for a Spanish-only guide, with or without the /es prefix. */
+export function isSpanishOnlyGuidePath(pathname: string): boolean {
+  const english = englishPathname(pathname);
+  return SPANISH_ONLY_GUIDE_PATHS.some(
+    (slug) => english === slug || english.startsWith(`${slug}/`),
+  );
+}

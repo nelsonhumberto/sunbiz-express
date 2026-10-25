@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
 import {
   ArrowLeft,
   Building2,
@@ -43,6 +46,7 @@ import {
   certificateOffer,
   certificateOrderPath,
   certificateOrderQuote,
+  displayedCertificateTitle,
   filingEntityType,
   filingFormationState,
 } from '@/lib/certificate-addons';
@@ -74,6 +78,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
     },
   });
   if (!filing || filing.userId !== session.user.id) notFound();
+  const locale = pickLocale(await getLocale(), filing.locale);
 
   // Resolve the formation state - defaults to FL for legacy filings that
   // pre-date the multi-state launch. We use the registry for state-specific
@@ -372,6 +377,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
           <CertificateAddonCard
             key={slug}
             href={certificateOrderPath(filing.id, slug)}
+            locale={locale}
             icon={isCopy ? <FileCheck className="h-5 w-5" /> : <Award className="h-5 w-5" />}
             title={isCopy ? tCert('copyTitle') : tCert('statusTitle')}
             body={isCopy ? tCert('copyCardBody') : tCert('statusCardBody')}
@@ -481,7 +487,12 @@ export default async function FilingDetailPage({ params }: PageProps) {
                           <Clock className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.title}</p>
+                          <p className="text-sm font-medium truncate">
+                            {displayedCertificateTitle(doc.documentType, doc.title, {
+                              CERT_STATUS: tDocs('CERT_STATUS'),
+                              CERT_COPY: tDocs('CERT_COPY'),
+                            })}
+                          </p>
                           <p className="text-xs text-amber-700">{tWizard('documentPendingState')}</p>
                         </div>
                         <Badge variant="outline" className="border-amber-300 text-amber-700">
@@ -500,7 +511,12 @@ export default async function FilingDetailPage({ params }: PageProps) {
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{doc.title}</p>
+                          <p className="text-sm font-medium truncate">
+                            {displayedCertificateTitle(doc.documentType, doc.title, {
+                              CERT_STATUS: tDocs('CERT_STATUS'),
+                              CERT_COPY: tDocs('CERT_COPY'),
+                            })}
+                          </p>
                           <p className="text-xs text-ink-subtle">{formatDate(doc.generatedAt)}</p>
                         </div>
                         <Download className="h-4 w-4 text-ink-subtle" />
@@ -647,6 +663,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
 
 function CertificateAddonCard({
   href,
+  locale,
   icon,
   title,
   body,
@@ -657,6 +674,7 @@ function CertificateAddonCard({
   orderable,
 }: {
   href: string;
+  locale: 'en' | 'es';
   icon: React.ReactNode;
   title: string;
   body: string;
@@ -683,7 +701,7 @@ function CertificateAddonCard({
         </div>
         {orderable ? (
           <Button asChild className="shrink-0">
-            <Link href={href}>{cta}</Link>
+            <Link href={hrefForLocale(href, locale)}>{cta}</Link>
           </Button>
         ) : null}
       </CardContent>

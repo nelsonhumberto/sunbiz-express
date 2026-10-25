@@ -75,7 +75,13 @@ describe('test-address suppression', () => {
       resendCalls.length = 0;
       log.mockClear();
       const result = await sendEmail({ type: args.type, to: args.to, filingId: 'fil_1' });
-      expect(result.status).toBe('SENT');
+      expect(result.status).toBe('SKIPPED_TEST');
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'SKIPPED_TEST' }),
+        }),
+      );
+      expect(update.mock.calls.at(-1)?.[0].data.sentAt).toBeUndefined();
       expect(send).not.toHaveBeenCalled();
       expect(resendCalls).toEqual([]);
       expect(log).toHaveBeenCalledWith(`[email] skipped test recipient: ${args.logged}`);
@@ -88,7 +94,7 @@ describe('test-address suppression', () => {
     delete process.env.RESEND_API_KEY;
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const result = await sendEmail({ type: 'WELCOME', to: 'qa+signup@example.com' });
-    expect(result.status).toBe('SENT');
+    expect(result.status).toBe('SKIPPED_TEST');
     expect(send).not.toHaveBeenCalled();
     expect(resendCalls).toEqual([]);
     expect(log).toHaveBeenCalledWith('[email] skipped test recipient: qa+signup@example.com');
@@ -101,6 +107,21 @@ describe('test-address suppression', () => {
     expect(resendCalls).toEqual([['re_test_key']]);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: 'buyer@example.com' }));
+  });
+
+  it('refuses a .invalid address before Resend, including the direct helper', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failed = await sendEmail({
+      type: 'WELCOME',
+      to: 'guest.abc@guest.launchforma.invalid',
+    });
+    expect(failed.status).toBe('FAILED');
+    expect(send).not.toHaveBeenCalled();
+    await expect(deliverEmailDirect('user@bar.invalid', 'Subject', '<p>Hi</p>')).rejects.toThrow(
+      /Invalid recipient/,
+    );
+    expect(send).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 
   it('skips a test recipient on the direct helper and still sends other local parts', async () => {

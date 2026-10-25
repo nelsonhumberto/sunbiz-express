@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
 import { GuestEmailField } from '../GuestEmailField';
+import { GuestSignInPrompt } from '../GuestSignInPrompt';
 import { cn } from '@/lib/utils';
 import {
   ACTIVE_FORMATION_STATES,
@@ -22,10 +23,12 @@ export function Step1Entity({
   filing,
   needsGuestEmail = false,
   initialGuestEmail = '',
+  pendingAccountEmail = '',
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
   initialGuestEmail?: string;
+  pendingAccountEmail?: string;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -40,13 +43,14 @@ export function Step1Entity({
   );
   const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail));
   const [stateCode, setStateCode] = useState<StateCode>(
     (filing.state && ACTIVE_FORMATION_STATES.includes(filing.state as StateCode)
       ? filing.state
       : 'FL') as StateCode,
   );
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const stateRule = FORMATION_STATES[stateCode];
 
   const ENTITY_OPTIONS = [
@@ -86,6 +90,7 @@ export function Step1Entity({
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
       if (res && res.ok === false) {
+        setNeedsSignIn(Boolean(res.needsSignIn));
         setEmailError(res.error);
         return res;
       }
@@ -101,7 +106,7 @@ export function Step1Entity({
           className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-2"
         >
           <MapPin className="h-3.5 w-3.5" />
-          Filing state
+          {t('filingState')}
         </div>
         <div
           className="flex flex-wrap gap-2"
@@ -254,8 +259,18 @@ export function Step1Entity({
           onChange={(value) => {
             setGuestEmail(value);
             setEmailError(null);
+            setNeedsSignIn(false);
           }}
           error={emailError}
+        />
+      )}
+
+      {needsSignIn && (
+        <GuestSignInPrompt
+          filingId={filing.id}
+          email={pendingAccountEmail || guestEmail}
+          returnStep={1}
+          filingLocale={filing.locale}
         />
       )}
 

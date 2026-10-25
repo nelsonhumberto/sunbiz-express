@@ -333,7 +333,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
   },
   {
     slug: 'cert_status',
-    name: 'Certificate of Status Handling',
+    name: 'Certificate of Status',
     description:
       'We pay the state\'s certificate fee, request the document, and email it to you the moment it lands.',
     // $34 service margin. FL LLC: $5 + $34 = $39. WY: $25 + $34 = $59. DE: $50 + $34 = $84.
@@ -344,7 +344,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
   },
   {
     slug: 'cert_copy',
-    name: 'Certified Copy Handling',
+    name: 'Certified Copy',
     description:
       'State-certified copy of your filed Articles. We pay the state fee and deliver the certified PDF for banks and lenders.',
     // $29 service margin. FL LLC: $30 + $29 = $59. WY: $30 + $29 = $59. DE: $50 + $29 = $79.

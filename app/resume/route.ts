@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { GUEST_COOKIE } from '@/lib/guest';
 import { guestResumeAllowed } from '@/lib/guest-identity';
+import { hrefForLocale } from '@/lib/app-href';
+import { pickLocale } from '@/lib/pick-locale';
 import { resumeWizardPath } from '@/lib/wizard-constants';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
   const filing = user
     ? await prisma.filing.findUnique({
         where: { id: filingId },
-        select: { id: true, userId: true, currentStep: true, status: true },
+        select: { id: true, userId: true, currentStep: true, status: true, locale: true },
       })
     : null;
 
@@ -48,7 +50,13 @@ export async function GET(request: NextRequest) {
   }
 
   const res = NextResponse.redirect(
-    new URL(resumeWizardPath(filing.id, filing.currentStep), request.url),
+    new URL(
+      hrefForLocale(
+        resumeWizardPath(filing.id, filing.currentStep),
+        pickLocale(null, filing.locale),
+      ),
+      request.url,
+    ),
   );
   res.cookies.set(GUEST_COOKIE, token, {
     httpOnly: true,

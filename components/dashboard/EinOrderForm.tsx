@@ -44,10 +44,11 @@ export function EinOrderForm(props: {
       return;
     }
     start(async () => {
-      // No filingId: the PaymentIntent stays separate from formation checkout,
-      // and purchaseEinAddOn verifies the exact amount server-side.
+      // purpose ein prices the catalog fee. The PaymentIntent is not the formation checkout.
       const result = await cardRef.current!.confirm({
         amountCents: props.priceCents,
+        filingId: props.filingId,
+        purpose: 'ein',
         cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
         savedPaymentMethodId: useSavedCard ? props.savedCard!.paymentMethodId : undefined,
       });

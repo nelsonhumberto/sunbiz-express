@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import {
@@ -21,7 +21,7 @@ type StepResult = { ok?: boolean; error?: string } | void | undefined;
  */
 export function useWizardSubmit() {
   const t = useTranslations('wizard');
-  const router = useRouter();
+  const router = useLocalizedRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const lock = useRef(false);

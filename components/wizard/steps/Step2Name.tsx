@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
 import { saveStep2 } from '@/actions/wizard';
@@ -13,6 +13,7 @@ import {
   type BusinessNameAssessment,
 } from '../NameCheckWidget';
 import { GuestEmailField } from '../GuestEmailField';
+import { GuestSignInPrompt } from '../GuestSignInPrompt';
 import type { WizardFiling } from '../types';
 import {
   Dialog,
@@ -28,27 +29,30 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
-import { nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
+import { nameCheckBlocksContinue, nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
 export function Step2Name({
   filing,
   needsGuestEmail = false,
   initialGuestEmail = '',
+  pendingAccountEmail = '',
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
   initialGuestEmail?: string;
+  pendingAccountEmail?: string;
 }) {
   const t = useTranslations('wizard');
   const [name, setName] = useState(filing.businessName ?? '');
   const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail));
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [showNameError, setShowNameError] = useState(false);
   const { pending, error, run } = useWizardSubmit();
-  const router = useRouter();
+  const router = useLocalizedRouter(filing.locale);
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
@@ -58,7 +62,8 @@ export function Step2Name({
   // not pass. A failed name lookup does not disable Continue.
   const isHardBlocked = assessment ? !assessment.valid : false;
   const nameTooShort = !nameHasMinimumSubstance(name);
-  const canContinue = !nameTooShort && !isHardBlocked;
+  const nameTaken = nameCheckBlocksContinue(result);
+  const canContinue = !nameTooShort && !isHardBlocked && !nameTaken;
 
   const saveAndAdvance = () => {
     run(async () => {
@@ -66,9 +71,14 @@ export function Step2Name({
         filingId: filing.id,
         businessName: name,
         available: result?.available ?? undefined,
+        nameStatus: result?.status,
         contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
       });
-      if (!res.ok) return { ok: false, error: res.error };
+      if (!res.ok) {
+        setNeedsSignIn('needsSignIn' in res && Boolean(res.needsSignIn));
+        setEmailError(res.error ?? null);
+        return { ok: false, error: res.error };
+      }
       router.push(`/wizard/${filing.id}/3`);
     });
   };
@@ -81,7 +91,7 @@ export function Step2Name({
     if (!canContinue) return;
     // If the state lookup says the name is taken, confirm via an accessible
     // dialog (keyboard + screen-reader friendly) instead of window.confirm().
-    if (result && !result.available) {
+    if (result && !result.available && !nameCheckBlocksContinue(result)) {
       setShowUnavailable(true);
       return;
     }
@@ -96,8 +106,18 @@ export function Step2Name({
           onChange={(value) => {
             setGuestEmail(value);
             setEmailError(null);
+            setNeedsSignIn(false);
           }}
           error={emailError}
+        />
+      )}
+
+      {needsSignIn && (
+        <GuestSignInPrompt
+          filingId={filing.id}
+          email={pendingAccountEmail || guestEmail}
+          returnStep={2}
+          filingLocale={filing.locale}
         />
       )}
 

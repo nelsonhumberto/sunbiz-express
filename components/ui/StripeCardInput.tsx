@@ -46,6 +46,15 @@ export interface ConfirmOptions {
    * prices this from the filing instead of the formation checkout total.
    */
   certificateSlug?: string;
+  /**
+   * Which catalog price to charge. The server ignores amountCents.
+   * Formation is the default when a filingId is set.
+   */
+  purpose?: 'formation' | 'annual_report' | 'ein' | 'ra_renewal';
+  /** Validated server-side. A client discount amount is not accepted. */
+  couponCode?: string;
+  raServiceId?: string;
+  useOurRa?: boolean;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
@@ -67,7 +76,17 @@ const InnerCard = forwardRef(function InnerCard(
 
   useImperativeHandle(ref, () => ({
     async confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }> {
-      const { amountCents, cardholderName, filingId, savedPaymentMethodId, certificateSlug } = opts;
+      const {
+        amountCents,
+        cardholderName,
+        filingId,
+        savedPaymentMethodId,
+        certificateSlug,
+        purpose,
+        couponCode,
+        raServiceId,
+        useOurRa,
+      } = opts;
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
       // 1. Create PaymentIntent server-side
@@ -78,6 +97,10 @@ const InnerCard = forwardRef(function InnerCard(
           amountCents,
           ...(filingId ? { filingId } : {}),
           ...(certificateSlug ? { certificateSlug } : {}),
+          ...(purpose ? { purpose } : {}),
+          ...(couponCode ? { couponCode } : {}),
+          ...(raServiceId ? { raServiceId } : {}),
+          ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
         }),

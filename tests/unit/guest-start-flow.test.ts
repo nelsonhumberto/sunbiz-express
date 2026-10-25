@@ -12,6 +12,8 @@ import {
   placeholderGuestEmail,
   planGuestDraftAttach,
   planGuestEmailWrite,
+  planStartGuestSession,
+  readTypedGuestEmail,
   shouldAttachGuestDraft,
   wizardHrefForDraft,
 } from '@/lib/guest-identity';
@@ -64,6 +66,11 @@ describe('guest start flow', () => {
     expect(action).toContain('setGuestCookie');
     expect(action).toContain('prisma.filing.create');
     expect(action).toContain('decideDraftNameResume');
+    expect(page).not.toContain('prisma.filing.create');
+    expect(page).not.toContain('prisma.user.create');
+    expect(launch).not.toContain('useEffect');
+    expect(launch).toContain("t('continue')");
+    expect(launch).toContain('openGuestDraft');
     expect(action).not.toContain('seededName ? 3');
     expect(existsSync('app/start/guest-start-form.tsx')).toBe(false);
   });
@@ -76,17 +83,38 @@ describe('guest start flow', () => {
     expect(isRecoverySkipAddress('ada@example.com')).toBe(false);
     expect(planGuestEmailWrite('free')).toBe('write');
     expect(planGuestEmailWrite('self')).toBe('noop');
-    expect(planGuestEmailWrite('guest')).toBe('adopt_guest');
+    expect(planGuestEmailWrite('guest')).toBe('keep_own');
     expect(planGuestEmailWrite('account')).toBe('hold_for_signin');
+    expect(planStartGuestSession('free')).toBe('create');
+    expect(planStartGuestSession('guest')).toBe('separate');
+    expect(planStartGuestSession('account')).toBe('sign_in');
+    expect(readTypedGuestEmail(JSON.stringify({ typedGuestEmail: 'Ada@Example.com' }))).toBe(
+      'ada@example.com',
+    );
+    expect(readTypedGuestEmail(JSON.stringify({ typedGuestEmail: 'guest.a@guest.launchforma.invalid' }))).toBe(
+      null,
+    );
 
     const saver = source('actions/guest-email.ts');
     expect(saver).toContain('email: normalized');
     expect(saver).toContain('planGuestEmailWrite');
+    expect(saver).toContain('typedGuestEmail');
+    expect(saver).not.toContain('adopt_guest');
+    expect(saver).not.toContain('setGuestCookie');
+    const startAction = source('actions/guest-start.ts');
+    expect(startAction).toContain('planStartGuestSession');
+    expect(startAction).not.toContain('guestUser = existing');
+    expect(startAction).not.toContain('already has a saved draft');
+    expect(source('actions/annual-report.ts')).not.toContain("accountStatus !== 'GUEST'");
     const wizard = source('actions/wizard.ts');
     expect(wizard).toContain('persistGuestEmail');
     expect(wizard).toContain('contactEmail');
-    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestEmailField');
-    expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('GuestEmailField');
+    expect(wizard).toContain('needsSignIn: true');
+    expect(wizard).not.toContain('if (saved.needsSignIn) return { ok: true }');
+    expect(source('components/wizard/steps/Step2Name.tsx')).toContain('GuestSignInPrompt');
+    expect(source('components/wizard/steps/Step1Entity.tsx')).toContain('GuestSignInPrompt');
+    expect(source('components/wizard/GuestSignInPrompt.tsx')).toContain("t('accountGateSignIn')");
+    expect(source('app/wizard/[filingId]/[step]/page.tsx')).toContain('pendingAccountEmail={pendingAccountEmail}');
   });
 
   it('requires an account before checkout', () => {
@@ -96,7 +124,11 @@ describe('guest start flow', () => {
     expect(CHECKOUT_ACCOUNT_REQUIRED).toBe('Create an account before you pay.');
     expect(source('actions/payments.ts')).toContain('checkoutAllowsPayment');
     expect(source('actions/payments.ts')).toContain('CHECKOUT_ACCOUNT_REQUIRED');
-    expect(source('app/api/stripe/payment-intent/route.ts')).toContain('checkoutAllowsPayment');
+    const paymentRoute = source('app/api/stripe/payment-intent/route.ts');
+    expect(paymentRoute).toContain('CHECKOUT_ACCOUNT_REQUIRED');
+    expect(paymentRoute).toContain('getGuestUser');
+    expect(paymentRoute.indexOf('await auth()')).toBeLessThan(paymentRoute.indexOf('await request.json()'));
+    expect(paymentRoute).not.toContain('amountCents >');
     const payment = source('components/wizard/steps/Step12Payment.tsx');
     expect(payment).toContain('GuestCheckoutAccount');
     expect(payment).toContain('nextDisabled={isGuest}');
@@ -129,6 +161,20 @@ describe('guest start flow', () => {
 
     const placeholder = placeholderGuestEmail('tok');
     expect(shouldAttachGuestDraft({ guestEmail: placeholder, accountEmail: 'ada@example.com' })).toBe(true);
+    expect(
+      shouldAttachGuestDraft({
+        guestEmail: placeholder,
+        accountEmail: 'ada@example.com',
+        typedEmails: ['ada@example.com'],
+      }),
+    ).toBe(true);
+    expect(
+      shouldAttachGuestDraft({
+        guestEmail: placeholder,
+        accountEmail: 'other@example.com',
+        typedEmails: ['ada@example.com'],
+      }),
+    ).toBe(false);
     expect(shouldAttachGuestDraft({ guestEmail: 'ada@example.com', accountEmail: 'Ada@example.com' })).toBe(true);
     expect(shouldAttachGuestDraft({ guestEmail: 'other@example.com', accountEmail: 'ada@example.com' })).toBe(false);
 
@@ -173,6 +219,16 @@ describe('guest start flow', () => {
         token: 'other',
         filingUserId: 'guest_1',
         guestUserId: 'guest_1',
+        filingStatus: 'DRAFT',
+      }),
+    ).toBe(false);
+    expect(
+      guestResumeAllowed({
+        accountStatus: 'GUEST',
+        guestToken: 'tok_a',
+        token: 'tok_a',
+        filingUserId: 'guest_b',
+        guestUserId: 'guest_a',
         filingStatus: 'DRAFT',
       }),
     ).toBe(false);

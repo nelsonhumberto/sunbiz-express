@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { messagesForPath, stripSpanishPrefix } from '@/i18n/config';
 
@@ -37,6 +38,7 @@ describe('stripSpanishPrefix', () => {
       disclosure: { notAffiliated: 'Private' },
       footer: { contact: 'Contact' },
       nav: { pricing: 'Pricing' },
+      common: { skipToContent: 'Skip to main content' },
       legalTerms: { body: 'mailto:legal@launchforma.com' },
       auth: { sidePanelSocial: 'help@launchforma.com' },
       offer: { headline1: 'Form your business' },
@@ -45,10 +47,15 @@ describe('stripSpanishPrefix', () => {
     expect(Object.keys(slim).sort()).toEqual([
       'assistant',
       'businessServices',
+      'common',
       'disclosure',
       'footer',
       'nav',
     ]);
+    expect(slim.common).toEqual({ skipToContent: 'Skip to main content' });
+    const compliance = readFileSync('app/(compliance-landing)/layout.tsx', 'utf8');
+    expect(compliance).toContain('<SkipLink label={t(\'skip\')} />');
+    expect(messagesForPath('/business-services', messages)).not.toHaveProperty('common');
     expect(JSON.stringify(slim)).not.toMatch(/@launchforma\.com|mailto:/);
     expect(messagesForPath('/about', messages)).toHaveProperty('legalTerms');
     expect(messagesForPath('/about', messages)).toHaveProperty('offer');

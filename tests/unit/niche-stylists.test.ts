@@ -120,9 +120,9 @@ describe('stylists and barbers copy', () => {
   it('keeps the supplied wording, with no em dashes and no tracking params', () => {
     expect(enCopy.metaTitle).toBe('LLC for Hair Stylists and Barbers in Florida | $149');
     expect(enCopy.metaDescription).toBe(
-      'Form your Florida LLC online in minutes. Essential is $149 and includes the $125 state fee. We file it with the state. Built for your chair.',
+      'Start your Florida LLC online in minutes. Essential is $149 and includes the $125 state fee. We file it with the state. Built for your chair.',
     );
-    expect(enCopy.h1).toBe('Your chair, your business. Make it official in minutes.');
+    expect(enCopy.h1).toBe('Your chair, your business. Start your LLC in minutes.');
     expect(enCopy.subhead).toBe(
       "Fill out a short form online, we file your LLC with the State of Florida, and you're done. LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015.",
     );
@@ -168,9 +168,9 @@ describe('stylists and barbers copy', () => {
 
     expect(esCopy.metaTitle).toBe('LLC para estilistas y barberos en Florida | Esencial $149');
     expect(esCopy.metaDescription).toBe(
-      'Forma tu LLC en Florida en línea en unos minutos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Nosotros la presentamos ante el estado.',
+      'Empieza tu LLC en Florida en línea en unos minutos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Nosotros la presentamos ante el estado.',
     );
-    expect(esCopy.h1).toBe('Tu silla, tu negocio. Hazlo oficial en minutos.');
+    expect(esCopy.h1).toBe('Tu silla, tu negocio. Empieza tu LLC en minutos.');
     expect(esCopy.subhead).toBe(
       'Llenas un formulario corto en línea, nosotros presentamos tu LLC ante el Estado de Florida y listo. LaunchForma es un servicio en línea para formar negocios en Florida, de un matrimonio que ayuda a dueños de negocio desde 2015.',
     );
@@ -213,6 +213,7 @@ describe('stylists and barbers copy', () => {
     for (const blob of [JSON.stringify(en.nicheStylists), JSON.stringify(es.nicheStylists)]) {
       expect(blob).not.toMatch(/—|–/);
       expect(blob).not.toMatch(/[?&]ref=/);
+      expect(blob).not.toMatch(/official in minutes|oficial en minutos/);
     }
   });
 

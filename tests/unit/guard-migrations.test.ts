@@ -276,6 +276,7 @@ describe('pull request guard', () => {
       addedMigrations: [drop],
       approvedNames: new Set(),
       approvedDiff: '',
+      baseMigrationNames: new Set(HISTORICAL_UPDATES),
     });
     expect(errors).toEqual([
       'prisma/migrations/20261025200000_drop_partner_click_id/migration.sql is added by this pull request and has destructive SQL (DROP COLUMN, ALTER TABLE ... DROP). It is not listed in prisma/destructive-migrations-approved.txt. An entry needs Nelson\'s explicit OK.',
@@ -288,27 +289,36 @@ describe('pull request guard', () => {
         addedMigrations: [drop],
         approvedNames: new Set([drop.name]),
         approvedDiff: '',
+        baseMigrationNames: new Set(HISTORICAL_UPDATES),
       }),
     ).toEqual([]);
   });
 
-  it('fails when the pull request itself adds an approved-list entry', () => {
-    const diff = `
-diff --git a/prisma/destructive-migrations-approved.txt b/prisma/destructive-migrations-approved.txt
---- a/prisma/destructive-migrations-approved.txt
-+++ b/prisma/destructive-migrations-approved.txt
-@@ -1,0 +1,2 @@
-+# An entry needs Nelson's explicit OK.
-+20260804180000_add_ra_renewal_fields
-`;
-    expect(addedApprovedEntries(diff)).toEqual(['20260804180000_add_ra_renewal_fields']);
+  it('allows an approved-list entry when that migration folder already exists on the base', () => {
+    const diff = HISTORICAL_UPDATES.map((name) => `+${name}`).join('\n');
+    expect(addedApprovedEntries(diff)).toEqual(HISTORICAL_UPDATES);
+    expect(
+      guardPullRequest({
+        addedMigrations: [],
+        approvedNames: new Set(HISTORICAL_UPDATES),
+        approvedDiff: diff,
+        baseMigrationNames: new Set(HISTORICAL_UPDATES),
+      }),
+    ).toEqual([]);
+  });
+
+  it('fails an approved-list entry for a new migration or a name that is not on the base', () => {
+    const missing = '20990101000000_not_on_base';
+    const diff = [`+${drop.name}`, `+${missing}`].join('\n');
     const errors = guardPullRequest({
-      addedMigrations: [],
-      approvedNames: new Set(['20260804180000_add_ra_renewal_fields']),
+      addedMigrations: [drop],
+      approvedNames: new Set([drop.name, missing]),
       approvedDiff: diff,
+      baseMigrationNames: new Set(HISTORICAL_UPDATES),
     });
     expect(errors).toEqual([
-      'This pull request adds 20260804180000_add_ra_renewal_fields to prisma/destructive-migrations-approved.txt. An entry needs Nelson\'s explicit OK.',
+      `This pull request adds ${drop.name} to prisma/destructive-migrations-approved.txt. An entry needs Nelson's explicit OK.`,
+      `This pull request adds ${missing} to prisma/destructive-migrations-approved.txt. An entry needs Nelson's explicit OK.`,
     ]);
   });
 });

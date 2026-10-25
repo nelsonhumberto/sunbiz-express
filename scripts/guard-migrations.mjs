@@ -16,8 +16,12 @@
  * the database host.
  *
  * Pull requests run this file with `--ci <base>`. That mode diffs the
- * migrations added by the pull request against the base and also rejects
- * new lines in the approved list. It needs a full git history.
+ * migrations added by the pull request against the base. A destructive
+ * migration added by the pull request must already be on the approved list.
+ * An approved-list line the pull request adds is accepted only when that
+ * migration folder already exists on the base. A new migration, or a name
+ * that is not on the base, still needs Nelson's explicit OK. This mode
+ * needs a full git history.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -262,7 +266,13 @@ export function addedApprovedEntries(diffText) {
   return entries;
 }
 
-export function guardPullRequest({ addedMigrations, approvedNames, approvedDiff }) {
+export function guardPullRequest({
+  addedMigrations,
+  approvedNames,
+  approvedDiff,
+  baseMigrationNames,
+}) {
+  const onBase = baseMigrationNames instanceof Set ? baseMigrationNames : new Set();
   const errors = [];
   for (const migration of addedMigrations) {
     const kinds = destructiveKinds(migration.sql);
@@ -274,6 +284,7 @@ export function guardPullRequest({ addedMigrations, approvedNames, approvedDiff 
     );
   }
   for (const entry of addedApprovedEntries(approvedDiff)) {
+    if (onBase.has(entry)) continue;
     errors.push(
       `This pull request adds ${entry} to ${APPROVED_FILE}. An entry needs Nelson's explicit OK.`,
     );
@@ -372,6 +383,25 @@ function runCi(root, base) {
     );
     process.exit(1);
   }
+  const baseFolders = runCaptured('git', [
+    'ls-tree',
+    '-d',
+    '--name-only',
+    `${base}:prisma/migrations`,
+  ]);
+  if (baseFolders.status !== 0) {
+    console.error(
+      'Migration guard failed: could not list migration folders on the base branch. A full history is required.',
+    );
+    process.exit(1);
+  }
+  const baseMigrationNames = new Set(
+    baseFolders.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.split('/').pop()),
+  );
   const addedMigrations = [];
   for (const file of names.stdout.split('\n').map((line) => line.trim()).filter(Boolean)) {
     const match = file.match(/^prisma\/migrations\/([^/]+)\/migration\.sql$/);
@@ -395,6 +425,7 @@ function runCi(root, base) {
     addedMigrations,
     approvedNames: parseApprovedNames(approvedText),
     approvedDiff: approved.stdout,
+    baseMigrationNames,
   });
   if (errors.length > 0) printErrors(errors);
   console.log('Migration guard passed.');

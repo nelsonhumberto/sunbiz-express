@@ -17,6 +17,7 @@ import {
   ADD_ON_BY_SLUG,
   ANNUAL_REPORT_SERVICE_FEE_CENTS,
   computeCost,
+  getFloridaAnnualReportStateFees,
   RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
   type AddOnSlug,
@@ -467,13 +468,16 @@ async function priceOwnedCharge(input: {
   }
 
   if (input.purpose === 'annual_report') {
-    const compliance = annualComplianceFor(
-      getFormationState(filing.state),
-      filing.entityType === 'CORP' ? 'CORP' : 'LLC',
-    );
+    const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
+    const rule = getFormationState(filing.state);
     const raFee = input.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
+    // Florida's late fee is computed here, not from the client amount.
+    const stateFeeCents =
+      rule.code === 'FL'
+        ? getFloridaAnnualReportStateFees(new Date(), { entityType }).totalCents
+        : annualComplianceFor(rule, entityType).baseFeeCents;
     return {
-      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + compliance.baseFeeCents + raFee,
+      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFeeCents + raFee,
       filingId: filing.id,
       purpose: 'annual_report',
       storedPaymentIntentId: null,

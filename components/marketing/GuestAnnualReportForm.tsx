@@ -15,8 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
-import { FL } from '@/lib/florida';
+import {
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  getFloridaAnnualReportStateFees,
+  RA_ANNUAL_SERVICE_FEE_CENTS,
+} from '@/lib/pricing';
 
 type Address = { street1: string; street2?: string; city: string; state: string; zip: string };
 type Officer = { name: string; title: string };
@@ -164,9 +167,10 @@ export function GuestAnnualReportForm() {
   // Stripe
   const cardRef = useRef<StripeCardHandle>(null);
 
-  const stateFee = entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
+  // Same helper the server action uses, so the summary matches the charge.
+  const stateFees = getFloridaAnnualReportStateFees(new Date(), { entityType });
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raAddon;
+  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents + raAddon;
   const reportYear = new Date().getFullYear();
 
   const onSubmit = () => {
@@ -456,7 +460,10 @@ export function GuestAnnualReportForm() {
           {/* Price breakdown */}
           <div className="rounded-md border border-border divide-y divide-border text-sm">
             <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('serviceFee')}</span><span>{formatCurrency(ANNUAL_REPORT_SERVICE_FEE_CENTS)}</span></div>
-            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(stateFee)}</span></div>
+            <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('stateFee', { entity: entityType })}</span><span>{formatCurrency(stateFees.filingFeeCents)}</span></div>
+            {stateFees.lateFeeCents > 0 && (
+              <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('lateFee')}</span><span>{formatCurrency(stateFees.lateFeeCents)}</span></div>
+            )}
             {useOurRa && <div className="flex justify-between px-3 py-2"><span className="text-ink-muted">{t('raLine')}</span><span>{formatCurrency(RA_ANNUAL_SERVICE_FEE_CENTS)}</span></div>}
             <div className="flex justify-between px-3 py-2 font-semibold bg-muted/30"><span>{t('total')}</span><span>{formatCurrency(totalCents)}</span></div>
           </div>

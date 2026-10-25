@@ -717,7 +717,8 @@
     "termsRequired": "Por favor acepta los términos para continuar.",
     "cardShort": "El número de tarjeta es muy corto.",
     "cardholderRequired": "El nombre del titular de la tarjeta es obligatorio.",
-    "successToast": "¡Reporte anual radicado con éxito! Tu pago ha sido procesado."
+    "successToast": "¡Reporte anual radicado con éxito! Tu pago ha sido procesado.",
+    "lateFee": "Recargo por presentación tardía (Florida)"
   },
   "wizard": {
     "saveAndExit": "Guardar y salir",
@@ -1542,6 +1543,7 @@
     "emailLabel": "Tu correo (para la confirmación)",
     "serviceFee": "Tarifa de servicio del reporte anual",
     "stateFee": "Tarifa estatal de Florida ({entity})",
+    "lateFee": "Recargo por presentación tardía (Florida)",
     "raLine": "Agente Registrado (1 año)",
     "total": "Total",
     "cardName": "Nombre en la tarjeta",

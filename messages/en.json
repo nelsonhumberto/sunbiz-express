@@ -717,7 +717,8 @@
     "termsRequired": "Please accept the terms to continue.",
     "cardShort": "Card number is too short.",
     "cardholderRequired": "Cardholder name is required.",
-    "successToast": "Annual report filed successfully! Your payment has been processed."
+    "successToast": "Annual report filed successfully! Your payment has been processed.",
+    "lateFee": "Late filing fee (Florida)"
   },
   "wizard": {
     "saveAndExit": "Save & exit",
@@ -1542,6 +1543,7 @@
     "emailLabel": "Your email (for confirmation)",
     "serviceFee": "Annual report service fee",
     "stateFee": "Florida state filing fee ({entity})",
+    "lateFee": "Late filing fee (Florida)",
     "raLine": "Registered Agent (1 yr)",
     "total": "Total",
     "cardName": "Name on card",

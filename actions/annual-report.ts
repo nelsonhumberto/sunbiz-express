@@ -8,7 +8,11 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import {
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  getFloridaAnnualReportStateFees,
+  RA_ANNUAL_SERVICE_FEE_CENTS,
+} from '@/lib/pricing';
 import {
   ACTIVE_FORMATION_STATES,
   annualComplianceFor,
@@ -81,6 +85,33 @@ async function resolveUserId(
   return byEmail?.id ?? null;
 }
 
+/**
+ * Server quote for an annual-report checkout. Florida adds the $400 late
+ * fee from getFloridaAnnualReportStateFees. Other states keep their base fee.
+ * The late fee is stored on the order and included in the payment's state fee.
+ */
+function quoteAnnualReport(
+  stateCode: StateCode,
+  entityType: 'LLC' | 'CORP',
+  useOurRa: boolean,
+  now: Date = new Date(),
+) {
+  const raFee = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
+  const base = annualComplianceFor(getFormationState(stateCode), entityType);
+  const florida =
+    stateCode === 'FL' ? getFloridaAnnualReportStateFees(now, { entityType }) : null;
+  const filingFeeCents = florida ? florida.filingFeeCents : base.baseFeeCents;
+  const lateFeeCents = florida ? florida.lateFeeCents : 0;
+  const stateFilingFeeCents = filingFeeCents + lateFeeCents;
+  return {
+    filingFeeCents,
+    lateFeeCents,
+    stateFilingFeeCents,
+    raFee,
+    totalCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents + raFee,
+  };
+}
+
 export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   const data = SubmitSchema.parse(input);
   const session = await auth();
@@ -138,15 +169,14 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // State-aware annual compliance fee. FL annual report = $138.75 LLC /
-  // $150 Corp; WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225
-  // minimum franchise tax. The wizard-side `AnnualReport.filingFeeCents`
-  // already mirrors this number; we recompute here for safety.
-  const stateRule = getFormationState(filingStateCode);
-  const compliance = annualComplianceFor(stateRule, filing.entityType as 'LLC' | 'CORP');
-  const stateFee = compliance.baseFeeCents;
-  const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
+  // Recomputed on the server so the client cannot drop the Florida late fee.
+  // FL LLC = $138.75, FL corp = $150, plus $400 after May 1 Eastern.
+  // WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225 minimum.
+  const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
+  const quote = quoteAnnualReport(filingStateCode, entityType, data.useOurRa);
+  if (Math.abs(pi.amount - quote.totalCents) > 1) {
+    return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -203,8 +233,9 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
         data: {
           status: 'FILED',
           filedDate: new Date(),
-          filingFeeCents: stateFee,
-          totalCostCents: totalCents,
+          filingFeeCents: quote.filingFeeCents,
+          lateFeeCents: quote.lateFeeCents,
+          totalCostCents: quote.totalCents,
           notes: `Signed by: ${data.signingOfficerName}${data.useOurRa ? ' | RA service added' : ''}`,
         },
       });
@@ -218,9 +249,9 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
           amountCents: pi.amount,
           status: 'SUCCEEDED',
           isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
-          stateFilingFeeCents: stateFee,
+          stateFilingFeeCents: quote.stateFilingFeeCents,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
-          registeredAgentY1Cents: raFee,
+          registeredAgentY1Cents: quote.raFee,
           operatingAgreementCents: 0,
           einCents: 0,
           domainCents: 0,
@@ -318,19 +349,13 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // The guest annual report flow is FL-only (Sunbiz lookup) - non-FL guests
-  // can't reach this code path because there is no equivalent state lookup.
-  // Use the FL formation registry entry so the math always matches the
-  // authenticated path.
-  const stateRule = getFormationState('FL');
-  const compliance = annualComplianceFor(stateRule, data.entityType);
-  const stateFee = compliance.baseFeeCents;
-  const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
+  // Guest annual reports are Florida-only (Sunbiz lookup). The server quote
+  // includes the $400 late fee after May 1 so the client cannot skip it.
+  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa);
   const email = data.guestEmail.toLowerCase().trim();
 
   // Verify Stripe amount matches our expected total (±1 cent for rounding)
-  if (Math.abs(pi.amount - totalCents) > 1) {
+  if (Math.abs(pi.amount - quote.totalCents) > 1) {
     return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
   }
 
@@ -406,8 +431,9 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           dueDate: new Date(`${data.reportYear}-05-01T23:59:00`),
           status: 'FILED',
           filedDate: new Date(),
-          filingFeeCents: stateFee,
-          totalCostCents: totalCents,
+          filingFeeCents: quote.filingFeeCents,
+          lateFeeCents: quote.lateFeeCents,
+          totalCostCents: quote.totalCents,
           notes: `Guest filing | Signed by: ${data.signingOfficerName}${data.useOurRa ? ' | RA added' : ''}`,
         },
       });
@@ -421,9 +447,9 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           amountCents: pi.amount,
           status: 'SUCCEEDED',
           isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
-          stateFilingFeeCents: stateFee,
+          stateFilingFeeCents: quote.stateFilingFeeCents,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
-          registeredAgentY1Cents: raFee,
+          registeredAgentY1Cents: quote.raFee,
           operatingAgreementCents: 0,
           einCents: 0,
           domainCents: 0,

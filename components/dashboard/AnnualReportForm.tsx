@@ -15,8 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
-import { FL } from '@/lib/florida';
+import {
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  getFloridaAnnualReportStateFees,
+  RA_ANNUAL_SERVICE_FEE_CENTS,
+} from '@/lib/pricing';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -119,8 +122,6 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
   const router = useLocalizedRouter();
   const [pending, startTransition] = useTransition();
 
-  const stateFee = props.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;
-
   // ── Field state ──
   const [ein, setEin] = useState(props.ein ?? '');
   const [raName, setRaName] = useState(props.registeredAgentName);
@@ -156,8 +157,10 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
   const cardRef = useRef<StripeCardHandle>(null);
 
   // ── Dynamic total ──
+  // Same helper the payment-intent route uses, so the summary matches the charge.
+  const stateFees = getFloridaAnnualReportStateFees(new Date(), { entityType: props.entityType });
   const raAddon = useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raAddon;
+  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFees.totalCents + raAddon;
 
   // ── Submit validation ──
   const canSubmit =
@@ -410,8 +413,14 @@ export function AnnualReportForm(props: AnnualReportFormProps) {
             </div>
             <div className="flex justify-between px-3 py-2">
               <span className="text-ink-muted">Florida state filing fee</span>
-              <span>{formatCurrency(stateFee)}</span>
+              <span>{formatCurrency(stateFees.filingFeeCents)}</span>
             </div>
+            {stateFees.lateFeeCents > 0 && (
+              <div className="flex justify-between px-3 py-2">
+                <span className="text-ink-muted">{t('lateFee')}</span>
+                <span>{formatCurrency(stateFees.lateFeeCents)}</span>
+              </div>
+            )}
             {useOurRa && (
               <div className="flex justify-between px-3 py-2">
                 <span className="text-ink-muted">Registered Agent Service (1 year)</span>

@@ -231,7 +231,7 @@ export async function processCheckout(input: {
     // The webhook can submit before this request returns. A guest still needs
     // the set-password success page. A signed-in checkout keeps the error.
     if (actor.kind === 'guest') {
-      const locale = pickLocale(await storedLocale(), filing.locale);
+      const locale = localeFromPathOrFiling(await storedLocale(), filing.locale);
       const pending = withGuestSetPasswordPending(
         safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null),
       );

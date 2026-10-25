@@ -138,4 +138,20 @@ describe('locale-preserving URLs', () => {
     expect(step1).toContain('fullWidth');
     expect(step1).toContain('isSubmit');
   });
+
+  it('keeps a guest set-password success redirect on the checkout path locale', () => {
+    const payments = source('actions/payments.ts');
+    expect(payments).toContain('submittedFilingHref');
+    expect(payments).toContain('withGuestSetPasswordPending');
+    expect(payments).toContain(
+      'localeFromPathOrFiling(await storedLocale(), filing.locale)',
+    );
+    expect(payments).not.toContain('pickLocale(');
+    expect(
+      hrefForLocale('/checkout/success?filing=fil_1&setPassword=1', 'es'),
+    ).toBe('/es/checkout/success?filing=fil_1&setPassword=1');
+    expect(
+      hrefForLocale('/checkout/success?filing=fil_1&setPassword=1', 'en'),
+    ).toBe('/checkout/success?filing=fil_1&setPassword=1');
+  });
 });

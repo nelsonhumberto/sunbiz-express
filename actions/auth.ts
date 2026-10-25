@@ -3,9 +3,8 @@
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { redirect as exactRedirect } from 'next/navigation';
-import { redirect as localeRedirect } from '@/i18n/navigation';
 import { hrefForLocale } from '@/lib/app-href';
-import { localeForRedirect, localizedNextParam } from '@/lib/locale-redirect';
+import { localeForRedirect, localizedNextParam, localizedRedirectHref } from '@/lib/locale-redirect';
 import { pickLocale } from '@/lib/pick-locale';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/lib/auth';
@@ -190,13 +189,11 @@ async function redirectAfterAuth(
 ): Promise<never> {
   const filingLocale = await localeOnWizardHref(resumeHref);
   const next = await localizedNextParam(typeof rawNext === 'string' ? rawNext : null, filingLocale);
-  const target = next ?? (resumeHref ? hrefForLocale(resumeHref, pickLocale(null, filingLocale)) : null);
-  if (target && (target.startsWith('/es/') || target === '/es' || target.startsWith('/es?'))) {
-    exactRedirect(target);
-    throw new Error('Redirect did not stop execution.');
-  }
+  const resume = resumeHref ? hrefForLocale(resumeHref, pickLocale(null, filingLocale)) : null;
   const locale = await localeForRedirect(filingLocale);
-  localeRedirect({ href: target ?? '/dashboard', locale });
+  // next/navigation keeps the query string. next-intl's redirect drops `?next=`
+  // and other params when the path is not one of its localized slugs.
+  exactRedirect(localizedRedirectHref(next ?? resume ?? '/dashboard', locale));
   throw new Error('Redirect did not stop execution.');
 }
 

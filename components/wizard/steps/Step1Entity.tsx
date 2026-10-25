@@ -296,6 +296,7 @@ export function Step1Entity({
  * other without forcing the visitor to bounce out to a guide page.
  */
 function EntityDecisionCard({ stateName }: { stateName: string }) {
+  const t = useTranslations('wizard');
   const [open, setOpen] = useState(false);
   return (
     <details
@@ -304,41 +305,30 @@ function EntityDecisionCard({ stateName }: { stateName: string }) {
     >
       <summary className="flex items-center gap-2 cursor-pointer list-none px-4 py-3 text-sm font-medium text-ink">
         <HelpCircle className="h-4 w-4 text-primary" />
-        <span>Not sure? LLC vs Corporation in 30 seconds</span>
+        <span>{t('entityCompareTitle')}</span>
         <span className="ml-auto text-xs text-ink-subtle">
-          {open ? 'Hide' : 'Show'}
+          {open ? t('entityCompareHide') : t('entityCompareShow')}
         </span>
       </summary>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-5">
         <div className="rounded-lg border border-border bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1.5">
-            Pick LLC
+            {t('entityCompareLlcTitle')}
           </p>
           <p className="text-sm text-ink-muted leading-relaxed">
-            Most small businesses. Pass-through taxation by default (profits
-            taxed once, on your personal return), flexible management, simpler
-            ongoing compliance, and strong asset protection. Best for
-            solopreneurs, real-estate holdings, consulting, and most service
-            businesses in {stateName}.
+            {t('entityCompareLlcBody', { state: stateName })}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent mb-1.5">
-            Pick Corporation
+            {t('entityCompareCorpTitle')}
           </p>
           <p className="text-sm text-ink-muted leading-relaxed">
-            Best if you plan to raise venture capital, issue stock to
-            employees, or operate a regulated business that requires a corp
-            structure. C-Corps face double taxation by default; S-Corp
-            election (we offer the filing) can reduce self-employment tax for
-            profitable owner-operated businesses.
+            {t('entityCompareCorpBody')}
           </p>
         </div>
         <p className="md:col-span-2 text-xs text-ink-subtle leading-relaxed">
-          LaunchForma is not a law firm and this is general guidance, not tax
-          or legal advice. For complex situations (multiple owners with
-          different interests, raising outside capital, professional
-          licensing), talk to a CPA or attorney before filing.
+          {t('entityCompareDisclaimer')}
         </p>
       </div>
     </details>

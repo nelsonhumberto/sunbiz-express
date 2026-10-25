@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(cents: number, opts?: { showZero?: boolean }) {
-  if (cents === 0 && !opts?.showZero) return 'Free';
+export function formatCurrency(cents: number, opts?: { showZero?: boolean; locale?: 'en' | 'es' }) {
+  if (cents === 0 && !opts?.showZero) return opts?.locale === 'es' ? 'Gratis' : 'Free';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -70,10 +70,28 @@ export function formatRelative(date: Date | string, locale: 'en' | 'es' = 'en') 
  * and newlines from URLs, so "/\t/evil.com" would become "//evil.com"; any
  * whitespace, control character, or backslash is rejected for that reason.
  */
+function unsafeRedirectPath(value: string): boolean {
+  if (!value.startsWith('/') || value.startsWith('//')) return true;
+  if (/[\\\s\u0000-\u001f\u007f]/.test(value)) return true;
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
+}
+
 export function safeRedirectPath(raw: string | null | undefined): string | null {
   const value = (raw ?? '').trim();
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
-  if (/[\\\s\u0000-\u001f\u007f]/.test(value)) return null;
+  if (unsafeRedirectPath(value)) return null;
+  // Reject absolute and protocol-relative URLs hidden behind one or two encodings.
+  let decoded = value;
+  for (let i = 0; i < 2 && decoded.includes('%'); i++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(decoded);
+    } catch {
+      break;
+    }
+    if (next === decoded) break;
+    if (unsafeRedirectPath(next)) return null;
+    decoded = next;
+  }
   return value;
 }
 

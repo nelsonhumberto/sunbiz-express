@@ -1,8 +1,9 @@
 import { CheckCircle2, MailCheck } from 'lucide-react';
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
+import { hrefForLocale } from '@/lib/app-href';
 import { auth } from '@/lib/auth';
-import { localizedNextParam, redirectLocalized } from '@/lib/locale-redirect';
+import { localeForRedirect, localizedNextParam, redirectLocalized } from '@/lib/locale-redirect';
 import { SignInForm } from './sign-in-form';
 
 export const metadata = { title: 'Sign in' };
@@ -18,7 +19,11 @@ export default async function SignInPage({
     return await redirectLocalized(nextPath ?? '/dashboard');
   }
   const t = await getTranslations('auth');
-  const signUpHref = nextPath ? `/sign-up?next=${encodeURIComponent(nextPath)}` : '/sign-up';
+  const locale = await localeForRedirect();
+  const signUpHref = hrefForLocale(
+    nextPath ? `/sign-up?next=${encodeURIComponent(nextPath)}` : '/sign-up',
+    locale,
+  );
 
   const claimed = searchParams.claimed === '1';
   const claimedEmail = searchParams.email ?? '';

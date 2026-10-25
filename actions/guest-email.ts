@@ -20,7 +20,7 @@ import {
 import { guestResumeUrl } from '@/lib/draft-recovery';
 import { hrefForLocale } from '@/lib/app-href';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { safeParseJson } from '@/lib/utils';
 import { storedLocale } from '@/lib/stored-locale';
 import { cookies } from 'next/headers';
@@ -34,7 +34,7 @@ export interface GuestEmailResult {
 }
 
 async function guestCopy(filingLocale?: string | null) {
-  const locale = pickLocale(await storedLocale(), filingLocale);
+  const locale = localeFromPathOrFiling(await storedLocale(), filingLocale);
   return getTranslations({ locale, namespace: 'wizard' });
 }
 
@@ -144,7 +144,7 @@ export async function sendGuestCheckoutLink(
     return { ok: false, error: t('guestEmailInvalid') };
   }
 
-  const locale = pickLocale(await storedLocale(), filing?.locale);
+  const locale = localeFromPathOrFiling(await storedLocale(), filing?.locale);
   const ownsMailbox =
     !isPlaceholderGuestEmail(owner.email) && normalizeEmail(owner.email) === typed;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
@@ -152,7 +152,7 @@ export async function sendGuestCheckoutLink(
     ownsMailbox
       ? await createLoginLink(owner.id, hrefForLocale(`/wizard/${filingId}/11`, locale))
       : owner.accountStatus === 'GUEST' && owner.guestToken
-        ? guestResumeUrl(siteUrl, filingId, owner.guestToken)
+        ? guestResumeUrl(siteUrl, filingId, owner.guestToken, locale)
         : null;
   if (!resumeUrl) return { ok: false, error: t('guestEmailInvalid') };
 
@@ -334,6 +334,6 @@ async function resolveMismatchedGuestDraft(filingId: string) {
     filing,
     plan,
     typedEmail: typedEmails[0] ?? null,
-    locale: pickLocale(await storedLocale(), filing.locale),
+    locale: localeFromPathOrFiling(await storedLocale(), filing.locale),
   };
 }

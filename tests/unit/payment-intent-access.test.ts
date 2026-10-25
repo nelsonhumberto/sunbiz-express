@@ -8,6 +8,7 @@ const filingUpdate = vi.hoisted(() => vi.fn());
 const userUpdate = vi.hoisted(() => vi.fn());
 const paymentIntentsCreate = vi.hoisted(() => vi.fn());
 const customersUpdate = vi.hoisted(() => vi.fn());
+const headerGet = vi.hoisted(() => vi.fn((_name: string) => null as string | null));
 
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
@@ -30,7 +31,10 @@ vi.mock('@/lib/rate-limit', () => ({
   clientIp: () => '203.0.113.5',
 }));
 vi.mock('@/lib/utm-server', () => ({ getServerUtmAttribution: () => null }));
-vi.mock('next/headers', () => ({ cookies: () => ({ get: () => undefined }) }));
+vi.mock('next/headers', () => ({
+  cookies: () => ({ get: () => undefined }),
+  headers: () => ({ get: (name: string) => headerGet(name) }),
+}));
 
 import { POST } from '@/app/api/stripe/payment-intent/route';
 
@@ -62,6 +66,8 @@ beforeEach(() => {
   filingUpdate.mockReset();
   userUpdate.mockReset();
   customersUpdate.mockReset();
+  headerGet.mockReset();
+  headerGet.mockReturnValue(null);
   paymentIntentsCreate.mockReset();
   userUpdate.mockResolvedValue({});
   customersUpdate.mockResolvedValue({});
@@ -193,11 +199,44 @@ describe('payment intent access', () => {
       json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 50 }),
     } as never);
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toMatchObject({ code: 'existing_account' });
+    await expect(res.json()).resolves.toMatchObject({
+      code: 'existing_account',
+      error: 'This email already has an account. Sign in and we will attach this draft.',
+    });
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
     expect(userUpdate).not.toHaveBeenCalled();
     const filingWrites = filingUpdate.mock.calls.map((call) => call[0] as { data?: { userId?: string } });
     expect(filingWrites.every((write) => write.data?.userId === undefined)).toBe(true);
+  });
+
+  it('returns Spanish copy for the same code when the wizard path is /es', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue(null);
+    headerGet.mockImplementation((name: string) =>
+      name === 'referer' ? 'https://launchforma.com/es/wizard/filing_1/12' : null,
+    );
+    const res = await POST({ json: async () => ({}) } as never);
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({
+      code: 'start_filing_first',
+      error: 'Empieza un trámite primero.',
+    });
+  });
+
+  it('keeps English when Accept-Language is Spanish and the path is not', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue(null);
+    headerGet.mockImplementation((name: string) => {
+      if (name === 'referer') return 'https://launchforma.com/wizard/filing_1/12';
+      if (name === 'accept-language') return 'es-MX,es;q=0.9';
+      return null;
+    });
+    const res = await POST({ json: async () => ({}) } as never);
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({
+      code: 'start_filing_first',
+      error: 'Please start a filing first.',
+    });
   });
 
   it('does not let a signed-in user pay another user filing', async () => {

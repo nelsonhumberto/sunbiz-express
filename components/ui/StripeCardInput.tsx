@@ -31,6 +31,8 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import { localeFromPublicPath } from '@/lib/locale-paths';
+import { paymentIntentErrorMessage } from '@/lib/payment-intent-errors';
 import { stripePromise } from '@/lib/stripe-client';
 import { getAnalyticsDistinctId } from '@/lib/analytics';
 
@@ -115,9 +117,15 @@ const InnerCard = forwardRef(function InnerCard(
       });
       const json = await res.json();
       if (json.error || !json.clientSecret) {
+        const code = typeof json.code === 'string' ? json.code : undefined;
+        const locale =
+          typeof window !== 'undefined' ? localeFromPublicPath(window.location.pathname) : 'en';
         return {
-          error: json.error ?? 'Could not create payment.',
-          ...(typeof json.code === 'string' ? { code: json.code } : {}),
+          error:
+            paymentIntentErrorMessage(code, locale) ??
+            (typeof json.error === 'string' ? json.error : paymentIntentErrorMessage('create_failed', locale)) ??
+            'Could not create payment.',
+          ...(code ? { code } : {}),
         };
       }
 

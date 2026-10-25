@@ -9,6 +9,7 @@ import { renderTemplate, sendEmail, type NotificationType } from './email';
 import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
 import { readTypedGuestEmail } from './guest-identity';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
+import { hrefForLocale } from './app-href';
 import { isSpanishPublicPath } from './locale-paths';
 import { captureResumeEmailSent } from './posthog-server';
 import {
@@ -268,10 +269,11 @@ export async function runDraftRecovery(now: number) {
     // password/dashboard, so we hand them a tokenized /resume link that
     // re-authorizes them straight back into the wizard. Account holders go to
     // their dashboard (they can sign in).
+    const recoveryLocale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
     const resumeUrl =
       draft.user.accountStatus === 'GUEST' && draft.user.guestToken
-        ? `${SITE_URL}/resume?f=${draft.id}&t=${draft.user.guestToken}`
-        : `${SITE_URL}/dashboard`;
+        ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken, recoveryLocale)
+        : `${SITE_URL}${hrefForLocale('/dashboard', recoveryLocale === 'es' ? 'es' : 'en')}`;
 
     const delivery = await sendEmail({
       type: bucket.type,
@@ -457,14 +459,30 @@ export function resumeLinkPlan(user: {
   return 'sign-in';
 }
 
-export function guestResumeUrl(siteUrl: string, filingId: string, guestToken: string): string {
+export function guestResumeUrl(
+  siteUrl: string,
+  filingId: string,
+  guestToken: string,
+  locale?: string | null,
+): string {
   const base = siteUrl.replace(/\/$/, '');
-  return `${base}/resume?f=${filingId}&t=${guestToken}`;
+  const path = hrefForLocale(
+    `/resume?f=${filingId}&t=${guestToken}`,
+    locale === 'es' ? 'es' : 'en',
+  );
+  return `${base}${path}`;
 }
 
-export function signInResumeUrl(siteUrl: string, wizardPath: string): string {
+export function signInResumeUrl(
+  siteUrl: string,
+  wizardPath: string,
+  locale?: string | null,
+): string {
   const base = siteUrl.replace(/\/$/, '');
-  return `${base}/sign-in?next=${encodeURIComponent(wizardPath)}`;
+  const siteLocale = locale === 'es' ? 'es' : 'en';
+  const next = hrefForLocale(wizardPath, siteLocale);
+  const path = hrefForLocale(`/sign-in?next=${encodeURIComponent(next)}`, siteLocale);
+  return `${base}${path}`;
 }
 
 /**
@@ -662,20 +680,21 @@ async function attemptResumeDraft(
       });
       if (!decision.send) return 'skipped';
 
+      const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
       const wizardPath = wizardPathForDraft(draft.id, draft.currentStep);
+      const localizedWizard = hrefForLocale(wizardPath, locale === 'es' ? 'es' : 'en');
       const linkKind = resumeLinkPlan(draft.user);
       const rawResumeUrl =
         linkKind === 'guest' && draft.user.guestToken
-          ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken)
+          ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken, locale)
           : linkKind === 'login-link'
-            ? await createLoginLink(draft.userId, wizardPath)
-            : signInResumeUrl(SITE_URL, wizardPath);
+            ? await createLoginLink(draft.userId, localizedWizard)
+            : signInResumeUrl(SITE_URL, wizardPath, locale);
       const resumeUrl = withResumeUtms(rawResumeUrl, decision.send);
       const unsubscribeUrl = withResumeUtms(
         unsubscribeLink(SITE_URL, mailbox),
         decision.send,
       );
-      const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
       const context = {
         firstName: draft.user.firstName ?? undefined,
         businessName: draft.businessName ?? undefined,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
@@ -40,7 +40,7 @@ type Preview = {
 
 export function AddCompanyForm() {
   const t = useTranslations('addCompany');
-  const router = useRouter();
+  const router = useLocalizedRouter();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<EntitySearchHit[] | null>(null);

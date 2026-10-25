@@ -2,6 +2,7 @@
 // Real implementation would use SendGrid; UI/admin Outbox view shows the same data.
 
 import { prisma } from './db';
+import { formatRaRenewalPrice } from './ra-renewal-price';
 import { formatCurrency, formatDateLong } from './utils';
 
 export type NotificationType =
@@ -33,6 +34,8 @@ interface EmailContext {
   rejectionReason?: string;
   dueDate?: Date;
   daysUntilDue?: number;
+  /** Customer's RegisteredAgentService.renewalPriceCents. Null uses the default. */
+  renewalPriceCents?: number | null;
 }
 
 const TEMPLATES: Record<
@@ -81,11 +84,11 @@ const TEMPLATES: Record<
       <a class="cta" href="https://launchforma.com/dashboard">Resume Filing</a>
     `,
   }),
-  RA_RENEWAL_60: ({ businessName }) => ({
+  RA_RENEWAL_60: ({ businessName, renewalPriceCents }) => ({
     subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
     body: html`
       <h1>Heads up - RA renewal in 60 days</h1>
-      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year - well below LegalZoom's $249/year - and keeps your home address off the public Florida record.</p>
+      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is ${formatRaRenewalPrice(renewalPriceCents)}/year - well below LegalZoom's $249/year - and keeps your home address off the public Florida record.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Manage Registered Agent</a>
     `,
   }),

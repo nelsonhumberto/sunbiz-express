@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
 type Preview = {
   documentNumber: string;
   name: string;
@@ -275,7 +276,9 @@ export function AddCompanyForm() {
                   <Shield className="h-4 w-4 text-warn" />
                   {t('raUpsellTitle')}
                 </div>
-                <p className="text-ink-muted">{t('raUpsellBody')}</p>
+                <p className="text-ink-muted">
+                  {t('raUpsellBody', { price: formatRaRenewalPrice(null) })}
+                </p>
               </div>
             )}
 

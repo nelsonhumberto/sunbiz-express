@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
 import { safeParseJson, cn } from '@/lib/utils';
 import { isPoBox } from '@/lib/formation-validation';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
@@ -42,6 +43,7 @@ interface RAStored extends AddressValue {
 
 export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
+  const renewalPrice = formatRaRenewalPrice(null);
   const stateCode = (filing.state ?? 'FL') as StateCode;
   const stateRule = FORMATION_STATES[stateCode] ?? FORMATION_STATES.FL;
   const internalAgent = stateRule.registeredAgent;
@@ -173,7 +175,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
             <li>· {t('useOurAgentP1', { state: stateRule.name })}</li>
             <li>· {t('useOurAgentP2')}</li>
-            <li>· {t('useOurAgentP3')}</li>
+            <li>· {t('useOurAgentP3', { price: renewalPrice })}</li>
             <li>· {t('useOurAgentP4')}</li>
           </ul>
         </button>
@@ -384,7 +386,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               <ul className="space-y-1 text-xs text-ink-muted">
                 {[
                   t('ownAgentConfirmBenefit1', { state: stateRule.name }),
-                  t('ownAgentConfirmBenefit2'),
+                  t('ownAgentConfirmBenefit2', { price: renewalPrice }),
                   t('ownAgentConfirmBenefit3'),
                   t('ownAgentConfirmBenefit4'),
                 ].map((line, i) => (

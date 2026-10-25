@@ -1,6 +1,7 @@
 import { OA_PUBLIC_DIR, OA_TEMPLATE_ASSETS } from '@/lib/oa-template';
 import { DRIP_MAILING_ADDRESS, type DripLocale } from '@/lib/drip-copy';
 import type { PostFormationStepId } from '@/lib/post-formation';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
 
 /**
  * Certificate order pages use getLocale() and hrefForLocale, so
@@ -205,11 +206,12 @@ function day30Inner(locale: DripLocale, args: BuildArgs, safeCompany: string): s
     args.siteUrl,
     locale === 'es' ? '/es/guides/florida-registered-agent' : '/guides/florida-registered-agent',
   );
+  const price = escapeHtml(formatRaRenewalPrice(args.renewalPriceCents));
   if (locale === 'es') {
     return `${preheader(copy.preview)}
 <p>${escapeHtml(greeting(locale, args.firstName))}</p>
 <p>Tu paquete de LaunchForma incluye el primer año gratis del servicio de agente registrado para ${escapeHtml(safeCompany)}. Eso significa que recibimos la correspondencia oficial de tu empresa en una dirección física de Florida, lo que también ayuda a que tu dirección de casa no aparezca en el registro público.</p>
-<p>Después del primer año, puedes mantener el servicio por $150 al año o cambiar a tu propio agente. Hoy no tienes que hacer nada. Para ver o cambiar la configuración de tu agente registrado en cualquier momento, inicia sesión y abre tu empresa.</p>
+<p>Después del primer año, puedes mantener el servicio por ${price} al año o cambiar a tu propio agente. Hoy no tienes que hacer nada. Para ver o cambiar la configuración de tu agente registrado en cualquier momento, inicia sesión y abre tu empresa.</p>
 <a class="cta" href="${escapeHtml(signIn)}">Inicia sesión para administrar tu agente registrado</a>
 <p>¿Quieres leer más primero? Lee nuestra guía: <a href="${escapeHtml(guide)}">Lo básico del agente registrado en Florida</a>.</p>
 <p>${escapeHtml(copy.thanks)}<br/>${escapeHtml(copy.team)}</p>
@@ -218,7 +220,7 @@ ${footerHtml(locale, args.unsubscribeUrl)}`;
   return `${preheader(copy.preview)}
 <p>${escapeHtml(greeting(locale, args.firstName))}</p>
 <p>Your LaunchForma package includes a free first year of Registered Agent service for ${escapeHtml(safeCompany)}. That means we receive official mail for your company at a Florida street address, which also helps keep your home address off the public record.</p>
-<p>After the first year, you can keep the service for $150 a year or switch to your own agent. There is nothing to do today. To see or change your Registered Agent settings any time, sign in and open your company.</p>
+<p>After the first year, you can keep the service for ${price} a year or switch to your own agent. There is nothing to do today. To see or change your Registered Agent settings any time, sign in and open your company.</p>
 <a class="cta" href="${escapeHtml(signIn)}">Sign in to manage your Registered Agent</a>
 <p>Want to learn more first? Read our guide: <a href="${escapeHtml(guide)}">Florida registered agent basics</a>.</p>
 <p>${escapeHtml(copy.thanks)}<br/>${escapeHtml(copy.team)}</p>
@@ -233,6 +235,8 @@ interface BuildArgs {
   filingId: string;
   siteUrl: string;
   unsubscribeUrl: string;
+  /** Customer's RegisteredAgentService.renewalPriceCents. Null uses the default. */
+  renewalPriceCents?: number | null;
 }
 
 export function buildPostFormationEmail(args: BuildArgs): { subject: string; inner: string } {

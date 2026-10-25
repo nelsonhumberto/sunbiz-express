@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import { fillDueMessage } from '@/lib/due-label';
 import {
@@ -152,6 +153,10 @@ export default async function FilingDetailPage({ params }: PageProps) {
 
   const nonUsRegisteredAgent =
     !!ra?.agentCountry && ra.agentCountry !== 'US' && ra.agentCountry !== '';
+  const activeRa = filing.raServices.find(
+    (svc) => svc.serviceProvider === 'INTERNAL' && svc.status !== 'CANCELLED',
+  );
+  const raUpsellPrice = formatRaRenewalPrice(activeRa?.renewalPriceCents);
 
   return (
     <div className="container max-w-5xl py-10 space-y-8">
@@ -260,7 +265,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               <Card className="border-warn/30 bg-warn-subtle/30">
                 <CardContent className="p-6 space-y-2">
                   <h3 className="font-semibold text-ink">{t('nonUsRaTitle')}</h3>
-                  <p className="text-sm text-ink-muted">{t('nonUsRaBody')}</p>
+                  <p className="text-sm text-ink-muted">{t('nonUsRaBody', { price: raUpsellPrice })}</p>
                 </CardContent>
               </Card>
             )}

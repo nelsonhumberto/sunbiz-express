@@ -15,7 +15,7 @@
 import { prisma } from './db';
 import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from './email-address';
 import { EMAIL_STATUS_SKIPPED_TEST } from './email-status';
-import { RA_RENEWAL_PRICE_CENTS } from './pricing';
+import { formatRaRenewalPrice } from './ra-renewal-price';
 import { formatCurrency, formatDateLong } from './utils';
 import { TOTAL_DISPLAYED_STEPS } from './wizard-constants';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
@@ -111,8 +111,8 @@ interface EmailContext {
   // ── Registered Agent renewal reminders ──
   /** Whether the customer enrolled in automatic renewal at checkout. */
   raAutoRenew?: boolean;
-  /** Price snapshotted on the service (grandfathered per customer). */
-  raRenewalPriceCents?: number;
+  /** Price snapshotted on the service (grandfathered per customer). Null uses the default. */
+  raRenewalPriceCents?: number | null;
   /** The upcoming renewal date. */
   raRenewalDate?: Date;
   /** Last 4 of the card we'd charge (auto-renew) - for reassurance. */
@@ -185,7 +185,7 @@ function raRenewalEmail(
   ctx: EmailContext,
 ): { subject: string; body: string } {
   const business = ctx.businessName ?? 'your business';
-  const price = formatCurrency(ctx.raRenewalPriceCents ?? RA_RENEWAL_PRICE_CENTS);
+  const price = formatRaRenewalPrice(ctx.raRenewalPriceCents);
   const dateStr = ctx.raRenewalDate ? formatDateLong(ctx.raRenewalDate) : null;
   const renewUrl = ctx.raRenewUrl ?? `${siteUrl}/dashboard/billing`;
   const last4 = ctx.raCardLast4;
@@ -792,6 +792,7 @@ function postFormationTemplate(
     filingId: ctx.linkFilingId ?? '',
     siteUrl,
     unsubscribeUrl: ctx.unsubscribeUrl ?? `${siteUrl}/unsubscribe`,
+    renewalPriceCents: ctx.raRenewalPriceCents,
   });
   return {
     subject: built.subject,

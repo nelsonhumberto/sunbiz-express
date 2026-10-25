@@ -192,9 +192,9 @@ describe('certificate dashboard eligibility', () => {
 
 describe('certificate dashboard pricing', () => {
   it('keeps the Florida LLC package prices', () => {
-    expect(tierPackagePriceCents('BASIC', 'LLC', 'FL')).toBe(14_900);
-    expect(tierPackagePriceCents('STANDARD', 'LLC', 'FL')).toBe(27_900);
-    expect(tierPackagePriceCents('PREMIUM', 'LLC', 'FL')).toBe(44_900);
+    expect(tierPackagePriceCents('BASIC', 'LLC', 'FL')).toBe(19_900);
+    expect(tierPackagePriceCents('STANDARD', 'LLC', 'FL')).toBe(34_900);
+    expect(tierPackagePriceCents('PREMIUM', 'LLC', 'FL')).toBe(54_900);
   });
 
   it('composes each certificate as the catalog service fee plus the state fee', () => {

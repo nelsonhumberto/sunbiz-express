@@ -3,7 +3,11 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+import { tierPriceParts } from '@/lib/pricing';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { formatCurrency } from '@/lib/utils';
+
+const CORP_ESSENTIAL = tierPriceParts('BASIC', 'CORP', 'FL');
 
 const PUBLISHED = '2026-10-24';
 const PATH = '/guides/how-to-form-a-florida-corporation';
@@ -130,7 +134,7 @@ Comparing options? Read [How to form an LLC in Florida](/guides/how-to-form-an-l
 
 ## Form your Florida corporation with LaunchForma
 
-Our 24/7 AI assistant guides your order, and our team prepares and files your Articles of Incorporation with the State of Florida. Corporation packages start at $94 all-in (service fee $24 + Florida state fee $70), as shown on our [pricing page](/pricing).
+Our 24/7 AI assistant guides your order, and our team prepares and files your Articles of Incorporation with the State of Florida. Corporation packages start at ${formatCurrency(CORP_ESSENTIAL.totalCents)} all-in (service fee ${formatCurrency(CORP_ESSENTIAL.serviceCents)} + Florida state fee ${formatCurrency(CORP_ESSENTIAL.stateFeeCents)}), as shown on our [pricing page](/pricing).
 
 [Start your Florida corporation](/start?entity=CORP)`;
 

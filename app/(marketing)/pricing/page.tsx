@@ -11,6 +11,9 @@ import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { formatCurrency } from '@/lib/utils';
+
+const FL_LLC_FROM = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
 interface PricingPageProps {
   searchParams?: { state?: string | string[] };
@@ -46,7 +49,7 @@ export async function generateMetadata({
       ? t('descFl')
       : t('descState', { state: state.name })
     : state.code === 'FL'
-      ? 'Florida LLC and Corporation formation packages from $149 all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.'
+      ? `Florida LLC and Corporation formation packages from ${FL_LLC_FROM} all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.`
       : `${state.name} LLC and Corporation formation pricing with the ${state.name} filing fee included. Free Year-1 Registered Agent, transparent all-in pricing, no upsell tricks.`;
   return withLocaleMeta(
     canonical,

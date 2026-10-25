@@ -98,7 +98,7 @@ check('DE CORP ein (federal - flat)', addOnPriceCents('ein', 'CORP', 'DE'), 7_90
 
 console.log('\n--- Cost scenarios (all-in package pricing) ---');
 {
-  // Essential ("BASIC") package is $149 all-in (May 2026 audit reprice).
+  // Essential ("BASIC") package is $199 all-in (Oct 25, 2026).
   // Florida's $125 LLC fee is bundled - customer never sees it as a
   // separate line.
   const llcBasicNoOA = computeCost({
@@ -106,9 +106,9 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: [],
   });
-  check('LLC Essential total', llcBasicNoOA.totalCents, 14_900);
+  check('LLC Essential total', llcBasicNoOA.totalCents, 19_900);
   check('LLC Essential govt remittance', llcBasicNoOA.governmentRemittanceCents, 12_500);
-  check('LLC Essential package margin', llcBasicNoOA.packageMarginCents, 2_400);
+  check('LLC Essential package margin', llcBasicNoOA.packageMarginCents, 7_400);
 }
 {
   const llcBasicOA = computeCost({
@@ -116,8 +116,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['operating_agreement_single'],
   });
-  // 14900 package + 8900 single-member OA = 23800
-  check('LLC Essential + single OA total', llcBasicOA.totalCents, 23_800);
+  // 19900 package + 8900 single-member OA = 28800
+  check('LLC Essential + single OA total', llcBasicOA.totalCents, 28_800);
 }
 {
   const llcStandard = computeCost({
@@ -125,8 +125,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'STANDARD',
     addOnSlugs: [],
   });
-  // Popular is $279 all-in; OA, EIN, certificates, BOI already bundled.
-  check('LLC Popular total (bundled)', llcStandard.totalCents, 27_900);
+  // Popular is $349 all-in; OA, certificates already bundled.
+  check('LLC Popular total (bundled)', llcStandard.totalCents, 34_900);
 }
 {
   const corpBasicCerts = computeCost({
@@ -134,11 +134,11 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['cert_status', 'cert_copy'],
   });
-  // FL CORP Essential: 2400 service + 7000 FL corp fee = 9400 package
+  // FL CORP Essential: 7400 service + 7000 FL corp fee = 14400 package
   // cert_status FL CORP: 3400 + 875 = 4275
   // cert_copy FL CORP: 2900 + 875 = 3775
-  // Total: 9400 + 4275 + 3775 = 17450
-  check('FL CORP Essential + cert_status + cert_copy total', corpBasicCerts.totalCents, 17_450);
+  // Total: 14400 + 4275 + 3775 = 22450
+  check('FL CORP Essential + cert_status + cert_copy total', corpBasicCerts.totalCents, 22_450);
 }
 {
   const llcBasicCerts = computeCost({
@@ -146,8 +146,8 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
     tier: 'BASIC',
     addOnSlugs: ['cert_status', 'cert_copy'],
   });
-  // 14900 package + 3900 + 5900 = 24700
-  check('LLC Essential + cert_status + cert_copy total', llcBasicCerts.totalCents, 24_700);
+  // 19900 package + 3900 + 5900 = 29700
+  check('LLC Essential + cert_status + cert_copy total', llcBasicCerts.totalCents, 29_700);
 }
 {
   // Bundled add-ons must not double-charge inside Popular/Premium.
@@ -159,7 +159,7 @@ console.log('\n--- Cost scenarios (all-in package pricing) ---');
   check(
     'Popular ignores bundled add-on duplicates',
     standardWithBundled.totalCents,
-    27_900,
+    34_900,
   );
 }
 {

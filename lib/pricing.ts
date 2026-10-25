@@ -54,8 +54,9 @@ export interface TierDef {
   /**
    * LaunchForma's portion of the package price (the labor / service charge).
    * Customer-facing total = serviceMarginCents + bundled government fees for
-   * the chosen state and entity type. Calibrated so Florida LLC pricing
-   * matches our historical headline tier prices ($155 / $299 / $499).
+   * the chosen state and entity type. Approved Oct 25, 2026 Florida LLC
+   * all-in totals (state fees included): Essential $199, Popular $349,
+   * Premium $549.
    */
   serviceMarginCents: number;
   /**
@@ -76,11 +77,9 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     bestFor: 'I only need the legal filing',
     description:
       'The legal filing, prepared and submitted by LaunchForma specialists.',
-    // May 2026 repricing (audit-driven). Round headline prices and
-    // sharper anchoring against $0 competitors who bundle nothing.
-    // FL LLC reference: $24 service + $125 FL filing = $149.
-    // FL CORP: $24 + $70 = $94. WY: $24 + $100 = $124. DE: $24 + $110 = $134.
-    serviceMarginCents: 2_400,
+    // Oct 25, 2026. FL LLC all-in $199 = $74 service + $125 FL filing.
+    // FL CORP: $74 + $70 = $144. WY: $74 + $100 = $174. DE: $74 + $110 = $184.
+    serviceMarginCents: 7_400,
     features: [
       { label: 'State filing fee included', included: true, highlight: true },
       {
@@ -98,12 +97,11 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     name: 'Popular',
     bestFor: 'Best for opening a bank account',
     description: 'The formation documents banks ask for at account opening.',
-    // May 2026 repricing (audit-driven).
-    // FL LLC reference: $119 service + $125 + $5 + $30 = $279.
-    // FL CORP: $119 + $70 + $8.75 + $8.75 = $206.50.
-    // WY LLC/CORP: $119 + $100 + $25 + $30 = $274.
-    // DE LLC: $119 + $110 + $50 + $50 = $329. DE CORP: $119 + $109 + $50 + $50 = $328.
-    serviceMarginCents: 11_900,
+    // Oct 25, 2026. FL LLC all-in $349 = $189 service + $125 + $5 + $30.
+    // FL CORP: $189 + $70 + $8.75 + $8.75 = $276.50.
+    // WY LLC/CORP: $189 + $100 + $25 + $30 = $344.
+    // DE LLC: $189 + $110 + $50 + $50 = $399. DE CORP: $189 + $109 + $50 + $50 = $398.
+    serviceMarginCents: 18_900,
     recommended: true,
     ribbon: 'Most Popular',
     features: [
@@ -121,8 +119,8 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     name: 'Premium',
     bestFor: 'Best for hands-off setup',
     description: 'Popular plus year-round compliance, banking, and branding.',
-    // May 2026 repricing (audit-driven). $289 + $125 + $5 + $30 = $449 FL LLC.
-    serviceMarginCents: 28_900,
+    // Oct 25, 2026. FL LLC all-in $549 = $389 service + $125 + $5 + $30.
+    serviceMarginCents: 38_900,
     // Top tier carries a "Premium" badge - the audit moved the "Best Value"
     // anchor to the middle (STANDARD) tier so the recommended-tier
     // psychology lines up with the margin-maximising package.
@@ -208,13 +206,13 @@ export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 /**
  * Our service fee for filing an annual report (EXCLUDING the state fee).
  *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state-specific fee
- *   FL LLC  total: $80 + $138.75 = $218.75
- *   FL Corp total: $80 + $150.00 = $230.00
- *   WY LLC/Corp total: $80 + $60.00 minimum = $140.00 minimum
- *   DE LLC total: $80 + $300.00 = $380.00 (annual tax, no report)
- *   DE Corp total: $80 + $225.00 minimum (franchise tax min) = $305.00 minimum
+ *   FL LLC  total: $99 + $138.75 = $237.75
+ *   FL Corp total: $99 + $150.00 = $249.00
+ *   WY LLC/Corp total: $99 + $60.00 minimum = $159.00 minimum
+ *   DE LLC total: $99 + $300.00 = $399.00 (annual tax, no report)
+ *   DE Corp total: $99 + $225.00 minimum (franchise tax min) = $324.00 minimum
  */
-export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
+export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 9_900; // $99.00
 
 /** Optional Registered Agent service upsell added to annual report checkout. */
 export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00

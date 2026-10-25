@@ -10,6 +10,11 @@ import { NicheStylistsPage } from '@/components/marketing/NicheStylistsPage';
 import { omitNicheClientMessages } from '@/i18n/config';
 import { routing } from '@/i18n/routing';
 import { buildLlmsTxt } from '@/lib/llms';
+import { tierPackagePriceCents, tierPriceParts } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+
+const ESSENTIAL = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+const STATE_FEE = formatCurrency(tierPriceParts('BASIC', 'LLC', 'FL').stateFeeCents);
 import {
   englishPathname,
   localizedPublicRedirect,
@@ -118,15 +123,15 @@ describe('stylists and barbers copy', () => {
   const enBundle = readNicheBundleCopy(translator(en.nicheStylists));
 
   it('keeps the supplied wording, with no em dashes and no tracking params', () => {
-    expect(enCopy.metaTitle).toBe('LLC for Hair Stylists and Barbers in Florida | $149');
+    expect(enCopy.metaTitle).toBe(`LLC for Hair Stylists and Barbers in Florida | ${ESSENTIAL}`);
     expect(enCopy.metaDescription).toBe(
-      'Start your Florida LLC online in minutes. Essential is $149 and includes the $125 state fee. We file it with the state. Built for your chair.',
+      `Start your Florida LLC online in minutes. Essential is ${ESSENTIAL} and includes the ${STATE_FEE} state fee. We file it with the state. Built for your chair.`,
     );
     expect(enCopy.h1).toBe('Your chair, your business. Start your LLC in minutes.');
     expect(enCopy.subhead).toBe(
       "Fill out a short form online, we file your LLC with the State of Florida, and you're done. LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015.",
     );
-    expect(enCopy.ctaLabel).toBe('Start my LLC for $149');
+    expect(enCopy.ctaLabel).toBe(`Start my LLC for ${ESSENTIAL}`);
     expect(enCopy.ctaHref).toBe('/start');
     expect(enCopy.stepsTitle).toBe('Easier than you think');
     expect(enCopy.steps[1]).toEqual({
@@ -151,7 +156,7 @@ describe('stylists and barbers copy', () => {
     expect(enCopy.readyBody).toBe(
       'You take care of your clients. We take care of the filing. It only takes a few minutes.',
     );
-    expect(enBundle.title).toBe('Launch Bundle, $199 for our first 10 customers');
+    expect(enBundle.title).toBe('Launch Bundle, $299 for our first 10 customers');
     expect(enBundle.body).toBe(
       'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. [See the Launch Bundle](/launch-bundle)',
     );
@@ -166,15 +171,15 @@ describe('stylists and barbers copy', () => {
     );
     expect(JSON.stringify(enCopy.faq)).not.toMatch(/Is the site in Spanish|Ver en español/);
 
-    expect(esCopy.metaTitle).toBe('LLC para estilistas y barberos en Florida | Esencial $149');
+    expect(esCopy.metaTitle).toBe(`LLC para estilistas y barberos en Florida | Esencial ${ESSENTIAL}`);
     expect(esCopy.metaDescription).toBe(
-      'Empieza tu LLC en Florida en línea en unos minutos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Nosotros la presentamos ante el estado.',
+      `Empieza tu LLC en Florida en línea en unos minutos. Esencial cuesta ${ESSENTIAL} e incluye la tarifa estatal de ${STATE_FEE}. Nosotros la presentamos ante el estado.`,
     );
     expect(esCopy.h1).toBe('Tu silla, tu negocio. Empieza tu LLC en minutos.');
     expect(esCopy.subhead).toBe(
       'Llenas un formulario corto en línea, nosotros presentamos tu LLC ante el Estado de Florida y listo. LaunchForma es un servicio en línea para formar negocios en Florida, de un matrimonio que ayuda a dueños de negocio desde 2015.',
     );
-    expect(esCopy.ctaLabel).toBe('Empezar mi LLC por $149');
+    expect(esCopy.ctaLabel).toBe(`Empezar mi LLC por ${ESSENTIAL}`);
     expect(esCopy.ctaHref).toBe('/es/start');
     expect(esCopy.stepsTitle).toBe('Más fácil de lo que piensas');
     expect(esCopy.steps[2]).toEqual({
@@ -260,10 +265,10 @@ describe('stylists and barbers copy', () => {
         acceptedAnswer: { '@type': 'Answer', text: item.a },
       })),
     );
-    expect(JSON.stringify(schema)).not.toMatch(/Launch Bundle|\$199|launch-bundle|Paquete/);
+    expect(JSON.stringify(schema)).not.toMatch(/Launch Bundle|\$299|launch-bundle|Paquete/);
     expect($('[data-bundle-block]')).toHaveLength(0);
     expect(html).not.toContain('Launch Bundle');
-    expect(html).not.toContain('$199');
+    expect(html).not.toContain('$299');
 
     const hrefs = $('a')
       .map((_, el) => $(el).attr('href') ?? '')
@@ -301,7 +306,7 @@ describe('stylists and barbers copy', () => {
     expect(schema.mainEntity.map((item: { acceptedAnswer: { text: string } }) => item.acceptedAnswer.text)).toEqual(
       answers,
     );
-    expect(JSON.stringify(schema)).not.toMatch(/Launch Bundle|\$199|launch-bundle|Paquete/);
+    expect(JSON.stringify(schema)).not.toMatch(/Launch Bundle|\$299|launch-bundle|Paquete/);
     expect($('[data-bundle-block]')).toHaveLength(0);
     expect(html).not.toContain('/launch-bundle');
     const hrefs = $('a')
@@ -323,7 +328,7 @@ describe('stylists and barbers copy', () => {
     expect($('[data-bundle-block] a').attr('href')).toBe('/launch-bundle');
     const schema = JSON.parse($('script[type="application/ld+json"]').text());
     expect(JSON.stringify(schema)).not.toContain('Launch Bundle');
-    expect(JSON.stringify(schema)).not.toContain('$199');
+    expect(JSON.stringify(schema)).not.toContain('$299');
     expect(faqAnswerText(enBundle.body)).not.toContain('[');
   });
 });
@@ -372,10 +377,10 @@ describe('stylists pages are in the sitemap and llms.txt', () => {
     );
     const text = buildLlmsTxt();
     expect(text).toContain(
-      '- [LLC for Hair Stylists and Barbers](https://launchforma.com/llc-for/stylists-barbers): Florida LLC formation for hair stylists and barbers. Essential is $149 and includes the $125 state fee. Spanish alternate: /es/llc-para/estilistas-barberos.',
+      `- [LLC for Hair Stylists and Barbers](https://launchforma.com/llc-for/stylists-barbers): Florida LLC formation for hair stylists and barbers. Essential is ${ESSENTIAL} and includes the ${STATE_FEE} state fee. Spanish alternate: /es/llc-para/estilistas-barberos.`,
     );
     expect(text).toContain(
-      '- [LLC para estilistas y barberos](https://launchforma.com/es/llc-para/estilistas-barberos): LLC en Florida para estilistas y barberos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Alterna en inglés: /llc-for/stylists-barbers.',
+      `- [LLC para estilistas y barberos](https://launchforma.com/es/llc-para/estilistas-barberos): LLC en Florida para estilistas y barberos. Esencial cuesta ${ESSENTIAL} e incluye la tarifa estatal de ${STATE_FEE}. Alterna en inglés: /llc-for/stylists-barbers.`,
     );
     expect(readFileSync('app/sitemap.ts', 'utf8')).not.toContain('TODO(niche-pages-go-live)');
     expect(readFileSync('lib/llms.ts', 'utf8')).not.toContain('TODO(niche-pages-go-live)');

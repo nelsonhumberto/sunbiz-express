@@ -5,6 +5,11 @@ import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { englishOnlyAlternates } from '@/lib/locale-seo';
+import { tierPackagePriceCents } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+
+const ESSENTIAL_FL_LLC = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+const POPULAR_FL_LLC = formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', 'FL'));
 
 const PUBLISHED = '2026-10-25';
 const DATE_MODIFIED = '2026-10-25';
@@ -106,7 +111,7 @@ If an LLC uses a trade name, it helps to note it in the company records. Our [Fl
 
 const CLOSING = `## Ready to form your Florida LLC?
 
-LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015. Florida LLC packages start at $149 with the state filing fee included, and the Popular package ($279) includes a custom Operating Agreement.
+LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015. Florida LLC packages start at ${ESSENTIAL_FL_LLC} with the state filing fee included, and the Popular package (${POPULAR_FL_LLC}) includes a custom Operating Agreement.
 
 [Start your Florida LLC](/start)
 

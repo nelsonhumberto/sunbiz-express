@@ -118,44 +118,96 @@ describe('stylists and barbers copy', () => {
   const enBundle = readNicheBundleCopy(translator(en.nicheStylists));
 
   it('keeps the supplied wording, with no em dashes and no tracking params', () => {
-    expect(enCopy.metaTitle).toBe('LLC for Stylists and Barbers in Florida | $149 Essential');
+    expect(enCopy.metaTitle).toBe('LLC for Hair Stylists and Barbers in Florida | $149');
     expect(enCopy.metaDescription).toBe(
-      'Form your Florida LLC for your chair, booth or shop. Essential is $149 and includes the $125 state fee. Built for stylists and barbers. Start today.',
+      'Form your Florida LLC online in minutes. Essential is $149 and includes the $125 state fee. We file it with the state. Built for your chair.',
     );
-    expect(enCopy.h1).toBe('Your chair. Your clients. Your business.');
+    expect(enCopy.h1).toBe('Your chair, your business. Make it official in minutes.');
     expect(enCopy.subhead).toBe(
-      'You already run a business every time you rent the chair, buy the color and book the next client. An LLC lets you run it like one. LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015.',
+      "Fill out a short form online, we file your LLC with the State of Florida, and you're done. LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015.",
     );
     expect(enCopy.ctaLabel).toBe('Start my LLC for $149');
     expect(enCopy.ctaHref).toBe('/start');
+    expect(enCopy.stepsTitle).toBe('Easier than you think');
+    expect(enCopy.steps[1]).toEqual({
+      title: 'We file it with Florida.',
+      body: 'We prepare your Articles of Organization and submit them to the state.',
+    });
+    expect(enCopy.steps[2]?.title).toBe("That's it.");
+    expect(enCopy.dayTitle).toBe('It helps from day one');
+    expect(enCopy.dayOne).toHaveLength(3);
+    expect(enCopy.laterTitle).toBe("When you're ready, your LLC makes it easier to...");
+    expect(enCopy.laterIntro).toBe(
+      'No rush, and none of this is required. Whenever you want, your LLC gives you a cleaner way to:',
+    );
+    expect(enCopy.later[3]).toBe(
+      'Walk into tax season more organized. An LLC plus a business bank account and an EIN makes it easier to keep business costs separate and documented. The LLC itself does not create a deduction. Ask your tax preparer what you can deduct.',
+    );
+    expect(enCopy.toolsTitle).toBe('Want to read more first?');
+    expect(enCopy.tools[0]).toEqual({
+      label: 'Starting Your LLC: a one-page guide',
+      href: '/checklist',
+    });
+    expect(enCopy.readyBody).toBe(
+      'You take care of your clients. We take care of the filing. It only takes a few minutes.',
+    );
     expect(enBundle.title).toBe('Launch Bundle, $199 for our first 10 customers');
     expect(enBundle.body).toBe(
       'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. [See the Launch Bundle](/launch-bundle)',
     );
     expect(enBundle.body).not.toMatch(/year-1 registered agent/);
-    expect(enCopy.faq[5]).toEqual({
-      q: 'Is the site in Spanish?',
-      a: 'Yes. [Ver en español](/es/llc-para/estilistas-barberos).',
+    expect(enCopy.faq).toHaveLength(7);
+    expect(enCopy.faq[0]).toEqual({
+      q: 'Is it hard to set up an LLC?',
+      a: 'No. You fill out a short form online in a few minutes and we file it with the state for you.',
     });
+    expect(enCopy.faq[2]?.a).toContain(
+      'An LLC is a choice that gives your work a real business name and a professional separation.',
+    );
+    expect(JSON.stringify(enCopy.faq)).not.toMatch(/Is the site in Spanish|Ver en español/);
 
     expect(esCopy.metaTitle).toBe('LLC para estilistas y barberos en Florida | Esencial $149');
     expect(esCopy.metaDescription).toBe(
-      'Forma tu LLC en Florida para tu silla, cabina o barbería. Esencial cuesta $149 e incluye la tarifa estatal de $125. Hecho para tu oficio.',
+      'Forma tu LLC en Florida en línea en unos minutos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Nosotros la presentamos ante el estado.',
     );
-    expect(esCopy.h1).toBe('Tu silla. Tus clientes. Tu negocio.');
-    expect(esCopy.subhead).toContain('de un matrimonio que ayuda a dueños de negocio desde 2015.');
+    expect(esCopy.h1).toBe('Tu silla, tu negocio. Hazlo oficial en minutos.');
+    expect(esCopy.subhead).toBe(
+      'Llenas un formulario corto en línea, nosotros presentamos tu LLC ante el Estado de Florida y listo. LaunchForma es un servicio en línea para formar negocios en Florida, de un matrimonio que ayuda a dueños de negocio desde 2015.',
+    );
     expect(esCopy.ctaLabel).toBe('Empezar mi LLC por $149');
     expect(esCopy.ctaHref).toBe('/es/start');
-    expect(esCopy.bossTitle).toBe('Ya mandas en tu negocio. Solo faltan los papeles.');
-    expect(esCopy.readyTitle).toBe('Cuando tú digas');
-    expect(esCopy.readyBody).toBe('Tú atiendes a tus clientes. Nosotros nos encargamos de los papeles.');
-    expect(esCopy.faq[0]?.a).toContain('Mucha gente trabaja como negocio individual.');
-    expect(esCopy.faq[5]).toEqual({
-      q: '¿Me pueden atender en español?',
-      a: 'Sí, de principio a fin. [View in English](/llc-for/stylists-barbers).',
+    expect(esCopy.stepsTitle).toBe('Más fácil de lo que piensas');
+    expect(esCopy.steps[2]).toEqual({
+      title: 'Y ya.',
+      body: 'Tu LLC está en camino. No necesitas nada más para empezar.',
     });
+    expect(esCopy.dayTitle).toBe('Te ayuda desde el primer día');
+    expect(esCopy.laterTitle).toBe('Cuando quieras, tu LLC te facilita...');
+    expect(esCopy.laterIntro).toBe(
+      'Sin prisa, y nada de esto es obligatorio. Cuando te convenga, tu LLC te da una forma más ordenada de:',
+    );
+    expect(esCopy.later[3]).toContain('La LLC por sí sola no crea una deducción.');
+    expect(esCopy.toolsTitle).toBe('¿Quieres leer un poco más primero?');
+    expect(esCopy.tools[0]).toEqual({
+      label: 'Guía de una página para empezar tu LLC',
+      href: '/es/checklist',
+    });
+    expect(esCopy.readyTitle).toBe('Cuando tú digas');
+    expect(esCopy.readyBody).toBe(
+      'Tú atiendes a tu clientela. Nosotros nos encargamos de presentar tu LLC. Solo toma unos minutos.',
+    );
+    expect(esCopy.faq).toHaveLength(7);
+    expect(esCopy.faq[0]?.q).toBe('¿Es difícil formar una LLC?');
+    expect(esCopy.faq[2]?.a).toContain(
+      'La LLC es una opción que le da a tu trabajo un nombre de negocio de verdad y una separación profesional.',
+    );
+    expect(JSON.stringify(esCopy.faq)).not.toMatch(/atender en español|View in English/);
     expect(es.nicheStylists).not.toHaveProperty('bundleTitle');
     expect(es.nicheStylists).not.toHaveProperty('bundleBody');
+    expect(es.nicheStylists).not.toHaveProperty('bossTitle');
+    expect(es.nicheStylists).not.toHaveProperty('howTitle');
+    expect(en.nicheStylists).not.toHaveProperty('bossTitle');
+    expect(en.nicheStylists).not.toHaveProperty('howTitle');
     expect(JSON.stringify(es.nicheStylists)).not.toMatch(/Paquete de Lanzamiento|Usted ya|Su silla/);
 
     for (const blob of [JSON.stringify(en.nicheStylists), JSON.stringify(es.nicheStylists)]) {
@@ -175,8 +227,28 @@ describe('stylists and barbers copy', () => {
     const visible = nicheVisibleFaq(enCopy);
     expect(questions).toEqual(visible.map((item) => item.q));
     expect(answers).toEqual(visible.map((item) => item.a));
-    expect(answers[5]).toBe('Yes. Ver en español.');
-    expect($('[data-faq-a] a').attr('href')).toBe(ES_PATH);
+    expect(questions).toHaveLength(7);
+    expect(answers[5]).toBe(
+      'Essential includes the $125 Florida state fee and the filing of your LLC. It does not include a domain.',
+    );
+    expect($('[data-faq-a] a')).toHaveLength(0);
+    expect(html).not.toMatch(/Is the site in Spanish|Ver en español|You are already the boss|How it works/);
+    expect($('[data-section]').map((_, el) => $(el).attr('data-section')).get()).toEqual([
+      'steps',
+      'day-one',
+      'later',
+      'tools',
+    ]);
+    expect($('h2').map((_, el) => $(el).text()).get()).toEqual([
+      enCopy.stepsTitle,
+      enCopy.dayTitle,
+      enCopy.laterTitle,
+      enCopy.licenseTitle,
+      enCopy.essentialTitle,
+      enCopy.toolsTitle,
+      enCopy.faqTitle,
+      enCopy.readyTitle,
+    ]);
 
     const schema = JSON.parse($('script[type="application/ld+json"]').text());
     expect(schema['@type']).toBe('FAQPage');
@@ -199,8 +271,8 @@ describe('stylists and barbers copy', () => {
     expect(hrefs).toContain('/checklist');
     expect(hrefs).toContain('/guides/florida-llc-operating-agreement');
     for (const href of hrefs) expect(href).not.toMatch(/[?&]ref=/);
-    expect(html).toContain(enCopy.h1);
-    expect(html).toContain(enCopy.subhead);
+    expect($('h1').text()).toBe(enCopy.h1);
+    expect($('h1').next('p').text()).toBe(enCopy.subhead);
   });
 
   it('renders the Spanish page with no bundle block', () => {
@@ -209,8 +281,20 @@ describe('stylists and barbers copy', () => {
       .map((_, el) => $(el).text())
       .get();
     expect(answers).toEqual(nicheVisibleFaq(esCopy).map((item) => item.a));
-    expect(answers[5]).toBe('Sí, de principio a fin. View in English.');
-    expect($('[data-faq-a] a').attr('href')).toBe(EN_PATH);
+    expect(answers).toHaveLength(7);
+    expect(answers[2]).toContain('nombre de negocio de verdad y una separación profesional.');
+    expect($('[data-faq-a] a')).toHaveLength(0);
+    expect(html).not.toMatch(/atender en español|View in English|Ya mandas en tu negocio|Cómo funciona/);
+    expect($('h2').map((_, el) => $(el).text()).get()).toEqual([
+      esCopy.stepsTitle,
+      esCopy.dayTitle,
+      esCopy.laterTitle,
+      esCopy.licenseTitle,
+      esCopy.essentialTitle,
+      esCopy.toolsTitle,
+      esCopy.faqTitle,
+      esCopy.readyTitle,
+    ]);
     const schema = JSON.parse($('script[type="application/ld+json"]').text());
     expect(schema.inLanguage).toBe('es');
     expect(schema.mainEntity.map((item: { acceptedAnswer: { text: string } }) => item.acceptedAnswer.text)).toEqual(

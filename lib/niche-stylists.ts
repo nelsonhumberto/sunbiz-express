@@ -76,16 +76,17 @@ export interface NicheStylistsCopy {
   subhead: string;
   ctaLabel: string;
   ctaHref: string;
-  bossTitle: string;
-  bossBody: string;
-  benefitsTitle: string;
-  benefits: NicheItem[];
+  stepsTitle: string;
+  steps: NicheItem[];
+  dayTitle: string;
+  dayOne: NicheItem[];
+  laterTitle: string;
+  laterIntro: string;
+  later: string[];
   licenseTitle: string;
   licenseBody: string;
   essentialTitle: string;
   essentialBody: string;
-  howTitle: string;
-  steps: NicheItem[];
   toolsTitle: string;
   tools: NicheLink[];
   faqTitle: string;
@@ -101,9 +102,10 @@ export interface NicheBundleCopy {
 
 type NicheTranslator = (key: string) => string;
 
-const BENEFIT_COUNT = 6;
 const STEP_COUNT = 3;
-const FAQ_COUNT = 6;
+const DAY_COUNT = 3;
+const LATER_COUNT = 4;
+const FAQ_COUNT = 7;
 
 export function readNicheStylistsCopy(t: NicheTranslator, locale: 'en' | 'es'): NicheStylistsCopy {
   return {
@@ -114,22 +116,23 @@ export function readNicheStylistsCopy(t: NicheTranslator, locale: 'en' | 'es'): 
     subhead: t('subhead'),
     ctaLabel: t('ctaLabel'),
     ctaHref: t('ctaHref'),
-    bossTitle: t('bossTitle'),
-    bossBody: t('bossBody'),
-    benefitsTitle: t('benefitsTitle'),
-    benefits: Array.from({ length: BENEFIT_COUNT }, (_, i) => ({
-      title: t(`benefit${i + 1}Title`),
-      body: t(`benefit${i + 1}Body`),
-    })),
-    licenseTitle: t('licenseTitle'),
-    licenseBody: t('licenseBody'),
-    essentialTitle: t('essentialTitle'),
-    essentialBody: t('essentialBody'),
-    howTitle: t('howTitle'),
+    stepsTitle: t('stepsTitle'),
     steps: Array.from({ length: STEP_COUNT }, (_, i) => ({
       title: t(`step${i + 1}Title`),
       body: t(`step${i + 1}Body`),
     })),
+    dayTitle: t('dayTitle'),
+    dayOne: Array.from({ length: DAY_COUNT }, (_, i) => ({
+      title: t(`day${i + 1}Title`),
+      body: t(`day${i + 1}Body`),
+    })),
+    laterTitle: t('laterTitle'),
+    laterIntro: t('laterIntro'),
+    later: Array.from({ length: LATER_COUNT }, (_, i) => t(`later${i + 1}`)),
+    licenseTitle: t('licenseTitle'),
+    licenseBody: t('licenseBody'),
+    essentialTitle: t('essentialTitle'),
+    essentialBody: t('essentialBody'),
     toolsTitle: t('toolsTitle'),
     tools: [
       { label: t('tool1Label'), href: t('tool1Href') },

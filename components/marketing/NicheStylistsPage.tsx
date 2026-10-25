@@ -69,22 +69,35 @@ export function NicheStylistsPage({
         </div>
       </section>
 
-      <section className="py-12 md:py-16">
-        <div className="container max-w-3xl">
-          <h2 className="text-balance font-display text-3xl font-medium tracking-tight md:text-4xl">
-            {copy.bossTitle}
+      <section className="border-y border-border bg-white py-12 md:py-16" data-section="steps">
+        <div className="container max-w-5xl">
+          <h2 className="text-balance text-center font-display text-3xl font-medium tracking-tight md:text-4xl">
+            {copy.stepsTitle}
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-ink-muted">{copy.bossBody}</p>
+          <ol className="mt-8 grid list-none grid-cols-1 gap-4 md:grid-cols-3">
+            {copy.steps.map((step, index) => (
+              <li
+                key={step.title}
+                className="min-w-0 rounded-2xl border border-border bg-white p-6 shadow-soft"
+              >
+                <span className="font-display text-3xl font-medium text-primary/30">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3 className="mt-3 font-display text-lg font-semibold leading-snug">{step.title}</h3>
+                <p className="mt-2 break-words text-sm leading-relaxed text-ink-muted">{step.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
-      <section className="border-y border-border bg-white py-12 md:py-16">
+      <section className="py-12 md:py-16" data-section="day-one">
         <div className="container max-w-5xl">
           <h2 className="mx-auto max-w-3xl text-balance text-center font-display text-3xl font-medium tracking-tight md:text-4xl">
-            {copy.benefitsTitle}
+            {copy.dayTitle}
           </h2>
-          <ul className="mt-8 grid list-none grid-cols-1 gap-4 md:grid-cols-2">
-            {copy.benefits.map((item) => (
+          <ul className="mt-8 grid list-none grid-cols-1 gap-4 md:grid-cols-3">
+            {copy.dayOne.map((item) => (
               <li
                 key={item.title}
                 className="min-w-0 rounded-2xl border border-border bg-white p-6 shadow-soft"
@@ -100,6 +113,22 @@ export function NicheStylistsPage({
                     <p className="mt-2 text-sm leading-relaxed text-ink-muted">{item.body}</p>
                   </div>
                 </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="pb-12 md:pb-16" data-section="later">
+        <div className="container max-w-3xl">
+          <h2 className="text-balance font-display text-3xl font-medium tracking-tight md:text-4xl">
+            {copy.laterTitle}
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-ink-muted">{copy.laterIntro}</p>
+          <ul className="mt-5 list-disc space-y-3 pl-5 text-base leading-relaxed text-ink-muted">
+            {copy.later.map((item) => (
+              <li key={item} className="min-w-0 break-words">
+                {item}
               </li>
             ))}
           </ul>
@@ -144,31 +173,7 @@ export function NicheStylistsPage({
         </section>
       ) : null}
 
-      <section className="border-t border-border py-12 md:py-16">
-        <div className="container max-w-5xl">
-          <h2 className="text-balance text-center font-display text-3xl font-medium tracking-tight md:text-4xl">
-            {copy.howTitle}
-          </h2>
-          <ol className="mt-8 grid list-none grid-cols-1 gap-4 md:grid-cols-3">
-            {copy.steps.map((step, index) => (
-              <li
-                key={step.title}
-                className="min-w-0 rounded-2xl border border-border bg-white p-6 shadow-soft"
-              >
-                <span className="font-display text-3xl font-medium text-primary/30">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <h3 className="mt-3 font-display text-lg font-semibold leading-snug">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-muted break-words">
-                  {step.body}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section className="pb-12 md:pb-16">
+      <section className="border-t border-border py-12 md:py-16" data-section="tools">
         <div className="container max-w-3xl">
           <h2 className="text-balance font-display text-3xl font-medium tracking-tight md:text-4xl">
             {copy.toolsTitle}

@@ -86,18 +86,18 @@ export default async function StartPage({ searchParams }: StartPageProps) {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <header className="container py-6 flex items-center justify-between">
+      <header className="container py-3 sm:py-6 flex items-center justify-between">
         <Logo />
         <Link href="/sign-in" className="text-sm text-ink-muted hover:text-primary">
           {t('signInLink')}
         </Link>
       </header>
 
-      <div className="container max-w-3xl">
+      <div className="container max-w-lg">
         <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
       </div>
 
-      <main className="flex-1 container max-w-3xl py-10">
+      <main className="flex-1 container max-w-lg py-4 sm:py-10">
         <GuestStartLaunch
           defaultState={stateCode}
           defaultEntity={entityChoice}
@@ -105,6 +105,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
           stateName={stateName}
           entityLabel={entityLabel}
+          askEntity={!searchParams?.entity}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

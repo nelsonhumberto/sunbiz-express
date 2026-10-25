@@ -9,6 +9,7 @@ import {
   localizedPublicRedirect,
   PUBLIC_PATH_HEADER,
 } from '@/lib/locale-paths';
+import { browserPathFromAction } from '@/lib/request-locale';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { INTERNAL_TRAFFIC_HEADER, internalTrafficQueryRequested } from '@/lib/internal-traffic';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
@@ -126,6 +127,19 @@ export function middleware(request: NextRequest) {
   // `/es/contacto` rewrites to the `/contact` page. Other /es URLs drop the prefix.
   const appPath = strippedPath == null ? pathname : englishPathname(pathname);
 
+  // Server actions POST to the rewritten path (`/start`, `/wizard/...`).
+  // The browser address is the Referer or next-url. That path wins over the
+  // rewrite, the NEXT_LOCALE cookie, and Accept-Language. A normal document
+  // request ignores Referer so the previous page cannot change this URL.
+  const actionPath = request.headers.get('next-action')
+    ? browserPathFromAction({
+        referer: request.headers.get('referer'),
+        nextUrl: request.headers.get('next-url'),
+        allowedHost: request.headers.get('host'),
+      })
+    : null;
+  const pathnameForLocale = actionPath ?? pathname;
+
   // Bare /wizard (and /es/wizard) is not a filing. Send visitors to /start
   // before the wizard layout asks them to sign in. Keep /es so Spanish
   // visitors are not dropped onto the English start page.
@@ -141,9 +155,9 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-lf-pathname', appPath);
   // Original browser path (keeps /es) so canonicals and html lang follow the URL.
-  requestHeaders.set(PUBLIC_PATH_HEADER, pathname);
-  // routing.localeDetection is false: do not read NEXT_LOCALE.
-  const effectiveLocale = localeFromPublicPath(pathname);
+  requestHeaders.set(PUBLIC_PATH_HEADER, pathnameForLocale);
+  // routing.localeDetection is false: do not read NEXT_LOCALE or Accept-Language.
+  const effectiveLocale = localeFromPublicPath(pathnameForLocale);
   requestHeaders.set(
     LOCALE_HEADER,
     effectiveLocale === 'es' ? 'es' : routing.defaultLocale,

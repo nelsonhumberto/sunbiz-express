@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { hrefForLocale } from '@/lib/app-href';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { storedLocale } from '@/lib/stored-locale';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
@@ -174,7 +174,7 @@ async function recoveredClaimedSignIn(
     accountEmail: user.email,
   });
   if (decision.followUp !== 'claimed_sign_in') return null;
-  const locale = pickLocale(await storedLocale(), filing.locale);
+  const locale = localeFromPathOrFiling(await storedLocale(), filing.locale);
   return claimedSignInHref(decision.email, filingId, locale);
 }
 
@@ -415,7 +415,7 @@ export async function processCheckout(input: {
     // The webhook inserted this PaymentIntent and may already have claimed
     // the guest. Replay the claimed sign-in instead of a second payment.
     if (isUniqueConflict(err) && actor.kind === 'guest') {
-      const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
+      const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
       const claim = await claimPaidGuestAccount({
         userId: actor.id,
         filingId: filing.id,
@@ -491,6 +491,10 @@ export async function processCheckout(input: {
     });
   }
 
+  // A path we actually saw wins over the filing's saved locale. With no
+  // path, the filing locale remains. English stays unprefixed.
+  const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
+
   await sendEmail({
     type: 'PAYMENT_CONFIRMATION',
     to: actor.email ?? '',
@@ -499,6 +503,7 @@ export async function processCheckout(input: {
     context: {
       businessName: filing.businessName ?? '',
       totalCents: expectedTotal,
+      locale: checkoutLocale,
     },
   });
 
@@ -508,7 +513,6 @@ export async function processCheckout(input: {
   // The set-password email is the way back in on another device. A session
   // is opened only when maySignInClaimedGuest confirms the loaded row is the
   // one we just promoted. We never sign in a user found by email alone.
-  const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
   const successPath = hrefForLocale(
     `/checkout/success?filing=${filing.id}`,
     checkoutLocale,

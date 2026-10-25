@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
@@ -116,7 +116,7 @@ function SectionCard({ title, children, editing, onEdit, onSave, onCancel, canEd
 
 export function AnnualReportForm(props: AnnualReportFormProps) {
   const t = useTranslations('annualReport');
-  const router = useRouter();
+  const router = useLocalizedRouter();
   const [pending, startTransition] = useTransition();
 
   const stateFee = props.entityType === 'LLC' ? FL.fees.annualReportLLC : FL.fees.annualReportCorp;

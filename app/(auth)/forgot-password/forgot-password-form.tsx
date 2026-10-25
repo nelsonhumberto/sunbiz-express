@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { useFormState, useFormStatus } from 'react-dom';
 import { Loader2, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { requestPasswordReset, type ForgotResult } from '@/actions/password-reset';

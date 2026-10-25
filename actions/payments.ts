@@ -293,6 +293,8 @@ export async function processCheckout(input: {
     });
   }
 
+  const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
+
   await sendEmail({
     type: 'PAYMENT_CONFIRMATION',
     to: actor.email ?? '',
@@ -314,7 +316,6 @@ export async function processCheckout(input: {
   // a temporary password and route them through /sign-in so they can land
   // on the dashboard with a real session. The checkout-success page lives
   // behind auth so this also bridges them into the account-only area.
-  const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
   const successPath = hrefForLocale(`/checkout/success?filing=${filing.id}`, checkoutLocale);
   let postCheckoutRedirect = successPath;
   if (actor.kind === 'guest' && actor.email) {

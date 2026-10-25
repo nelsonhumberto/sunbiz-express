@@ -13,6 +13,8 @@ import {
   planGuestDraftAttach,
   planGuestEmailWrite,
   planStartGuestSession,
+  planMismatchedGuestSignIn,
+  readGuestAsideEmails,
   readTypedGuestEmail,
   shouldAttachGuestDraft,
   wizardHrefForDraft,
@@ -121,22 +123,33 @@ describe('guest start flow', () => {
     expect(source('app/wizard/[filingId]/[step]/page.tsx')).toContain('pendingAccountEmail={pendingAccountEmail}');
   });
 
-  it('requires an account before checkout', () => {
+  it('requires a real email on the guest row before checkout', () => {
     expect(checkoutAllowsPayment('guest')).toBe(false);
+    expect(checkoutAllowsPayment('guest', placeholderGuestEmail('tok'))).toBe(false);
+    expect(checkoutAllowsPayment('guest', 'ada@example.com')).toBe(true);
     expect(checkoutAllowsPayment('user')).toBe(true);
     expect(checkoutAllowsPayment(null)).toBe(false);
     expect(CHECKOUT_ACCOUNT_REQUIRED).toBe('Create an account before you pay.');
     expect(source('actions/payments.ts')).toContain('checkoutAllowsPayment');
     expect(source('actions/payments.ts')).toContain('CHECKOUT_ACCOUNT_REQUIRED');
+    expect(source('actions/payments.ts')).toContain('maySignInClaimedGuest');
+    const payments = source('actions/payments.ts');
+    expect(payments.indexOf('maySignInClaimedGuest')).toBeLessThan(
+      payments.indexOf("signIn('credentials'"),
+    );
     const paymentRoute = source('app/api/stripe/payment-intent/route.ts');
+    expect(paymentRoute).toContain('authorizeGuestFormationPayment');
     expect(paymentRoute).toContain('CHECKOUT_ACCOUNT_REQUIRED');
     expect(paymentRoute).toContain('getGuestUser');
     expect(paymentRoute.indexOf('await auth()')).toBeLessThan(paymentRoute.indexOf('await request.json()'));
     expect(paymentRoute).not.toContain('amountCents >');
     const payment = source('components/wizard/steps/Step12Payment.tsx');
-    expect(payment).toContain('GuestCheckoutAccount');
-    expect(payment).toContain('nextDisabled={isGuest}');
-    expect(payment).toContain('accountGateRequired');
+    expect(payment).toContain('guestPayEmailLabel');
+    expect(payment).toContain('GuestSignInPrompt');
+    expect(payment).toContain('GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE');
+    expect(payment).toContain('returnStep={11}');
+    expect(payment).not.toContain('nextDisabled={isGuest}');
+    expect(payment).not.toContain('GuestCheckoutAccount');
   });
 
   it('attaches the guest draft when the visitor creates or enters an account', () => {
@@ -181,6 +194,44 @@ describe('guest start flow', () => {
     ).toBe(false);
     expect(shouldAttachGuestDraft({ guestEmail: 'ada@example.com', accountEmail: 'Ada@example.com' })).toBe(true);
     expect(shouldAttachGuestDraft({ guestEmail: 'other@example.com', accountEmail: 'ada@example.com' })).toBe(false);
+
+    const mismatch = planMismatchedGuestSignIn({
+      guestEmail: placeholder,
+      accountEmail: 'other@example.com',
+      typedEmails: ['ada@example.com'],
+      filingId: 'filing_1',
+      currentStep: 11,
+    });
+    expect(mismatch).toEqual({
+      attach: false,
+      noticeHref: '/wizard/draft-email?filing=filing_1',
+      resumeHref: '/wizard/filing_1/11',
+    });
+    expect(
+      planMismatchedGuestSignIn({
+        guestEmail: placeholder,
+        accountEmail: 'ada@example.com',
+        typedEmails: ['ada@example.com'],
+        filingId: 'filing_1',
+        currentStep: 11,
+      }),
+    ).toEqual({ attach: true });
+    expect(
+      readGuestAsideEmails(
+        JSON.stringify({ pendingAccountEmail: 'Ada@example.com', typedGuestEmail: 'ada@example.com' }),
+      ),
+    ).toEqual(['ada@example.com']);
+
+    const attachSource = source('actions/guest-email.ts');
+    const mismatchAt = attachSource.indexOf('if (!mismatch.attach)');
+    const moveAt = attachSource.indexOf('filing.updateMany');
+    expect(mismatchAt).toBeGreaterThan(-1);
+    expect(moveAt).toBeGreaterThan(mismatchAt);
+    expect(attachSource).toContain('movedIds: []');
+    expect(source('actions/wizard.ts')).toContain('planMismatchedGuestSignIn');
+    expect(source('app/wizard/draft-email/page.tsx')).toContain('guestDraftEmailMismatch');
+    expect(source('app/wizard/draft-email/page.tsx')).toContain('guestDraftContinue');
+    expect(source('actions/auth.ts')).toContain('localizedNextParam');
 
     expect(loginLinkClaimPlan('GUEST', 'USER')).toBe('claim_guest');
     expect(loginLinkClaimPlan('ACTIVE', 'USER')).toBe('allow');

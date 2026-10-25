@@ -1,9 +1,13 @@
+import { isDeliverableEmail } from './email-address';
+
 /**
  * Guest filing identity rules.
  *
  * A logged-out visitor gets a GUEST user and an httpOnly token before any
  * account exists. Until they type a real email, User.email is a placeholder
- * on a domain the resume drip skips. Checkout refuses to charge a guest.
+ * on a domain the resume drip skips. A guest can pay only after that real
+ * email is stored on their own row. An email that already belongs to a
+ * non-guest account is never charged and never attached.
  * Signing up or signing in on this browser moves the draft onto that account
  * when the guest mailbox is still a placeholder, or when it is the same email.
  */
@@ -51,23 +55,55 @@ export function planStartGuestSession(owner: StartGuestOwner): StartGuestSession
   return 'create';
 }
 
+function readAsideEmail(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const email = value.trim().toLowerCase();
+  if (!email || email.endsWith('.invalid') || isPlaceholderGuestEmail(email)) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
 /** Address this browser typed when it cannot be stored on the unique User.email. */
 export function readTypedGuestEmail(raw: string | null | undefined): string | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as { typedGuestEmail?: unknown };
-    if (typeof parsed?.typedGuestEmail !== 'string') return null;
-    const email = parsed.typedGuestEmail.trim().toLowerCase();
-    if (!email || email.endsWith('.invalid')) return null;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
-    return email;
+    return readAsideEmail(parsed?.typedGuestEmail);
   } catch {
     return null;
   }
 }
 
-export function checkoutAllowsPayment(kind: 'user' | 'guest' | null | undefined): boolean {
-  return kind === 'user';
+/**
+ * Real addresses stored on a guest draft: the typed checkout email and, when
+ * that address already has an account, the pending sign-in email.
+ */
+export function readGuestAsideEmails(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as {
+      typedGuestEmail?: unknown;
+      pendingAccountEmail?: unknown;
+    };
+    const emails = [readAsideEmail(parsed?.typedGuestEmail), readAsideEmail(parsed?.pendingAccountEmail)];
+    return emails.filter((email, index): email is string => Boolean(email) && emails.indexOf(email) === index);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Signed-in accounts can pay. A guest can pay only with a deliverable email
+ * already stored on that guest row. Placeholder mailboxes stay blocked, and
+ * a missing email stays blocked.
+ */
+export function checkoutAllowsPayment(
+  kind: 'user' | 'guest' | null | undefined,
+  email?: string | null,
+): boolean {
+  if (kind === 'user') return true;
+  if (kind !== 'guest') return false;
+  return isDeliverableEmail(email);
 }
 
 export interface GuestDraftAttachPlan {
@@ -116,6 +152,43 @@ export function shouldAttachGuestDraft(input: {
     .filter((email) => email && !email.endsWith('.invalid') && !isPlaceholderGuestEmail(email));
   if (typed.length === 0) return true;
   return typed.includes(account);
+}
+
+export type MismatchedGuestSignInPlan =
+  | { attach: true }
+  | { attach: false; noticeHref: string | null; resumeHref: string | null };
+
+/**
+ * A different mailbox never receives the draft. The browser is sent to a
+ * notice that can resume the same draft, at payment (step 11) when that is
+ * the step they were on.
+ */
+export function planMismatchedGuestSignIn(input: {
+  guestEmail: string;
+  accountEmail: string;
+  typedEmails?: string[];
+  filingId: string | null;
+  currentStep: number | null | undefined;
+}): MismatchedGuestSignInPlan {
+  if (
+    shouldAttachGuestDraft({
+      guestEmail: input.guestEmail,
+      accountEmail: input.accountEmail,
+      typedEmails: input.typedEmails,
+    })
+  ) {
+    return { attach: true };
+  }
+  if (!input.filingId) return { attach: false, noticeHref: null, resumeHref: null };
+  const resumeHref =
+    input.currentStep != null && input.currentStep >= 11
+      ? wizardHrefForDraft(input.filingId, 11)
+      : wizardHrefForDraft(input.filingId, input.currentStep);
+  return {
+    attach: false,
+    noticeHref: `/wizard/draft-email?filing=${encodeURIComponent(input.filingId)}`,
+    resumeHref,
+  };
 }
 
 export function wizardHrefForDraft(

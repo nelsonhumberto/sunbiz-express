@@ -4,13 +4,15 @@ import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
+import { auth, signOut } from '@/lib/auth';
 import { getGuestUser, clearGuestCookie, GUEST_COOKIE } from '@/lib/guest';
+import { redirectLocalized } from '@/lib/locale-redirect';
 import {
   isPlaceholderGuestEmail,
   planGuestDraftAttach,
   planGuestEmailWrite,
-  readTypedGuestEmail,
-  shouldAttachGuestDraft,
+  planMismatchedGuestSignIn,
+  readGuestAsideEmails,
   wizardHrefForDraft,
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
@@ -200,17 +202,19 @@ export async function attachGuestDraftsToAccount(
     orderBy: { updatedAt: 'desc' },
     select: { id: true, currentStep: true, optionalDetails: true },
   });
-  const typedEmails = drafts
-    .map((draft) => readTypedGuestEmail(draft.optionalDetails))
-    .filter((email): email is string => Boolean(email));
-  if (
-    !shouldAttachGuestDraft({
-      guestEmail: guest.email,
-      accountEmail: account.email,
-      typedEmails,
-    })
-  ) {
-    return { movedIds: [], resumeHref: null };
+  const typedEmails = drafts.flatMap((draft) => readGuestAsideEmails(draft.optionalDetails));
+  const latest = drafts[0] ?? null;
+  const mismatch = planMismatchedGuestSignIn({
+    guestEmail: guest.email,
+    accountEmail: account.email,
+    typedEmails,
+    filingId: latest?.id ?? null,
+    currentStep: latest?.currentStep,
+  });
+  // Different email: leave the draft on the guest. The notice explains why
+  // and resumes it. Do not follow this with a filing move.
+  if (!mismatch.attach) {
+    return { movedIds: [], resumeHref: mismatch.noticeHref };
   }
 
   const plan = planGuestDraftAttach({
@@ -239,9 +243,87 @@ export async function attachGuestDraftsToAccount(
     });
   }
   clearGuestCookie();
-  const latest = drafts[0];
   return {
     movedIds: plan.filingIds,
     resumeHref: latest ? wizardHrefForDraft(latest.id, latest.currentStep) : null,
+  };
+}
+
+const FILING_ID_RE = /^[a-zA-Z0-9_-]{1,80}$/;
+
+export interface GuestDraftEmailMismatchView {
+  filingId: string;
+  locale: 'en' | 'es';
+}
+
+/**
+ * Signed-in account whose email is not the one on this browser's guest draft.
+ * Returns null unless the cookie still owns that draft, so a filing id alone
+ * cannot reveal it.
+ */
+export async function loadGuestDraftEmailMismatch(
+  filingId: string,
+): Promise<GuestDraftEmailMismatchView | null> {
+  const resolved = await resolveMismatchedGuestDraft(filingId);
+  if (!resolved) return null;
+  return { filingId: resolved.filing.id, locale: resolved.locale };
+}
+
+/**
+ * Sign out of the other account and either resume the guest draft or open
+ * sign-in for the email the order was started with. The draft stays put
+ * until that matching account signs in.
+ */
+export async function leaveMismatchedAccountForDraft(formData: FormData): Promise<void> {
+  const filingId = String(formData.get('filingId') ?? '');
+  const intent = formData.get('intent') === 'signin' ? 'signin' : 'guest';
+  const resolved = await resolveMismatchedGuestDraft(filingId);
+  if (!resolved || !resolved.plan.resumeHref) {
+    await redirectLocalized('/dashboard');
+    return;
+  }
+  const resume = resolved.plan.resumeHref;
+  const target =
+    intent === 'signin'
+      ? `/sign-in?next=${encodeURIComponent(resume)}${
+          resolved.typedEmail ? `&email=${encodeURIComponent(resolved.typedEmail)}` : ''
+        }`
+      : resume;
+  await signOut({ redirectTo: hrefForLocale(target, resolved.locale) });
+}
+
+async function resolveMismatchedGuestDraft(filingId: string) {
+  if (!FILING_ID_RE.test(filingId)) return null;
+  const session = await auth();
+  const accountEmail = session?.user?.email;
+  if (!session?.user?.id || !accountEmail) return null;
+  const guest = await getGuestUser();
+  if (!guest) return null;
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      currentStep: true,
+      optionalDetails: true,
+      locale: true,
+    },
+  });
+  if (!filing || filing.status !== 'DRAFT' || filing.userId !== guest.id) return null;
+  const typedEmails = readGuestAsideEmails(filing.optionalDetails);
+  const plan = planMismatchedGuestSignIn({
+    guestEmail: guest.email,
+    accountEmail,
+    typedEmails,
+    filingId: filing.id,
+    currentStep: filing.currentStep,
+  });
+  if (plan.attach) return null;
+  return {
+    filing,
+    plan,
+    typedEmail: typedEmails[0] ?? null,
+    locale: pickLocale(await storedLocale(), filing.locale),
   };
 }

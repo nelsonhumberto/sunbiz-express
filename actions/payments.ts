@@ -5,8 +5,6 @@ import { hrefForLocale } from '@/lib/app-href';
 import { pickLocale } from '@/lib/pick-locale';
 import { storedLocale } from '@/lib/stored-locale';
 import { revalidatePath } from 'next/cache';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { auth, signIn } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -34,6 +32,8 @@ import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
+import { maySignInClaimedGuest } from '@/lib/guest-checkout';
+import { claimPaidGuestAccount } from '@/lib/guest-checkout-claim';
 import { submitFilingToState } from './filings';
 import {
   ensureFilingTouchUtm,
@@ -73,8 +73,10 @@ export async function processCheckout(input: {
   const session = await auth();
   const actor = await getWizardActor(session?.user?.id, session?.user?.email);
   if (!actor) return { error: 'Please sign in.' };
-  // Guests can fill the wizard. The charge waits until the guest row is an account.
-  if (!checkoutAllowsPayment(actor.kind)) {
+  // A guest pays only after the PaymentIntent route stored a real email on
+  // that guest. Placeholder rows still stop here. We never look a payer up
+  // by the typed email and sign into that other account.
+  if (!checkoutAllowsPayment(actor.kind, actor.email)) {
     return { error: CHECKOUT_ACCOUNT_REQUIRED };
   }
 
@@ -195,6 +197,13 @@ export async function processCheckout(input: {
       );
       return { error: 'Payment does not match this filing. Please contact support.' };
     }
+    if (pi.metadata?.userId && pi.metadata.userId !== actor.id) {
+      logger.error(
+        'checkout PI/user mismatch',
+        { area: 'stripe', entityId: filing.id, tag: 'pi-user-mismatch' },
+      );
+      return { error: 'Payment does not match this filing. Please contact support.' };
+    }
 
     // Verify amount matches (allow ±1 cent for rounding)
     if (Math.abs(pi.amount - expectedTotal) > 1) {
@@ -306,105 +315,76 @@ export async function processCheckout(input: {
 
   await submitFilingToState(filing.id);
 
-  // ── Auto-convert guests to real accounts after successful checkout ──
-  //
-  // Guests who pay should immediately have a real account so they can sign
-  // in, download documents, and manage compliance reminders. We email them
-  // a temporary password and route them through /sign-in so they can land
-  // on the dashboard with a real session. The checkout-success page lives
-  // behind auth so this also bridges them into the account-only area.
+  // Guests become an account after the charge, on this same user id.
+  // The set-password email is the way back in on another device. A session
+  // is opened only when maySignInClaimedGuest confirms the loaded row is the
+  // one we just promoted. We never sign in a user found by email alone.
   const checkoutLocale = pickLocale(await storedLocale(), filing.locale);
-  const successPath = hrefForLocale(`/checkout/success?filing=${filing.id}`, checkoutLocale);
+  const successPath = hrefForLocale(
+    `/checkout/success?filing=${filing.id}`,
+    checkoutLocale,
+  );
   let postCheckoutRedirect = successPath;
-  if (actor.kind === 'guest' && actor.email) {
+  if (actor.kind === 'guest') {
     try {
-      const guestRow = await prisma.user.findUnique({
-        where: { id: actor.id },
-        select: { accountStatus: true, firstName: true, email: true },
+      const claim = await claimPaidGuestAccount({
+        userId: actor.id,
+        filingId: filing.id,
+        locale: checkoutLocale,
       });
-      if (guestRow?.accountStatus === 'GUEST') {
-        const tempPassword = generatePostCheckoutPassword();
-        const passwordHash = await bcrypt.hash(tempPassword, 10);
-        await prisma.user.update({
+      const claimedPath = hrefForLocale(
+        `/checkout/success?filing=${filing.id}&setPassword=1`,
+        checkoutLocale,
+      );
+      if (claim.claimed && claim.email && claim.password) {
+        const loaded = await prisma.user.findUnique({
           where: { id: actor.id },
-          data: {
-            passwordHash,
-            accountStatus: 'ACTIVE',
-            guestToken: null,
-          },
+          select: { id: true, email: true, accountStatus: true },
         });
-        cookies().delete(GUEST_COOKIE);
-        try {
-          await sendEmail({
-            type: 'WELCOME',
-            to: guestRow.email,
-            userId: actor.id,
-            context: {
-              firstName: guestRow.firstName ?? undefined,
-              tempPassword,
-              loginEmail: guestRow.email,
-            },
-          });
-        } catch (err) {
-          logger.error('welcome email failed for guest', {
-            area: 'checkout',
-            entityId: actor.id,
-            tag: 'guest-welcome-email',
-          }, err);
-        }
-        // Seamlessly establish a session so the buyer lands directly on the
-        // success page instead of being bounced to /sign-in. We hold the
-        // plaintext temp password only in-memory here. If sign-in fails for
-        // any reason, fall back to the prefilled /sign-in bounce.
-        try {
-          await signIn('credentials', {
-            email: guestRow.email,
-            password: tempPassword,
-            redirect: false,
-          });
-          postCheckoutRedirect = successPath;
-        } catch (signInErr) {
-          logger.error('post-checkout auto sign-in failed', {
-            area: 'checkout',
-            entityId: actor.id,
-            tag: 'guest-auto-signin',
-          }, signInErr);
-          const next = encodeURIComponent(successPath);
-          const email = encodeURIComponent(guestRow.email);
-          postCheckoutRedirect = hrefForLocale(
-            `/sign-in?claimed=1&email=${email}&next=${next}`,
-            checkoutLocale,
-          );
+        if (
+          loaded &&
+          maySignInClaimedGuest({
+            claimedUserId: actor.id,
+            claimedEmail: claim.email,
+            loadedUserId: loaded.id,
+            loadedEmail: loaded.email,
+            loadedStatus: loaded.accountStatus,
+          })
+        ) {
+          cookies().delete(GUEST_COOKIE);
+          try {
+            await signIn('credentials', {
+              email: loaded.email,
+              password: claim.password,
+              redirect: false,
+            });
+            postCheckoutRedirect = claimedPath;
+          } catch (signInErr) {
+            logger.error(
+              'post-checkout auto sign-in failed',
+              { area: 'checkout', entityId: actor.id, tag: 'guest-auto-signin' },
+              signInErr,
+            );
+            const next = encodeURIComponent(claimedPath);
+            const email = encodeURIComponent(loaded.email);
+            postCheckoutRedirect = hrefForLocale(
+              `/sign-in?claimed=1&email=${email}&next=${next}`,
+              checkoutLocale,
+            );
+          }
+        } else {
+          postCheckoutRedirect = claimedPath;
         }
       }
     } catch (err) {
-      logger.error('guest auto-claim failed', {
-        area: 'checkout',
-        entityId: actor.id,
-        tag: 'guest-auto-claim',
-      }, err);
+      logger.error(
+        'guest auto-claim failed',
+        { area: 'checkout', entityId: actor.id, tag: 'guest-auto-claim' },
+        err,
+      );
     }
   }
 
   revalidatePath('/dashboard');
   return { ok: true, redirectTo: postCheckoutRedirect };
-}
-
-/**
- * 14-character readable password used when we auto-claim a guest's account
- * at checkout. Comfortably above OWASP minimums and avoids ambiguous
- * characters (0/O/1/l/I).
- */
-function generatePostCheckoutPassword(): string {
-  const lower = 'abcdefghjkmnpqrstuvwxyz';
-  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const digits = '23456789';
-  const symbols = '!@#$%^&*';
-  const all = lower + upper + digits + symbols;
-  const pick = (set: string) => set[crypto.randomInt(0, set.length)];
-  const required = [pick(lower), pick(upper), pick(digits), pick(symbols)];
-  const rest = Array.from({ length: 10 }, () => pick(all));
-  return [...required, ...rest]
-    .sort(() => crypto.randomInt(0, 2) - 0.5)
-    .join('');
 }

@@ -8,7 +8,8 @@ import { safeRedirectPath } from '@/lib/utils';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getWizardActor } from '@/lib/guest';
+import { getGuestUser, getWizardActor } from '@/lib/guest';
+import { planMismatchedGuestSignIn, readGuestAsideEmails } from '@/lib/guest-identity';
 import { encryptString } from '@/lib/encryption';
 import {
   computeCost,
@@ -1134,7 +1135,24 @@ export async function getWizardFiling(filingId: string) {
     },
   });
   // Guests cannot navigate to /dashboard; we send them home instead.
+  // A signed-in account that does not own this guest draft is not given the
+  // draft. When the emails differ, explain that and offer a way back.
   if (!filing || filing.userId !== actor.id) {
+    if (filing && actor.kind === 'user' && actor.email && filing.status === 'DRAFT') {
+      const guest = await getGuestUser();
+      if (guest && guest.id === filing.userId) {
+        const mismatch = planMismatchedGuestSignIn({
+          guestEmail: guest.email,
+          accountEmail: actor.email,
+          typedEmails: readGuestAsideEmails(filing.optionalDetails),
+          filingId: filing.id,
+          currentStep: filing.currentStep,
+        });
+        if (!mismatch.attach && mismatch.noticeHref) {
+          return await redirectLocalized(mismatch.noticeHref, filing.locale);
+        }
+      }
+    }
     return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard');
   }
   return filing;

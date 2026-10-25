@@ -18,11 +18,11 @@ import {
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   searchSunbiz,
-  SunbizError,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
+import { CUSTOMER_SUNBIZ_LOOKUP_ERROR, customerSunbizMessage } from '@/lib/sunbiz-public-error';
 
 const AddressSchema = z.object({
   street1: z.string().min(1),
@@ -242,6 +242,12 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   }
 }
 
+function logSunbizFailure(tag: string, err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  logger.error('Sunbiz lookup failed', { area: 'sunbiz', tag, detail: message }, err);
+  return customerSunbizMessage(err);
+}
+
 /** Public (no-auth) Sunbiz entity lookup for the guest annual report form. */
 export async function lookupEntityPublic(
   documentNumber: string,
@@ -250,8 +256,7 @@ export async function lookupEntityPublic(
     const detail = await fetchFloridaEntityDetailByDocumentNumber(documentNumber.trim());
     return { ok: true, detail };
   } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Could not load that entity. Please try again.' };
+    return { ok: false, error: logSunbizFailure('lookup-entity-public', err) };
   }
 }
 
@@ -288,8 +293,11 @@ export async function searchEntitiesByName(
       }));
     return { ok: true, results: active };
   } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Search failed. Please try again.' };
+    const message = logSunbizFailure('search-entities-by-name', err);
+    return {
+      ok: false,
+      error: message === CUSTOMER_SUNBIZ_LOOKUP_ERROR ? 'Search failed. Please try again.' : message,
+    };
   }
 }
 

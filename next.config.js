@@ -110,6 +110,8 @@ const nextConfig = {
       { source: '/privacy-policy', destination: '/privacy', permanent: true },
       { source: '/why-us', destination: '/about#why', permanent: true },
       { source: '/annual-report-help', destination: '/file-annual-report', permanent: true },
+      { source: '/reinstate-florida-llc', destination: '/reinstate-llc', permanent: true },
+      { source: '/es/reinstate-florida-llc', destination: '/es/reinstate-llc', permanent: true },
       {
         source: '/florida-llc-guide',
         destination: '/guides/florida-llc-operating-agreement',

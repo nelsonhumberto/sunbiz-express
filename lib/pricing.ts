@@ -216,6 +216,16 @@ export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
  */
 export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
 
+/**
+ * LaunchForma service fee for a Florida LLC reinstatement, in dollars.
+ * Nelson approved $149. State fees are not included. The reinstatement
+ * quote adds those on top.
+ */
+export const REINSTATEMENT_SERVICE_FEE = 149;
+
+/** {@link REINSTATEMENT_SERVICE_FEE} in cents, for Stripe and the database. */
+export const REINSTATEMENT_SERVICE_FEE_CENTS = REINSTATEMENT_SERVICE_FEE * 100;
+
 /** Optional Registered Agent service upsell added to annual report checkout. */
 export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
 

@@ -155,6 +155,8 @@ export default async function AdminFilingsPage({
                           <Badge variant="secondary" className="gap-1">
                             <Link2 className="h-3 w-3" /> Linked
                           </Badge>
+                        ) : filing.filingSource === 'REINSTATEMENT' ? (
+                          <Badge variant="secondary">Reinstatement</Badge>
                         ) : (
                           <Badge variant="outline">{filing.serviceTier}</Badge>
                         )}

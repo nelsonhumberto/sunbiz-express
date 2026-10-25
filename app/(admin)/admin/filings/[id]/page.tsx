@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatAdminFilingPaidTotal, formatPaymentAmountLabel } from '@/lib/payment-test';
+import { parseReinstatementSnapshot } from '@/lib/reinstatement-quote';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import {
   defaultProcessingOption,
@@ -186,6 +187,8 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                 <Badge variant="secondary" className="gap-1">
                   <Link2 className="h-3 w-3" /> Linked entity
                 </Badge>
+              ) : filing.filingSource === 'REINSTATEMENT' ? (
+                <Badge variant="secondary">Reinstatement</Badge>
               ) : (
                 <Badge variant="outline">{filing.serviceTier}</Badge>
               )}
@@ -248,6 +251,34 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
         </Card>
       )}
 
+      {filing.filingSource === 'REINSTATEMENT' && (() => {
+        const order = parseReinstatementSnapshot(filing.optionalDetails);
+        if (!order) return null;
+        return (
+          <Card>
+            <CardContent className="p-6 space-y-2 text-sm">
+              <h3 className="font-semibold text-sm uppercase tracking-wider text-ink-subtle">
+                Reinstatement order
+              </h3>
+              <p>File this with Sunbiz. Processing times vary. State fees were collected at cost.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                <p><span className="text-ink-subtle">Document:</span> <span className="font-mono">{order.documentNumber}</span></p>
+                <p><span className="text-ink-subtle">Sunbiz status:</span> {order.sunbizStatus ?? 'Not provided'}</p>
+                <p><span className="text-ink-subtle">Years:</span> {(order.years ?? []).join(', ')}</p>
+                <p><span className="text-ink-subtle">Contact:</span> {order.contactName}</p>
+                <p><span className="text-ink-subtle">Email:</span> {order.email}</p>
+                <p><span className="text-ink-subtle">Phone:</span> {order.phone}</p>
+                <p><span className="text-ink-subtle">Officer:</span> {order.officerName}, {order.officerTitle}</p>
+                <p className="sm:col-span-2"><span className="text-ink-subtle">Officer/manager changes:</span> {order.changeNote ?? 'None noted'}</p>
+                <p><span className="text-ink-subtle">Service fee:</span> {formatCurrency(order.serviceCents)}</p>
+                <p><span className="text-ink-subtle">State fees:</span> {formatCurrency(order.stateFeeCents)}</p>
+                <p><span className="text-ink-subtle">Total:</span> {formatCurrency(order.totalCents)}</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {filing.status === 'APPROVED' && (
         <Card className="border-success-subtle bg-success-subtle/30">
           <CardContent className="p-6">
@@ -272,11 +303,12 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
           paper-routed or expedited filings can be queued correctly. */}
       {(() => {
         const opt = safeParseJson<{
+          kind?: string;
           processingOption?: string;
           foreignRegistrationInterest?: boolean;
           includeMembersOnArticles?: boolean;
         } | null>(filing.optionalDetails, null);
-        if (!opt) return null;
+        if (!opt || opt.kind === 'reinstatement') return null;
         const proc = resolveProcessingOption(stateCode, opt.processingOption);
         const isDefault = proc.id === defaultProcessingOption(stateCode).id;
         const showCard =

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { hrefForLocale } from '@/lib/app-href';
 import { logger } from '@/lib/logger';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
 import { guestSetPasswordSiteUrl, planGuestAccountClaim } from '@/lib/guest-checkout';
@@ -116,6 +117,10 @@ export async function claimPaidGuestAccount(input: {
       branchUrl: process.env.VERCEL_BRANCH_URL,
       requestOrigin: requestOrigin(),
     });
+    const resetPath = hrefForLocale(
+      `/reset-password?token=${token}`,
+      input.locale === 'es' ? 'es' : 'en',
+    );
     await sendEmail({
       type: 'GUEST_SET_PASSWORD',
       to: plan.email,
@@ -123,7 +128,7 @@ export async function claimPaidGuestAccount(input: {
       filingId: input.filingId,
       context: {
         firstName: user.firstName?.trim() || undefined,
-        resetUrl: `${siteUrl}/reset-password?token=${token}`,
+        resetUrl: `${siteUrl}${resetPath}`,
         locale: input.locale ?? undefined,
         loginEmail: plan.email,
       },

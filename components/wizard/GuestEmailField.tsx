@@ -29,6 +29,8 @@ export function GuestEmailField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={invalid}
+        enterKeyHint="go"
+        className="h-12 text-base"
       />
       {invalid ? (
         <p className="text-xs text-destructive">{error}</p>

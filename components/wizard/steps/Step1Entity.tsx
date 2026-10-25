@@ -104,7 +104,15 @@ export function Step1Entity({
   };
 
   return (
-    <div className="space-y-4">
+    <form
+      className="space-y-4"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (pending) return;
+        onContinue();
+      }}
+    >
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
         <div
           id="filing-state-label"
@@ -141,23 +149,10 @@ export function Step1Entity({
             );
           })}
         </div>
-        {stateRule.quirks.customerNote && (
-          <p className="mt-3 text-xs text-ink-muted leading-relaxed">
-            {stateRule.quirks.customerNote}
-          </p>
-        )}
-        {(stateRule.code === 'WY' || stateRule.code === 'DE') && (
-          <p className="mt-2 text-xs text-ink-muted leading-relaxed">
-            <strong>Heads up:</strong> Forming in {stateRule.name} doesn't authorize you to do
-            business in another state. If you'll have an office, employees, or significant
-            operations elsewhere, that state usually requires a separate "foreign qualification"
-            filing. We'll ask about this later in the wizard and follow up after formation.
-          </p>
-        )}
       </div>
 
       <div
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        className="grid grid-cols-3 gap-2"
         role="radiogroup"
         aria-label="Entity type"
       >
@@ -171,46 +166,22 @@ export function Step1Entity({
               aria-checked={isSelected}
               onClick={() => setSelected(option.value)}
               className={cn(
-                'relative text-left rounded-2xl border-2 p-6 transition-all',
+                'relative text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',
                 isSelected
                   ? 'border-primary bg-primary/5 shadow-glow'
                   : 'border-border bg-white hover:border-primary/30 hover:shadow-card'
               )}
             >
               {option.recommended && (
-                <span className="absolute -top-3 left-6 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider">
+                <span className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider">
                   {tPricing('ribbon_recommended')}
                 </span>
               )}
-              <div className="flex items-start gap-3 mb-4">
-                <div
-                  className={cn(
-                    'h-11 w-11 rounded-xl flex items-center justify-center',
-                    isSelected ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
-                  )}
-                >
-                  <option.icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-                    {option.subtitle}
-                  </p>
-                  <h3 className="font-display text-xl font-medium leading-tight">{option.title}</h3>
-                </div>
-                {isSelected && (
-                  <span className="h-6 w-6 rounded-full bg-primary text-white flex items-center justify-center">
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  </span>
-                )}
+              <div className="flex items-center gap-1.5">
+                <option.icon className={cn('h-4 w-4 shrink-0', isSelected ? 'text-primary' : 'text-ink-muted')} />
+                <span className="font-display text-sm font-medium leading-tight">{option.title}</span>
+                {isSelected && <Check className="h-3.5 w-3.5 text-primary ml-auto shrink-0" strokeWidth={3} />}
               </div>
-              <ul className="space-y-1.5">
-                {option.perks.map((perk) => (
-                  <li key={perk} className="text-sm text-ink-muted leading-snug flex items-start gap-2">
-                    <span className="text-primary mt-1.5">·</span>
-                    <span>{perk}</span>
-                  </li>
-                ))}
-              </ul>
             </button>
           );
         })}
@@ -279,12 +250,46 @@ export function Step1Entity({
         />
       )}
 
-      <p className="text-xs text-ink-subtle leading-relaxed">{t('entityHint')}</p>
+      <WizardActions
+        onNext={onContinue}
+        pending={pending}
+        error={error || emailError}
+        isSubmit
+        fullWidth
+        hideBack
+      />
 
-      <EntityDecisionCard stateName={stateRule.name} />
-
-      <WizardActions onNext={onContinue} pending={pending} error={error} />
-    </div>
+      <div className="space-y-4">
+        {stateRule.quirks.customerNote && (
+          <p className="text-xs text-ink-muted leading-relaxed">{stateRule.quirks.customerNote}</p>
+        )}
+        {(stateRule.code === 'WY' || stateRule.code === 'DE') && (
+          <p className="text-xs text-ink-muted leading-relaxed">
+            <strong>Heads up:</strong> Forming in {stateRule.name} doesn't authorize you to do
+            business in another state. If you'll have an office, employees, or significant
+            operations elsewhere, that state usually requires a separate "foreign qualification"
+            filing. We'll ask about this later in the wizard and follow up after formation.
+          </p>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {ENTITY_OPTIONS.map((option) => (
+            <ul key={option.value} className="space-y-1.5">
+              <li className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+                {option.title}
+              </li>
+              {option.perks.map((perk) => (
+                <li key={perk} className="text-sm text-ink-muted leading-snug flex items-start gap-2">
+                  <span className="text-primary mt-1.5">·</span>
+                  <span>{perk}</span>
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+        <p className="text-xs text-ink-subtle leading-relaxed">{t('entityHint')}</p>
+        <EntityDecisionCard stateName={stateRule.name} />
+      </div>
+    </form>
   );
 }
 

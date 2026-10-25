@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { hrefForLocale } from '@/lib/app-href';
 import { englishPathname } from '@/lib/locale-paths';
 import { redirectLocalized } from '@/lib/locale-redirect';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
@@ -29,7 +29,7 @@ import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import type { TierSlug } from '@/lib/pricing';
-import { normalizeNameCheckQuery } from '@/lib/name-check';
+import { nameHasMinimumSubstance, normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume } from '@/lib/start-draft';
 import {
   isPlaceholderGuestEmail,
@@ -53,6 +53,22 @@ const StartSchema = z.object({
   draftIntent: z.enum(['resume', 'new']).optional(),
   draftId: z.string().optional(),
 });
+
+async function alignFilingLocale(
+  filingId: string,
+  userId: string | null | undefined,
+  pathLocale: 'en' | 'es' | null,
+  current: string | null | undefined,
+): Promise<'en' | 'es'> {
+  const chosen = localeFromPathOrFiling(pathLocale, current);
+  if (pathLocale && current !== pathLocale) {
+    await prisma.filing.update({ where: { id: filingId }, data: { locale: pathLocale } });
+    if (userId) {
+      await prisma.user.update({ where: { id: userId }, data: { locale: pathLocale } });
+    }
+  }
+  return chosen;
+}
 
 function resolveEntityChoice(choice: 'LLC' | 'CORP' | 'SCORP' | undefined): {
   entityType: 'LLC' | 'CORP';
@@ -217,6 +233,8 @@ export async function openGuestDraft(input: {
   businessName?: string;
   draftIntent?: 'resume' | 'new';
   draftId?: string;
+  /** `window.location.pathname`. The address bar wins over the rewrite. */
+  browserPath?: string;
 }): Promise<StartGuestResult> {
   const t = await getTranslations('start');
   const requestedState = (input.state ?? 'FL').toUpperCase();
@@ -233,7 +251,13 @@ export async function openGuestDraft(input: {
     | 'STANDARD'
     | 'PREMIUM';
   const seededName = normalizeNameCheckQuery(input.businessName) || null;
-  const locale = await storedLocale();
+  if (input.businessName && !seededName) {
+    return { error: t('companyNameInvalid') };
+  }
+  if (seededName && !nameHasMinimumSubstance(seededName)) {
+    return { error: t('companyNameInvalid') };
+  }
+  const locale = await storedLocale(input.browserPath);
   const localeData = locale ? { locale } : {};
   const entryPath = storedEntryPath();
   const entryData = entryPath ? { entryPath } : {};
@@ -265,7 +289,7 @@ export async function openGuestDraft(input: {
     const draft = await prisma.filing.findFirst({
       where: { userId: guest.id, status: 'DRAFT' },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true, locale: true },
+      select: { id: true, currentStep: true, businessName: true, locale: true, userId: true },
     });
     if (draft && (!input.draftId || input.draftId === draft.id)) {
       const decision = decideDraftNameResume({
@@ -273,12 +297,13 @@ export async function openGuestDraft(input: {
         proposedName: input.draftIntent === 'resume' ? null : seededName,
         currentStep: draft.currentStep,
       });
+      const chosenLocale = await alignFilingLocale(draft.id, draft.userId, locale, draft.locale);
       if (decision.action === 'apply' && seededName) {
         await prisma.filing.update({
           where: { id: draft.id },
           data: { businessName: seededName, nameAvailable: null, nameCheckedAt: null },
         });
-        return await redirectLocalized(`/wizard/${draft.id}/2`, pickLocale(locale, draft.locale));
+        return await redirectLocalized(`/wizard/${draft.id}/2`, chosenLocale);
       }
       if (decision.action === 'choose' && seededName) {
         const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
@@ -287,15 +312,12 @@ export async function openGuestDraft(input: {
             draftId: draft.id,
             existingName: draft.businessName?.trim() || '',
             proposedName: seededName,
-            resumeHref: hrefForLocale(
-              `/wizard/${draft.id}/${step}`,
-              pickLocale(locale, draft.locale),
-            ),
+            resumeHref: hrefForLocale(`/wizard/${draft.id}/${step}`, chosenLocale),
           },
         };
       }
       const step = decision.action === 'resume' ? decision.step : 2;
-      return await redirectLocalized(`/wizard/${draft.id}/${step}`, pickLocale(locale, draft.locale));
+      return await redirectLocalized(`/wizard/${draft.id}/${step}`, chosenLocale);
     }
   }
 
@@ -554,7 +576,10 @@ async function draftResumeHref(
     if (owned) {
       const step =
         visibleStep ?? (owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2);
-      return hrefForLocale(`/wizard/${owned.id}/${step}`, pickLocale(await storedLocale(), owned.locale));
+      return hrefForLocale(
+        `/wizard/${owned.id}/${step}`,
+        localeFromPathOrFiling(await storedLocale(), owned.locale),
+      );
     }
   }
   const draft = await prisma.filing.findFirst({
@@ -563,9 +588,12 @@ async function draftResumeHref(
     select: { id: true, currentStep: true, locale: true },
   });
   if (!draft) {
-    return hrefForLocale('/dashboard', pickLocale(await storedLocale(), null));
+    return hrefForLocale('/dashboard', localeFromPathOrFiling(await storedLocale(), null));
   }
   const step =
     visibleStep ?? (draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2);
-  return hrefForLocale(`/wizard/${draft.id}/${step}`, pickLocale(await storedLocale(), draft.locale));
+  return hrefForLocale(
+    `/wizard/${draft.id}/${step}`,
+    localeFromPathOrFiling(await storedLocale(), draft.locale),
+  );
 }

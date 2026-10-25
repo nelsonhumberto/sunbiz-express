@@ -1,21 +1,26 @@
 import 'server-only';
 
 import { redirect as nextRedirect } from 'next/navigation';
-import { getLocale } from 'next-intl/server';
 import { hrefForLocale, localizedRedirectHref } from '@/lib/app-href';
-import { pickLocale, type SiteLocale } from '@/lib/pick-locale';
+import { type SiteLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
+import { storedLocale } from '@/lib/stored-locale';
 import { safeRedirectPath } from '@/lib/utils';
 
 export { localizedRedirectHref } from '@/lib/app-href';
 
 export async function localeForRedirect(filingLocale?: string | null): Promise<SiteLocale> {
-  let requestLocale: string | null = null;
+  // The URL path wins over the filing, the NEXT_LOCALE cookie, and
+  // Accept-Language. getLocale() is not used here: with no path it defaults
+  // to English and would drop a Spanish filing. storedLocale() returns null
+  // when the path is unknown.
+  let pathLocale: string | null = null;
   try {
-    requestLocale = await getLocale();
+    pathLocale = await storedLocale();
   } catch {
-    requestLocale = null;
+    pathLocale = null;
   }
-  return pickLocale(requestLocale, filingLocale);
+  return localeFromPathOrFiling(pathLocale, filingLocale);
 }
 
 /**

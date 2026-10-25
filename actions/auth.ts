@@ -3,10 +3,8 @@
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { redirect as exactRedirect } from 'next/navigation';
-import { redirect as localeRedirect } from '@/i18n/navigation';
 import { hrefForLocale } from '@/lib/app-href';
-import { localeForRedirect, localizedNextParam } from '@/lib/locale-redirect';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeForRedirect, localizedNextParam, redirectLocalized } from '@/lib/locale-redirect';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
@@ -183,21 +181,16 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
   throw new Error('Redirect did not stop execution.');
 }
 
-/** Honor a same-origin next= path, then the attached draft, in that draft's locale. */
+/** Honor a same-origin next= path. The address bar locale wins over the filing. */
 async function redirectAfterAuth(
   rawNext: FormDataEntryValue | null,
   resumeHref: string | null,
 ): Promise<never> {
   const filingLocale = await localeOnWizardHref(resumeHref);
-  const next = await localizedNextParam(typeof rawNext === 'string' ? rawNext : null, filingLocale);
-  const target = next ?? (resumeHref ? hrefForLocale(resumeHref, pickLocale(null, filingLocale)) : null);
-  if (target && (target.startsWith('/es/') || target === '/es' || target.startsWith('/es?'))) {
-    exactRedirect(target);
-    throw new Error('Redirect did not stop execution.');
-  }
   const locale = await localeForRedirect(filingLocale);
-  localeRedirect({ href: target ?? '/dashboard', locale });
-  throw new Error('Redirect did not stop execution.');
+  const next = await localizedNextParam(typeof rawNext === 'string' ? rawNext : null, locale);
+  const target = next ?? (resumeHref ? hrefForLocale(resumeHref, locale) : null);
+  return await redirectLocalized(target ?? '/dashboard', locale);
 }
 
 async function localeOnWizardHref(href: string | null): Promise<string | null> {

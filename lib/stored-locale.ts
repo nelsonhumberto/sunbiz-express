@@ -1,34 +1,31 @@
 import 'server-only';
 
 import { headers } from 'next/headers';
-import { getLocale } from 'next-intl/server';
-import { LOCALE_HEADER, localeFromPublicPath, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { resolveRequestLocale } from '@/lib/request-locale';
 
 /**
  * Site language for this request, stored on the user and the new filing.
- * The public path wins, same as i18n/request.ts, so a server action whose
- * getLocale() falls back to English still records Spanish for /es.
+ * The URL path wins. A server action often cannot see the middleware
+ * rewrite headers, so the address bar (browser path, Referer, next-url)
+ * is read directly. NEXT_LOCALE and Accept-Language are not consulted.
+ * Returns null outside a request so email jobs can keep the filing locale.
  */
-export async function storedLocale(): Promise<'en' | 'es' | null> {
+export async function storedLocale(browserPath?: string | null): Promise<'en' | 'es' | null> {
   try {
-    const path = headers().get(PUBLIC_PATH_HEADER);
-    if (path) return localeFromPublicPath(path);
+    const headerStore = headers();
+    return resolveRequestLocale({
+      browserPath,
+      publicPath: headerStore.get(PUBLIC_PATH_HEADER),
+      nextUrl: headerStore.get('next-url'),
+      referer: headerStore.get('referer'),
+      localeHeader: headerStore.get(LOCALE_HEADER),
+      allowedHost: headerStore.get('host'),
+      serverAction: Boolean(headerStore.get('next-action')) || Boolean(browserPath),
+    });
   } catch {
-    /* headers() is unavailable outside a request */
+    return resolveRequestLocale({ browserPath });
   }
-  try {
-    const hinted = headers().get(LOCALE_HEADER);
-    if (hinted === 'en' || hinted === 'es') return hinted;
-  } catch {
-    /* ignore */
-  }
-  try {
-    const locale = await getLocale();
-    if (locale === 'en' || locale === 'es') return locale;
-  } catch {
-    /* ignore */
-  }
-  return null;
 }
 
 /** Public path for this request, including a leading /es when present. */

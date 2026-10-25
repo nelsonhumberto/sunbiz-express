@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
@@ -209,7 +210,7 @@ export default async function HowToFormFloridaLlcGuide() {
           You can file directly on Sunbiz. A filing service such as LaunchForma prepares
           and submits the filing for you and adds things like registered agent service.
           LaunchForma is a private filing service, not a government agency and not a law
-          firm. <a href="/pricing">See pricing</a> or <a href="/start">start a filing</a>.
+          firm. <Link href="/pricing">See pricing</Link> or <Link href="/start">start a filing</Link>.
         </p>
         <p>
           Forming a corporation instead? Read{' '}

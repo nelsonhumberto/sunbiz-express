@@ -155,7 +155,6 @@ export default async function WizardStepPage({ params }: PageProps) {
     actor?.kind === 'guest' ? (actor.email ?? undefined) : (signedInEmail ?? undefined);
   const realGuestEmail =
     actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
-  const needsGuestEmail = actor?.kind === 'guest' && !realGuestEmail;
   const storedPendingAccountEmail =
     optional && typeof optional.pendingAccountEmail === 'string'
       ? optional.pendingAccountEmail
@@ -169,6 +168,11 @@ export default async function WizardStepPage({ params }: PageProps) {
     : '';
   const typedGuestEmail =
     optional && typeof optional.typedGuestEmail === 'string' ? optional.typedGuestEmail : '';
+  // /start already stores a reachable address on User.email, or aside on the
+  // filing when that mailbox is taken. Do not ask for it again. Guests who
+  // skipped it still see the field here and on the name step.
+  const needsGuestEmail =
+    actor?.kind === 'guest' && !realGuestEmail && !typedGuestEmail && !storedPendingAccountEmail;
   const guestEmailPrefill = storedPendingAccountEmail || typedGuestEmail;
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,

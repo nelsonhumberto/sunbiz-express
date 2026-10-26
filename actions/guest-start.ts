@@ -391,6 +391,9 @@ export async function openGuestDraft(input: {
   }
 
   if (!guest) {
+    // Per visitor IP (x-forwarded-for, else x-real-ip). One address at 30 new
+    // drafts an hour does not consume the bucket for anyone else. A guest who
+    // already has the cookie is not counted.
     const limited = checkActionRateLimit('guest-open', 30, 60 * 60 * 1000);
     if (limited) return { error: limited };
   }

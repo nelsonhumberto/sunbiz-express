@@ -167,6 +167,9 @@ describe('session replay masking', () => {
     expect(gate).toBeGreaterThan(-1);
     expect(init).toBeGreaterThan(gate);
     expect(browser).toContain('capture_pageview: \'history_change\'');
+    const exceptions = browser.indexOf('capture_exceptions: true');
+    expect(exceptions).toBeGreaterThan(init);
+    expect(exceptions).toBeLessThan(browser.indexOf('loaded: (client)'));
     expect(browser).toContain('client.register({ is_internal: true })');
     expect(browser).toContain(
       'replayStoppedByRoute = isSessionReplayBlockedPath(window.location.pathname)',

@@ -129,6 +129,81 @@ export function trackPurchaseCompleted(extra?: Record<string, unknown>) {
   trackEvent('purchase_completed', extra);
 }
 
+const CHECKOUT_SUCCESS_VIEW_PREFIX = 'lf_checkout_success_viewed:';
+
+/** localStorage key so /checkout/success fires once per filing in this browser. */
+export function checkoutSuccessViewStorageKey(filingId: string): string {
+  return `${CHECKOUT_SUCCESS_VIEW_PREFIX}${filingId}`;
+}
+
+export function checkoutSuccessAlreadyViewed(filingId: string): boolean {
+  if (typeof window === 'undefined' || !filingId) return false;
+  try {
+    return window.localStorage.getItem(checkoutSuccessViewStorageKey(filingId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markCheckoutSuccessViewed(filingId: string): void {
+  if (typeof window === 'undefined' || !filingId) return;
+  try {
+    window.localStorage.setItem(checkoutSuccessViewStorageKey(filingId), '1');
+  } catch {
+    /* private mode: the component ref still blocks a second fire in this mount */
+  }
+}
+
+/** Filing id from `/wizard/:id` or `/es/wizard/:id`. */
+export function filingIdFromWizardPath(href: string | null | undefined): string | null {
+  if (!href) return null;
+  const path = href.startsWith('http')
+    ? (() => {
+        try {
+          return new URL(href).pathname;
+        } catch {
+          return href;
+        }
+      })()
+    : href.split('?')[0] ?? href;
+  const match = path.match(/\/wizard\/([^/?#]+)/);
+  const id = match?.[1]?.trim() ?? '';
+  return id || null;
+}
+
+/**
+ * Checkout and start events. Only these keys are sent. No email, no name.
+ * `amount` is the server total in dollars. `is_test` is omitted when unknown.
+ * Callers go through `trackEvent`, which no-ops until PostHog is loaded.
+ */
+export function checkoutFunnelEventProperties(input: {
+  filingId?: string | null;
+  plan?: string | null;
+  amountCents?: number | null;
+  locale?: string | null;
+  isTest?: boolean | null;
+}): Record<string, string | number | boolean> {
+  const properties: Record<string, string | number | boolean> = {};
+  if (input.filingId) properties.filing_id = input.filingId;
+  if (input.plan) properties.plan = input.plan;
+  if (typeof input.amountCents === 'number' && Number.isFinite(input.amountCents)) {
+    properties.amount = input.amountCents / 100;
+  }
+  if (input.locale === 'en' || input.locale === 'es') properties.locale = input.locale;
+  if (typeof input.isTest === 'boolean') properties.is_test = input.isTest;
+  return properties;
+}
+
+export function startNameSubmittedProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+}): Record<string, string> {
+  const properties: Record<string, string> = {};
+  if (input.filingId) properties.filing_id = input.filingId;
+  if (input.locale === 'en' || input.locale === 'es') properties.locale = input.locale;
+  return properties;
+}
+
 // ── Google Analytics / Ads (gtag) ────────────────────────────────────────
 //
 // These fire on top of PostHog so Google Ads can attribute conversions. All

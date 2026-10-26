@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
 import { Link } from '@/i18n/navigation';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
@@ -82,8 +83,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
   const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
   const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
   const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
-  const entityLabel =
-    entityChoice === 'SCORP' ? t('entitySCorp') : entityChoice === 'CORP' ? t('entityCorp') : t('entityLLC');
+  const session = await auth();
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -105,8 +105,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           defaultTier={resolveTier(searchParams?.tier)}
           defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
           stateName={stateName}
-          entityLabel={entityLabel}
-          askEntity={!searchParams?.entity}
+          showOptionalEmail={!session?.user?.id}
         />
 
         <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
 import {
@@ -17,6 +17,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { processCheckout } from '@/actions/payments';
+import { checkoutFunnelEventProperties, trackEvent } from '@/lib/analytics';
 import { validateCoupon, type CouponValidationResult } from '@/actions/coupons';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
@@ -54,6 +55,7 @@ export function Step12Payment({
   isGuest = false,
   guestEmail = '',
   pendingAccountEmail,
+  serverTotalCents,
 }: {
   filing: WizardFiling;
   isTester?: boolean;
@@ -62,10 +64,25 @@ export function Step12Payment({
   isGuest?: boolean;
   guestEmail?: string;
   pendingAccountEmail?: string;
+  /** Order total from computeCost on the server, in cents. */
+  serverTotalCents: number;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
-  const locale = useLocale();
+  const locale = useLocale() === 'es' || filing.locale === 'es' ? 'es' : 'en';
+  const paymentEventProps = checkoutFunnelEventProperties({
+    filingId: filing.id,
+    plan: filing.serviceTier,
+    amountCents: serverTotalCents,
+    locale,
+    isTest: Boolean(filing.isTest || isTester || testMode),
+  });
+
+  useEffect(() => {
+    trackEvent('checkout_payment_step_viewed', paymentEventProps);
+    // The view is once per mount of this payment step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filing.id]);
 
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const stateCode: StateCode = isActiveFormationState(filing.state)
@@ -152,14 +169,15 @@ export function Step12Payment({
       if (isGuest && !checkoutEmail.trim()) {
         return { ok: false, error: t('guestPayEmailRequired') };
       }
+      if (!(isTester && !isGuest) && !cardholderName.trim()) {
+        return { ok: false, error: t('errorCardholder') };
+      }
+      trackEvent('checkout_payment_submitted', paymentEventProps);
 
       if (isTester && !isGuest) {
         // Tester mode: skip Stripe entirely, use bypass sentinel
         paymentIntentId = 'TESTER_BYPASS';
       } else {
-        if (!cardholderName.trim()) {
-          return { ok: false, error: t('errorCardholder') };
-        }
         const result = await cardRef.current!.confirm({
           amountCents: finalTotal,
           cardholderName,

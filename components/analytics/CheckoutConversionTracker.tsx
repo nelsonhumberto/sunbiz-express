@@ -2,8 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import {
+  checkoutFunnelEventProperties,
+  checkoutSuccessAlreadyViewed,
   identifyUser,
+  markCheckoutSuccessViewed,
   purchaseCompletedEventProperties,
+  trackEvent,
   trackPurchaseCompleted,
   trackGooglePurchase,
 } from '@/lib/analytics';
@@ -19,6 +23,8 @@ interface CheckoutConversionTrackerProps {
   state?: string | null;
   entityType?: string | null;
   tier?: string | null;
+  locale?: string | null;
+  isTest?: boolean | null;
   utm?: {
     utmSource?: string | null;
     utmMedium?: string | null;
@@ -42,6 +48,8 @@ export function CheckoutConversionTracker({
   state,
   entityType,
   tier,
+  locale,
+  isTest,
   utm,
 }: CheckoutConversionTrackerProps) {
   const fired = useRef(false);
@@ -64,6 +72,20 @@ export function CheckoutConversionTracker({
     );
 
     identifyUser(userId, utmProps);
+    const successKey = filingId ?? '';
+    if (!successKey || !checkoutSuccessAlreadyViewed(successKey)) {
+      if (successKey) markCheckoutSuccessViewed(successKey);
+      trackEvent(
+        'checkout_success_viewed',
+        checkoutFunnelEventProperties({
+          filingId,
+          plan: tier,
+          amountCents,
+          locale,
+          isTest,
+        }),
+      );
+    }
     trackPurchaseCompleted({
       ...purchaseCompletedEventProperties({
         filingId,
@@ -84,7 +106,7 @@ export function CheckoutConversionTracker({
         ...(currency ? { currency } : {}),
       });
     }
-  }, [userId, filingId, amountCents, currency, state, entityType, tier, utm]);
+  }, [userId, filingId, amountCents, currency, state, entityType, tier, locale, isTest, utm]);
 
   return null;
 }

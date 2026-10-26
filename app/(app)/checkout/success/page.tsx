@@ -96,6 +96,7 @@ export default async function CheckoutSuccessPage({
     businessName: string | null;
     entityType: string;
     serviceTier: string;
+    isTest?: boolean;
     state: string;
     sunbizTrackingNumber: string | null;
     sunbizPin: string | null;
@@ -206,6 +207,8 @@ export default async function CheckoutSuccessPage({
       state={filing?.state}
       entityType={filing?.entityType}
       tier={filing?.serviceTier}
+      locale={locale}
+      isTest={typeof filing?.isTest === 'boolean' ? filing.isTest : undefined}
       utm={
         filing
           ? {

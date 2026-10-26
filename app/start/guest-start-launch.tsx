@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { openGuestDraft, type DraftNameChoice } from '@/actions/guest-start';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,8 +15,13 @@ import {
   withActionTimeout,
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
-import { nameHasMinimumSubstance } from '@/lib/name-check';
-import { cn } from '@/lib/utils';
+import {
+  filingIdFromWizardPath,
+  startNameSubmittedProperties,
+  trackEvent,
+} from '@/lib/analytics';
+import { isDeliverableEmail } from '@/lib/email-address';
+import { startNameIsAcceptable } from '@/lib/start-draft';
 
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
 
@@ -25,10 +30,10 @@ type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
  * submits, via the openGuestDraft server action. Loading, prefetch, and
  * crawlers do not create either.
  *
- * The company name is the only field collected up front. Entity type is shown when the
- * URL did not already choose one. The button stays enabled while the name is
- * empty so iOS Go and Enter can submit and surface the inline error. It is
- * disabled only while the draft is being created.
+ * One name field on every viewport. Entity defaults to LLC unless the URL
+ * already chose one. The link switches between LLC and corporation. There is
+ * no availability check here. The name check runs on wizard step 2.
+ * An email can be left blank. Continue still opens the draft.
  */
 export function GuestStartLaunch({
   defaultState,
@@ -36,24 +41,30 @@ export function GuestStartLaunch({
   defaultTier,
   defaultBusinessName,
   stateName,
-  entityLabel,
-  askEntity,
+  showOptionalEmail,
 }: {
   defaultState: 'FL' | 'WY' | 'DE';
   defaultEntity: EntityChoice;
   defaultTier?: string;
   defaultBusinessName?: string;
   stateName: string;
-  entityLabel: string;
-  askEntity: boolean;
+  showOptionalEmail: boolean;
 }) {
   const t = useTranslations('start');
+  const locale = useLocale() === 'es' ? 'es' : 'en';
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [choice, setChoice] = useState<DraftNameChoice | null>(null);
   const [businessName, setBusinessName] = useState(defaultBusinessName ?? '');
+  const [email, setEmail] = useState('');
   const [entity, setEntity] = useState<EntityChoice>(defaultEntity);
+
+  const entityLabel =
+    entity === 'SCORP' ? t('entitySCorp') : entity === 'CORP' ? t('entityCorp') : t('entityLLC');
+  const nameLabel =
+    entity === 'LLC' ? t('nameYourLlc') : entity === 'SCORP' ? t('nameYourSCorp') : t('nameYourCorp');
 
   async function run(extra?: { draftIntent?: 'resume' | 'new'; draftId?: string; businessName?: string }) {
     setPending(true);
@@ -65,6 +76,7 @@ export function GuestStartLaunch({
           entityType: entity,
           tier: defaultTier,
           businessName: extra?.draftIntent === 'resume' ? undefined : (extra?.businessName ?? businessName),
+          email: showOptionalEmail ? email.trim() || undefined : undefined,
           draftIntent: extra?.draftIntent,
           draftId: extra?.draftId,
           browserPath: window.location.pathname,
@@ -83,6 +95,11 @@ export function GuestStartLaunch({
     } catch (err) {
       const href = redirectHrefFromError(err);
       if (href) {
+        const filingId = filingIdFromWizardPath(href);
+        trackEvent(
+          'start_name_submitted',
+          startNameSubmittedProperties({ filingId, locale }),
+        );
         window.location.assign(href);
         return;
       }
@@ -96,20 +113,22 @@ export function GuestStartLaunch({
     event.preventDefault();
     if (pending) return;
     const trimmed = businessName.trim();
-    if (!nameHasMinimumSubstance(trimmed)) {
+    if (!startNameIsAcceptable(trimmed)) {
       setNameError(t('companyNameInvalid'));
       setFormError(t('companyNameInvalid'));
       return;
     }
+    const typedEmail = email.trim();
+    if (showOptionalEmail && typedEmail && !isDeliverableEmail(typedEmail)) {
+      setEmailError(t('emailOptionalInvalid'));
+      setNameError(null);
+      setFormError(null);
+      return;
+    }
     setNameError(null);
+    setEmailError(null);
     void run({ businessName: trimmed });
   }
-
-  const entities: { value: EntityChoice; label: string }[] = [
-    { value: 'LLC', label: t('entityLLC') },
-    { value: 'CORP', label: t('entityCorp') },
-    { value: 'SCORP', label: t('entitySCorp') },
-  ];
 
   return (
     <div className="space-y-4 sm:space-y-8">
@@ -160,7 +179,7 @@ export function GuestStartLaunch({
           ) : (
             <form onSubmit={onSubmit} className="space-y-3" noValidate>
               <div className="space-y-1.5 text-left">
-                <Label htmlFor="businessName">{t('companyName')}</Label>
+                <Label htmlFor="businessName">{nameLabel}</Label>
                 <Input
                   id="businessName"
                   name="businessName"
@@ -179,37 +198,51 @@ export function GuestStartLaunch({
                   maxLength={100}
                   placeholder={t('companyNamePlaceholder')}
                   aria-invalid={nameError ? true : undefined}
-                  aria-describedby={nameError ? 'start-name-error' : undefined}
+                  aria-describedby={nameError ? 'start-name-help start-name-error' : 'start-name-help'}
                   className="h-12 text-base"
                 />
+                <p id="start-name-help" className="text-[11px] text-ink-subtle">
+                  {t('nameHelper')}
+                </p>
               </div>
 
-              {askEntity && (
-                <fieldset className="space-y-1.5 text-left">
-                  <legend className="text-sm font-medium">{t('entityType')}</legend>
-                  <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('entityType')}>
-                    {entities.map((option) => {
-                      const active = entity === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={active}
-                          onClick={() => setEntity(option.value)}
-                          className={cn(
-                            'h-11 rounded-lg border text-sm font-semibold',
-                            active
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-border bg-white text-ink',
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+              <button
+                type="button"
+                onClick={() => setEntity((current) => (current === 'LLC' ? 'CORP' : 'LLC'))}
+                className="block text-left text-sm font-medium text-primary hover:underline"
+              >
+                {entity === 'LLC' ? t('switchToCorp') : t('switchToLlc')}
+              </button>
+
+              {showOptionalEmail && (
+                <div className="space-y-1.5 text-left">
+                  <Label htmlFor="start-email">{t('emailOptional')}</Label>
+                  <Input
+                    id="start-email"
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      if (emailError) setEmailError(null);
+                    }}
+                    maxLength={254}
+                    placeholder={t('emailPlaceholder')}
+                    aria-invalid={emailError ? true : undefined}
+                    aria-describedby={emailError ? 'start-email-help start-email-error' : 'start-email-help'}
+                    className="h-12 text-base"
+                  />
+                  <p id="start-email-help" className="text-[11px] text-ink-subtle">
+                    {t('emailOptionalHint')}
+                  </p>
+                  {emailError && (
+                    <p id="start-email-error" role="alert" className="text-sm text-destructive">
+                      {emailError}
+                    </p>
+                  )}
+                </div>
               )}
 
               {(formError || nameError) && (

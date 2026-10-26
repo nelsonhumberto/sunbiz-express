@@ -45,6 +45,6 @@ describe('guest-open rate limit', () => {
     expect(source).toContain("checkActionRateLimit('guest-open', 30, 60 * 60 * 1000)");
     const limiter = readFileSync('lib/rate-limit.ts', 'utf8');
     expect(limiter).toContain('const key = `${scope}:${ip}');
-    expect(limiter).toContain("fwd.split(',')[0]");
+    expect(limiter).toContain("return value.split(',')[0]?.trim() ?? ''");
   });
 });

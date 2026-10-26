@@ -70,7 +70,7 @@ Source for every row: [https://dos.fl.gov/sunbiz/forms/fees/llc-fees/](https://d
 ## What is free
 
 - **EIN (Employer Identification Number).** The IRS issues EINs for free. In the IRS's own words: "You never have to pay a fee for an EIN." The IRS also says to form your LLC with the state first, then apply. Source: [https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number](https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number)
-- **BOI report.** As of the August 2026 FinCEN final rule, U.S.-formed companies are exempt from beneficial ownership reporting. See [https://launchforma.com/boi-reporting](/boi-reporting)
+- **BOI report.** [FinCEN's final rule permanently removed the beneficial ownership reporting requirement for companies formed in the United States.](https://www.fincen.gov/boi)
 
 ## Costs people forget
 
@@ -95,7 +95,7 @@ Which structure fits depends on taxes and goals, so talk to a CPA or attorney be
 
 You can file directly on Sunbiz for the $125 state fee. Owners usually use a service when they want someone to check the name and paperwork, act as registered agent, track the annual report deadline, or answer questions in English or Spanish.
 
-LaunchForma is a husband and wife team that has been helping business owners since 2015, from our office in Miami Lakes. Our packages include the state filing fee, so there is no separate state fee to add at checkout, and we file within 1 business day. Approval timing is up to the state. Current packages are on [https://launchforma.com/pricing](/pricing)`;
+LaunchForma files Florida LLCs online from our Miami Lakes office. Our packages include the state filing fee, so there's no separate state fee at checkout, and we submit your filing within 1 business day. Approval timing is up to the state. Current packages are on [https://launchforma.com/pricing](/pricing)`;
 
 const CLOSING = `## Ready to start?
 

@@ -17,7 +17,6 @@ const DESCRIPTION =
   'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee, what is free, and the costs owners forget.';
 
 const INTERNAL_LINKS: { href: string; file: string }[] = [
-  { href: '/boi-reporting', file: 'app/(marketing)/boi-reporting/page.tsx' },
   {
     href: '/guides/florida-registered-agent',
     file: 'app/(marketing)/guides/florida-registered-agent/page.tsx',
@@ -44,6 +43,7 @@ const SOURCE_URLS = [
   'https://dos.fl.gov/sunbiz/manage-business/efile/annual-report/',
   'https://dos.fl.gov/sunbiz/start-business/efile/fl-fictitious-name-registration/',
   'https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number',
+  'https://www.fincen.gov/boi',
 ];
 
 describe('Florida LLC cost guide', () => {
@@ -76,8 +76,19 @@ describe('Florida LLC cost guide', () => {
     expect(page).toContain('$25.00');
     expect(page).toContain('$70.00 ($35 + $35)');
     expect(page).toContain('$150.00');
-    expect(page).toContain('husband and wife team');
-    expect(page).toContain('since 2015');
+    expect(page).toContain('| Name reservation | $25.00 | Optional |');
+    expect(page).toContain(
+      "LaunchForma files Florida LLCs online from our Miami Lakes office. Our packages include the state filing fee, so there's no separate state fee at checkout, and we submit your filing within 1 business day. Approval timing is up to the state.",
+    );
+    const about = page.indexOf('LaunchForma files Florida LLCs online from our Miami Lakes office.');
+    const pricingLink = page.indexOf('[https://launchforma.com/pricing](/pricing)');
+    expect(pricingLink).toBeGreaterThan(about);
+    expect(page.slice(about, pricingLink)).not.toMatch(/—|–/);
+    expect(page).toContain(
+      "[FinCEN's final rule permanently removed the beneficial ownership reporting requirement for companies formed in the United States.](https://www.fincen.gov/boi)",
+    );
+    expect(page).not.toContain('/boi-reporting');
+    expect(page).not.toContain('August 2026');
     expect(page).toContain('Miami Lakes');
     expect(page).toContain('within 1 business day');
     expect(page).toContain('href="/start"');

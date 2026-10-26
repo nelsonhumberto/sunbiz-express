@@ -822,3 +822,11 @@ model AssistantMessage {
   @@index([conversationId, createdAt])
 }
 
+// One America/New_York calendar day of assistant model spend.
+// costMicroUsd is millionths of a US dollar. Additive ledger only.
+model AssistantSpendDay {
+  day          DateTime @id @db.Date
+  costMicroUsd BigInt   @default(0)
+  updatedAt    DateTime @updatedAt
+}
+

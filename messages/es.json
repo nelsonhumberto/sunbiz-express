@@ -10,7 +10,8 @@
     "thinking": "Forma está pensando…",
     "placeholder": "Escribe tu pregunta…",
     "send": "Enviar",
-    "disclaimer": "Forma ofrece información general, no asesoría legal ni fiscal. Los datos sensibles como tu SSN solo se ingresan en el paso seguro del asistente."
+    "disclaimer": "Forma ofrece información general, no asesoría legal ni fiscal. Los datos sensibles como tu SSN solo se ingresan en el paso seguro del asistente.",
+    "conversationLimit": "Llegamos al límite de este chat. Puedes seguir en el formulario o [escribirnos](/es/contacto) y una persona te ayudará."
   },
   "common": {
     "appName": "LaunchForma",

@@ -37,6 +37,10 @@ vi.mock('next/headers', () => ({
 }));
 
 import { POST } from '@/app/api/stripe/payment-intent/route';
+import { tierPackagePriceCents } from '@/lib/pricing';
+
+/** Server-computed Essential Florida LLC total. The client amount must not win. */
+const ESSENTIAL_FL_LLC_CENTS = tierPackagePriceCents('BASIC', 'LLC', 'FL');
 
 function filingOwnedBy(userId: string) {
   return {
@@ -83,7 +87,7 @@ beforeEach(() => {
     id: 'pi_1',
     client_secret: 'sec',
     status: 'requires_payment_method',
-    amount: 14900,
+    amount: ESSENTIAL_FL_LLC_CENTS,
   });
 });
 
@@ -131,7 +135,12 @@ describe('payment intent access', () => {
     });
     paymentIntentsCreate.mockImplementation(async () => {
       order.push('pi');
-      return { id: 'pi_1', client_secret: 'sec', status: 'requires_payment_method', amount: 14900 };
+      return {
+        id: 'pi_1',
+        client_secret: 'sec',
+        status: 'requires_payment_method',
+        amount: ESSENTIAL_FL_LLC_CENTS,
+      };
     });
 
     const res = await POST({
@@ -152,11 +161,11 @@ describe('payment intent access', () => {
     );
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 14900,
+        amount: ESSENTIAL_FL_LLC_CENTS,
         receipt_email: 'buyer@example.com',
         metadata: expect.objectContaining({ userId: 'guest_1', filingId: 'filing_1' }),
       }),
-      { idempotencyKey: 'filing_filing_1_amt_14900' },
+      { idempotencyKey: `filing_filing_1_amt_${ESSENTIAL_FL_LLC_CENTS}` },
     );
     expect(order.indexOf('email')).toBeGreaterThan(-1);
     expect(order.indexOf('email')).toBeLessThan(order.indexOf('pi'));
@@ -257,7 +266,7 @@ describe('payment intent access', () => {
     } as never);
     expect(res.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 14900 }),
+      expect.objectContaining({ amount: ESSENTIAL_FL_LLC_CENTS }),
       expect.anything(),
     );
   });

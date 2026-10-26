@@ -34,12 +34,12 @@ describe('computeCost', () => {
 
   it('itemizes each Florida tier as service fee plus state fee without changing the total', () => {
     const cases: { tier: TierSlug; entity: 'LLC' | 'CORP'; service: number; stateFee: number }[] = [
-      { tier: 'BASIC', entity: 'LLC', service: 2_400, stateFee: 12_500 },
-      { tier: 'BASIC', entity: 'CORP', service: 2_400, stateFee: 7_000 },
-      { tier: 'STANDARD', entity: 'LLC', service: 11_900, stateFee: 12_500 + 500 + 3_000 },
-      { tier: 'STANDARD', entity: 'CORP', service: 11_900, stateFee: 7_000 + 875 + 875 },
-      { tier: 'PREMIUM', entity: 'LLC', service: 28_900, stateFee: 12_500 + 500 + 3_000 },
-      { tier: 'PREMIUM', entity: 'CORP', service: 28_900, stateFee: 7_000 + 875 + 875 },
+      { tier: 'BASIC', entity: 'LLC', service: 7_400, stateFee: 12_500 },
+      { tier: 'BASIC', entity: 'CORP', service: 7_400, stateFee: 7_000 },
+      { tier: 'STANDARD', entity: 'LLC', service: 18_900, stateFee: 12_500 + 500 + 3_000 },
+      { tier: 'STANDARD', entity: 'CORP', service: 18_900, stateFee: 7_000 + 875 + 875 },
+      { tier: 'PREMIUM', entity: 'LLC', service: 38_900, stateFee: 12_500 + 500 + 3_000 },
+      { tier: 'PREMIUM', entity: 'CORP', service: 38_900, stateFee: 7_000 + 875 + 875 },
     ];
     for (const row of cases) {
       const parts = tierPriceParts(row.tier, row.entity, 'FL');

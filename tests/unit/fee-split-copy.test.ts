@@ -26,9 +26,9 @@ describe('state fee labels', () => {
     expect(popular).toMatch(/certified copy/i);
     expect(popular).toMatch(/certificate of status/i);
     expect(premium).toContain('$160');
-    expect(tierPriceParts('BASIC', 'LLC', 'FL').totalCents).toBe(14_900);
-    expect(tierPriceParts('STANDARD', 'LLC', 'FL').totalCents).toBe(27_900);
-    expect(tierPriceParts('PREMIUM', 'LLC', 'FL').totalCents).toBe(44_900);
+    expect(tierPriceParts('BASIC', 'LLC', 'FL').totalCents).toBe(19_900);
+    expect(tierPriceParts('STANDARD', 'LLC', 'FL').totalCents).toBe(34_900);
+    expect(tierPriceParts('PREMIUM', 'LLC', 'FL').totalCents).toBe(54_900);
 
     const esLabel = feeSplitLabel(
       translate(es.pricing),

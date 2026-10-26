@@ -241,6 +241,12 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
                   {internalAgent.city}, {internalAgent.state} {internalAgent.zip}
                 </p>
               </div>
+              {internalAgent.phone ? (
+                <div>
+                  <p className="text-xs text-ink-subtle uppercase tracking-wider mb-1">{t('phone')}</p>
+                  <p className="font-medium">{internalAgent.phone}</p>
+                </div>
+              ) : null}
             </div>
           </div>
           <label className="flex items-start gap-3 rounded-lg border border-border bg-white p-4 cursor-pointer hover:border-primary/30">

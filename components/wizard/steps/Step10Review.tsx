@@ -56,6 +56,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
     state: string;
     zip: string;
     useOurService?: boolean;
+    phone?: string;
   } | null>(filing.registeredAgent, null);
   const correspondence = safeParseJson<{ email?: string; phone?: string } | null>(
     filing.correspondenceContact,
@@ -173,6 +174,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         />
         <Row label={t('nameLabel')} value={ra?.name ?? '-'} />
         <Row label={t('addressLabel')} value={fmtAddr(ra ?? null)} />
+        {ra?.phone?.trim() ? <Row label={t('phone')} value={ra.phone} /> : null}
       </ReviewSection>
 
       <ReviewSection

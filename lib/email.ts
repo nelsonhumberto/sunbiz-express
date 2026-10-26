@@ -55,6 +55,8 @@ export type NotificationType =
   | 'EIN_ORDERED'
   | 'CERTIFICATE_ORDERED'
   | 'PAYMENT_CONFIRMATION'
+  | 'ADMIN_PAID_ORDER'
+  | 'ADMIN_FILING_OVERDUE'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
   | 'FILING_REJECTED'
@@ -74,6 +76,18 @@ interface EmailContext {
   businessName?: string;
   entityType?: 'LLC' | 'CORP';
   totalCents?: number;
+  /** True for isTest payments and tester accounts. Prefixes the admin subject. */
+  testOrder?: boolean;
+  customerName?: string;
+  customerEmail?: string;
+  orderState?: string;
+  orderEntity?: string;
+  orderPlan?: string;
+  paidAtLabel?: string;
+  deadlineLabel?: string;
+  adminFilingUrl?: string;
+  /** overdue_soon at 20h, overdue at 24h. */
+  overdueKind?: 'overdue_soon' | 'overdue';
   filingNumber?: string;
   trackingNumber?: string;
   pin?: string;
@@ -530,7 +544,7 @@ const TEMPLATES: Record<
         subject: `Pago confirmado para ${company}`,
         body: html`
           <h1>Recibimos tu pago. Gracias.</h1>
-          <p>Cobramos <strong>${amount}</strong> por <strong>${company}</strong>. Estamos preparando tu trámite para enviarlo al estado.</p>
+          <p>Recibimos tu pedido y estamos preparando tu registro. Cobramos <strong>${amount}</strong> por <strong>${company}</strong>.</p>
           <a class="cta" href="${dashboardUrl}">Ver el estado del trámite</a>
           <p class="muted">El recibo también queda en tu panel cuando termine el proceso.</p>
         `,
@@ -540,7 +554,7 @@ const TEMPLATES: Record<
       subject: `Payment confirmed for ${company}`,
       body: html`
         <h1>Payment received - thank you</h1>
-        <p>We charged <strong>${amount}</strong> for <strong>${company}</strong>. Your filing is being prepared and submitted to the state now.</p>
+        <p>We received your order and are preparing your filing. We charged <strong>${amount}</strong> for <strong>${company}</strong>.</p>
         <a class="cta" href="${dashboardUrl}">View filing status</a>
         <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
       `,
@@ -552,11 +566,11 @@ const TEMPLATES: Record<
     if (spanish) {
       const company = businessName ?? 'Tu empresa';
       return {
-        subject: `${company} ya se envió al estado`,
+        subject: `Recibimos tu pedido para ${company}`,
         body: wrap(
           `
-      <h1>Tu trámite ya está en el estado</h1>
-      <p><strong>${company}</strong> ya se envió. Te escribimos en cuanto lo aprueben. Suele tardar 1 o 2 días hábiles.</p>
+      <h1>Recibimos tu pedido</h1>
+      <p>Recibimos tu pedido y estamos preparando tu registro.</p>
       <table class="meta">
         <tr><td>Referencia</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
@@ -569,10 +583,10 @@ const TEMPLATES: Record<
       };
     }
     return {
-      subject: `${businessName ?? 'Your business'} has been submitted to the state`,
+      subject: `We received your order for ${businessName ?? 'your business'}`,
       body: html`
-      <h1>Your filing is with the state</h1>
-      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved - usually within 1–2 business days.</p>
+      <h1>We received your order</h1>
+      <p>We received your order and are preparing your filing.</p>
       <table class="meta">
         <tr><td>Reference #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
@@ -834,9 +848,50 @@ const TEMPLATES: Record<
       `,
     };
   },
+  ADMIN_PAID_ORDER: (ctx) => adminOrderEmail(ctx, 'paid'),
+  ADMIN_FILING_OVERDUE: (ctx) => adminOrderEmail(ctx, 'overdue'),
 };
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
+
+function adminOrderEmail(ctx: EmailContext, kind: 'paid' | 'overdue') {
+  const name = ctx.businessName?.trim() || 'Untitled filing';
+  const deadline = ctx.deadlineLabel?.trim() || '';
+  const prefix = ctx.testOrder ? '[TEST] ' : '';
+  const overdueWord = ctx.overdueKind === 'overdue' ? 'Overdue' : 'Overdue soon';
+  const subject = (
+    kind === 'paid'
+      ? `${prefix}New paid order: ${name} (file by ${deadline})`
+      : `${prefix}${overdueWord}: ${name} (file by ${deadline})`
+  ).replace(/[\r\n]+/g, ' ');
+  const heading = kind === 'paid' ? `${prefix}New paid order` : `${prefix}${overdueWord}`;
+  const intro =
+    kind === 'paid'
+      ? 'Payment succeeded. File this order by the deadline below.'
+      : 'This paid order still has no state filing number.';
+  const row = (label: string, value: string) =>
+    `<tr><td>${escapeHtml(label)}</td><td>${value}</td></tr>`;
+  return {
+    subject,
+    body: html`
+      <h1>${escapeHtml(heading)}</h1>
+      <p>${escapeHtml(intro)}</p>
+      <table class="meta">
+        ${row('Filing id', `<code>${escapeHtml(ctx.linkFilingId ?? '')}</code>`)}
+        ${row('Business', escapeHtml(name))}
+        ${row('Customer', escapeHtml(ctx.customerName?.trim() || ''))}
+        ${row('Email', escapeHtml(ctx.customerEmail?.trim() || ''))}
+        ${row('State', escapeHtml(ctx.orderState?.trim() || ''))}
+        ${row('Entity', escapeHtml(ctx.orderEntity?.trim() || ''))}
+        ${row('Plan', escapeHtml(ctx.orderPlan?.trim() || ''))}
+        ${row('Amount paid', escapeHtml(ctx.totalCents != null ? formatCurrency(ctx.totalCents) : ''))}
+        ${row('Paid', escapeHtml(ctx.paidAtLabel ?? ''))}
+        ${row('File by', escapeHtml(deadline))}
+      </table>
+      <a class="cta" href="${escapeHtml(ctx.adminFilingUrl ?? '')}">Open filing</a>
+    `,
+  };
+}
 
 function escapeHtml(value: string): string {
   return value

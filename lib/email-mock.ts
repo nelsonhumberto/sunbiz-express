@@ -107,14 +107,14 @@ const TEMPLATES: Record<
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`
       <h1>Payment received</h1>
-      <p>We charged your card ${totalCents != null ? formatCurrency(totalCents) : ''}. Your filing is being submitted to the Florida Department of State now.</p>
+      <p>We received your order and are preparing your filing. We charged your card ${totalCents != null ? formatCurrency(totalCents) : ''}.</p>
     `,
   }),
   FILING_SUBMITTED: ({ businessName, trackingNumber, pin }) => ({
-    subject: `${businessName ?? 'Your business'} has been filed with the State of Florida`,
+    subject: `We received your order for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Filing submitted</h1>
-      <p>The state typically processes filings in 1-2 business days. We'll email you the moment your formation is approved.</p>
+      <h1>We received your order</h1>
+      <p>We received your order and are preparing your filing.</p>
       <table>
         <tr><td>Tracking #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>

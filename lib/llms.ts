@@ -13,7 +13,13 @@
 
 import { ALL_MARKETING_STATES, FLORIDA, localizedStateName } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
+import { tierPriceParts } from '@/lib/pricing';
 import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
+import { formatCurrency } from '@/lib/utils';
+
+const ESSENTIAL_FL_LLC = tierPriceParts('BASIC', 'LLC', 'FL');
+const ESSENTIAL_PRICE = formatCurrency(ESSENTIAL_FL_LLC.totalCents);
+const ESSENTIAL_STATE_FEE = formatCurrency(ESSENTIAL_FL_LLC.stateFeeCents);
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -36,7 +42,7 @@ const CORE_PAGES: LinkEntry[] = [
   { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, annual reports, and timelines.' },
   { title: 'About', path: '/about', note: 'Company mission: transparent, all-in business formation.' },
   { title: 'Contact', path: '/contact', note: 'Phone, mailing address, and the service inquiry form.' },
-  { title: 'LLC for Hair Stylists and Barbers', path: '/llc-for/stylists-barbers', note: 'Florida LLC formation for hair stylists and barbers. Essential is $149 and includes the $125 state fee. Spanish alternate: /es/llc-para/estilistas-barberos.' },
+  { title: 'LLC for Hair Stylists and Barbers', path: '/llc-for/stylists-barbers', note: `Florida LLC formation for hair stylists and barbers. Essential is ${ESSENTIAL_PRICE} and includes the ${ESSENTIAL_STATE_FEE} state fee. Spanish alternate: /es/llc-para/estilistas-barberos.` },
   { title: 'File an Annual Report', path: '/file-annual-report', note: 'Florida annual report filing service and deadlines.' },
   { title: 'BOI Reporting', path: '/boi-reporting', note: 'BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting (August 2026 final rule).' },
   { title: 'States', path: '/states', note: 'States where LaunchForma files and coming-soon states.' },
@@ -69,7 +75,7 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Preguntas frecuentes', path: '/es/faq', note: 'Preguntas sobre formación, agente registrado y reportes anuales.' },
   { title: 'Nosotros', path: '/es/about', note: 'Qué es LaunchForma y cómo trabajamos.' },
   { title: 'Contacto', path: '/es/contacto', note: 'Teléfono, dirección postal y el formulario de servicios.' },
-  { title: 'LLC para estilistas y barberos', path: '/es/llc-para/estilistas-barberos', note: 'LLC en Florida para estilistas y barberos. Esencial cuesta $149 e incluye la tarifa estatal de $125. Alterna en inglés: /llc-for/stylists-barbers.' },
+  { title: 'LLC para estilistas y barberos', path: '/es/llc-para/estilistas-barberos', note: `LLC en Florida para estilistas y barberos. Esencial cuesta ${ESSENTIAL_PRICE} e incluye la tarifa estatal de ${ESSENTIAL_STATE_FEE}. Alterna en inglés: /llc-for/stylists-barbers.` },
   { title: 'Reporte anual', path: '/es/file-annual-report', note: 'Presentación del reporte anual de Florida.' },
   { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final del 11 de agosto de 2026, fincen.gov/boi).' },
   { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },

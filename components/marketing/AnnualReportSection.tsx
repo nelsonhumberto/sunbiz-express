@@ -15,7 +15,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 
-const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $80
+const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $99
 
 const COMPETITOR_FEES = [
   { key: 'typical' as const, fee: 9_900, us: false },

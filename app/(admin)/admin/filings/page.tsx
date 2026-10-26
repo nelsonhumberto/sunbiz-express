@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { ArchiveFilingButton } from '@/components/admin/ArchiveFilingButton';
-import { adminRevenuePaymentWhere } from '@/lib/payment-test';
+import { countsTowardAdminRevenue } from '@/lib/payment-test';
+import { earliestSucceededPaidAt, filingOverdueBadge } from '@/lib/paid-order-alert';
 import { formatCurrency, formatRelative } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +27,17 @@ export default async function AdminFilingsPage({
       user: true,
       _count: { select: { documents: true } },
       payments: {
-        where: adminRevenuePaymentWhere,
-        select: { amountCents: true },
+        where: { status: 'SUCCEEDED' },
+        select: {
+          status: true,
+          amountCents: true,
+          isTest: true,
+          completedAt: true,
+          createdAt: true,
+          stripeChargeId: true,
+          stripePaymentIntentId: true,
+        },
+        orderBy: { createdAt: 'asc' },
       },
       annualReports: {
         select: { status: true, reportYear: true, totalCostCents: true },
@@ -111,7 +121,14 @@ export default async function AdminFilingsPage({
                 </tr>
               ) : (
                 filings.map((filing) => {
-                  const totalRevenue = filing.payments.reduce((s, p) => s + p.amountCents, 0);
+                  const totalRevenue = filing.payments
+                    .filter(countsTowardAdminRevenue)
+                    .reduce((s, p) => s + p.amountCents, 0);
+                  const overdue = filingOverdueBadge({
+                    sunbizFilingNumber: filing.sunbizFilingNumber,
+                    paidAt: earliestSucceededPaidAt(filing.payments),
+                    now: new Date(),
+                  });
                   const latestAr = filing.annualReports[0];
                   const archived = Boolean(filing.adminArchivedAt);
                   return (
@@ -148,7 +165,13 @@ export default async function AdminFilingsPage({
                         <p className="text-xs text-ink-subtle">{filing.user.email}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={filing.status} />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <StatusBadge status={filing.status} />
+                          {overdue === 'overdue' && <Badge variant="danger">Overdue</Badge>}
+                          {overdue === 'overdue_soon' && (
+                            <Badge variant="warn">Overdue soon</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         {filing.filingSource === 'LINKED' ? (

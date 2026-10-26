@@ -344,9 +344,9 @@ describe('guest start flow', () => {
   });
 
   it('keeps the public prices and avoids em dashes in the new copy', () => {
-    expect(tierPackagePriceCents('BASIC', 'LLC', 'FL')).toBe(14900);
-    expect(tierPackagePriceCents('STANDARD', 'LLC', 'FL')).toBe(27900);
-    expect(tierPackagePriceCents('PREMIUM', 'LLC', 'FL')).toBe(44900);
+    expect(tierPackagePriceCents('BASIC', 'LLC', 'FL')).toBe(19900);
+    expect(tierPackagePriceCents('STANDARD', 'LLC', 'FL')).toBe(34900);
+    expect(tierPackagePriceCents('PREMIUM', 'LLC', 'FL')).toBe(54900);
 
     const wizardEn = en.wizard as Record<string, string>;
     const wizardEs = es.wizard as Record<string, string>;

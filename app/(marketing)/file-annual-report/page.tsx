@@ -46,8 +46,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const OUR_SERVICE_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS;
-const LLC_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportLLC; // $80 + $138.75 = $218.75
-const CORP_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportCorp; // $80 + $150 = $230
+const LLC_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportLLC; // $99 + $138.75 = $237.75
+const CORP_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportCorp; // $99 + $150 = $249
 
 const competitors = [
   {

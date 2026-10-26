@@ -1,4 +1,4 @@
-import { normalizeNameCheckQuery } from '@/lib/name-check';
+import { nameHasMinimumSubstance, normalizeNameCheckQuery } from '@/lib/name-check';
 
 export type DraftNameDecision =
   | { action: 'resume'; step: number }
@@ -26,4 +26,27 @@ export function decideDraftNameResume(input: {
   }
   if (!existing) return { action: 'apply', step: 2 };
   return { action: 'choose' };
+}
+
+/**
+ * /start accepts a name only when it has at least 2 characters and the legal
+ * ending is not the whole name. "A LLC" fails. "Northwind" passes.
+ */
+export function startNameIsAcceptable(raw: string | null | undefined): boolean {
+  const name = normalizeNameCheckQuery(raw);
+  return name.length >= 2 && nameHasMinimumSubstance(name);
+}
+
+/**
+ * A guest with no acceptable name does not open wizard step 1.
+ * Step 2 is the name screen. Later steps stay where the draft already is.
+ */
+export function guestWizardStep(input: {
+  businessName?: string | null;
+  currentStep?: number | null;
+}): number {
+  const requested =
+    input.currentStep && input.currentStep >= 1 ? Math.trunc(input.currentStep) : 2;
+  if (requested <= 1 && !startNameIsAcceptable(input.businessName)) return 2;
+  return requested;
 }

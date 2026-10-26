@@ -17,7 +17,7 @@ import {
   withoutPendingAccountEmail,
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
-import { guestResumeUrl } from '@/lib/draft-recovery';
+import { guestResumeUrl, resolveDripLocale, resumeDripMailbox, signInResumeUrl } from '@/lib/draft-recovery';
 import { hrefForLocale } from '@/lib/app-href';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { localeFromPathOrFiling } from '@/lib/request-locale';
@@ -62,18 +62,16 @@ async function writeGuestEmailAside(
  * Another guest or account keeps this draft on this browser. The typed
  * address is stored on this filing only, so the drip can still mail it
  * with this guest's own resume token. Nothing is revealed about the other row.
+ *
+ * `guest` is passed in so /start can save the address in the same request
+ * that sets the guest cookie. The cookie is not readable until the next request.
  */
-export async function saveGuestEmail(filingId: string, rawEmail: string): Promise<GuestEmailResult> {
-  const guest = await getGuestUser();
-  const filing = guest
-    ? await prisma.filing.findFirst({
-        where: { id: filingId, userId: guest.id, status: 'DRAFT' },
-        select: { id: true, optionalDetails: true, locale: true },
-      })
-    : null;
-  const t = await guestCopy(filing?.locale);
-  if (!guest || !filing) return { ok: false, error: t('errorSaveGeneric') };
-
+export async function storeGuestEmailOnDraft(
+  guest: { id: string; email: string },
+  filing: { id: string; optionalDetails: string | null; locale: string | null },
+  rawEmail: string,
+): Promise<GuestEmailResult> {
+  const t = await guestCopy(filing.locale);
   const normalized = normalizeEmail(rawEmail);
   if (!isDeliverableEmail(normalized) || isPlaceholderGuestEmail(normalized)) {
     return { ok: false, error: t('guestEmailInvalid') };
@@ -120,6 +118,73 @@ export async function saveGuestEmail(filingId: string, rawEmail: string): Promis
     typedGuestEmail: null,
   });
   return { ok: true, ownerId: guest.id };
+}
+
+export async function saveGuestEmail(filingId: string, rawEmail: string): Promise<GuestEmailResult> {
+  const guest = await getGuestUser();
+  const filing = guest
+    ? await prisma.filing.findFirst({
+        where: { id: filingId, userId: guest.id, status: 'DRAFT' },
+        select: { id: true, optionalDetails: true, locale: true },
+      })
+    : null;
+  const t = await guestCopy(filing?.locale);
+  if (!guest || !filing) return { ok: false, error: t('errorSaveGeneric') };
+  return storeGuestEmailOnDraft(guest, filing, rawEmail);
+}
+
+/**
+ * Email the existing filing-started note with this guest's resume link.
+ * Same mailbox rules as the resume drip. No new template.
+ */
+export async function sendGuestDraftResumeLink(filingId: string): Promise<GuestEmailResult> {
+  const filing = await prisma.filing.findFirst({
+    where: { id: filingId, status: 'DRAFT' },
+    select: {
+      id: true,
+      locale: true,
+      entryPath: true,
+      businessName: true,
+      currentStep: true,
+      optionalDetails: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          locale: true,
+          accountStatus: true,
+          guestToken: true,
+        },
+      },
+    },
+  });
+  const t = await guestCopy(filing?.locale);
+  if (!filing?.user) return { ok: false, error: t('guestEmailInvalid') };
+  const mailbox = resumeDripMailbox(filing.user.email, filing.optionalDetails);
+  if (!mailbox) return { ok: false, error: t('guestEmailInvalid') };
+
+  const locale = resolveDripLocale(filing.locale, filing.user.locale, filing.entryPath);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+  const step = filing.currentStep && filing.currentStep >= 2 ? filing.currentStep : 2;
+  const resumeUrl =
+    filing.user.accountStatus === 'GUEST' && filing.user.guestToken
+      ? guestResumeUrl(siteUrl, filing.id, filing.user.guestToken, locale)
+      : signInResumeUrl(siteUrl, `/wizard/${filing.id}/${step}`, locale);
+
+  await sendEmail({
+    type: 'FILING_STARTED',
+    to: mailbox,
+    userId: filing.user.id,
+    filingId: filing.id,
+    context: {
+      firstName: filing.user.firstName?.trim() || undefined,
+      businessName: filing.businessName ?? undefined,
+      resumeUrl,
+      locale,
+    },
+  });
+  return { ok: true, sent: true, ownerId: filing.user.id };
 }
 
 /** Email a one-time sign-in link that claims this guest at the payment step. */

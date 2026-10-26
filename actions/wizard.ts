@@ -281,10 +281,11 @@ const Step2Schema = z.object({
 export async function saveStep2(input: z.infer<typeof Step2Schema>) {
   const parsed = Step2Schema.safeParse(input);
   if (!parsed.success) {
+    const t = await wizardCopy();
     const tooLong = parsed.error.issues.some((issue) => issue.code === 'too_big');
     return {
       ok: false as const,
-      error: tooLong ? 'Name is too long (maximum 100 characters).' : NAME_TOO_SHORT_ERROR,
+      error: tooLong ? t('nameTooLong') : t('nameTooShort') || NAME_TOO_SHORT_ERROR,
     };
   }
   const data = parsed.data;
@@ -300,9 +301,10 @@ export async function saveStep2(input: z.infer<typeof Step2Schema>) {
   }
   const entityType = filing.entityType as 'LLC' | 'CORP';
   const businessName = canonicalFiledName(data.businessName, entityType);
+  const tName = await wizardCopy(filing.locale);
 
   if (!nameHasMinimumSubstance(businessName)) {
-    return { ok: false as const, error: NAME_TOO_SHORT_ERROR };
+    return { ok: false as const, error: tName('nameTooShort') || NAME_TOO_SHORT_ERROR };
   }
 
   const validation = validateBusinessName(
@@ -311,7 +313,7 @@ export async function saveStep2(input: z.infer<typeof Step2Schema>) {
     asStateCode(filing.state),
   );
   if (!validation.valid) {
-    return { ok: false, error: validation.error ?? NAME_TOO_SHORT_ERROR };
+    return { ok: false, error: validation.error ?? (tName('nameTooShort') || NAME_TOO_SHORT_ERROR) };
   }
 
   await prisma.filing.update({

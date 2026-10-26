@@ -21,6 +21,7 @@ import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPre
 import { GuestSaveExitDialog } from './GuestSaveExitDialog';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
+import { WizardStepAnalyticsProvider } from './WizardStepAnalytics';
 import type { TierSlug } from '@/lib/pricing';
 import type { StateCode } from '@/lib/formation-states';
 
@@ -55,7 +56,7 @@ export function WizardShell({
   const tDisc = useTranslations('disclosure');
 
   useEffect(() => {
-    trackEvent('wizard_step_viewed', { step });
+    trackEvent('wizard_step_viewed', { step, filing_id: filingId });
     if (step === TOTAL_STEPS) {
       trackEvent('checkout_started', { step, filing_id: filingId });
     }
@@ -154,7 +155,9 @@ export function WizardShell({
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.25 }}
               >
-                {children}
+                <WizardStepAnalyticsProvider filingId={filingId} step={step}>
+                  {children}
+                </WizardStepAnalyticsProvider>
               </motion.div>
             </AnimatePresence>
 

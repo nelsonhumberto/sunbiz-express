@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { trackEvent } from '@/lib/analytics';
 import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
@@ -32,6 +33,7 @@ export function Step1Entity({
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const locale = useLocale() === 'es' ? 'es' : 'en';
   const isSCorp = filing.taxElection === 'S_CORP';
   const [selected, setSelected] = useState<EntityChoice>(
     isSCorp ? 'SCORP' : (filing.entityType as 'LLC' | 'CORP'),
@@ -79,6 +81,10 @@ export function Step1Entity({
   ];
 
   const onContinue = () => {
+    trackEvent('wizard_step1_continue_clicked', {
+      filing_id: filing.id,
+      locale,
+    });
     const entityType = selected === 'SCORP' ? sCorpEntity : selected;
     const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
     run(async () => {
@@ -154,7 +160,7 @@ export function Step1Entity({
       <div
         className="grid grid-cols-3 gap-2"
         role="radiogroup"
-        aria-label="Entity type"
+        aria-label={t('entityTypeLabel')}
       >
         {ENTITY_OPTIONS.map((option) => {
           const isSelected = selected === option.value;
@@ -164,7 +170,14 @@ export function Step1Entity({
               type="button"
               role="radio"
               aria-checked={isSelected}
-              onClick={() => setSelected(option.value)}
+              onClick={() => {
+                setSelected(option.value);
+                trackEvent('wizard_entity_selected', {
+                  filing_id: filing.id,
+                  locale,
+                  entity: option.value,
+                });
+              }}
               className={cn(
                 'relative text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',
                 isSelected
@@ -260,16 +273,14 @@ export function Step1Entity({
       />
 
       <div className="space-y-4">
-        {stateRule.quirks.customerNote && (
-          <p className="text-xs text-ink-muted leading-relaxed">{stateRule.quirks.customerNote}</p>
+        {stateCode === 'WY' && (
+          <p className="text-xs text-ink-muted leading-relaxed">{t('customerNoteWY')}</p>
         )}
-        {(stateRule.code === 'WY' || stateRule.code === 'DE') && (
-          <p className="text-xs text-ink-muted leading-relaxed">
-            <strong>Heads up:</strong> Forming in {stateRule.name} doesn't authorize you to do
-            business in another state. If you'll have an office, employees, or significant
-            operations elsewhere, that state usually requires a separate "foreign qualification"
-            filing. We'll ask about this later in the wizard and follow up after formation.
-          </p>
+        {stateCode === 'DE' && (
+          <p className="text-xs text-ink-muted leading-relaxed">{t('customerNoteDE')}</p>
+        )}
+        {(stateCode === 'WY' || stateCode === 'DE') && (
+          <p className="text-xs text-ink-muted leading-relaxed">{t('entityHeadsUp', { state: stateRule.name })}</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {ENTITY_OPTIONS.map((option) => (
@@ -301,6 +312,7 @@ export function Step1Entity({
  * other without forcing the visitor to bounce out to a guide page.
  */
 function EntityDecisionCard({ stateName }: { stateName: string }) {
+  const t = useTranslations('wizard');
   const [open, setOpen] = useState(false);
   return (
     <details
@@ -309,41 +321,30 @@ function EntityDecisionCard({ stateName }: { stateName: string }) {
     >
       <summary className="flex items-center gap-2 cursor-pointer list-none px-4 py-3 text-sm font-medium text-ink">
         <HelpCircle className="h-4 w-4 text-primary" />
-        <span>Not sure? LLC vs Corporation in 30 seconds</span>
+        <span>{t('entityCompareTitle')}</span>
         <span className="ml-auto text-xs text-ink-subtle">
-          {open ? 'Hide' : 'Show'}
+          {open ? t('entityCompareHide') : t('entityCompareShow')}
         </span>
       </summary>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pb-5">
         <div className="rounded-lg border border-border bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1.5">
-            Pick LLC
+            {t('entityCompareLlcTitle')}
           </p>
           <p className="text-sm text-ink-muted leading-relaxed">
-            Most small businesses. Pass-through taxation by default (profits
-            taxed once, on your personal return), flexible management, simpler
-            ongoing compliance, and strong asset protection. Best for
-            solopreneurs, real-estate holdings, consulting, and most service
-            businesses in {stateName}.
+            {t('entityCompareLlcBody', { state: stateName })}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-white p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent mb-1.5">
-            Pick Corporation
+            {t('entityCompareCorpTitle')}
           </p>
           <p className="text-sm text-ink-muted leading-relaxed">
-            Best if you plan to raise venture capital, issue stock to
-            employees, or operate a regulated business that requires a corp
-            structure. C-Corps face double taxation by default; S-Corp
-            election (we offer the filing) can reduce self-employment tax for
-            profitable owner-operated businesses.
+            {t('entityCompareCorpBody')}
           </p>
         </div>
         <p className="md:col-span-2 text-xs text-ink-subtle leading-relaxed">
-          LaunchForma is not a law firm and this is general guidance, not tax
-          or legal advice. For complex situations (multiple owners with
-          different interests, raising outside capital, professional
-          licensing), talk to a CPA or attorney before filing.
+          {t('entityCompareDisclaimer')}
         </p>
       </div>
     </details>

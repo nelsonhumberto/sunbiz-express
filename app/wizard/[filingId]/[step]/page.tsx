@@ -37,7 +37,8 @@ const Step11AddOns = nextDynamic(() =>
 const Step12Payment = nextDynamic(() =>
   import('@/components/wizard/steps/Step12Payment').then((m) => m.Step12Payment),
 );
-import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { guestWizardStep } from '@/lib/start-draft';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
@@ -154,7 +155,6 @@ export default async function WizardStepPage({ params }: PageProps) {
     actor?.kind === 'guest' ? (actor.email ?? undefined) : (signedInEmail ?? undefined);
   const realGuestEmail =
     actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
-  const needsGuestEmail = actor?.kind === 'guest' && !realGuestEmail;
   const storedPendingAccountEmail =
     optional && typeof optional.pendingAccountEmail === 'string'
       ? optional.pendingAccountEmail
@@ -168,11 +168,39 @@ export default async function WizardStepPage({ params }: PageProps) {
     : '';
   const typedGuestEmail =
     optional && typeof optional.typedGuestEmail === 'string' ? optional.typedGuestEmail : '';
+  // /start already stores a reachable address on User.email, or aside on the
+  // filing when that mailbox is taken. Do not ask for it again. Guests who
+  // skipped it still see the field here and on the name step.
+  const needsGuestEmail =
+    actor?.kind === 'guest' && !realGuestEmail && !typedGuestEmail && !storedPendingAccountEmail;
   const guestEmailPrefill = storedPendingAccountEmail || typedGuestEmail;
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   });
+  const serverTotalCents = computeCost({
+    entityType: cost.entityType,
+    tier: cost.tier,
+    addOnSlugs: cost.addOnSlugs,
+    state: cost.state,
+    processingOptionId: cost.processingOptionId,
+  }).totalCents;
+
+  if (isGuest && stepNum === 1) {
+    const landing = guestWizardStep({
+      businessName: filing.businessName,
+      currentStep: 1,
+    });
+    if (landing !== 1) {
+      if ((filing.currentStep ?? 1) < 2) {
+        await prisma.filing.update({
+          where: { id: filing.id },
+          data: { currentStep: landing },
+        });
+      }
+      return await redirectLocalized(`/wizard/${filing.id}/${landing}`, filing.locale);
+    }
+  }
 
   return (
     <>
@@ -221,6 +249,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             isGuest={isGuest}
             guestEmail={realGuestEmail ?? ''}
             pendingAccountEmail={pendingAccountEmail || undefined}
+            serverTotalCents={serverTotalCents}
           />
         )}
       </WizardShell>

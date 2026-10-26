@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { submitFilingToState } from '@/actions/filings';
+import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
@@ -193,6 +194,8 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   } catch {
     /* non-fatal */
   }
+
+  await notifyAdminOfPaidOrder(filing.id);
 
   // Apply the SAME completeness + EIN gate the wizard's processCheckout uses,
   // so the backstop can never submit a half-finished draft (blank documents).

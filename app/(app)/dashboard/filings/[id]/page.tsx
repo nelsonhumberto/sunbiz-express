@@ -147,6 +147,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
     state: string;
     zip: string;
     useOurService?: boolean;
+    phone?: string;
     agentCountry?: string;
   } | null>(filing.registeredAgent, null);
 
@@ -552,6 +553,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
                   <br />
                   {ra.city}, {ra.state} {ra.zip}
                 </p>
+                {ra.phone?.trim() ? (
+                  <p className="text-sm text-ink-muted">{tWizard('phone')}: {ra.phone}</p>
+                ) : null}
                 {ra.useOurService && (
                   <Badge variant="success" className="mt-2">
                     {t('freeYearIncluded')}

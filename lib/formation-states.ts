@@ -181,6 +181,16 @@ export interface AddressRules {
   inStateRequirementNote?: string;
 }
 
+/**
+ * Phone for LaunchForma's own registered agent. Empty unless
+ * LAUNCHFORMA_RA_PHONE is set. Florida Articles ask for the agent name,
+ * street address, and signature, not a phone, so an empty value is omitted
+ * everywhere we render the agent.
+ */
+export function launchformaRaPhone(): string {
+  return (process.env.LAUNCHFORMA_RA_PHONE ?? '').replace(/\s+/g, ' ').trim();
+}
+
 export interface RegisteredAgentProfile {
   /** Display name shown in the wizard / on the executed document. */
   name: string;
@@ -188,6 +198,7 @@ export interface RegisteredAgentProfile {
   signingOfficerName: string;
   signingOfficerTitle: string;
   email: string;
+  /** Set from LAUNCHFORMA_RA_PHONE. Empty when that env var is unset. */
   phone: string;
   street1: string;
   street2?: string;
@@ -421,7 +432,9 @@ const FLORIDA_RULE: FormationStateRule = {
     signingOfficerName: 'Nelson Medina',
     signingOfficerTitle: 'Authorized Officer',
     email: 'agent@launchforma.com',
-    phone: '+1 (305) 555-0100',
+    get phone() {
+      return launchformaRaPhone();
+    },
     street1: '14160 Palmetto Frontage Road',
     street2: 'Suite 101',
     city: 'Miami Lakes',
@@ -696,7 +709,9 @@ const WYOMING_RULE: FormationStateRule = {
     signingOfficerName: 'Daniel Roberts',
     signingOfficerTitle: 'Authorized Signer',
     email: 'agent-wy@launchforma.com',
-    phone: '+1 (307) 555-0150',
+    get phone() {
+      return launchformaRaPhone();
+    },
     street1: '30 N Gould St',
     street2: 'Suite R',
     city: 'Sheridan',
@@ -878,7 +893,9 @@ const DELAWARE_RULE: FormationStateRule = {
     signingOfficerName: 'Sarah Whitfield',
     signingOfficerTitle: 'Authorized Signer',
     email: 'agent-de@launchforma.com',
-    phone: '+1 (302) 555-0175',
+    get phone() {
+      return launchformaRaPhone();
+    },
     street1: '1209 Orange Street',
     city: 'Wilmington',
     state: 'DE',

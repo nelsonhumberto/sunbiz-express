@@ -459,7 +459,7 @@ export async function submitFilingToState(
         serviceProvider: 'INTERNAL',
         agentName: ra.name,
         agentEmail: ra.email,
-        agentPhone: ra.phone,
+        agentPhone: ra.phone?.trim() || null,
         street1: ra.street1,
         street2: ra.street2,
         city: ra.city,

@@ -6,6 +6,7 @@ import {
   writeCronRun,
 } from '@/lib/cron-heartbeat';
 import { runRaRenewalReminders, runScheduledDraftRecovery } from '@/lib/draft-recovery';
+import { runPaidFilingOverdueAlerts } from '@/lib/paid-order-alert';
 import { isPostFormationSeriesEnabled, isWeeklyNewsletterEnabled } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
 
@@ -48,6 +49,9 @@ import { logger } from '@/lib/logger';
 // still returns 200 so a series failure does not replay the draft mail.
 //
 // Annual report reminders are handled separately.
+// Paid filings with no state filing number also get one admin email once
+// payment is 20 hours old. That mail dedupes on the existing
+// EmailNotification row for the filing. It does not add a column.
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 
@@ -88,6 +92,9 @@ export async function GET(request: Request) {
   try {
     draftStats = await runScheduledDraftRecovery(now);
     raStats = await runRaRenewalReminders(now);
+    // One admin email once a paid filing is 20 hours old and still has no
+    // state filing number. Deduped on the existing EmailNotification row.
+    const overdueFilings = await runPaidFilingOverdueAlerts(now);
     if (isPostFormationSeriesEnabled()) {
       try {
         const { runPostFormationSeries } = await import('@/lib/post-formation-job');
@@ -132,6 +139,7 @@ export async function GET(request: Request) {
       ok: true,
       drafts: draftStats,
       raRenewals: raStats,
+      overdueFilings,
       postFormation,
       newsletter,
       ...(seriesError ? { seriesErrors } : {}),

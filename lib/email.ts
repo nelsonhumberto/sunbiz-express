@@ -55,6 +55,8 @@ export type NotificationType =
   | 'EIN_ORDERED'
   | 'CERTIFICATE_ORDERED'
   | 'PAYMENT_CONFIRMATION'
+  | 'ADMIN_PAID_ORDER'
+  | 'ADMIN_FILING_OVERDUE'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
   | 'FILING_REJECTED'
@@ -74,6 +76,18 @@ interface EmailContext {
   businessName?: string;
   entityType?: 'LLC' | 'CORP';
   totalCents?: number;
+  /** True for isTest payments and tester accounts. Prefixes the admin subject. */
+  testOrder?: boolean;
+  customerName?: string;
+  customerEmail?: string;
+  orderState?: string;
+  orderEntity?: string;
+  orderPlan?: string;
+  paidAtLabel?: string;
+  deadlineLabel?: string;
+  adminFilingUrl?: string;
+  /** overdue_soon at 20h, overdue at 24h. */
+  overdueKind?: 'overdue_soon' | 'overdue';
   filingNumber?: string;
   trackingNumber?: string;
   pin?: string;
@@ -834,9 +848,50 @@ const TEMPLATES: Record<
       `,
     };
   },
+  ADMIN_PAID_ORDER: (ctx) => adminOrderEmail(ctx, 'paid'),
+  ADMIN_FILING_OVERDUE: (ctx) => adminOrderEmail(ctx, 'overdue'),
 };
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
+
+function adminOrderEmail(ctx: EmailContext, kind: 'paid' | 'overdue') {
+  const name = ctx.businessName?.trim() || 'Untitled filing';
+  const deadline = ctx.deadlineLabel?.trim() || '';
+  const prefix = ctx.testOrder ? '[TEST] ' : '';
+  const overdueWord = ctx.overdueKind === 'overdue' ? 'Overdue' : 'Overdue soon';
+  const subject = (
+    kind === 'paid'
+      ? `${prefix}New paid order: ${name} (file by ${deadline})`
+      : `${prefix}${overdueWord}: ${name} (file by ${deadline})`
+  ).replace(/[\r\n]+/g, ' ');
+  const heading = kind === 'paid' ? `${prefix}New paid order` : `${prefix}${overdueWord}`;
+  const intro =
+    kind === 'paid'
+      ? 'Payment succeeded. File this order by the deadline below.'
+      : 'This paid order still has no state filing number.';
+  const row = (label: string, value: string) =>
+    `<tr><td>${escapeHtml(label)}</td><td>${value}</td></tr>`;
+  return {
+    subject,
+    body: html`
+      <h1>${escapeHtml(heading)}</h1>
+      <p>${escapeHtml(intro)}</p>
+      <table class="meta">
+        ${row('Filing id', `<code>${escapeHtml(ctx.linkFilingId ?? '')}</code>`)}
+        ${row('Business', escapeHtml(name))}
+        ${row('Customer', escapeHtml(ctx.customerName?.trim() || ''))}
+        ${row('Email', escapeHtml(ctx.customerEmail?.trim() || ''))}
+        ${row('State', escapeHtml(ctx.orderState?.trim() || ''))}
+        ${row('Entity', escapeHtml(ctx.orderEntity?.trim() || ''))}
+        ${row('Plan', escapeHtml(ctx.orderPlan?.trim() || ''))}
+        ${row('Amount paid', escapeHtml(ctx.totalCents != null ? formatCurrency(ctx.totalCents) : ''))}
+        ${row('Paid', escapeHtml(ctx.paidAtLabel ?? ''))}
+        ${row('File by', escapeHtml(deadline))}
+      </table>
+      <a class="cta" href="${escapeHtml(ctx.adminFilingUrl ?? '')}">Open filing</a>
+    `,
+  };
+}
 
 function escapeHtml(value: string): string {
   return value

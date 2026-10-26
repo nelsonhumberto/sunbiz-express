@@ -41,6 +41,7 @@ import {
 } from '@/lib/guest-checkout';
 import { claimPaidGuestAccount, type GuestClaimResult } from '@/lib/guest-checkout-claim';
 import type { SiteLocale } from '@/lib/pick-locale';
+import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
 import { submitFilingToState } from './filings';
 import {
   ensureFilingTouchUtm,
@@ -506,6 +507,8 @@ export async function processCheckout(input: {
       locale: checkoutLocale,
     },
   });
+
+  await notifyAdminOfPaidOrder(filing.id);
 
   await submitFilingToState(filing.id);
 

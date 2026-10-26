@@ -186,6 +186,10 @@ export default async function HowToFormFloridaLlcGuide() {
           </table>
         </div>
         <p>Required minimum: $125.00. With both optional documents: $160.00.</p>
+        <p>
+          State fees are listed in{' '}
+          <a href="/guides/florida-llc-cost">How Much Does It Cost to Start an LLC in Florida? (2026 State Fees)</a>.
+        </p>
 
         <h2>Step 5: After approval</h2>
         <p>Common next steps for many new LLCs:</p>

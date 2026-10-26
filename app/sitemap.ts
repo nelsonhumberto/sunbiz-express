@@ -52,6 +52,13 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.7,
   },
   {
+    path: '/guides/florida-llc-cost',
+    file: 'app/(marketing)/guides/florida-llc-cost/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
+  },
+  {
     path: '/guides/how-to-form-a-florida-corporation',
     file: 'app/(marketing)/guides/how-to-form-a-florida-corporation/page.tsx',
     changeFrequency: 'monthly',

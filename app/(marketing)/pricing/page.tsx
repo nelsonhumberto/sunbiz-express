@@ -110,6 +110,11 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         showHeader={false}
         state={state}
         feeNote={state.code === 'FL' ? t('floridaBundledStateFees') : undefined}
+        feeNoteLink={
+          state.code === 'FL' && locale === 'en'
+            ? { href: '/guides/florida-llc-cost', label: 'What the state charges' }
+            : undefined
+        }
       />
       <ComparisonTable />
       <FAQSection state={state} suppressJsonLd />

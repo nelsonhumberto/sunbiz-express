@@ -10,6 +10,8 @@ const paymentFindUnique = vi.hoisted(() => vi.fn());
 const annualReportCreate = vi.hoisted(() => vi.fn());
 const transaction = vi.hoisted(() => vi.fn());
 const fetchDetail = vi.hoisted(() => vi.fn());
+const findSunbizArCandidate = vi.hoisted(() => vi.fn());
+const notifyAdminOfPaidOrder = vi.hoisted(() => vi.fn());
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
@@ -34,7 +36,14 @@ vi.mock('@/lib/rate-limit', () => ({
 }));
 vi.mock('@/lib/sunbiz', () => ({
   fetchFloridaEntityDetailByDocumentNumber: fetchDetail,
+  floridaLookupUsedScraper: () => false,
   searchSunbiz: vi.fn(),
+}));
+vi.mock('@/lib/sunbiz-ar-candidate', () => ({
+  findSunbizArCandidate,
+}));
+vi.mock('@/lib/paid-order-alert', () => ({
+  notifyAdminOfPaidOrder,
 }));
 
 import { submitGuestAnnualReport } from '@/actions/annual-report';
@@ -81,6 +90,15 @@ beforeEach(() => {
   annualReportCreate.mockReset();
   transaction.mockReset();
   fetchDetail.mockReset();
+  findSunbizArCandidate.mockReset();
+  notifyAdminOfPaidOrder.mockReset();
+  findSunbizArCandidate.mockResolvedValue({
+    status: 'A',
+    entityType: 'FLAL',
+    formationDate: new Date('2015-04-10T00:00:00.000Z'),
+    arYears: [2024, 2025],
+  });
+  notifyAdminOfPaidOrder.mockResolvedValue('sent');
   fetchDetail.mockResolvedValue({
     corporation_number: 'L12345678901',
     corporation_name: 'Ada LLC',
@@ -157,6 +175,7 @@ describe('submitGuestAnnualReport', () => {
       }),
     );
     expect(sendEmail).not.toHaveBeenCalled();
+    expect(notifyAdminOfPaidOrder).toHaveBeenCalledWith('filing_new');
     expect(refundsCreate).not.toHaveBeenCalled();
   });
 
@@ -239,11 +258,30 @@ describe('submitGuestAnnualReport', () => {
       file_date: '2025-04-02',
       annual_reports: [],
     });
+    findSunbizArCandidate.mockResolvedValueOnce(null);
+    const closed = await submitGuestAnnualReport(input({
+      documentNumber: 'L25000509630',
+      entityType: 'CORP',
+    }));
+    expect(closed).toEqual({
+      ok: false,
+      error: "We couldn't confirm this company's annual report status online.",
+    });
+    expect(transaction).not.toHaveBeenCalled();
+    expect(notifyAdminOfPaidOrder).not.toHaveBeenCalled();
+
+    findSunbizArCandidate.mockResolvedValue({
+      status: 'A',
+      entityType: 'FLAL',
+      formationDate: new Date('2025-04-02T00:00:00.000Z'),
+      arYears: [2024, 2025],
+    });
     const sold = await submitGuestAnnualReport(input({
       documentNumber: 'L25000509630',
       entityType: 'CORP',
     }));
     expect(sold.ok).toBe(true);
+    expect(notifyAdminOfPaidOrder).toHaveBeenCalled();
     expect(annualReportCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ reportYear: 2026, totalCostCents: 63_775 }),

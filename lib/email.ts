@@ -171,6 +171,11 @@ interface EmailContext {
   oaUnsubscribeUrl?: string;
   /** Admin-only detail when an annual-report charge did not finish saving. */
   unsavedChargeDetail?: string;
+  /**
+   * Set only on the admin paid-order email for a paid annual report.
+   * Empty means there is no document number to link. Absent means this is not that email.
+   */
+  annualReportDocumentNumber?: string;
 }
 
 export interface SendEmailArgs {
@@ -882,9 +887,19 @@ function adminOrderEmail(ctx: EmailContext, kind: 'paid' | 'overdue') {
       : 'This paid order still has no state filing number.';
   const row = (label: string, value: string) =>
     `<tr><td>${escapeHtml(label)}</td><td>${value}</td></tr>`;
+  const documentNumber = ctx.annualReportDocumentNumber?.trim();
+  const annualReportNote =
+    kind === 'paid' && typeof ctx.annualReportDocumentNumber === 'string'
+      ? `<blockquote><strong>${escapeHtml(LIVE_SUNBIZ_FILING_WARNING)}</strong></blockquote>${
+          documentNumber
+            ? `<p><a href="${escapeHtml(sunbizDocumentSearchUrl(documentNumber))}">Search ${escapeHtml(documentNumber)} on Sunbiz</a></p>`
+            : ''
+        }`
+      : '';
   return {
     subject,
     body: html`
+      ${annualReportNote}
       <h1>${escapeHtml(heading)}</h1>
       <p>${escapeHtml(intro)}</p>
       <table class="meta">
@@ -902,6 +917,17 @@ function adminOrderEmail(ctx: EmailContext, kind: 'paid' | 'overdue') {
       <a class="cta" href="${escapeHtml(ctx.adminFilingUrl ?? '')}">Open filing</a>
     `,
   };
+}
+
+/** First line of a paid annual report alert. Filing with the state is manual. */
+export const LIVE_SUNBIZ_FILING_WARNING =
+  "Before filing, check the company on live Sunbiz. If this year's annual report is already filed, do not file and refund the customer.";
+
+export function sunbizDocumentSearchUrl(documentNumber: string): string {
+  return (
+    'https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResults' +
+    `?inquiryType=DocumentNumber&searchTerm=${encodeURIComponent(documentNumber.trim())}`
+  );
 }
 
 function escapeHtml(value: string): string {

@@ -9,6 +9,7 @@ const paymentIntentsUpdate = vi.hoisted(() => vi.fn());
 const refundsCreate = vi.hoisted(() => vi.fn());
 const rateLimit = vi.hoisted(() => vi.fn());
 const fetchDetail = vi.hoisted(() => vi.fn());
+const findSunbizArCandidate = vi.hoisted(() => vi.fn());
 const headerGet = vi.hoisted(() => vi.fn());
 
 vi.mock('server-only', () => ({}));
@@ -40,6 +41,10 @@ vi.mock('@/lib/rate-limit', () => ({
 }));
 vi.mock('@/lib/sunbiz', () => ({
   fetchFloridaEntityDetailByDocumentNumber: fetchDetail,
+  floridaLookupUsedScraper: () => false,
+}));
+vi.mock('@/lib/sunbiz-ar-candidate', () => ({
+  findSunbizArCandidate,
 }));
 vi.mock('@/lib/utm-server', () => ({ getServerUtmAttribution: () => null }));
 vi.mock('next/headers', () => ({
@@ -77,6 +82,13 @@ beforeEach(() => {
   headerGet.mockReset();
   headerGet.mockReturnValue(null);
   fetchDetail.mockReset();
+  findSunbizArCandidate.mockReset();
+  findSunbizArCandidate.mockResolvedValue({
+    status: 'A',
+    entityType: 'FLAL',
+    formationDate: new Date('2015-04-10T00:00:00.000Z'),
+    arYears: [2024, 2025],
+  });
   fetchDetail.mockResolvedValue({
     corporation_number: 'L12345678901',
     corporation_name: 'Ada LLC',
@@ -501,6 +513,22 @@ describe('guest annual report payment intent', () => {
       filing_type_display: 'Florida Limited Liability Company',
       file_date: '2025-04-02',
       annual_reports: [],
+    });
+    paymentIntentsCreate.mockClear();
+    findSunbizArCandidate.mockResolvedValueOnce(null);
+    const closed = await post(
+      { documentNumber: 'L25000509630', entityType: 'CORP', useOurRa: false },
+      'guest_annual_report',
+    );
+    expect(closed.status).toBe(400);
+    expect(await closed.json()).toMatchObject({ code: 'annual_report_unconfirmed' });
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+
+    findSunbizArCandidate.mockResolvedValue({
+      status: 'A',
+      entityType: 'FLAL',
+      formationDate: new Date('2025-04-02T00:00:00.000Z'),
+      arYears: [2024, 2025],
     });
     const sold = await post(
       { documentNumber: 'L25000509630', entityType: 'CORP', useOurRa: false },

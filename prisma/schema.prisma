@@ -830,3 +830,17 @@ model AssistantSpendDay {
   updatedAt    DateTime @updatedAt
 }
 
+// Florida cordata candidates for a late annual report.
+// One row per document number that was active, formed before the target
+// year, and did not list that year. The loader deletes a row when a later
+// file shows the company is no longer a candidate. Primary key only.
+model SunbizArCandidate {
+  documentNumber String   @id
+  entityType     String
+  status         String
+  formationDate  DateTime @db.Date
+  arYears        Int[]
+  sourceFileDate DateTime @db.Date
+  updatedAt      DateTime @updatedAt
+}
+

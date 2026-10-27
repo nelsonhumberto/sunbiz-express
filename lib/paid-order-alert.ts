@@ -88,7 +88,20 @@ type PaidFiling = {
     completedAt: Date | null;
     createdAt: Date;
   }[];
+  annualReports?: { status: string; totalCostCents: number }[];
 };
+
+/** A paid guest annual report, not a future compliance reminder on a formation. */
+export function paidAnnualReportDocumentNumber(filing: {
+  sunbizFilingNumber?: string | null;
+  annualReports?: { status: string; totalCostCents: number }[];
+}): string | null {
+  const paid = (filing.annualReports ?? []).some(
+    (report) => report.status === 'FILED' && report.totalCostCents > 0,
+  );
+  if (!paid) return null;
+  return filing.sunbizFilingNumber?.trim() ?? '';
+}
 
 function customerName(user: PaidFiling['user']): string {
   return [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
@@ -118,6 +131,7 @@ async function loadPaidFiling(filingId: string): Promise<PaidFiling | null> {
       serviceTier: true,
       isTest: true,
       sunbizFilingNumber: true,
+      annualReports: { select: { status: true, totalCostCents: true } },
       user: { select: { firstName: true, lastName: true, email: true, isTester: true } },
       payments: {
         where: { status: 'SUCCEEDED' },
@@ -154,6 +168,7 @@ export async function notifyAdminOfPaidOrder(filingId: string): Promise<'sent' |
     const paid = filing ? earliestPayment(filing) : null;
     if (!filing || !paid) return 'skipped';
     const deadline = paidOrderDeadline(paid.paidAt);
+    const annualReportDocumentNumber = paidAnnualReportDocumentNumber(filing);
     await sendEmail({
       type: 'ADMIN_PAID_ORDER',
       to: ADMIN_ORDER_EMAIL,
@@ -172,6 +187,7 @@ export async function notifyAdminOfPaidOrder(filingId: string): Promise<'sent' |
         deadlineLabel: formatEasternDateTime(deadline),
         adminFilingUrl: adminFilingUrl(filing.id),
         testOrder: orderIsTest(filing, paid.payment.isTest),
+        ...(annualReportDocumentNumber !== null ? { annualReportDocumentNumber } : {}),
       },
     });
     return 'sent';

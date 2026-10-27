@@ -1514,7 +1514,6 @@
     "unconfirmedTitle": "We couldn't confirm the annual report status",
     "unconfirmedBody": "We couldn't confirm this company's annual report status online.",
     "unconfirmedContact": "Contact us",
-    "unconfirmedChecklist": "Or leave your email in the form on this page.",
     "nothingDueTitle": "The {year} annual report is already filed",
     "nothingDue": "Nothing due until Jan 1, {year}.",
     "lookupFailed": "We couldn't confirm this company's annual report status online.",

@@ -691,6 +691,26 @@ export interface FloridaAnnualReportFiling {
   filed_date?: string;
 }
 
+const annualReportScraperUsed = new WeakSet<object>();
+
+function markAnnualReportScraper(detail: object) {
+  annualReportScraperUsed.add(detail);
+}
+
+function finishAnnualReportDetail(
+  before: FloridaEntityDetail,
+  after: FloridaEntityDetail,
+  scraped: boolean,
+): FloridaEntityDetail {
+  if (scraped || annualReportScraperUsed.has(before)) markAnnualReportScraper(after);
+  return after;
+}
+
+/** True when this lookup called the Sunbiz scraper or the local scraper sidecar. */
+export function floridaLookupUsedScraper(detail: object): boolean {
+  return annualReportScraperUsed.has(detail);
+}
+
 export interface FloridaEntityDetail {
   corporation_number: string;
   corporation_name: string;
@@ -1127,7 +1147,9 @@ async function findViaSunbizOrgNameScrape(
     const entities = await searchSunbizScrape(legalName, { limit: 100, signal });
     const hit = entities.find((e) => normalizeFloridaDocumentNumber(e.documentNumber) === docNorm);
     if (!hit) return null;
-    return detailFromSunbizEntityHit(hit);
+    const detail = detailFromSunbizEntityHit(hit);
+    markAnnualReportScraper(detail);
+    return detail;
   } catch {
     return null;
   }
@@ -1240,23 +1262,23 @@ async function withAnnualReports(
     `?inquiryType=DocumentNumber&searchTerm=${encodeURIComponent(detail.corporation_number)}`;
   try {
     const html = await fetchScrapeViaProxy(target, proxy, signal);
-    if (looksLikeCloudflareChallenge(html)) return detail;
+    if (looksLikeCloudflareChallenge(html)) return finishAnnualReportDetail(detail, detail, true);
     const facts = parseFloridaDetailFacts(html);
     const eventYears = isAnnualReportEvent(facts.lastEvent)
       ? [calendarYear(facts.lastEventDate) ?? calendarYear(facts.lastEvent)].filter(
           (year): year is number => year !== null,
         )
       : [];
-    return {
+    return finishAnnualReportDetail(detail, {
       ...detail,
       file_date: detail.file_date || facts.fileDate,
       ...(needsYears && facts.hasAnnualReportTable
         ? { annual_reports: facts.years.map((year) => ({ year })) }
         : {}),
       ...(needsEvent && eventYears.length ? { event_filed_years: eventYears } : {}),
-    };
+    }, true);
   } catch {
-    return detail;
+    return finishAnnualReportDetail(detail, detail, true);
   }
 }
 
@@ -1272,10 +1294,9 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
   // ── Step 0: local cloudscraper sidecar (highest priority in dev) ────────
   const localProxy = process.env.SUNBIZ_LOCAL_PROXY_URL?.trim();
   if (localProxy) {
-    return withAnnualReports(
-      await fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal),
-      opts.signal,
-    );
+    const fromProxy = await fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal);
+    markAnnualReportScraper(fromProxy);
+    return withAnnualReports(fromProxy, opts.signal);
   }
 
   const apiKey = process.env.SUNBIZDAILY_API_KEY?.trim();

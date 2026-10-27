@@ -6,6 +6,7 @@ import {
   OVERDUE_SOON_MS,
   filingOverdueBadge,
   formatEasternDateTime,
+  paidAnnualReportDocumentNumber,
   paidOrderDeadline,
 } from '@/lib/paid-order-alert';
 
@@ -77,8 +78,42 @@ describe('admin paid order email', () => {
     expect(mail.html).toContain(DEADLINE_LABEL);
     expect(mail.html).toContain('https://launchforma.com/admin/filings/fil_1');
     expect(mail.html).toContain('Open filing');
+    expect(mail.html).not.toContain('do not file and refund');
     expect(mail.subject).not.toMatch(/\u2014|\u2013/);
     expect(mail.html).not.toMatch(/\u2014|\u2013/);
+  });
+
+  it('warns before filing a paid annual report in any status', () => {
+    for (const status of ['FILED', 'PENDING', 'OVERDUE', 'DELINQUENT']) {
+      expect(paidAnnualReportDocumentNumber({
+        sunbizFilingNumber: 'L25000509630',
+        annualReports: [{ status, totalCostCents: 63_775 }],
+      })).toBe('L25000509630');
+    }
+    expect(paidAnnualReportDocumentNumber({
+      sunbizFilingNumber: 'L25000509630',
+      annualReports: [{ status: 'PENDING', totalCostCents: 0 }],
+    })).toBeNull();
+    expect(paidAnnualReportDocumentNumber({
+      annualReports: [{ status: 'PENDING', totalCostCents: 13_875 }],
+    })).toBe('');
+  });
+
+  it('tells admin to check live Sunbiz before filing a paid annual report', () => {
+    const mail = renderTemplate('ADMIN_PAID_ORDER', {
+      ...context,
+      annualReportDocumentNumber: 'L25000509630',
+    });
+    const warning =
+      'Before filing, check the company on live Sunbiz. If this year&#039;s annual report is already filed, do not file and refund the customer.';
+    expect(mail.html).toContain(`<blockquote><strong>${warning}</strong></blockquote>`);
+    expect(mail.html.indexOf(warning)).toBeLessThan(mail.html.indexOf('New paid order'));
+    expect(mail.html).toContain(
+      'https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResults?inquiryType=DocumentNumber&amp;searchTerm=L25000509630',
+    );
+    expect(mail.html).toContain('Search L25000509630 on Sunbiz');
+    expect(mail.html).not.toMatch(/\u2014|\u2013/);
+    expect(mail.html).not.toMatch(/sourceFileDate|as of|freshness/i);
   });
 
   it('prefixes test orders and names the overdue window', () => {

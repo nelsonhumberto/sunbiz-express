@@ -22,18 +22,22 @@ import {
   pricedFloridaEntityType,
   type GuestAnnualReportOffer,
 } from '@/lib/guest-annual-report-offer';
+import { findSunbizArCandidate } from '@/lib/sunbiz-ar-candidate';
 import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
 import { resolveRequestLocale } from '@/lib/request-locale';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
+  floridaLookupUsedScraper,
   searchSunbiz,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
+import { logGuestAnnualReportDecision } from '@/lib/guest-annual-report-decision-log';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
 import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
 import { sendEmail } from '@/lib/email';
+import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
 import {
   AnnualReportDraftFields,
   annualReportSaveRetry,
@@ -368,18 +372,41 @@ export async function lookupEntityPublic(
 > {
   try {
     const detail = await fetchFloridaEntityDetailByDocumentNumber(documentNumber.trim());
+    const candidate = await findSunbizArCandidate(documentNumber);
+    const filedYears = annualReportYearsOf(detail);
     let offer = guestAnnualReportOffer({
       lookupOk: true,
       status: detail.status,
-      filedYears: annualReportYearsOf(detail),
+      filedYears,
       eventFiledYears: detail.event_filed_years,
       fileDate: detail.file_date,
+      candidate,
     });
     if (offer.kind === 'sell' && !pricedFloridaEntityType(documentNumber, detail)) {
       offer = { kind: 'unconfirmed' };
     }
+    logGuestAnnualReportDecision({
+      documentNumber,
+      offer,
+      candidatePresent: candidate != null,
+      sunbizDailyStatus: detail.status,
+      scraperUsed: floridaLookupUsedScraper(detail),
+      lookupOk: true,
+      filedYears,
+      eventFiledYears: detail.event_filed_years,
+      fileDate: detail.file_date,
+    });
     return { ok: true, detail, offer };
   } catch {
+    const candidate = await findSunbizArCandidate(documentNumber);
+    logGuestAnnualReportDecision({
+      documentNumber,
+      offer: { kind: 'unconfirmed' },
+      candidatePresent: candidate != null,
+      sunbizDailyStatus: null,
+      scraperUsed: false,
+      lookupOk: false,
+    });
     return { ok: false, error: GUEST_LOOKUP_FAILED };
   }
 }
@@ -601,6 +628,12 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
 
       return { filingId: filing.id, arId: ar.id };
     });
+
+    try {
+      await notifyAdminOfPaidOrder(filingId.filingId);
+    } catch (err) {
+      logger.error('Paid annual report alert failed', { area: 'annual-report' }, err);
+    }
 
     return { ok: true as const, filingId: filingId.filingId };
   } catch (e) {

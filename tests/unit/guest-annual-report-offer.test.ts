@@ -60,21 +60,22 @@ describe('guest annual report offer', () => {
     expect(guestAnnualReportRefusal({ kind: 'dissolved' }, 'en')).not.toMatch(/https?:|\/reinstatement/);
   });
 
-  it('sells the late current-year report only when it is known to be unfiled', () => {
+  it('does not sell from a live filing table when no candidate row exists', () => {
     expect(guestAnnualReportOffer({
       lookupOk: true,
       status: 'ACTIVE',
       filedYears: [2024, 2025],
       fileDate: '04/10/2015',
       now: OCTOBER_15_NOON_ET,
-    })).toEqual({ kind: 'sell', reportYear: 2026 });
+    })).toEqual({ kind: 'unconfirmed' });
     expect(guestAnnualReportOffer({
       lookupOk: true,
       status: 'A',
       filedYears: [],
       fileDate: '2025-06-01',
       now: OCTOBER_15_NOON_ET,
-    })).toEqual({ kind: 'sell', reportYear: 2026 });
+      candidate: null,
+    })).toEqual({ kind: 'unconfirmed' });
     expect(guestAnnualReportOffer({
       lookupOk: true,
       status: 'A',
@@ -88,6 +89,95 @@ describe('guest annual report offer', () => {
       filedYears: [],
       now: OCTOBER_15_NOON_ET,
     })).toEqual({ kind: 'unconfirmed' });
+  });
+
+  it('sells only when the candidate row is active, formed earlier, and the year is unfiled', () => {
+    const sellable = {
+      status: 'A',
+      entityType: 'FLAL',
+      formationDate: '2015-04-10',
+      arYears: [2024, 2025],
+    };
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'ACTIVE',
+      filedYears: null,
+      fileDate: '04/10/2015',
+      now: OCTOBER_15_NOON_ET,
+      candidate: sellable,
+    })).toEqual({ kind: 'sell', reportYear: 2026 });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'A',
+      filedYears: null,
+      now: OCTOBER_15_NOON_ET,
+      candidate: {
+        status: 'ACTIVE',
+        entityType: 'FORL',
+        formationDate: new Date('2025-06-01T00:00:00.000Z'),
+        arYears: [],
+      },
+    })).toEqual({ kind: 'sell', reportYear: 2026 });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'ACTIVE',
+      filedYears: null,
+      fileDate: '2015-04-10',
+      now: OCTOBER_15_NOON_ET,
+      candidate: { ...sellable, arYears: [2024, 2025, 2026] },
+    })).toEqual({ kind: 'unconfirmed' });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'ACTIVE',
+      filedYears: null,
+      fileDate: '2010-01-01',
+      now: OCTOBER_15_NOON_ET,
+      candidate: { ...sellable, formationDate: '2026-03-15' },
+    })).toEqual({ kind: 'not_yet_due', reportYear: 2026, nextOpenYear: 2027 });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'INACT',
+      filedYears: null,
+      fileDate: '2015-04-10',
+      now: OCTOBER_15_NOON_ET,
+      candidate: sellable,
+    })).toEqual({ kind: 'dissolved' });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'ADMIN DISSOLVED',
+      filedYears: null,
+      fileDate: '2015-04-10',
+      now: OCTOBER_15_NOON_ET,
+      candidate: sellable,
+    })).toEqual({ kind: 'dissolved' });
+    expect(guestAnnualReportOffer({
+      lookupOk: true,
+      status: 'ACTIVE',
+      filedYears: null,
+      fileDate: '2015-04-10',
+      now: OCTOBER_15_NOON_ET,
+      candidate: { ...sellable, status: 'I' },
+    })).toEqual({ kind: 'unconfirmed' });
+    for (const status of [undefined, '', '   ', 'UNKNOWN', 'GOOD STANDING']) {
+      expect(guestAnnualReportOffer({
+        lookupOk: true,
+        status,
+        filedYears: null,
+        fileDate: '2015-04-10',
+        now: OCTOBER_15_NOON_ET,
+        candidate: sellable,
+      }), String(status)).toEqual({ kind: 'unconfirmed' });
+    }
+    for (const entityType of ['TRUST', 'DOMLP', 'FORLP', '']) {
+      expect(guestAnnualReportOffer({
+        lookupOk: true,
+        status: 'ACTIVE',
+        filedYears: null,
+        fileDate: '2015-04-10',
+        now: OCTOBER_15_NOON_ET,
+        candidate: { ...sellable, entityType },
+      })).toEqual({ kind: 'unconfirmed' });
+    }
   });
 
   it('sells nothing when the current report year is already filed', () => {
@@ -232,8 +322,10 @@ describe('guest annual report offer', () => {
     expect(form).toContain("t('dissolvedBody')");
     expect(form).toContain("t('nothingDue'");
     expect(form).toContain("t('unconfirmedBody')");
-    expect(form).toContain('checklist-signup-heading');
     expect(form).toContain('unconfirmedContact');
+    expect(form).not.toContain('unconfirmedChecklist');
+    expect(form).not.toContain('checklist-signup-heading');
+    expect(form).not.toContain('Or leave your email');
     expect(form).toContain('activeStatusLabel');
     expect(form).not.toContain('onManualContinue');
     expect(form).not.toMatch(/status:\s*'ACTIVE'/);
@@ -251,7 +343,6 @@ describe('guest annual report offer', () => {
         'unconfirmedTitle',
         'unconfirmedBody',
         'unconfirmedContact',
-        'unconfirmedChecklist',
         'lookupFailed',
         'manualTitle',
         'manualBody',
@@ -269,6 +360,8 @@ describe('guest annual report offer', () => {
     expect(es.annualReportForm.unconfirmedBody).toBe(
       'No pudimos confirmar en línea el estado del reporte anual de esta compañía.',
     );
+    expect(JSON.stringify(en.annualReportForm)).not.toContain('Or leave your email in the form on this page');
+    expect(JSON.stringify(es.annualReportForm)).not.toContain('O deja tu correo en el formulario de esta página');
     expect(es.annualReportForm.dissolvedBody).toContain('restablecerse');
     expect(es.annualReportForm.dissolvedBody).toContain('puedas');
     expect(es.annualReportForm.dissolvedBody).not.toContain('reinstalación');

@@ -116,6 +116,32 @@ describe('notifyAdminOfPaidOrder', () => {
     await expect(notifyAdminOfPaidOrder('fil_1')).resolves.toBe('failed');
     expect(sendEmail).not.toHaveBeenCalled();
   });
+
+  it('adds the Sunbiz document number only for a paid annual report', async () => {
+    findUnique.mockResolvedValue(filing());
+    await notifyAdminOfPaidOrder('fil_1');
+    expect(sendEmail.mock.calls[0][0].context.annualReportDocumentNumber).toBeUndefined();
+
+    sendEmail.mockClear();
+    findUnique.mockResolvedValue(
+      filing({
+        sunbizFilingNumber: 'L25000509630',
+        annualReports: [{ status: 'FILED', totalCostCents: 63_775 }],
+      }),
+    );
+    await notifyAdminOfPaidOrder('fil_1');
+    expect(sendEmail.mock.calls[0][0].context.annualReportDocumentNumber).toBe('L25000509630');
+
+    sendEmail.mockClear();
+    findUnique.mockResolvedValue(
+      filing({
+        sunbizFilingNumber: 'L25000509630',
+        annualReports: [{ status: 'PENDING', totalCostCents: 63_775 }],
+      }),
+    );
+    await notifyAdminOfPaidOrder('fil_1');
+    expect(sendEmail.mock.calls[0][0].context.annualReportDocumentNumber).toBe('L25000509630');
+  });
 });
 
 describe('runPaidFilingOverdueAlerts', () => {

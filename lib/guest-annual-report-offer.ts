@@ -78,9 +78,60 @@ export function guestAnnualReportUnconfirmedMessage(locale: 'en' | 'es'): string
 }
 
 /**
+ * Sunbiz filing types that can buy a late annual report.
+ * FLAL and FORL are LLCs. DOMP, DOMNP, FORP, and FORNP are corporations.
+ * Partnerships, trusts, and other filing types are not candidates.
+ */
+export const SUNBIZ_AR_CANDIDATE_FILING_TYPES = new Set([
+  'FLAL',
+  'FORL',
+  'DOMP',
+  'DOMNP',
+  'FORP',
+  'FORNP',
+]);
+
+export function isSunbizArCandidateFilingType(entityType: string | null | undefined): boolean {
+  return SUNBIZ_AR_CANDIDATE_FILING_TYPES.has((entityType ?? '').trim().toUpperCase());
+}
+
+/** Fields from SunbizArCandidate used to decide a sale. No file date is included. */
+export type SunbizArCandidateFacts = {
+  status?: string | null;
+  entityType?: string | null;
+  formationDate?: string | Date | null;
+  arYears?: number[] | null;
+};
+
+/**
+ * Calendar date from a cordata DATE value. Prisma returns date columns at UTC midnight.
+ */
+export function candidateFormationIso(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const year = value.getUTCFullYear();
+    const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(value.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  const text = value.trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const us = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!us) return null;
+  return `${us[3]}-${us[1].padStart(2, '0')}-${us[2].padStart(2, '0')}`;
+}
+
+/**
  * What the guest annual report page may sell after a lookup.
- * Sell only when the formation year is before the report year and the current
- * report is known to be unfiled. Unknown status is not a sale.
+ * Sell only when a candidate row is an LLC or corporation, active, formed
+ * before January 1 of the report year, and does not list that year, and the
+ * live lookup shows an explicitly active status. A blank or unknown live
+ * status does not sell when a candidate row exists.
+ * A missing row or any other filing type is unconfirmed.
+ * Live dissolved, inactive, current-year formation, and a live filed year
+ * keep the same results as before.
  */
 export function guestAnnualReportOffer(input: {
   lookupOk: boolean;
@@ -89,9 +140,17 @@ export function guestAnnualReportOffer(input: {
   eventFiledYears?: number[] | null;
   fileDate?: string | null;
   now?: Date;
+  candidate?: SunbizArCandidateFacts | null;
 }): GuestAnnualReportOffer {
   if (!input.lookupOk) return { kind: 'unconfirmed' };
-  if (isFloridaEntityDissolved(input.status) || ((input.status ?? '').trim() && !isFloridaEntityActive(input.status))) {
+  if (isFloridaEntityDissolved(input.status)) {
+    return { kind: 'dissolved' };
+  }
+  // A candidate row is not enough. Live Sunbiz must say the company is active.
+  if (input.candidate && !isFloridaEntityActive(input.status)) {
+    return { kind: 'unconfirmed' };
+  }
+  if ((input.status ?? '').trim() && !isFloridaEntityActive(input.status)) {
     return { kind: 'dissolved' };
   }
   const reportYear = floridaEasternYear(input.now ?? new Date());
@@ -104,7 +163,16 @@ export function guestAnnualReportOffer(input: {
   if (filed?.includes(reportYear) || eventYears.includes(reportYear)) {
     return { kind: 'already_filed', reportYear, nextOpenYear: reportYear + 1 };
   }
-  if (formed === null || filed == null) return { kind: 'unconfirmed' };
+  const candidate = input.candidate;
+  if (!candidate || !isFloridaEntityActive(candidate.status ?? undefined)) return { kind: 'unconfirmed' };
+  if (!isSunbizArCandidateFilingType(candidate.entityType)) return { kind: 'unconfirmed' };
+  const formedOn = candidateFormationIso(candidate.formationDate);
+  if (!formedOn) return { kind: 'unconfirmed' };
+  const formedYear = Number(formedOn.slice(0, 4));
+  if (formedOn >= `${reportYear}-01-01`) {
+    return { kind: 'not_yet_due', reportYear, nextOpenYear: formedYear + 1 };
+  }
+  if ((candidate.arYears ?? []).includes(reportYear)) return { kind: 'unconfirmed' };
   return { kind: 'sell', reportYear };
 }
 

@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "test:all": "vitest run && tsx scripts/three-state-smoke.ts && tsx scripts/wizard-smoke.ts",
     "postinstall": "prisma generate",
-    "indexnow": "node scripts/indexnow.mjs"
+    "indexnow": "node scripts/indexnow.mjs",
+    "sunbiz:ar-import": "node scripts/sunbiz-ar-import.mjs"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.1",

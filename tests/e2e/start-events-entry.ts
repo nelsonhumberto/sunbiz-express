@@ -11,6 +11,7 @@ declare global {
       entity: 'LLC' | 'CORP' | 'SCORP',
     ) => Promise<void>;
     __report?: (trace: TraceItem[]) => void;
+    __beacons?: { url: string; data?: Blob | ArrayBuffer | string }[];
   }
 }
 
@@ -27,8 +28,26 @@ posthog.init('phc_e2e_start_events', {
   opt_out_useragent_filter: true,
 });
 
+async function beaconPayloads(): Promise<{ url: string; base64: string }[]> {
+  const items = window.__beacons ?? [];
+  const payloads: { url: string; base64: string }[] = [];
+  for (const item of items) {
+    const data = item.data;
+    let bytes: Uint8Array;
+    if (typeof data === 'string') bytes = new TextEncoder().encode(data);
+    else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data);
+    else if (data instanceof Blob) bytes = new Uint8Array(await data.arrayBuffer());
+    else continue;
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    payloads.push({ url: item.url, base64: btoa(binary) });
+  }
+  return payloads;
+}
+
 window.__runStart = async (redirectTo, locale, entity) => {
   const trace: TraceItem[] = [];
+  const started = performance.now();
   const original = posthog.capture.bind(posthog);
   posthog.capture = ((event: string, properties?: Record<string, unknown>, options?: object) => {
     trace.push({ event, properties });
@@ -38,9 +57,24 @@ window.__runStart = async (redirectTo, locale, entity) => {
   await captureThenNavigate({
     events: startNavigationEvents({ filingId, locale, entity }),
     navigate: () => {
-      trace.push({ event: '__assign', properties: { href: redirectTo } });
-      window.__report?.(trace);
-      window.location.assign(redirectTo);
+      void (async () => {
+        let beacons: { url: string; base64: string }[] = [];
+        try {
+          beacons = await beaconPayloads();
+        } catch {
+          beacons = [];
+        }
+        trace.push({
+          event: '__assign',
+          properties: {
+            href: redirectTo,
+            elapsedMs: Math.round(performance.now() - started),
+            beacons,
+          },
+        });
+        window.__report?.(trace);
+        window.location.assign(redirectTo);
+      })();
     },
   });
 };

@@ -42,8 +42,6 @@ export const metadata: Metadata = {
     'Corporation formation',
     'business formation',
     'Florida LLC',
-    'Wyoming LLC',
-    'Delaware LLC',
     'registered agent',
     'incorporate online',
     'form an LLC',

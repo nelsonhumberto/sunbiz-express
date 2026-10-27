@@ -1,19 +1,23 @@
 // Marketing-only state registry.
 //
-// LaunchForma currently files in Florida, Wyoming, and Delaware.
-// Other US states are surfaced as "coming soon" funnels: the marketing site
-// shows a state-targeted hero and a waitlist instead of dragging a Georgia
-// or Texas visitor into the formation wizard.
+// LaunchForma currently files in Florida. Wyoming and Delaware stay in this
+// registry as inactive so their rules can return later. Other US states are
+// surfaced as "coming soon" funnels: the marketing site shows a state-targeted
+// hero and a waitlist instead of dragging a Georgia or Texas visitor into the
+// formation wizard.
 //
 // This file is the single source of truth for:
 //   - which states exist in our marketing world
 //   - which are bookable today (`active`)
 //   - which are accepting early-access leads (`coming_soon`)
 //
-// The legal filing rules for active states live in `lib/formation-states.ts`
-// (FL/WY/DE) and `lib/florida.ts` (FL distinguishability for Sunbiz lookups).
+// The legal filing rules for Florida, Wyoming, and Delaware live in
+// `lib/formation-states.ts`. Florida distinguishability for Sunbiz lookups
+// lives in `lib/florida.ts`.
 
-export type StateAvailability = 'active' | 'coming_soon';
+import { isInactiveFormationRequest } from '@/lib/formation-states';
+
+export type StateAvailability = 'active' | 'coming_soon' | 'inactive';
 
 export interface MarketingState {
   /** USPS two-letter code, uppercase. */
@@ -36,7 +40,7 @@ const ALL_STATES: MarketingState[] = [
   { code: 'CA', name: 'California', slug: 'california', nameEs: 'California', availability: 'coming_soon' },
   { code: 'CO', name: 'Colorado', slug: 'colorado', nameEs: 'Colorado', availability: 'coming_soon' },
   { code: 'CT', name: 'Connecticut', slug: 'connecticut', nameEs: 'Connecticut', availability: 'coming_soon' },
-  { code: 'DE', name: 'Delaware', slug: 'delaware', nameEs: 'Delaware', availability: 'active' },
+  { code: 'DE', name: 'Delaware', slug: 'delaware', nameEs: 'Delaware', availability: 'inactive' },
   { code: 'DC', name: 'District of Columbia', slug: 'district-of-columbia', nameEs: 'Distrito de Columbia', availability: 'coming_soon' },
   { code: 'FL', name: 'Florida', slug: 'florida', nameEs: 'Florida', availability: 'active' },
   { code: 'GA', name: 'Georgia', slug: 'georgia', nameEs: 'Georgia', availability: 'coming_soon' },
@@ -79,7 +83,7 @@ const ALL_STATES: MarketingState[] = [
   { code: 'WA', name: 'Washington', slug: 'washington', nameEs: 'Washington', availability: 'coming_soon' },
   { code: 'WV', name: 'West Virginia', slug: 'west-virginia', nameEs: 'Virginia Occidental', availability: 'coming_soon' },
   { code: 'WI', name: 'Wisconsin', slug: 'wisconsin', nameEs: 'Wisconsin', availability: 'coming_soon' },
-  { code: 'WY', name: 'Wyoming', slug: 'wyoming', nameEs: 'Wyoming', availability: 'active' },
+  { code: 'WY', name: 'Wyoming', slug: 'wyoming', nameEs: 'Wyoming', availability: 'inactive' },
 ];
 
 export const ALL_MARKETING_STATES: readonly MarketingState[] = ALL_STATES;
@@ -152,4 +156,18 @@ export function isStateActive(state: MarketingState): boolean {
  */
 export function localizedStateName(state: MarketingState, locale: string): string {
   return locale === 'es' ? state.nameEs : state.name;
+}
+
+/**
+ * Marketing state for a `?state=` or preferred-state value.
+ * Wyoming and Delaware fall back to Florida. Coming-soon states stay as they are.
+ */
+export function marketingStateForVisitor(input?: string | null): {
+  state: MarketingState;
+  fellBackFromInactive: boolean;
+} {
+  if (isInactiveFormationRequest(input)) {
+    return { state: FLORIDA, fellBackFromInactive: true };
+  }
+  return { state: resolveMarketingState(input), fellBackFromInactive: false };
 }

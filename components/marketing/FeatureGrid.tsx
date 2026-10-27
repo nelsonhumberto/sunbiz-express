@@ -11,65 +11,29 @@ import {
   Banknote,
   type LucideIcon,
 } from 'lucide-react';
-import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { FLORIDA, localizedStateName, type MarketingState } from '@/lib/marketing-states';
+import { isActiveFormationState } from '@/lib/formation-states';
 
 interface FeatureGridProps {
   /** Resolved marketing state. Defaults to Florida for backwards compatibility. */
   state?: MarketingState;
 }
 
-/**
- * Pick a per-state copy variant for the feature grid. The audit (May 2026)
- * flagged that this section silently reused Florida-only copy
- * ("Florida Department of State", "Sunbiz database", "$400 late fee")
- * even on the WY and DE landing pages. We now branch on state code so
- * Wyoming and Delaware visitors see facts that match their state.
- */
+/** Florida formation facts. Inactive states render the same Florida grid. */
 export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
   const t = useTranslations('features');
   const tTiming = useTranslations('stateTiming');
   const locale = useLocale();
-  const stateLabel = locale === 'es' ? state.nameEs : state.name;
-  const agency =
-    state.code === 'FL'
-      ? t('agencyFl')
-      : state.code === 'WY'
-        ? t('agencyWy')
-        : state.code === 'DE'
-          ? t('agencyDe')
-          : t('agencyOther', { state: stateLabel });
-  const timing = tTiming(state.code);
-
-  // Same-day submission still applies in every state. Approval cadence
-  // differs and is surfaced via state-specific marketing timing.
+  const shown = isActiveFormationState(state.code) ? state : FLORIDA;
+  const stateLabel = localizedStateName(shown, locale);
+  const agency = t('agencyFl');
+  const timing = tTiming('FL');
   const filed1DayBody = t('filedSameDayBody', { agency, timing });
-
-  // Name pre-check varies by state. Only FL has the live Sunbiz API.
-  const liveCheckBody =
-    state.code === 'FL'
-      ? t('liveCheckFl')
-      : state.code === 'WY'
-        ? t('liveCheckWy')
-        : state.code === 'DE'
-          ? t('liveCheckDe')
-          : t('liveCheckOther', { state: stateLabel });
+  const liveCheckBody = t('liveCheckFl');
   const freeRABody = t('freeRAState', { state: stateLabel });
-
-  const complianceBody =
-    state.code === 'FL'
-      ? t('complianceBody')
-      : state.code === 'WY'
-        ? t('complianceWy')
-        : state.code === 'DE'
-          ? t('complianceDe')
-          : t('complianceOther', { state: stateLabel });
-
-  const transparentBody =
-    state.code === 'FL' ? t('transparentBody') : t('transparentState', { state: stateLabel });
-
-  // The headline title for "filed in 1 day" only matches Florida's actual
-  // turnaround. WY and DE state queues are weeks long.
-  const filed1DayTitle = state.code === 'FL' ? t('filed1Day') : t('filedSameDayTitle');
+  const complianceBody = t('complianceBody');
+  const transparentBody = t('transparentBody');
+  const filed1DayTitle = t('filed1Day');
   const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
     { icon: Zap, title: filed1DayTitle, body: filed1DayBody },
     { icon: Search, title: t('liveCheck'), body: liveCheckBody },
@@ -79,11 +43,11 @@ export function FeatureGrid({ state = FLORIDA }: FeatureGridProps = {}) {
     { icon: Banknote, title: t('transparent'), body: transparentBody },
   ];
 
-  const subhead = state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
+  const subhead = t('subhead');
 
   return (
     <section
-      data-marketing-state={state.code}
+      data-marketing-state={shown.code}
       className="py-20 md:py-28 bg-white border-y border-border"
     >
       <div className="container">

@@ -12,8 +12,9 @@ import { AnnualReportSection } from '@/components/marketing/AnnualReportSection'
 import { ComingSoonLanding } from '@/components/marketing/ComingSoonLanding';
 import {
   localizedStateName,
-  resolveMarketingState,
+  marketingStateForVisitor,
 } from '@/lib/marketing-states';
+import { floridaOnlyNote } from '@/lib/formation-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
@@ -37,7 +38,7 @@ export async function generateMetadata({
   searchParams?: HomePageSearchParams;
 }): Promise<Metadata> {
   const stateParam = pickFirst(searchParams?.state);
-  const state = resolveMarketingState(stateParam);
+  const { state } = marketingStateForVisitor(stateParam);
   const locale = await getLocale();
 
   if (state.availability === 'active') {
@@ -98,7 +99,8 @@ export default async function HomePage({
   searchParams?: HomePageSearchParams;
 }) {
   const stateParam = pickFirst(searchParams?.state);
-  const state = resolveMarketingState(stateParam);
+  const resolved = marketingStateForVisitor(stateParam);
+  const state = resolved.state;
   const campaign = pickFirst(searchParams?.utm_campaign);
 
   if (state.availability !== 'active') {
@@ -107,10 +109,16 @@ export default async function HomePage({
 
   const locale = await getLocale();
   const faqItems = getMarketingFaq(state, locale);
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
 
   return (
     <>
       <JsonLd data={faqPageJsonLd(faqItems)} />
+      {stateNote ? (
+        <p role="status" className="container pt-6 text-center text-sm text-ink-muted">
+          {stateNote}
+        </p>
+      ) : null}
       <Hero state={state} />
       <StatsBar />
       <FeatureGrid state={state} />

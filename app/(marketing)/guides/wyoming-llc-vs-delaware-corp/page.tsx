@@ -58,7 +58,7 @@ export default async function WyomingVsDelawareGuide() {
         cta={{
           headline: t('ctaHeadline'),
           subhead: t('ctaSubhead'),
-          href: '/states',
+          href: '/start',
           label: t('ctaLabel'),
         }}
       >
@@ -77,9 +77,9 @@ export default async function WyomingVsDelawareGuide() {
       cta={{
         headline: 'Ready to file?',
         subhead:
-          'LaunchForma files Wyoming LLCs and Delaware Corporations with all-in pricing and a free Year-1 Registered Agent.',
-        href: '/states',
-        label: 'See state pricing',
+          'LaunchForma files Florida LLCs and Corporations with all-in pricing and a free Year-1 Registered Agent.',
+        href: '/start',
+        label: 'Start in Florida',
       }}
     >
       <h2>TL;DR</h2>
@@ -109,7 +109,7 @@ export default async function WyomingVsDelawareGuide() {
           Annual report / License Tax: minimum <strong>$60/year</strong>, due on
           the first of your anniversary month.
         </li>
-        <li>Registered agent (required, must have WY physical address): $0 first year with LaunchForma, $150/year on renewal.</li>
+        <li>Registered agent (required, must have a Wyoming physical address).</li>
       </ul>
 
       <h3>Delaware C-Corp</h3>
@@ -118,7 +118,7 @@ export default async function WyomingVsDelawareGuide() {
         <li>
           Annual Report + Franchise Tax: <strong>$225 minimum/year</strong> for small companies under the Authorized Shares method - and the franchise tax can rise sharply if you authorize a lot of shares without setting par value carefully.
         </li>
-        <li>Registered agent (required, must have DE physical address): $0 first year with LaunchForma, $150/year on renewal.</li>
+        <li>Registered agent (required, must have a Delaware physical address).</li>
       </ul>
 
       <p>

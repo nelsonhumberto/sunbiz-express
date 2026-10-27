@@ -25,8 +25,11 @@ import {
 } from '@/lib/formation-validation';
 import {
   ACTIVE_FORMATION_STATES,
+  formationStateUnavailableMessage,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { InactiveFormationStateError } from '@/lib/filing-totals';
 import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
 import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
@@ -36,11 +39,17 @@ import { getTranslations } from 'next-intl/server';
 import { saveGuestEmail } from '@/actions/guest-email';
 import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
 
-function asStateCode(input: string | null | undefined): StateCode {
-  const upper = (input ?? 'FL').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(upper as StateCode)
-    ? (upper as StateCode)
-    : 'FL';
+function asStateCode(input: string | null | undefined): StateCode | null {
+  const upper = (input ?? '').trim().toUpperCase();
+  return isActiveFormationState(upper) ? (upper as StateCode) : null;
+}
+
+function inactiveStateResult(
+  state: string | null | undefined,
+  locale: string | null | undefined,
+): { ok: false; error: string } | null {
+  if (asStateCode(state)) return null;
+  return { ok: false, error: formationStateUnavailableMessage(locale) };
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────
@@ -126,7 +135,14 @@ async function recomputeCost(filingId: string) {
     },
   });
   if (!filing) return;
-  const totals = quoteDraftFiling(filing);
+  if (!isActiveFormationState(filing.state)) return;
+  let totals;
+  try {
+    totals = quoteDraftFiling(filing);
+  } catch (err) {
+    if (err instanceof InactiveFormationStateError) return;
+    throw err;
+  }
   await prisma.filing.update({
     where: { id: filingId },
     data: totals,
@@ -138,8 +154,8 @@ async function recomputeCost(filingId: string) {
 const Step1Schema = z.object({
   filingId: z.string(),
   entityType: z.enum(['LLC', 'CORP']),
-  /** USPS code of the state to file in. Defaults to existing filing state. */
-  state: z.enum(['FL', 'WY', 'DE']).optional(),
+  /** USPS code of the state to file in. Must be in the active set. */
+  state: z.string().trim().max(16).optional(),
   /** Federal tax election. 'S_CORP' elects S-Corporation taxation. */
   taxElection: z.enum(['S_CORP']).nullable().optional(),
   /** Optional on step 1. The name step requires it when the guest has none. */
@@ -185,7 +201,10 @@ export async function saveStep1(input: z.infer<typeof Step1Schema>) {
   const { filing, actor } = await getFilingForUser(data.filingId);
   const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, false, filing.locale);
   if (!emailSaved.ok) return emailSaved;
-  const nextState = data.state ?? asStateCode(filing.state);
+  const requestedState = data.state ?? filing.state;
+  const blocked = inactiveStateResult(requestedState, filing.locale);
+  if (blocked) return blocked;
+  const nextState = asStateCode(requestedState)!;
   const taxElection = data.taxElection ?? null;
   await prisma.filing.update({
     where: { id: filing.id },
@@ -282,6 +301,9 @@ async function saveStep2Now(input: z.infer<typeof Step2Schema>) {
   const { filing, actor } = await getFilingForUser(data.filingId);
   const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, true, filing.locale);
   if (!emailSaved.ok) return emailSaved;
+  const blockedState = inactiveStateResult(filing.state, filing.locale);
+  if (blockedState) return blockedState;
+  const filingState = asStateCode(filing.state)!;
   if (data.nameStatus === 'exact_conflict') {
     const t = await wizardCopy(filing.locale);
     return {
@@ -300,7 +322,7 @@ async function saveStep2Now(input: z.infer<typeof Step2Schema>) {
   const validation = validateBusinessName(
     businessName,
     entityType,
-    asStateCode(filing.state),
+    filingState,
   );
   if (!validation.valid) {
     return { ok: false, error: validation.error ?? (tName('nameTooShort') || NAME_TOO_SHORT_ERROR) };
@@ -329,6 +351,8 @@ const Step3Schema = z.object({
 export async function saveStep3(input: z.infer<typeof Step3Schema>) {
   const data = Step3Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
@@ -349,6 +373,8 @@ export async function saveStep3(input: z.infer<typeof Step3Schema>) {
 export async function upgradeTier(input: { filingId: string; tier: 'BASIC' | 'STANDARD' | 'PREMIUM' }) {
   const data = Step3Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
   await prisma.filing.update({
     where: { id: filing.id },
     data: { serviceTier: data.tier },
@@ -371,6 +397,8 @@ const AddressSchema = z.object({
 export async function saveStep4(input: { filingId: string; address: z.infer<typeof AddressSchema> }) {
   const address = AddressSchema.parse(input.address);
   const { filing } = await getFilingForUser(input.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
   const v = validateGeneralAddress(address);
   if (!v.valid) return { ok: false, error: v.error };
   await prisma.filing.update({
@@ -390,6 +418,8 @@ export async function saveStep5(input: {
   address?: z.infer<typeof AddressSchema>;
 }) {
   const { filing } = await getFilingForUser(input.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
   let mailing: string;
   if (input.sameAsPrincipal) {
     mailing = JSON.stringify('SAME_AS_PRINCIPAL');
@@ -430,6 +460,9 @@ const RegisteredAgentSchema = z.object({
 export async function saveStep6(input: z.infer<typeof RegisteredAgentSchema>) {
   const data = RegisteredAgentSchema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
+  const filingState = asStateCode(filing.state)!;
 
   if (!data.useOurService) {
     const v = validateRegisteredAgentAddress(
@@ -440,7 +473,7 @@ export async function saveStep6(input: z.infer<typeof RegisteredAgentSchema>) {
         state: data.state,
         zip: data.zip,
       },
-      asStateCode(filing.state),
+      filingState,
     );
     if (!v.valid) return { ok: false, error: v.error };
   }
@@ -527,6 +560,8 @@ const Step7Schema = z.object({
 export async function saveStep7(input: z.infer<typeof Step7Schema>) {
   const data = Step7Schema.parse(input);
   const { filing, actor } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
 
   const members = data.members.map((m) => ({ ...m })); // mutable copy
   const entityType = filing.entityType as 'LLC' | 'CORP';
@@ -778,13 +813,16 @@ export async function saveStep9(
 ): Promise<{ ok: boolean; error?: string }> {
   const data = Step9Schema.parse(input);
   const { filing } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
+  const filingState = asStateCode(filing.state)!;
 
   if (data.effectiveDate) {
     const parsed = new Date(data.effectiveDate);
     if (Number.isNaN(parsed.getTime())) {
       return { ok: false, error: 'Effective date is not a valid date.' };
     }
-    const v = isValidEffectiveDate(parsed, asStateCode(filing.state));
+    const v = isValidEffectiveDate(parsed, filingState);
     if (!v.valid) return { ok: false, error: v.error };
   }
 
@@ -971,6 +1009,8 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
     return { ok: false, error: 'Enter a valid phone number, or leave it blank.' };
   }
   const { filing, actor } = await getFilingForUser(data.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
 
   // Final safety net: ensure the correspondence email is populated before
   // the filing can be signed (covers any drafts that skipped step 7 logic).
@@ -1019,6 +1059,8 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
 
 export async function saveStep11(input: { filingId: string; addOnSlugs: string[] }) {
   const { filing } = await getFilingForUser(input.filingId);
+  const blocked = inactiveStateResult(filing.state, filing.locale);
+  if (blocked) return blocked;
 
   const services = await prisma.additionalService.findMany({
     where: { serviceSlug: { in: input.addOnSlugs.filter(isWizardAddOn) } },
@@ -1147,8 +1189,14 @@ export async function getWizardFiling(filingId: string) {
     }
     return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard');
   }
-  if (filing.status === 'DRAFT') {
-    const totals = quoteDraftFiling(filing);
+  if (filing.status === 'DRAFT' && isActiveFormationState(filing.state)) {
+    let totals;
+    try {
+      totals = quoteDraftFiling(filing);
+    } catch (err) {
+      if (err instanceof InactiveFormationStateError) return filing;
+      throw err;
+    }
     if (filingTotalsChanged(filing, totals)) {
       try {
         await prisma.filing.update({

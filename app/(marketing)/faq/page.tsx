@@ -5,8 +5,9 @@ import { CTABanner } from '@/components/marketing/CTABanner';
 import { StateWaitlistForm } from '@/components/marketing/StateWaitlistForm';
 import {
   localizedStateName,
-  resolveMarketingState,
+  marketingStateForVisitor,
 } from '@/lib/marketing-states';
+import { floridaOnlyNote } from '@/lib/formation-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
@@ -24,7 +25,7 @@ function pickFirst(value: string | string[] | undefined): string | undefined {
 export async function generateMetadata({
   searchParams,
 }: FAQPageProps): Promise<Metadata> {
-  const state = resolveMarketingState(pickFirst(searchParams?.state));
+  const { state } = marketingStateForVisitor(pickFirst(searchParams?.state));
   const locale = await getLocale();
   const tMeta = locale === 'es' ? await getTranslations('faqMeta') : null;
   if (state.availability === 'active') {
@@ -72,8 +73,10 @@ export async function generateMetadata({
 }
 
 export default async function FAQPage({ searchParams }: FAQPageProps) {
-  const state = resolveMarketingState(pickFirst(searchParams?.state));
+  const resolved = marketingStateForVisitor(pickFirst(searchParams?.state));
+  const state = resolved.state;
   const locale = await getLocale();
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
   const t = await getTranslations({ locale, namespace: 'faq' });
   const tComingSoon = await getTranslations({
     locale,
@@ -99,6 +102,11 @@ export default async function FAQPage({ searchParams }: FAQPageProps) {
               ? t('pageHeadline', { state: stateName })
               : tComingSoon('faqHeadline', { state: stateName })}
           </h1>
+          {stateNote ? (
+            <p role="status" className="mt-4 text-sm text-ink-muted">
+              {stateNote}
+            </p>
+          ) : null}
         </div>
       </section>
       <FAQSection state={state} hideHeading expandAll suppressJsonLd />

@@ -16,7 +16,7 @@ import { formatCurrency } from '@/lib/utils';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
-import { getFormationState } from '@/lib/formation-states';
+import { getFormationState, isActiveFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
 
 interface PricingTableProps {
@@ -69,7 +69,8 @@ export function PricingTable({
 }: PricingTableProps) {
   const t = useTranslations('pricing');
   const oaGuideHref = '/guides/florida-llc-operating-agreement';
-  const formationState = getFormationState(state.code);
+  const bookableCode = isActiveFormationState(state.code) ? state.code : 'FL';
+  const formationState = getFormationState(bookableCode);
   const footnoteCopy = t('footnote', { state: formationState.name });
   // Headline price shown on each card is the LLC price for the active state
   // (LLC is the most common formation). When the corp price differs by more
@@ -184,11 +185,11 @@ export function PricingTable({
                     className="mt-6 w-full"
                   >
                     <Link
-                      href={`/start?tier=${tier.slug}${state.code !== 'FL' ? `&state=${state.code}` : ''}`}
+                      href={`/start?tier=${tier.slug}${bookableCode !== 'FL' ? `&state=${bookableCode}` : ''}`}
                       onClick={() =>
                         trackCtaClicked('pricing_choose', {
                           tier: tier.slug,
-                          state: state.code,
+                          state: bookableCode,
                         })
                       }
                     >

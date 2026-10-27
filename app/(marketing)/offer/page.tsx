@@ -10,7 +10,8 @@ import { PricingTable } from '@/components/marketing/PricingTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
-import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
+import { localizedStateName, marketingStateForVisitor } from '@/lib/marketing-states';
+import { floridaOnlyNote, isActiveFormationState } from '@/lib/formation-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 
@@ -43,12 +44,17 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
   const t = await getTranslations('offer');
   const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
-  const state = resolveMarketingState(pickFirst(searchParams?.state));
+  const resolved = marketingStateForVisitor(pickFirst(searchParams?.state));
+  const state = resolved.state;
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
   const tier = pickFirst(searchParams?.tier);
-  const startHref = localizedHref(
-    `/start?state=${state.code}${tier ? `&tier=${tier}` : ''}`,
-    locale,
-  );
+  const startParams = new URLSearchParams();
+  if (isActiveFormationState(state.code) && state.code !== 'FL') {
+    startParams.set('state', state.code);
+  }
+  if (tier) startParams.set('tier', tier);
+  const startQuery = startParams.toString();
+  const startHref = localizedHref(startQuery ? `/start?${startQuery}` : '/start', locale);
   const stateName = localizedStateName(state, locale);
 
   return (
@@ -78,6 +84,11 @@ export default async function OfferPage({ searchParams }: OfferPageProps) {
           <p className="mt-4 text-lg text-ink-muted leading-relaxed max-w-xl mx-auto">
             {t('subhead')}
           </p>
+          {stateNote ? (
+            <p role="status" className="mt-4 text-sm text-ink-muted">
+              {stateNote}
+            </p>
+          ) : null}
 
           <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink">
             {[t('pointFees'), t('pointRA'), t('pointNoHidden')].map((point) => (

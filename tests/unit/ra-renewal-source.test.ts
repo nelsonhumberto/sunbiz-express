@@ -15,17 +15,25 @@ import es from '../../messages/es.json';
 const price = formatCurrency(RA_RENEWAL_PRICE_CENTS);
 
 describe('registered agent renewal price source', () => {
-  it('is $150 and the only renewal amount on each formation state', () => {
+  it('is $150 in Florida, $119 in Wyoming, and $149 in Delaware', () => {
     expect(RA_RENEWAL_PRICE_CENTS).toBe(15_000);
     expect(RA_ANNUAL_SERVICE_FEE_CENTS).toBe(RA_RENEWAL_PRICE_CENTS);
     expect(price).toBe('$150');
-    for (const code of ['FL', 'WY', 'DE'] as const) {
-      expect(FORMATION_STATES[code].registeredAgent.renewalCents).toBe(RA_RENEWAL_PRICE_CENTS);
-    }
+    expect(FORMATION_STATES.FL.registeredAgent.renewalCents).toBe(15_000);
+    expect(FORMATION_STATES.WY.registeredAgent.renewalCents).toBe(11_900);
+    expect(FORMATION_STATES.DE.registeredAgent.renewalCents).toBe(14_900);
     const states = readFileSync('lib/formation-states.ts', 'utf8');
-    expect(states).not.toMatch(/11_900|14_900/);
-    expect(states).toContain('raRenewalPriceCents');
-    expect(readFileSync('lib/pricing.ts', 'utf8')).toContain('bindRaRenewalPriceCents(RA_RENEWAL_PRICE_CENTS)');
+    expect(states).toContain("from './ra-renewal-price'");
+    expect(states).toContain('renewalCents: RA_RENEWAL_PRICE_CENTS');
+    expect(states).toContain('renewalCents: 11_900');
+    expect(states).toContain('renewalCents: 14_900');
+    expect(states).not.toContain('bindRaRenewalPriceCents');
+    const pricing = readFileSync('lib/pricing.ts', 'utf8');
+    expect(pricing).toContain('export { RA_RENEWAL_PRICE_CENTS }');
+    expect(pricing).not.toContain('bindRaRenewalPriceCents');
+    expect(readFileSync('lib/ra-renewal-price.ts', 'utf8')).toContain(
+      'export const RA_RENEWAL_PRICE_CENTS = 15_000',
+    );
   });
 
   it('interpolates the catalog price instead of hard-coding it in customer copy', () => {
@@ -43,8 +51,10 @@ describe('registered agent renewal price source', () => {
       expect(english).not.toMatch(/\$150|\$119|\$149/);
       expect(spanish).not.toMatch(/\$150|\$119|\$149/);
     }
-    expect(es.guideWyDe.body).toContain('{price} al año en la renovación');
+    expect(es.guideWyDe.body).toContain('{wyPrice} al año en la renovación');
+    expect(es.guideWyDe.body).toContain('{dePrice} al año en la renovación');
     expect(es.guideWyDe.body).not.toContain('$150');
+    expect(es.guideWyDe.body).not.toContain('{price}');
 
     const faqEn = getMarketingFaq(FLORIDA, 'en').map((item) => item.a).join('\n');
     const faqEs = getMarketingFaq(FLORIDA, 'es').map((item) => item.a).join('\n');
@@ -53,14 +63,23 @@ describe('registered agent renewal price source', () => {
     expect(faqEn).not.toMatch(/\$119|\$149\b/);
     const wyoming = ALL_MARKETING_STATES.find((state) => state.code === 'WY')!;
     const delaware = ALL_MARKETING_STATES.find((state) => state.code === 'DE')!;
-    expect(getMarketingFaq(wyoming, 'en').map((item) => item.a).join('\n')).toContain(`${price}/year`);
-    expect(getMarketingFaq(delaware, 'es').map((item) => item.a).join('\n')).toContain(`${price}/año`);
+    const wyomingFaq = getMarketingFaq(wyoming, 'en').map((item) => item.a).join('\n');
+    const delawareFaq = getMarketingFaq(delaware, 'es').map((item) => item.a).join('\n');
+    expect(wyomingFaq).toContain('$119/year');
+    expect(wyomingFaq).not.toContain('$150/year');
+    expect(delawareFaq).toContain('$149/año');
+    expect(delawareFaq).not.toContain('$150/año');
+    const guide = readFileSync('app/(marketing)/guides/wyoming-llc-vs-delaware-corp/page.tsx', 'utf8');
+    expect(guide).toContain('FORMATION_STATES.WY.registeredAgent.renewalCents');
+    expect(guide).toContain('FORMATION_STATES.DE.registeredAgent.renewalCents');
+    expect(guide).not.toContain('RA_RENEWAL_PRICE');
 
     const facts = readFileSync('lib/assistant/docs.ts', 'utf8');
     const knowledge = readFileSync('lib/assistant/knowledge.ts', 'utf8');
     expect(facts).toContain('{raRenewalPrice}');
     expect(facts).not.toMatch(/\$150|\$119/);
-    expect(knowledge).toContain('RA_RENEWAL_PRICE_CENTS');
+    expect(knowledge).toContain('registeredAgent.renewalCents');
+    expect(knowledge).not.toContain('RA_RENEWAL_PRICE_CENTS');
     expect(readFileSync('lib/post-formation-email.ts', 'utf8')).toContain('RA_RENEWAL_PRICE_CENTS');
     expect(readFileSync('lib/email-mock.ts', 'utf8')).not.toContain('$149');
     expect(readFileSync('lib/email.ts', 'utf8')).toContain('ctx.raRenewalPriceCents ?? RA_RENEWAL_PRICE_CENTS');

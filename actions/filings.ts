@@ -9,7 +9,6 @@ import {
   computeCost,
   filingHasOperatingAgreement,
   tierBundledAddOns,
-  RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -470,7 +469,7 @@ export async function submitFilingToState(
         status: 'ACTIVE',
         // Snapshot the price the customer is quoted today so a future price
         // change never re-prices them.
-        renewalPriceCents: RA_RENEWAL_PRICE_CENTS,
+        renewalPriceCents: stateRule.registeredAgent.renewalCents,
         autoRenew: autoRenewConsent,
         autoRenewConsentAt,
       },

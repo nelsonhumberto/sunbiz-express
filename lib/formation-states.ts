@@ -17,18 +17,9 @@
 // letter math. The marketing pricing presented to the customer is a single
 // all-in package that absorbs differences across LLC/Corp and across states.
 
+import { RA_RENEWAL_PRICE_CENTS } from './ra-renewal-price';
+
 export type StateCode = 'FL' | 'WY' | 'DE';
-
-/**
- * Registered Agent renewal cents, filled from lib/pricing.ts once that module
- * finishes loading. A direct import would cycle: pricing already imports this
- * file while it builds the tier table.
- */
-let raRenewalPriceCents = 0;
-
-export function bindRaRenewalPriceCents(cents: number): void {
-  raRenewalPriceCents = cents;
-}
 export type EntityType = 'LLC' | 'CORP';
 
 export const ACTIVE_FORMATION_STATES: readonly StateCode[] = ['FL', 'WY', 'DE'] as const;
@@ -452,9 +443,7 @@ const FLORIDA_RULE: FormationStateRule = {
     state: 'FL',
     zip: '33016',
     yearOneIncluded: true,
-    get renewalCents() {
-      return raRenewalPriceCents;
-    },
+    renewalCents: RA_RENEWAL_PRICE_CENTS,
   },
   quirks: {
     onlineFilingOnly: false,
@@ -731,9 +720,7 @@ const WYOMING_RULE: FormationStateRule = {
     state: 'WY',
     zip: '82801',
     yearOneIncluded: true,
-    get renewalCents() {
-      return raRenewalPriceCents;
-    },
+    renewalCents: 11_900,
   },
   quirks: {
     requiresElectronicServiceConsent: true,
@@ -916,9 +903,7 @@ const DELAWARE_RULE: FormationStateRule = {
     state: 'DE',
     zip: '19801',
     yearOneIncluded: true,
-    get renewalCents() {
-      return raRenewalPriceCents;
-    },
+    renewalCents: 14_900, // $149/yr (DE RA market is more expensive)
   },
   quirks: {
     requiresParValueForCorp: true,

@@ -3,10 +3,11 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { withLocaleMeta } from '@/lib/locale-seo';
-import { RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
+import { FORMATION_STATES } from '@/lib/formation-states';
 import { formatCurrency } from '@/lib/utils';
 
-const RA_RENEWAL_PRICE = formatCurrency(RA_RENEWAL_PRICE_CENTS);
+const WY_RA_PRICE = formatCurrency(FORMATION_STATES.WY.registeredAgent.renewalCents);
+const DE_RA_PRICE = formatCurrency(FORMATION_STATES.DE.registeredAgent.renewalCents);
 
 const PUBLISHED = '2026-05-27';
 const PATH = '/guides/wyoming-llc-vs-delaware-corp';
@@ -66,7 +67,7 @@ export default async function WyomingVsDelawareGuide() {
           label: t('ctaLabel'),
         }}
       >
-        <MarkdownBody markdown={t('body', { price: RA_RENEWAL_PRICE })} locale="es" />
+        <MarkdownBody markdown={t('body', { wyPrice: WY_RA_PRICE, dePrice: DE_RA_PRICE })} locale="es" />
         <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>
       </GuideLayout>
     );
@@ -113,7 +114,7 @@ export default async function WyomingVsDelawareGuide() {
           Annual report / License Tax: minimum <strong>$60/year</strong>, due on
           the first of your anniversary month.
         </li>
-        <li>Registered agent (required, must have WY physical address): $0 first year with LaunchForma, {RA_RENEWAL_PRICE}/year on renewal.</li>
+        <li>Registered agent (required, must have WY physical address): $0 first year with LaunchForma, {WY_RA_PRICE}/year on renewal.</li>
       </ul>
 
       <h3>Delaware C-Corp</h3>
@@ -122,7 +123,7 @@ export default async function WyomingVsDelawareGuide() {
         <li>
           Annual Report + Franchise Tax: <strong>$225 minimum/year</strong> for small companies under the Authorized Shares method - and the franchise tax can rise sharply if you authorize a lot of shares without setting par value carefully.
         </li>
-        <li>Registered agent (required, must have DE physical address): $0 first year with LaunchForma, {RA_RENEWAL_PRICE}/year on renewal.</li>
+        <li>Registered agent (required, must have DE physical address): $0 first year with LaunchForma, {DE_RA_PRICE}/year on renewal.</li>
       </ul>
 
       <p>

@@ -2,9 +2,9 @@ import 'server-only';
 
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { resolveMarketingState } from '@/lib/marketing-states';
-import { RA_RENEWAL_PRICE_CENTS, TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
+import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
-import type { StateCode } from '@/lib/formation-states';
+import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import { COMPANY_FACTS } from './docs';
 
 function dollars(cents: number): string {
@@ -50,7 +50,7 @@ export function buildKnowledge(opts: {
 
   const facts = COMPANY_FACTS.replaceAll(
     '{raRenewalPrice}',
-    formatCurrency(RA_RENEWAL_PRICE_CENTS),
+    formatCurrency(FORMATION_STATES[opts.stateCode].registeredAgent.renewalCents),
   );
 
   return [

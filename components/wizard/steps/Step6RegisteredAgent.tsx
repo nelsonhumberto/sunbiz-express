@@ -27,7 +27,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { safeParseJson, cn, formatCurrency } from '@/lib/utils';
-import { RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
 import { isPoBox } from '@/lib/formation-validation';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
@@ -43,10 +42,10 @@ interface RAStored extends AddressValue {
 
 export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
-  const raPrice = formatCurrency(RA_RENEWAL_PRICE_CENTS);
   const stateCode = (filing.state ?? 'FL') as StateCode;
   const stateRule = FORMATION_STATES[stateCode] ?? FORMATION_STATES.FL;
   const internalAgent = stateRule.registeredAgent;
+  const raPrice = formatCurrency(internalAgent.renewalCents);
   const stored = safeParseJson<RAStored | null>(filing.registeredAgent, null);
 
   const [useOurService, setUseOurService] = useState(stored?.useOurService ?? true);

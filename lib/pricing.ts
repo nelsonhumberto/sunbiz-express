@@ -28,6 +28,7 @@ import {
   stateFilingFeeCents,
   type StateCode,
 } from './formation-states';
+import { RA_RENEWAL_PRICE_CENTS } from './ra-renewal-price';
 
 export type TierSlug = 'BASIC' | 'STANDARD' | 'PREMIUM';
 export type EntityType = 'LLC' | 'CORP';
@@ -110,7 +111,6 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
       { label: 'Certificate of Status (state-issued)', included: true },
       { label: 'Certified Copy of Articles', included: true },
       { label: 'Priority email support', included: true },
-      { label: 'Annual Compliance Service', included: false },
     ],
   },
   {
@@ -309,18 +309,17 @@ export function getFloridaAnnualReportStateFees(
   };
 }
 
-/** Optional Registered Agent service upsell added to annual report checkout. */
-export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
-
 /**
- * Canonical Registered Agent renewal price - the single source of truth for
- * what we charge to keep RA service active for another year. Every quote,
- * email, and charge derives from this. The price a customer actually pays is
- * snapshotted onto {@link RegisteredAgentService.renewalPriceCents} at signup
- * so a later change to this constant never silently re-prices existing
- * customers (grandfathering is intentional).
+ * Florida Registered Agent renewal, re-exported from the leaf module so
+ * existing imports keep working. Wyoming and Delaware keep their own
+ * renewalCents on the formation-state record. The price a customer actually
+ * pays is snapshotted onto RegisteredAgentService.renewalPriceCents at
+ * signup, so a later change here never re-prices an existing row.
  */
-export const RA_RENEWAL_PRICE_CENTS = 15_000; // $150.00
+export { RA_RENEWAL_PRICE_CENTS };
+
+/** Optional Registered Agent service upsell added to annual report checkout. */
+export const RA_ANNUAL_SERVICE_FEE_CENTS = RA_RENEWAL_PRICE_CENTS;
 /** Checkout add-on starts off. The customer opts in; the price does not change. */
 export const RA_AUTORENEW_CHECKED_BY_DEFAULT = false;
 

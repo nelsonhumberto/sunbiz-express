@@ -28,7 +28,6 @@ import { Button } from '@/components/ui/button';
 import {
   computeCost,
   RA_AUTORENEW_CHECKED_BY_DEFAULT,
-  RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -88,7 +87,9 @@ export function Step12Payment({
   const stateCode: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
-  const stateName = getFormationState(stateCode).name;
+  const stateRule = getFormationState(stateCode);
+  const stateName = stateRule.name;
+  const raRenewalPrice = formatCurrency(stateRule.registeredAgent.renewalCents);
   const addOnSlugs = filing.filingAdditionalServices.map(
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
@@ -437,7 +438,7 @@ export function Step12Payment({
             </span>
             <span className="mt-1 block text-xs text-ink-muted">
               {t('raAutoRenewMandate', {
-                price: formatCurrency(RA_RENEWAL_PRICE_CENTS),
+                price: raRenewalPrice,
                 renewalDate: formatLongDate(firstRenewalDate, locale),
               })}
             </span>

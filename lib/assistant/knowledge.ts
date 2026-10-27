@@ -3,7 +3,8 @@ import 'server-only';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { resolveMarketingState } from '@/lib/marketing-states';
 import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
-import type { StateCode } from '@/lib/formation-states';
+import { formatCurrency } from '@/lib/utils';
+import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import { COMPANY_FACTS } from './docs';
 
 function dollars(cents: number): string {
@@ -47,8 +48,13 @@ export function buildKnowledge(opts: {
       ? `A free .com domain (year 1) is included only with ${domainTiers.join(' and ')}. ${withoutDomain.join(' and ')} do not include a domain.`
       : '';
 
+  const facts = COMPANY_FACTS.replaceAll(
+    '{raRenewalPrice}',
+    formatCurrency(FORMATION_STATES[opts.stateCode].registeredAgent.renewalCents),
+  );
+
   return [
-    COMPANY_FACTS,
+    facts,
     `\nCurrent package prices (${opts.entityType}, ${state.name}). Use the getPricing tool for exact line items + add-ons:\n${pricing}\n${domainSentence}`,
     `\nFrequently asked questions for ${state.name}:\n${faq}`,
   ].join('\n');

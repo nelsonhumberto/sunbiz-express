@@ -97,6 +97,7 @@ export function Step7Members({
   defaultEmail?: string;
 }) {
   const t = useTranslations('wizard');
+  const tCommon = useTranslations('common');
   const isLLC = filing.entityType === 'LLC';
 
   // Corporations get an entirely different UI: required role slots (one
@@ -477,7 +478,7 @@ export function Step7Members({
                   : 'text-ink-muted hover:text-ink',
               )}
             >
-              Individual
+              {t('ownerIndividual')}
             </button>
             <button
               type="button"
@@ -490,7 +491,7 @@ export function Step7Members({
                   : 'text-ink-muted hover:text-ink',
               )}
             >
-              Business / entity
+              {t('ownerBusiness')}
             </button>
           </div>
 
@@ -520,7 +521,7 @@ export function Step7Members({
               <>
                 <div className="md:col-span-2 space-y-1.5">
                   <Label>
-                    Legal entity name <span className="text-destructive">*</span>
+                    {t('legalEntityName')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     value={member.businessLegalName ?? ''}
@@ -531,29 +532,29 @@ export function Step7Members({
                         name: e.target.value,
                       })
                     }
-                    placeholder="Acme Holdings, LLC"
+                    placeholder={t('entityNamePlaceholder')}
                     autoComplete="organization"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label>
-                    State / country of formation <span className="text-destructive">*</span>
+                    {t('formationJurisdiction')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     value={member.businessJurisdiction ?? ''}
                     onChange={(e) => updateMember(idx, { businessJurisdiction: e.target.value })}
-                    placeholder="Delaware"
+                    placeholder={t('formationJurisdictionPlaceholder')}
                   />
                 </div>
                 <div className="md:col-span-2 space-y-1.5">
                   <Label>
-                    Authorized signer / contact{' '}
-                    <span className="text-xs font-normal text-ink-subtle">(optional)</span>
+                    {t('signerContact')}{' '}
+                    <span className="text-xs font-normal text-ink-subtle">({tCommon('optional')})</span>
                   </Label>
                   <Input
                     value={member.signerName ?? ''}
                     onChange={(e) => updateMember(idx, { signerName: e.target.value })}
-                    placeholder="Jane Doe, Manager"
+                    placeholder={t('signerPlaceholder')}
                     autoComplete="name"
                   />
                 </div>

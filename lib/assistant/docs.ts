@@ -21,7 +21,7 @@ About LaunchForma
 What's included
 - Every package includes the state filing fee, preparation + submission within
   1 business day, Year-1 Registered Agent, and digital delivery of filed documents.
-- Registered Agent renews at $150/year after year one; cancel anytime.
+- Registered Agent renews at {raRenewalPrice}/year after year one; cancel anytime.
 - 14-day satisfaction guarantee (see /refund-policy).
 
 Key concepts (explain in one plain-language sentence when asked)

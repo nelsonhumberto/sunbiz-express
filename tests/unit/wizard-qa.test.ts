@@ -60,14 +60,20 @@ describe('due labels', () => {
     expect(formatDueLabel('Due', may)).toBe('Due May 1, 2028');
     expect(formatDueLabel('Due', may)).not.toContain('\\');
     expect(fillDueMessage('Due {when}', may)).toBe('Due May 1, 2028');
+    expect(fillDueMessage('Vence {when}', may, 'es')).toBe('Vence 1 de mayo de 2028');
   });
 
   it('keeps the date placeholder out of both locales', () => {
-    for (const messages of [en, es]) {
+    for (const [messages, locale] of [
+      [en, 'en'],
+      [es, 'es'],
+    ] as const) {
       expect(messages.filingDetail.dueDateOn).toContain('{when}');
       expect(messages.filingDetail.dueDateOn).not.toContain('{date}');
       expect(messages.filingDetail.dueDateOn).not.toContain('\\');
-      expect(fillDueMessage(messages.filingDetail.dueDateOn, may)).not.toContain('\\');
+      const label = fillDueMessage(messages.filingDetail.dueDateOn, may, locale);
+      expect(label).not.toContain('\\');
+      if (locale === 'es') expect(label).toBe('Vence 1 de mayo de 2028');
     }
   });
 });

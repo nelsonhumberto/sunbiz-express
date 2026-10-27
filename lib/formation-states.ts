@@ -17,6 +17,8 @@
 // letter math. The marketing pricing presented to the customer is a single
 // all-in package that absorbs differences across LLC/Corp and across states.
 
+import { RA_RENEWAL_PRICE_CENTS } from './ra-renewal-price';
+
 export type StateCode = 'FL' | 'WY' | 'DE';
 export type EntityType = 'LLC' | 'CORP';
 
@@ -499,7 +501,7 @@ const FLORIDA_RULE: FormationStateRule = {
     state: 'FL',
     zip: '33016',
     yearOneIncluded: true,
-    renewalCents: 11_900, // $119
+    renewalCents: RA_RENEWAL_PRICE_CENTS,
   },
   quirks: {
     onlineFilingOnly: false,

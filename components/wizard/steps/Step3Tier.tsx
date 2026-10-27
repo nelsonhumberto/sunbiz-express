@@ -19,6 +19,7 @@ import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('pricing');
+  const tWizard = useTranslations('wizard');
   const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const { pending, error, run } = useWizardSubmit();
@@ -61,7 +62,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
       <div
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
         role="radiogroup"
-        aria-label="Choose your package"
+        aria-label={tWizard('choosePackageAria')}
       >
         {TIERS.map((tierDef) => {
           const isSelected = tier === tierDef.slug;

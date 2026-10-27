@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -13,8 +13,9 @@ type StepResult = { ok?: boolean; error?: string } | void | undefined;
 
 /**
  * Run a wizard save so the button always leaves "Saving…".
- * Double-clicks are ignored. Timeouts and thrown errors become a visible
- * message the customer can retry. Redirects still navigate.
+ * A newer save, Back, or unmount aborts the in-flight request. A stale
+ * response cannot overwrite the newer result. Timeouts and thrown errors
+ * become a visible message the customer can retry. Redirects still navigate.
  */
 export function useWizardSubmit() {
   const t = useTranslations('wizard');
@@ -25,7 +26,17 @@ export function useWizardSubmit() {
   // server action settles, so a timeout used to leave "Saving…" up and
   // block the retry.
   const [pending, setPending] = useState(false);
-  const lock = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const generation = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   function markStepCompleted() {
     if (!analytics?.filingId) return;
@@ -35,14 +46,21 @@ export function useWizardSubmit() {
     });
   }
 
-  function run(task: () => Promise<StepResult>, timeoutMs: number = WIZARD_ACTION_TIMEOUT_MS) {
-    if (lock.current) return;
-    lock.current = true;
+  function run(
+    task: (signal: AbortSignal) => Promise<StepResult>,
+    timeoutMs: number = WIZARD_ACTION_TIMEOUT_MS,
+  ) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const gen = ++generation.current;
     setPending(true);
     setError(null);
+    const stillCurrent = () => mounted.current && generation.current === gen;
     void (async () => {
       try {
-        const outcome = await runWizardSave(task, timeoutMs);
+        const outcome = await runWizardSave(task, timeoutMs, controller.signal);
+        if (!stillCurrent() || outcome.type === 'aborted') return;
         if (outcome.type === 'redirect') {
           markStepCompleted();
           if (outcome.href) router.push(outcome.href);
@@ -69,8 +87,7 @@ export function useWizardSubmit() {
           markStepCompleted();
         }
       } finally {
-        lock.current = false;
-        setPending(false);
+        if (stillCurrent()) setPending(false);
       }
     })();
   }

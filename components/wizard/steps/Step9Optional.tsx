@@ -113,6 +113,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   } | null>(filing.optionalDetails, null);
 
   const t = useTranslations('wizard');
+  const tCommon = useTranslations('common');
   const stateCode = (filing.state ?? 'FL') as StateCode;
   const stateRule = FORMATION_STATES[stateCode] ?? FORMATION_STATES.FL;
   const isCorp = filing.entityType === 'CORP';
@@ -343,7 +344,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   // filing above the launch-safe minimum fee tier.
   const deStockWarning =
     needsDeStock && typeof authorizedShares === 'number' && authorizedShares > 1500
-      ? "Heads up: Delaware's corporation filing fee can rise above the standard $109 when authorized shares exceed 1,500 with no par value. Our team will review and confirm the exact fee before submission."
+      ? t('deStockFeeWarning')
       : null;
 
   const onContinue = () => {
@@ -424,7 +425,8 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         <div className="space-y-1.5">
           <Label htmlFor="effectiveDate" className="flex items-center gap-2">
             <CalendarRange className="h-4 w-4" />
-            Effective date <span className="text-ink-subtle font-normal">(optional)</span>
+            {t('effectiveDate')}{' '}
+            <span className="text-ink-subtle font-normal">({tCommon('optional')})</span>
           </Label>
           <Input
             id="effectiveDate"
@@ -438,13 +440,15 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           ) : (
             <p className="text-xs text-ink-muted">
               {stateCode === 'FL'
-                ? "Florida lets you backdate up to 5 business days or schedule up to 90 days in the future. Leave blank to use the date Florida processes the filing."
-                : `${stateRule.name} accepts effective dates up to ${stateRule.effectiveDate.maxDaysForward} days in the future. Leave blank to use the date ${stateRule.name} processes the filing.`}
+                ? t('effectiveDateFlorida')
+                : t('effectiveDateOther', {
+                    state: stateRule.name,
+                    days: stateRule.effectiveDate.maxDaysForward,
+                  })}
               {stateCode === 'FL' && (
                 <>
                   <br />
-                  <strong>Tip:</strong> If forming Oct 1 – Dec 31, set the effective date to January 1
-                  of next year - you'll skip a full year of annual reports.
+                  {t('effectiveDateTip')}
                 </>
               )}
             </p>
@@ -952,20 +956,18 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
 
         <div className="space-y-1.5">
           <Label htmlFor="purpose">
-            Business purpose <span className="text-ink-subtle font-normal">(optional)</span>
+            {t('businessPurpose')}{' '}
+            <span className="text-ink-subtle font-normal">({tCommon('optional')})</span>
           </Label>
           <Textarea
             id="purpose"
             value={businessPurpose}
             onChange={(e) => setBusinessPurpose(e.target.value)}
-            placeholder="Real estate investment and consulting"
+            placeholder={t('businessPurposePlaceholder')}
             maxLength={500}
             rows={2}
           />
-          <p className="text-xs text-ink-muted">
-            A brief description of what your business will do. Most LLCs leave this blank or write
-            "any lawful business activity."
-          </p>
+          <p className="text-xs text-ink-muted">{t('businessPurposeHint')}</p>
         </div>
       </div>
 

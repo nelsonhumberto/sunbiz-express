@@ -25,7 +25,6 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Certificate of Status (state-issued)': 'feat_certStatus',
   'Priority email support': 'feat_chatSupport',
   'Free .com domain (year 1)': 'feat_domainConcierge',
-  'Annual Compliance Service': 'feat_compliance',
   'Compliance Alerts Plus (year 1)': 'feat_complianceAlerts',
   'Priority phone & email support': 'feat_phoneSupport',
   'S-Corp Election guidance': 'feat_scorp',

@@ -50,7 +50,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await checkNameAvailability(name, type);
+    // req.signal aborts the upstream when the browser gives up. The helper
+    // also caps the whole lookup, including every search term, at 5s.
+    const result = await checkNameAvailability(name, type, { signal: req.signal });
     // A contradictory body (status available, available false) is an error.
     if (result.status === 'available' && result.available === false) {
       return NextResponse.json(

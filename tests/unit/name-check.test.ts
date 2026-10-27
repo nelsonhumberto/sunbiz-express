@@ -385,6 +385,8 @@ describe('name check copy and wiring', () => {
     expect(widget).toContain("nameCheckSubmittedEvent('wizard')");
     expect(widget).toContain('nameCheckResultEvent');
     expect(widget).toContain("t('nameCheckDeferred')");
+    expect(widget).toContain('A new lookup replaces the previous failure note.');
+    expect(widget).toContain('setCheckFailed(false)');
     expect(widget).toContain("t('nameCheckRetry')");
     expect(widget).toContain('nameCheckErrorEvent');
     expect(widget).toContain('peelTypedSuffix');

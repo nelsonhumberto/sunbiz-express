@@ -33,6 +33,7 @@ import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import { trackEvent } from '@/lib/analytics';
 import {
   isRateLimitError,
+  NAME_CHECK_CLIENT_TIMEOUT_MS,
   nameCheckDelayMs,
   nameCheckErrorEvent,
   nameCheckRequestUrl,
@@ -74,6 +75,11 @@ interface NameCheckWidgetProps {
     result: NameCheckResult | null,
     assessment: BusinessNameAssessment | null,
   ) => void;
+  /**
+   * Step 2 calls this on Continue so an in-flight lookup cannot keep the
+   * save waiting. The widget then shows the deferred name note.
+   */
+  cancelRef?: { current: () => void };
 }
 
 export function NameCheckWidget({
@@ -82,6 +88,7 @@ export function NameCheckWidget({
   entityType,
   formationState = 'FL',
   onChange,
+  cancelRef,
 }: NameCheckWidgetProps) {
   const t = useTranslations('wizard');
   const stateRule = FORMATION_STATES[formationState] ?? FORMATION_STATES.FL;
@@ -120,6 +127,7 @@ export function NameCheckWidget({
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const inflightRef = useRef<AbortController | null>(null);
   const fetchIdRef = useRef(0);
   const retryTokenRef = useRef(0);
   const consumedRetryRef = useRef(0);
@@ -182,6 +190,31 @@ export function NameCheckWidget({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = null;
+    // Ignore a lookup that belonged to the previous name.
+    fetchIdRef.current += 1;
+    inflightRef.current?.abort();
+    inflightRef.current = null;
+
+    const releaseInFlight = () => {
+      const timer = debounceRef.current;
+      const inflight = inflightRef.current;
+      if (timer) {
+        clearTimeout(timer);
+        debounceRef.current = null;
+      }
+      inflightRef.current = null;
+      fetchIdRef.current += 1;
+      inflight?.abort();
+      if (timer || inflight) {
+        setLoading(false);
+        setCheckFailed(true);
+        setRateLimited(false);
+        setResult(null);
+        onChange(combinedName, null, assessment);
+      }
+    };
+    if (cancelRef) cancelRef.current = releaseInFlight;
 
     // Always sync the latest combined name to the parent so the wizard's
     // Continue button doesn't lag behind the input. We send `null` for the
@@ -252,6 +285,9 @@ export function NameCheckWidget({
     }
     if (bypassCache) heldNameRef.current = null;
     const delay = bypassCache ? 0 : nameCheckDelayMs(combinedName, seededCombinedRef.current);
+    // A new lookup replaces the previous failure note.
+    setCheckFailed(false);
+    setRateLimited(false);
     if (delay === 0) {
       setLoading(true);
     }
@@ -267,13 +303,21 @@ export function NameCheckWidget({
         setLoading(false);
         return;
       }
+      const controller = new AbortController();
+      inflightRef.current = controller;
       const id = ++fetchIdRef.current;
       setLoading(true);
+      setCheckFailed(false);
+      setRateLimited(false);
       const submitted = nameCheckSubmittedEvent('wizard');
       trackEvent(submitted.event, submitted.properties);
       const outcome = await requestNameCheck(
         nameCheckRequestUrl(combinedName, entityType, { fresh: bypassCache }),
+        fetch,
+        NAME_CHECK_CLIENT_TIMEOUT_MS,
+        controller.signal,
       );
+      if (inflightRef.current === controller) inflightRef.current = null;
       const recorded = nameCheckResultEvent({
         status: outcome.status,
         ms: outcome.ms,
@@ -314,6 +358,9 @@ export function NameCheckWidget({
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      fetchIdRef.current += 1;
+      inflightRef.current?.abort();
+      inflightRef.current = null;
     };
     // onChange is intentionally excluded - it's expected to be stable from
     // the parent's perspective and we only want the effect to fire when the

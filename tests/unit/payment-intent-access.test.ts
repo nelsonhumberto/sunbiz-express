@@ -7,7 +7,10 @@ const userFindUnique = vi.hoisted(() => vi.fn());
 const filingUpdate = vi.hoisted(() => vi.fn());
 const userUpdate = vi.hoisted(() => vi.fn());
 const paymentIntentsCreate = vi.hoisted(() => vi.fn());
+const paymentIntentsRetrieve = vi.hoisted(() => vi.fn());
+const paymentIntentsUpdate = vi.hoisted(() => vi.fn());
 const customersUpdate = vi.hoisted(() => vi.fn());
+const couponFindUnique = vi.hoisted(() => vi.fn());
 const headerGet = vi.hoisted(() => vi.fn((_name: string) => null as string | null));
 
 vi.mock('server-only', () => ({}));
@@ -17,13 +20,17 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     filing: { findUnique: filingFindUnique, update: filingUpdate },
     user: { findUnique: userFindUnique, update: userUpdate },
-    coupon: { findUnique: vi.fn() },
+    coupon: { findUnique: couponFindUnique },
     registeredAgentService: { findUnique: vi.fn() },
   },
 }));
 vi.mock('@/lib/stripe', () => ({
   getStripe: () => ({
-    paymentIntents: { create: paymentIntentsCreate, retrieve: vi.fn(), update: vi.fn() },
+    paymentIntents: {
+      create: paymentIntentsCreate,
+      retrieve: paymentIntentsRetrieve,
+      update: paymentIntentsUpdate,
+    },
     customers: { create: vi.fn(), update: customersUpdate },
   }),
 }));
@@ -39,6 +46,10 @@ vi.mock('next/headers', () => ({
 
 import { POST } from '@/app/api/stripe/payment-intent/route';
 import { tierPackagePriceCents } from '@/lib/pricing';
+
+/** Pre-deploy Popular price still stored on real drafts. */
+const STALE_POPULAR_CENTS = 27_900;
+const POPULAR_FL_LLC_CENTS = tierPackagePriceCents('STANDARD', 'LLC', 'FL');
 
 /** Server-computed Essential Florida LLC total. The client amount must not win. */
 const ESSENTIAL_FL_LLC_CENTS = tierPackagePriceCents('BASIC', 'LLC', 'FL');
@@ -74,6 +85,10 @@ beforeEach(() => {
   headerGet.mockReset();
   headerGet.mockReturnValue(null);
   paymentIntentsCreate.mockReset();
+  paymentIntentsRetrieve.mockReset();
+  paymentIntentsUpdate.mockReset();
+  couponFindUnique.mockReset();
+  couponFindUnique.mockResolvedValue(null);
   userUpdate.mockResolvedValue({});
   customersUpdate.mockResolvedValue({});
   userFindUnique.mockResolvedValue({
@@ -291,5 +306,97 @@ describe('payment intent access', () => {
     } as never);
     expect(paid.status).toBe(409);
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it('reprices a stale draft from the catalog and updates the open PaymentIntent', async () => {
+    auth.mockResolvedValue({ user: { id: 'user_1' } });
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('user_1'),
+      serviceTier: 'STANDARD',
+      totalCents: STALE_POPULAR_CENTS,
+      stateFeeCents: 12_500,
+      serviceFeeCents: 15_400,
+      addOnsTotalCents: 0,
+      checkoutPaymentIntentId: 'pi_stale',
+    });
+    paymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_stale',
+      client_secret: 'sec',
+      status: 'requires_payment_method',
+      amount: STALE_POPULAR_CENTS,
+    });
+    paymentIntentsUpdate.mockResolvedValue({
+      id: 'pi_stale',
+      client_secret: 'sec',
+      status: 'requires_payment_method',
+      amount: POPULAR_FL_LLC_CENTS,
+    });
+
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', amountCents: STALE_POPULAR_CENTS }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(POPULAR_FL_LLC_CENTS).toBe(34_900);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(paymentIntentsUpdate).toHaveBeenCalledWith('pi_stale', { amount: POPULAR_FL_LLC_CENTS });
+    expect(filingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'filing_1' },
+        data: expect.objectContaining({ totalCents: POPULAR_FL_LLC_CENTS }),
+      }),
+    );
+  });
+
+  it('applies a coupon to the repriced catalog total, not the stored total', async () => {
+    const couponCents = 5_000;
+    const charged = POPULAR_FL_LLC_CENTS - couponCents;
+    auth.mockResolvedValue({ user: { id: 'user_1' } });
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('user_1'),
+      serviceTier: 'STANDARD',
+      totalCents: STALE_POPULAR_CENTS,
+      stateFeeCents: 12_500,
+      serviceFeeCents: 15_400,
+      addOnsTotalCents: 0,
+      checkoutPaymentIntentId: 'pi_stale',
+    });
+    couponFindUnique.mockResolvedValue({
+      code: 'SAVE50',
+      active: true,
+      expiresAt: null,
+      maxUses: null,
+      usedCount: 0,
+      type: 'FIXED',
+      value: couponCents,
+    });
+    paymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_stale',
+      client_secret: 'sec',
+      status: 'requires_payment_method',
+      amount: STALE_POPULAR_CENTS,
+    });
+    paymentIntentsUpdate.mockResolvedValue({
+      id: 'pi_stale',
+      client_secret: 'sec',
+      status: 'requires_payment_method',
+      amount: charged,
+    });
+
+    const res = await POST({
+      json: async () => ({
+        filingId: 'filing_1',
+        amountCents: STALE_POPULAR_CENTS,
+        couponCode: 'save50',
+      }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(POPULAR_FL_LLC_CENTS).toBe(34_900);
+    expect(charged).toBe(29_900);
+    expect(charged).not.toBe(STALE_POPULAR_CENTS - couponCents);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(paymentIntentsUpdate).toHaveBeenCalledWith('pi_stale', { amount: charged });
+    expect(couponFindUnique).toHaveBeenCalledWith({ where: { code: 'SAVE50' } });
   });
 });

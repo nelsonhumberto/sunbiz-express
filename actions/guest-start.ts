@@ -3,7 +3,7 @@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { hrefForLocale } from '@/lib/app-href';
+import { hrefForLocale, localizedRedirectHref } from '@/lib/app-href';
 import { englishPathname } from '@/lib/locale-paths';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { localeFromPathOrFiling } from '@/lib/request-locale';
@@ -93,6 +93,11 @@ export interface StartGuestResult {
   error?: string;
   /** Existing draft uses a different name. The form asks which one to keep. */
   choice?: DraftNameChoice;
+  /**
+   * Localized wizard path, including /es when the filing locale is Spanish.
+   * Set only when the caller asked for the URL instead of a redirect.
+   */
+  redirectTo?: string;
 }
 
 /**
@@ -262,6 +267,12 @@ export async function openGuestDraft(input: {
   draftId?: string;
   /** `window.location.pathname`. The address bar wins over the rewrite. */
   browserPath?: string;
+  /**
+   * /start sets this so the browser can record analytics, then navigate.
+   * Leave it unset for every other caller. Those still redirect, including
+   * a form action or a no-JS submit.
+   */
+  returnRedirect?: boolean;
 }): Promise<StartGuestResult> {
   const t = await getTranslations('start');
   const requestedState = (input.state ?? 'FL').toUpperCase();
@@ -314,7 +325,7 @@ export async function openGuestDraft(input: {
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
+    return await finishGuestDraft(`/wizard/${filing.id}/2`, locale, input.returnRedirect);
   }
 
   const guest = await getGuestUser();
@@ -355,7 +366,7 @@ export async function openGuestDraft(input: {
           },
         });
         await rememberStartEmail(guestRecord, filingRecord, optionalEmail);
-        return await redirectLocalized(`/wizard/${draft.id}/2`, chosenLocale);
+        return await finishGuestDraft(`/wizard/${draft.id}/2`, chosenLocale, input.returnRedirect);
       }
       if (decision.action === 'choose' && seededName) {
         const step = guestWizardStep({
@@ -382,7 +393,11 @@ export async function openGuestDraft(input: {
         });
       }
       await rememberStartEmail(guestRecord, filingRecord, optionalEmail);
-      return await redirectLocalized(`/wizard/${draft.id}/${step}`, chosenLocale);
+      return await finishGuestDraft(
+        `/wizard/${draft.id}/${step}`,
+        chosenLocale,
+        input.returnRedirect,
+      );
     }
   }
 
@@ -464,7 +479,28 @@ export async function openGuestDraft(input: {
     return { error: t('errorStart') };
   }
 
-  return await redirectLocalized(`/wizard/${filingId}/${initialStep}`, locale);
+  return await finishGuestDraft(
+    `/wizard/${filingId}/${initialStep}`,
+    locale,
+    input.returnRedirect,
+  );
+}
+
+/**
+ * /start gets the localized path back. Every other caller still redirects.
+ * The locale is the one just stored on the filing (browser path wins), so
+ * a Spanish /start stays under /es.
+ */
+async function finishGuestDraft(
+  href: string,
+  filingLocale: string | null | undefined,
+  returnRedirect: boolean | undefined,
+): Promise<StartGuestResult> {
+  if (!returnRedirect) {
+    return await redirectLocalized(href, filingLocale);
+  }
+  const locale = filingLocale === 'es' ? 'es' : 'en';
+  return { redirectTo: localizedRedirectHref(href, locale) };
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────

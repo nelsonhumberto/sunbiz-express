@@ -15,6 +15,7 @@
     "smoke:three-state": "tsx scripts/three-state-smoke.ts",
     "check:rls": "node scripts/check-migration-rls.mjs",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "test:all": "vitest run && tsx scripts/three-state-smoke.ts && tsx scripts/wizard-smoke.ts",
     "postinstall": "prisma generate",
@@ -76,6 +77,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/typography": "^0.5.20",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.2",

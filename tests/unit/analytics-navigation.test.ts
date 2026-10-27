@@ -20,6 +20,9 @@ const posthog = vi.hoisted(() => ({
   config: { api_transport: 'fetch' as string | undefined },
   _requestQueue: { unload: vi.fn() },
   _retryQueue: { unload: vi.fn() },
+  _send_retriable_request: undefined as
+    | ((options: { callback?: (response: unknown) => void }) => void)
+    | undefined,
 }));
 
 vi.mock('posthog-js', () => ({ default: posthog }));
@@ -95,9 +98,12 @@ describe('start navigation event properties', () => {
   it('places the /start captures before the full-page navigation', () => {
     const launch = readFileSync('app/start/guest-start-launch.tsx', 'utf8');
     const captureAt = launch.indexOf('await captureThenNavigate');
-    const assignAt = launch.indexOf('window.location.assign(href)');
+    const redirectAssign = launch.indexOf('window.location.assign(redirectTo)');
+    const fallbackAssign = launch.indexOf('window.location.assign(href)');
     expect(captureAt).toBeGreaterThan(-1);
-    expect(assignAt).toBeGreaterThan(captureAt);
+    expect(redirectAssign).toBeGreaterThan(captureAt);
+    expect(fallbackAssign).toBeGreaterThan(redirectAssign);
+    expect(launch).toContain('returnRedirect: true');
     expect(launch).toContain('startNavigationEvents({ filingId, locale, entity })');
     expect(launch).not.toMatch(/if\s*\(\s*locale/);
   });
@@ -109,6 +115,7 @@ describe('capture options and navigation order', () => {
     posthog.capture.mockReset();
     posthog.flush.mockReset();
     posthog.flush.mockImplementation(() => Promise.resolve());
+    posthog._send_retriable_request = undefined;
     posthog.config.api_transport = 'fetch';
     posthog._requestQueue.unload.mockReset();
     posthog._retryQueue.unload.mockReset();
@@ -237,11 +244,11 @@ describe('capture options and navigation order', () => {
     expect(posthog.config.api_transport).toBe('fetch');
   });
 
-  it('waits at most 300ms for a flush when sendBeacon is unavailable', async () => {
+  it('waits at most 300ms when sendBeacon is unavailable and the capture callback never fires', async () => {
     vi.useFakeTimers();
     installBrowser({ beacon: false });
     posthog.__loaded = true;
-    posthog.flush.mockImplementation(() => new Promise(() => undefined));
+    posthog._send_retriable_request = () => undefined;
     const order: string[] = [];
     posthog.capture.mockImplementation((event: string) => {
       order.push(`capture:${event}`);
@@ -270,6 +277,38 @@ describe('capture options and navigation order', () => {
       { send_instantly: true, transport: 'sendBeacon' },
     );
     expect(posthog.config.api_transport).toBe('fetch');
+    expect(posthog.flush).not.toHaveBeenCalled();
+    await pending;
+  });
+
+  it('navigates as soon as every capture callback fires', async () => {
+    vi.useFakeTimers();
+    installBrowser({ beacon: false });
+    posthog.__loaded = true;
+    const callbacks: Array<(response: unknown) => void> = [];
+    posthog._send_retriable_request = (options) => {
+      if (options.callback) callbacks.push(options.callback);
+    };
+    posthog.capture.mockImplementation(() => {
+      posthog._send_retriable_request?.({});
+    });
+    let navigated = false;
+    const pending = captureThenNavigate({
+      events: startNavigationEvents({ filingId: 'filing_1', locale: 'en', entity: 'LLC' }),
+      navigate: () => {
+        navigated = true;
+      },
+    });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(navigated).toBe(false);
+    expect(callbacks).toHaveLength(3);
+    callbacks[0]?.({ statusCode: 200 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(navigated).toBe(false);
+    callbacks[1]?.({ statusCode: 200 });
+    callbacks[2]?.({ statusCode: 200 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(navigated).toBe(true);
     await pending;
   });
 

@@ -76,12 +76,24 @@ export function GuestStartLaunch({
           draftIntent: extra?.draftIntent,
           draftId: extra?.draftId,
           browserPath: window.location.pathname,
+          returnRedirect: true,
         }),
         WIZARD_ACTION_TIMEOUT_MS,
       );
       if (result?.choice) {
         setChoice(result.choice);
         setPending(false);
+        return;
+      }
+      if (result?.redirectTo) {
+        const redirectTo = result.redirectTo;
+        const filingId = filingIdFromWizardPath(redirectTo);
+        await captureThenNavigate({
+          events: startNavigationEvents({ filingId, locale, entity }),
+          navigate: () => {
+            window.location.assign(redirectTo);
+          },
+        });
         return;
       }
       if (result?.error) {

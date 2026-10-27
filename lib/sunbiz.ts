@@ -667,6 +667,11 @@ export interface SunbizDailyOfficer {
   officer_type?: string;
 }
 
+export interface FloridaAnnualReportFiling {
+  year: number;
+  filed_date?: string;
+}
+
 export interface FloridaEntityDetail {
   corporation_number: string;
   corporation_name: string;
@@ -685,6 +690,12 @@ export interface FloridaEntityDetail {
   } | null;
   officers?: SunbizDailyOfficer[];
   industries?: { label?: string; is_primary?: boolean }[];
+  /**
+   * Years present on the Sunbiz annual report table.
+   * Absent means the source did not include the table.
+   * An empty array means the table was present and had no years.
+   */
+  annual_reports?: FloridaAnnualReportFiling[];
   url?: string;
 }
 
@@ -709,8 +720,38 @@ export function normalizeFloridaDocumentNumber(raw: string): string {
   return s;
 }
 
+/** Years in a Sunbiz detail page annual report table. */
+export function parseFloridaAnnualReportYears(html: string): number[] {
+  const years = new Set<number>();
+  const row = /<td[^>]*>\s*(20\d{2})\s*<\/td>\s*<td[^>]*>\s*(\d{2}\/\d{2}\/\d{4})\s*<\/td>/gi;
+  for (const match of html.matchAll(row)) {
+    years.add(Number(match[1]));
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
+export function readAnnualReportFilings(body: unknown): FloridaAnnualReportFiling[] | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const record = body as { annual_reports?: unknown; annualReports?: unknown };
+  const raw = record.annual_reports ?? record.annualReports;
+  if (!Array.isArray(raw)) return undefined;
+  const filings: FloridaAnnualReportFiling[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const year = Number((item as { year?: unknown }).year);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) continue;
+    const filed = (item as { filed_date?: unknown }).filed_date;
+    filings.push({
+      year,
+      ...(typeof filed === 'string' && filed.trim() ? { filed_date: filed.trim() } : {}),
+    });
+  }
+  return filings;
+}
+
 function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
   const b = body as FloridaEntityDetail;
+  const annual_reports = readAnnualReportFilings(body);
   return {
     corporation_number: String(b.corporation_number ?? ''),
     corporation_name: String(b.corporation_name ?? ''),
@@ -725,6 +766,7 @@ function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
     registered_agent: b.registered_agent ?? null,
     officers: Array.isArray(b.officers) ? b.officers : [],
     industries: Array.isArray(b.industries) ? b.industries : [],
+    ...(annual_reports !== undefined ? { annual_reports } : {}),
     url: b.url,
   };
 }
@@ -965,6 +1007,33 @@ async function fetchFloridaEntityFromLocalProxy(
  *      `SUNBIZ_SCRAPER_PROXY` on most hosts due to Cloudflare)
  *   4. Local seed when `LINK_ENTITY_ALLOW_SEED_LOOKUP=true` and no API key
  */
+/**
+ * Sunbiz Daily's filing JSON does not include the annual report table.
+ * When a scraper proxy is configured, read the years from the public detail page.
+ * A failed scrape leaves the table unknown, and an active company can still be quoted.
+ */
+async function withAnnualReports(
+  detail: FloridaEntityDetail,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail> {
+  if (detail.annual_reports) return detail;
+  const proxy = process.env.SUNBIZ_SCRAPER_PROXY?.trim();
+  if (!proxy || !detail.corporation_number) return detail;
+  const target =
+    `https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResults` +
+    `?inquiryType=DocumentNumber&searchTerm=${encodeURIComponent(detail.corporation_number)}`;
+  try {
+    const html = await fetchScrapeViaProxy(target, proxy, signal);
+    if (looksLikeCloudflareChallenge(html) || !html.includes('Annual Reports')) return detail;
+    return {
+      ...detail,
+      annual_reports: parseFloridaAnnualReportYears(html).map((year) => ({ year })),
+    };
+  } catch {
+    return detail;
+  }
+}
+
 export async function fetchFloridaEntityDetailByDocumentNumber(
   rawDocumentNumber: string,
   opts: FetchFloridaEntityOptions = {},
@@ -977,7 +1046,10 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
   // ── Step 0: local cloudscraper sidecar (highest priority in dev) ────────
   const localProxy = process.env.SUNBIZ_LOCAL_PROXY_URL?.trim();
   if (localProxy) {
-    return fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal);
+    return withAnnualReports(
+      await fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal),
+      opts.signal,
+    );
   }
 
   const apiKey = process.env.SUNBIZDAILY_API_KEY?.trim();
@@ -985,7 +1057,10 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
 
   if (apiKey) {
     try {
-      return await fetchFloridaEntityFromSunbizDaily(documentNumber, apiKey, opts.signal);
+      return withAnnualReports(
+        await fetchFloridaEntityFromSunbizDaily(documentNumber, apiKey, opts.signal),
+        opts.signal,
+      );
     } catch (err) {
       if (!(err instanceof SunbizError) || err.code !== 'not_found') throw err;
 
@@ -996,10 +1071,10 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
           apiKey,
           opts.signal,
         );
-        if (viaNameDaily) return viaNameDaily;
+        if (viaNameDaily) return withAnnualReports(viaNameDaily, opts.signal);
 
         const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
-        if (viaScrape) return viaScrape;
+        if (viaScrape) return withAnnualReports(viaScrape, opts.signal);
 
         throw new SunbizError(
           'not_found',
@@ -1017,11 +1092,11 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
   }
 
   const seedDetail = detailFromLocalSeed(documentNumber);
-  if (seedDetail) return seedDetail;
+  if (seedDetail) return withAnnualReports(seedDetail, opts.signal);
 
   if (legal) {
     const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
-    if (viaScrape) return viaScrape;
+    if (viaScrape) return withAnnualReports(viaScrape, opts.signal);
     throw new SunbizError(
       'not_found',
       `No match for document ${documentNumber} when searching Sunbiz for "${legal}". ` +

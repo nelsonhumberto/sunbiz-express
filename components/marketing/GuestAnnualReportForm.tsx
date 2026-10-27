@@ -8,6 +8,7 @@ import {
   Plus, Trash2, Shield, CreditCard, User, Check, X, Pencil, Building2,
 } from 'lucide-react';
 import { lookupEntityPublic, submitGuestAnnualReport, searchEntitiesByName, type EntitySearchHit } from '@/actions/annual-report';
+import { floridaFilingEntityType, type GuestAnnualReportOffer } from '@/lib/guest-annual-report-offer';
 import type { FloridaEntityDetail } from '@/lib/sunbiz';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
 import { Button } from '@/components/ui/button';
@@ -84,12 +85,52 @@ export function GuestAnnualReportForm() {
   const [detail, setDetail] = useState<FloridaEntityDetail | null>(null);
   const [lookupError, setLookupError] = useState('');
   const [done, setDone] = useState(false);
+  const [notice, setNotice] = useState<null | {
+    kind: 'dissolved' | 'already_filed';
+    name: string;
+    nextOpenYear: number;
+  }>(null);
+  const [showManual, setShowManual] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualDoc, setManualDoc] = useState('');
+  const [manualType, setManualType] = useState<'LLC' | 'CORP'>('LLC');
 
   const isDocNumber = (q: string) => /^[A-Za-z]\d/.test(q.trim());
+
+  const openManual = (documentNumber = '') => {
+    setShowManual(true);
+    if (documentNumber) setManualDoc(documentNumber);
+  };
+
+  const applyLookup = (found: FloridaEntityDetail, offer: GuestAnnualReportOffer, documentNumber: string) => {
+    setShowManual(false);
+    setLookupError('');
+    setSearchError('');
+    if (offer.kind === 'dissolved') {
+      setDetail(null);
+      setNotice({ kind: 'dissolved', name: found.corporation_name, nextOpenYear: 0 });
+      setDocNumber(documentNumber);
+      return;
+    }
+    if (offer.kind === 'already_filed') {
+      setDetail(null);
+      setNotice({
+        kind: 'already_filed',
+        name: found.corporation_name,
+        nextOpenYear: offer.nextOpenYear,
+      });
+      setDocNumber(documentNumber);
+      return;
+    }
+    setNotice(null);
+    setDocNumber(documentNumber);
+    populateForm(found);
+  };
 
   const onSearch = () => {
     setSearchError('');
     setSearchResults(null);
+    setNotice(null);
     const q = query.trim();
     if (!q) { setSearchError(t('searchEmpty')); return; }
 
@@ -98,19 +139,27 @@ export function GuestAnnualReportForm() {
       startLookup(async () => {
         setLookupError('');
         const res = await lookupEntityPublic(q);
-        if (!res.ok) { setLookupError(res.error); return; }
-        setDocNumber(q);
-        populateForm(res.detail);
+        if (!res.ok) {
+          setLookupError(t('lookupFailed'));
+          openManual(q);
+          return;
+        }
+        applyLookup(res.detail, res.offer, q);
       });
       return;
     }
 
-    // Name search → show result list
+    // Name search → show result list, including inactive companies.
     startSearch(async () => {
-      const res = await searchEntitiesByName(q);
-      if (!res.ok) { setSearchError(res.error); return; }
+      const res = await searchEntitiesByName(q, { includeInactive: true });
+      if (!res.ok) {
+        setSearchError(res.error === 'lookup_failed' ? t('lookupFailed') : res.error);
+        openManual();
+        return;
+      }
       if (res.results.length === 0) {
         setSearchError(t('searchNone'));
+        openManual();
         return;
       }
       setSearchResults(res.results);
@@ -122,9 +171,41 @@ export function GuestAnnualReportForm() {
     startLookup(async () => {
       setLookupError('');
       const res = await lookupEntityPublic(hit.documentNumber);
-      if (!res.ok) { setLookupError(res.error); return; }
-      setDocNumber(hit.documentNumber);
-      populateForm(res.detail);
+      if (!res.ok) {
+        setLookupError(t('lookupFailed'));
+        openManual(hit.documentNumber);
+        return;
+      }
+      applyLookup(res.detail, res.offer, hit.documentNumber);
+    });
+  };
+
+  const onManualContinue = () => {
+    const name = manualName.trim();
+    const doc = manualDoc.trim();
+    if (name.length < 2 || doc.length < 5) {
+      setLookupError(t('manualInvalid'));
+      return;
+    }
+    setNotice(null);
+    setShowManual(false);
+    setLookupError('');
+    setEntityType(manualType);
+    setDocNumber(doc);
+    setRaName('');
+    setRaAddr({ street1: '', city: '', state: 'FL', zip: '' });
+    setPrincipal({ street1: '', city: '', state: 'FL', zip: '' });
+    setMailing({ street1: '', city: '', state: 'FL', zip: '' });
+    setOfficers([]);
+    setSigningOfficer('');
+    setDetail({
+      corporation_number: doc,
+      corporation_name: name,
+      filing_type: manualType === 'LLC' ? 'FLAL' : 'DOMP',
+      filing_type_display: manualType === 'LLC'
+        ? 'Florida Limited Liability Company'
+        : 'Florida Profit Corporation',
+      status: 'ACTIVE',
     });
   };
 
@@ -143,8 +224,7 @@ export function GuestAnnualReportForm() {
 
   const populateForm = (d: FloridaEntityDetail) => {
     setDetail(d);
-    const isCorpType = d.filing_type?.toUpperCase().includes('CORP') || d.filing_type?.toUpperCase().includes('INC');
-    setEntityType(isCorpType ? 'CORP' : 'LLC');
+    setEntityType(floridaFilingEntityType(d));
     setRaName(d.registered_agent?.name ?? '');
     setRaAddr(addrFrom(d.registered_agent?.address ?? undefined));
     setPrincipal(addrFrom(d.principal_address ?? undefined));
@@ -273,6 +353,38 @@ export function GuestAnnualReportForm() {
     );
   }
 
+  if (notice) {
+    const reportYearShown = notice.nextOpenYear > 0 ? notice.nextOpenYear - 1 : reportYear;
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-3">
+          <h3 className="font-semibold text-ink">
+            {notice.kind === 'dissolved'
+              ? t('dissolvedTitle')
+              : t('nothingDueTitle', { year: reportYearShown })}
+          </h3>
+          {notice.name ? <p className="text-sm font-medium text-ink">{notice.name}</p> : null}
+          <p className="text-sm text-ink-muted">
+            {notice.kind === 'dissolved'
+              ? t('dissolvedBody')
+              : t('nothingDue', { year: notice.nextOpenYear })}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setNotice(null);
+              setDetail(null);
+              setDocNumber('');
+            }}
+          >
+            {t('changeCompany')}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // ── Lookup step ──
   if (!detail) {
     return (
@@ -300,6 +412,46 @@ export function GuestAnnualReportForm() {
             <p className="text-sm text-red-500">{searchError || lookupError}</p>
           )}
 
+          {showManual && (
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              <div>
+                <h4 className="text-sm font-semibold text-ink">{t('manualTitle')}</h4>
+                <p className="mt-1 text-sm text-ink-muted">{t('manualBody')}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="manual-company-name">{t('manualName')}</Label>
+                <Input
+                  id="manual-company-name"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="manual-document-number">{t('manualDoc')}</Label>
+                <Input
+                  id="manual-document-number"
+                  value={manualDoc}
+                  onChange={(e) => setManualDoc(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="manual-entity-type">{t('manualEntity')}</Label>
+                <select
+                  id="manual-entity-type"
+                  value={manualType}
+                  onChange={(e) => setManualType(e.target.value === 'CORP' ? 'CORP' : 'LLC')}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="LLC">LLC</option>
+                  <option value="CORP">{t('corpLabel')}</option>
+                </select>
+              </div>
+              <Button type="button" onClick={onManualContinue}>
+                {t('manualContinue')}
+              </Button>
+            </div>
+          )}
+
           {/* Name search results */}
           {searchResults && searchResults.length > 0 && (
             <div className="space-y-2">
@@ -320,9 +472,8 @@ export function GuestAnnualReportForm() {
                       <p className="text-xs text-ink-muted font-mono">{hit.documentNumber}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
-                        {t('active')}
+                      <span className="inline-flex items-center gap-1 text-xs text-ink-muted border border-border rounded-full px-2 py-0.5">
+                        {hit.status.toUpperCase() === 'ACTIVE' || hit.status === 'A' ? t('active') : hit.status}
                       </span>
                       <Building2 className="h-4 w-4 text-ink-muted" />
                     </div>

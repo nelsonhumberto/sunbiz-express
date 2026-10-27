@@ -180,10 +180,12 @@ describe('Florida annual report late fee', () => {
     expect(readFileSync('app/api/stripe/payment-intent/route.ts', 'utf8')).toContain(
       'report.reportYear',
     );
-    expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain(
-      "quoteAnnualReport('FL', data.entityType, data.useOurRa, reportYear, now)",
+    expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain('resolveGuestAnnualReportCharge(');
+    expect(readFileSync('lib/guest-annual-report-charge.ts', 'utf8')).toContain('floridaEasternYear(now)');
+    expect(readFileSync('lib/guest-annual-report-offer.ts', 'utf8')).not.toContain("from '@/lib/sunbiz'");
+    expect(readFileSync('lib/guest-annual-report-charge.ts', 'utf8')).toContain(
+      "quoteAnnualReport('FL', entityType, input.useOurRa, reportYear, now)",
     );
-    expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain('floridaEasternYear(now)');
 
     const en = JSON.parse(readFileSync('messages/en.json', 'utf8')) as {
       annualReport: { lateFee: string };

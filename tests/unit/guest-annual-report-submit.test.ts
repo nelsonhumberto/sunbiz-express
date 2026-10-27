@@ -10,6 +10,7 @@ const paymentFindUnique = vi.hoisted(() => vi.fn());
 const annualReportCreate = vi.hoisted(() => vi.fn());
 const transaction = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/email', () => ({ sendEmail }));
 vi.mock('@/lib/stripe', () => ({
@@ -29,6 +30,16 @@ vi.mock('@/lib/rate-limit', () => ({
   checkActionRateLimit: () => null,
   rateLimit: () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 }),
   clientIp: () => '203.0.113.8',
+}));
+vi.mock('@/lib/sunbiz', () => ({
+  fetchFloridaEntityDetailByDocumentNumber: vi.fn(async () => ({
+    corporation_number: 'L12345678901',
+    corporation_name: 'Ada LLC',
+    status: 'ACTIVE',
+    filing_type: 'FLAL',
+    filing_type_display: 'Florida Limited Liability Company',
+    annual_reports: [{ year: 2025 }],
+  })),
 }));
 
 import { submitGuestAnnualReport } from '@/actions/annual-report';

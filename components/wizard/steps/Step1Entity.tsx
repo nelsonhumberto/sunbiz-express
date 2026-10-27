@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
-import { trackEvent } from '@/lib/analytics';
+import {
+  trackEvent,
+  wizardEntitySelectedProperties,
+  wizardStep1ContinueProperties,
+} from '@/lib/analytics';
 import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide-react';
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
@@ -81,10 +85,13 @@ export function Step1Entity({
   ];
 
   const onContinue = () => {
-    trackEvent('wizard_step1_continue_clicked', {
-      filing_id: filing.id,
-      locale,
-    });
+    trackEvent(
+      'wizard_step1_continue_clicked',
+      wizardStep1ContinueProperties({
+        filingId: filing.id,
+        locale,
+      }),
+    );
     const entityType = selected === 'SCORP' ? sCorpEntity : selected;
     const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
     run(async () => {
@@ -172,11 +179,14 @@ export function Step1Entity({
               aria-checked={isSelected}
               onClick={() => {
                 setSelected(option.value);
-                trackEvent('wizard_entity_selected', {
-                  filing_id: filing.id,
-                  locale,
-                  entity: option.value,
-                });
+                trackEvent(
+                  'wizard_entity_selected',
+                  wizardEntitySelectedProperties({
+                    filingId: filing.id,
+                    locale,
+                    entity: option.value,
+                  }),
+                );
               }}
               className={cn(
                 'relative text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',

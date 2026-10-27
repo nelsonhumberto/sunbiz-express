@@ -142,8 +142,11 @@ describe('optional start email and checkout analytics', () => {
     expect(success).toContain('markCheckoutSuccessViewed');
     expect(shell).toContain("trackEvent('wizard_step_viewed', { step, filing_id: filingId })");
     expect(source('components/wizard/useWizardSubmit.ts')).toContain("trackEvent('wizard_step_completed'");
-    expect(launch).toContain("trackEvent(\n          'start_name_submitted'");
-    expect(launch).toContain('startNameSubmittedProperties');
+    expect(launch).toContain('await captureThenNavigate');
+    expect(launch).toContain('startNavigationEvents');
+    expect(launch.indexOf('await captureThenNavigate')).toBeLessThan(
+      launch.indexOf('window.location.assign(href)'),
+    );
     for (const file of [payment, success, launch, source('components/wizard/useWizardSubmit.ts')]) {
       expect(file).not.toMatch(/trackEvent\([\s\S]{0,180}(email|businessName|firstName)\s*:/);
     }

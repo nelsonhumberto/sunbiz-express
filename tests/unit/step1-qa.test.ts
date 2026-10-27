@@ -43,9 +43,11 @@ describe('wizard step 1 copy and events', () => {
     expect(step).toContain("t('entityHeadsUp'");
     expect(step).toContain("t('customerNoteWY')");
     expect(step).toContain("t('customerNoteDE')");
-    expect(step).toContain("trackEvent('wizard_entity_selected'");
-    expect(step).toContain("trackEvent('wizard_step1_continue_clicked'");
-    expect(step).toContain('filing_id: filing.id');
+    expect(step).toContain("trackEvent(\n                  'wizard_entity_selected'");
+    expect(step).toContain("trackEvent(\n      'wizard_step1_continue_clicked'");
+    expect(step).toContain('wizardEntitySelectedProperties');
+    expect(step).toContain('wizardStep1ContinueProperties');
+    expect(step).toContain('filingId: filing.id');
     expect(step).toContain('locale');
     expect(step).not.toMatch(/trackEvent\([\s\S]{0,220}(email|businessName|firstName)\s*:/);
 

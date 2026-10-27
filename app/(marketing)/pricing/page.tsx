@@ -95,7 +95,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         })}
       />
       <JsonLd data={faqPageJsonLd(faqItems)} />
-      <section className="pt-16 pb-8">
+      <section className="relative overflow-hidden pt-16 pb-8">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
             {t('kicker')}

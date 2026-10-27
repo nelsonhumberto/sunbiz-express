@@ -35,7 +35,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
   return (
     <section
       data-marketing-state={bookable}
-      className="relative pt-4 pb-24 sm:pt-12 md:pt-20 md:pb-32 overflow-hidden"
+      className="relative isolate pt-4 pb-24 sm:pt-12 md:pt-20 md:pb-32 overflow-hidden"
     >
       <div className="absolute inset-0 mesh-bg" />
       <div className="aurora" />

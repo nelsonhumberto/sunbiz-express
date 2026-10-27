@@ -40,9 +40,8 @@ export default async function StylistsBarbersPage() {
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const t = await getTranslations('nicheStylists');
   const copy = readNicheStylistsCopy((key) => t(key), locale);
-  // The Launch Bundle block is English-only. The Spanish page has no bundle copy.
-  const bundle =
-    locale === 'en' && nicheBundleBlockEnabled() ? readNicheBundleCopy((key) => t(key)) : null;
+  // Both locales. NICHE_BUNDLE_BLOCK_ENABLED is the only gate, and it stays off by default.
+  const bundle = nicheBundleBlockEnabled() ? readNicheBundleCopy((key) => t(key)) : null;
 
   return <NicheStylistsPage copy={copy} bundle={bundle} />;
 }

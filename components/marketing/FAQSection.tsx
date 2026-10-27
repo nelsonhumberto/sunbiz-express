@@ -7,9 +7,27 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { getMarketingFaq } from '@/lib/marketing-faq';
+import { getMarketingFaq, type MarketingFaqItem } from '@/lib/marketing-faq';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
+
+function FaqAnswer({ item }: { item: MarketingFaqItem }) {
+  const link = item.link;
+  if (link && item.a.endsWith(link.label)) {
+    return (
+      <p>
+        {item.a.slice(0, item.a.length - link.label.length)}
+        <a
+          href={link.href}
+          className="font-medium text-primary hover:underline break-words [overflow-wrap:anywhere]"
+        >
+          {link.label}
+        </a>
+      </p>
+    );
+  }
+  return <p>{item.a}</p>;
+}
 
 interface FAQSectionProps {
   /** Resolved marketing state. Defaults to Florida for backwards compatibility. */
@@ -80,7 +98,7 @@ export function FAQSection({
               >
                 <AccordionTrigger>{item.q}</AccordionTrigger>
                 <AccordionContent>
-                  <p>{item.a}</p>
+                  <FaqAnswer item={item} />
                 </AccordionContent>
               </AccordionItem>
             ))}
@@ -99,7 +117,7 @@ export function FAQSection({
             >
               <AccordionTrigger>{item.q}</AccordionTrigger>
               <AccordionContent>
-                <p>{item.a}</p>
+                <FaqAnswer item={item} />
               </AccordionContent>
             </AccordionItem>
           ))}

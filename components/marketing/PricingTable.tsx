@@ -26,6 +26,8 @@ interface PricingTableProps {
   state?: MarketingState;
   /** Optional note under the fee footnote. Used on /pricing for the Florida $160 breakdown. */
   feeNote?: string;
+  /** Optional link under the fee note. Used on /pricing for the state-fee guide. */
+  feeNoteLink?: { href: string; label: string };
 }
 
 const FEATURE_KEYS: Record<string, string> = {
@@ -64,6 +66,7 @@ export function PricingTable({
   className,
   state = FLORIDA,
   feeNote,
+  feeNoteLink,
 }: PricingTableProps) {
   const t = useTranslations('pricing');
   const oaGuideHref = '/guides/florida-llc-operating-agreement';
@@ -247,6 +250,13 @@ export function PricingTable({
         {feeNote ? (
           <p className="text-center text-sm text-ink-muted mt-3 max-w-3xl mx-auto leading-relaxed">
             {feeNote}
+          </p>
+        ) : null}
+        {feeNoteLink ? (
+          <p className="text-center text-sm mt-3">
+            <Link href={feeNoteLink.href} className="font-medium text-primary hover:underline">
+              {feeNoteLink.label}
+            </Link>
           </p>
         ) : null}
 

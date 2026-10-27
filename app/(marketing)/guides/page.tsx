@@ -48,6 +48,13 @@ const GUIDES = [
     readingMinutes: 7,
   },
   {
+    slug: 'florida-llc-cost',
+    title: 'How Much Does It Cost to Start an LLC in Florida? (2026 State Fees)',
+    description:
+      'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee, what is free, and the costs owners forget.',
+    readingMinutes: 5,
+  },
+  {
     slug: 'how-to-form-a-florida-corporation',
     title: 'How to Form a Florida Corporation',
     description:

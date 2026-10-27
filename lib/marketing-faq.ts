@@ -17,6 +17,11 @@ export interface MarketingFaqItem {
   id?: string;
   q: string;
   a: string;
+  /**
+   * When `a` ends with `label`, the FAQ renders that suffix as a link.
+   * The plain `a` string stays the schema and llms.txt answer.
+   */
+  link?: { href: string; label: string };
 }
 
 const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
@@ -33,6 +38,15 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   {
     q: 'What is included in the package price?',
     a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and submission within 1 business day, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf - there are no separate state fees added at checkout.",
+  },
+  {
+    id: 'florida-llc-cost',
+    q: 'How much does it cost to start an LLC in Florida?',
+    a: 'The state of Florida charges $125 to form a new LLC: a $100 filing fee plus a $25 registered agent designation fee, paid when you file the Articles of Organization. After that, every Florida LLC files an annual report each year for $138.75, due between January 1 and May 1. https://launchforma.com/guides/florida-llc-cost',
+    link: {
+      href: '/guides/florida-llc-cost',
+      label: 'https://launchforma.com/guides/florida-llc-cost',
+    },
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',

@@ -4,20 +4,13 @@
  * calls are safe no-ops so the app never breaks without analytics configured.
  */
 
+import posthog from 'posthog-js';
+
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import { definedAttributionProps } from '@/lib/utm';
 
-let posthog: typeof import('posthog-js').default | null = null;
-
 function ph() {
   if (typeof window === 'undefined') return null;
-  if (!posthog) {
-    try {
-      posthog = require('posthog-js').default;
-    } catch {
-      return null;
-    }
-  }
   if (!posthog?.__loaded) return null;
   return posthog;
 }
@@ -27,19 +20,33 @@ function attributionProps(): Record<string, string> {
   return definedAttributionProps(window.location.search, document.cookie);
 }
 
+export type TrackEventOptions = {
+  /** Skip the batch queue and send this event on its own. */
+  sendInstantly?: boolean;
+  /** `sendBeacon` can finish while the document is unloading. */
+  transport?: 'sendBeacon';
+};
+
+/** Options passed through to `posthog.capture`. Empty options stay omitted. */
+export function posthogCaptureOptions(
+  options?: TrackEventOptions,
+): { send_instantly?: true; transport?: 'sendBeacon' } | undefined {
+  if (!options?.sendInstantly && !options?.transport) return undefined;
+  const capture: { send_instantly?: true; transport?: 'sendBeacon' } = {};
+  if (options.sendInstantly) capture.send_instantly = true;
+  if (options.transport) capture.transport = options.transport;
+  return capture;
+}
+
 export function trackEvent(
   event: string,
   properties?: Record<string, unknown>,
-  options?: { sendInstantly?: boolean },
+  options?: TrackEventOptions,
 ) {
   const explicit = properties
     ? Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined))
     : undefined;
-  ph()?.capture(
-    event,
-    { ...attributionProps(), ...explicit },
-    options?.sendInstantly ? { send_instantly: true } : undefined,
-  );
+  ph()?.capture(event, { ...attributionProps(), ...explicit }, posthogCaptureOptions(options));
 }
 
 /** Current PostHog distinct id, when the browser SDK has loaded. */
@@ -202,6 +209,191 @@ export function startNameSubmittedProperties(input: {
   if (input.filingId) properties.filing_id = input.filingId;
   if (input.locale === 'en' || input.locale === 'es') properties.locale = input.locale;
   return properties;
+}
+
+/** Step 1 continue. Same allowlist as the name submit: filing id and locale. */
+export function wizardStep1ContinueProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+}): Record<string, string> {
+  return startNameSubmittedProperties(input);
+}
+
+/**
+ * Formation type only. A business name, email, or any other string is dropped.
+ * `entity` is the one key past the checkout allowlist, and only on this event.
+ */
+export function wizardEntitySelectedProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+  entity?: string | null;
+}): Record<string, string> {
+  const properties = startNameSubmittedProperties(input);
+  if (input.entity === 'LLC' || input.entity === 'CORP' || input.entity === 'SCORP') {
+    properties.entity = input.entity;
+  }
+  return properties;
+}
+
+export type StartNavigationEvent = {
+  event: 'wizard_entity_selected' | 'wizard_step1_continue_clicked' | 'start_name_submitted';
+  properties: Record<string, string>;
+};
+
+/**
+ * Successful /start redirect, English and Spanish.
+ * The page is one name form. LLC is preselected unless the visitor switched
+ * to a corporation or opened a URL that already chose the type.
+ * `wizard_step1_continue_clicked` is the step 1 completion event.
+ */
+export function startNavigationEvents(input: {
+  filingId?: string | null;
+  locale?: string | null;
+  entity?: string | null;
+}): StartNavigationEvent[] {
+  return [
+    {
+      event: 'wizard_entity_selected',
+      properties: wizardEntitySelectedProperties(input),
+    },
+    {
+      event: 'start_name_submitted',
+      properties: startNameSubmittedProperties(input),
+    },
+    {
+      event: 'wizard_step1_continue_clicked',
+      properties: wizardStep1ContinueProperties(input),
+    },
+  ];
+}
+
+/** Longest pause before a full-page navigation while analytics leaves the browser. */
+export const NAVIGATION_FLUSH_MAX_MS = 300;
+
+/** Capture options for an event that is followed by `location.assign`. */
+export const BEFORE_NAVIGATION_CAPTURE: TrackEventOptions = {
+  sendInstantly: true,
+  transport: 'sendBeacon',
+};
+
+export function navigationFlushBudget(requested?: number): number {
+  if (typeof requested !== 'number' || !Number.isFinite(requested)) return NAVIGATION_FLUSH_MAX_MS;
+  if (requested <= 0) return 0;
+  return Math.min(NAVIGATION_FLUSH_MAX_MS, requested);
+}
+
+type AnalyticsClient = {
+  capture: (
+    event: string,
+    properties?: Record<string, unknown>,
+    options?: { send_instantly?: boolean; transport?: 'sendBeacon' },
+  ) => void;
+  flush?: () => Promise<void> | void;
+  config?: { api_transport?: string };
+  _requestQueue?: { unload?: () => void };
+  _retryQueue?: { unload?: () => void };
+};
+
+function analyticsClient(): AnalyticsClient | null {
+  const client = ph();
+  return client ? (client as unknown as AnalyticsClient) : null;
+}
+
+function canUseSendBeacon(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function';
+}
+
+/**
+ * `posthog.capture` accepts `transport` but does not copy it onto the request.
+ * The request uses `config.api_transport`, which defaults to fetch, and a
+ * fetch is cancelled by the next full-page load. For these calls only, point
+ * that setting at sendBeacon so the immediate send can finish on unload.
+ */
+function withNavigationTransport(run: () => void): boolean {
+  const client = analyticsClient();
+  if (!client?.config || !canUseSendBeacon()) {
+    run();
+    return false;
+  }
+  const previous = client.config.api_transport;
+  client.config.api_transport = 'sendBeacon';
+  try {
+    run();
+    return true;
+  } finally {
+    client.config.api_transport = previous;
+  }
+}
+
+function beaconQueuedEvents(client: AnalyticsClient): void {
+  try {
+    client._requestQueue?.unload?.();
+  } catch {
+    /* a queue beacon must not block the redirect */
+  }
+  try {
+    client._retryQueue?.unload?.();
+  } catch {
+    /* a retry beacon must not block the redirect */
+  }
+}
+
+/**
+ * Wait until PostHog flushes, or until the budget elapses.
+ * Returns immediately when PostHog is missing or has no flush.
+ */
+export async function flushAnalyticsBeforeNavigation(maxWaitMs?: number): Promise<void> {
+  const client = analyticsClient();
+  const flush = client?.flush;
+  if (!client || typeof flush !== 'function') return;
+  const waitMs = navigationFlushBudget(maxWaitMs);
+  if (waitMs <= 0) return;
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.resolve()
+        .then(() => flush.call(client))
+        .then(() => undefined)
+        .catch(() => undefined),
+      new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, waitMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Capture, then navigate. PostHog missing is a no-op and does not delay
+ * navigation. A sendBeacon send does not wait. Otherwise a flush is bounded
+ * by {@link NAVIGATION_FLUSH_MAX_MS}.
+ */
+export async function captureThenNavigate(input: {
+  events: ReadonlyArray<{ event: string; properties?: Record<string, unknown> }>;
+  navigate: () => void;
+  maxWaitMs?: number;
+}): Promise<void> {
+  let sentWithBeacon = false;
+  try {
+    sentWithBeacon = withNavigationTransport(() => {
+      for (const item of input.events) {
+        try {
+          trackEvent(item.event, item.properties, BEFORE_NAVIGATION_CAPTURE);
+        } catch {
+          /* one failed capture must not drop the redirect or the other events */
+        }
+      }
+    });
+    const client = analyticsClient();
+    if (client) beaconQueuedEvents(client);
+    if (!sentWithBeacon) {
+      await flushAnalyticsBeforeNavigation(input.maxWaitMs);
+    }
+  } finally {
+    input.navigate();
+  }
 }
 
 // ── Google Analytics / Ads (gtag) ────────────────────────────────────────

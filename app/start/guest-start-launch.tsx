@@ -15,11 +15,7 @@ import {
   withActionTimeout,
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
-import {
-  filingIdFromWizardPath,
-  startNameSubmittedProperties,
-  trackEvent,
-} from '@/lib/analytics';
+import { captureThenNavigate, filingIdFromWizardPath, startNavigationEvents } from '@/lib/analytics';
 import { isDeliverableEmail } from '@/lib/email-address';
 import { startNameIsAcceptable } from '@/lib/start-draft';
 
@@ -96,11 +92,12 @@ export function GuestStartLaunch({
       const href = redirectHrefFromError(err);
       if (href) {
         const filingId = filingIdFromWizardPath(href);
-        trackEvent(
-          'start_name_submitted',
-          startNameSubmittedProperties({ filingId, locale }),
-        );
-        window.location.assign(href);
+        await captureThenNavigate({
+          events: startNavigationEvents({ filingId, locale, entity }),
+          navigate: () => {
+            window.location.assign(href);
+          },
+        });
         return;
       }
       if (isRedirectError(err)) return;

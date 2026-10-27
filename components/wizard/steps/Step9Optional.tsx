@@ -349,26 +349,30 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
 
   const onContinue = () => {
     if (llcSCorpActive && !llcSCorpValid) {
-      toast.error(
-        'Each member must consent and provide a valid 9-digit Tax ID for the S-Corp election.',
-      );
+      toast.error(t('scorpMemberTaxIdInvalid'));
       return;
     }
     if (isCorp && !corpShareValid) {
       if (allocationExceedsAuthorized) {
         toast.error(
-          `Issued shares (${issuedNum}) cannot exceed authorized shares (${authorizedNum}).`,
+          t('shareAllocationExceedsAuthorized', {
+            issued: issuedNum,
+            authorized: authorizedNum,
+          }),
         );
       } else if (!allocationMatches) {
         toast.error(
-          `Shareholder allocations (${totalAllocated}) must add up to issued shares (${issuedNum}).`,
+          t('scorpAllocationMustMatch', {
+            allocated: totalAllocated,
+            issued: issuedNum,
+          }),
         );
       } else if (!allShareholdersNamed) {
-        toast.error('Each shareholder needs a name.');
+        toast.error(t('scorpShareholderNameRequired'));
       } else if (!sCorpConsentsOk) {
-        toast.error('Each shareholder must consent to the S-Corp election.');
+        toast.error(t('scorpAllConsentRequired'));
       } else if (!sCorpTaxIdsOk) {
-        toast.error('Each shareholder must provide a valid 9-digit Tax ID for the S-Corp election.');
+        toast.error(t('scorpShareholderTaxIdInvalid'));
       }
       return;
     }
@@ -773,7 +777,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="SSN">SSN</SelectItem>
-                                  <SelectItem value="EIN">Trust or estate tax ID</SelectItem>
+                                  <SelectItem value="EIN">{t('scorpTrustEstateTaxId')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -875,7 +879,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="SSN">SSN</SelectItem>
-                          <SelectItem value="EIN">Trust or estate tax ID</SelectItem>
+                          <SelectItem value="EIN">{t('scorpTrustEstateTaxId')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

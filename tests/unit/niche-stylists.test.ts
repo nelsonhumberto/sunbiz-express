@@ -207,8 +207,12 @@ describe('stylists and barbers copy', () => {
       'La LLC es una opción que le da a tu trabajo un nombre de negocio de verdad y una separación profesional.',
     );
     expect(JSON.stringify(esCopy.faq)).not.toMatch(/atender en español|View in English/);
-    expect(es.nicheStylists).not.toHaveProperty('bundleTitle');
-    expect(es.nicheStylists).not.toHaveProperty('bundleBody');
+    expect(es.nicheStylists.bundleTitle).toBe(
+      'Launch Bundle, $299 para nuestros primeros 10 clientes',
+    );
+    expect(es.nicheStylists.bundleBody).toBe(
+      'Esencial con la tarifa estatal de $125, más tu EIN y un acuerdo operativo para un solo miembro. [Ver el Launch Bundle](/launch-bundle)',
+    );
     expect(es.nicheStylists).not.toHaveProperty('bossTitle');
     expect(es.nicheStylists).not.toHaveProperty('howTitle');
     expect(en.nicheStylists).not.toHaveProperty('bossTitle');

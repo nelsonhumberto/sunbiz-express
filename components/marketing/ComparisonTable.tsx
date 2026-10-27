@@ -13,7 +13,10 @@ interface Row {
 
 // Named-competitor columns were removed: specific claims about other brands'
 // prices and practices need substantiation we can't keep current.
-const COMPETITORS = ['LaunchForma', 'Typical online filer'];
+const COMPETITORS = [
+  { key: 'launchforma', labelKey: null },
+  { key: 'typical', labelKey: 'typical' },
+] as const;
 
 const oaPrice = formatCurrency(ADD_ON_BY_SLUG.operating_agreement_single.serviceMarginCents);
 const remindersPrice = formatCurrency(ADD_ON_BY_SLUG.compliance_alerts.serviceMarginCents);
@@ -54,10 +57,10 @@ export function ComparisonTable() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left p-4 font-medium text-ink-muted w-1/3">Feature</th>
+                  <th className="text-left p-4 font-medium text-ink-muted w-1/3">{t('feature')}</th>
                   {COMPETITORS.map((c, i) => (
                     <th
-                      key={c}
+                      key={c.key}
                       className={cn(
                         'p-4 text-center text-sm font-semibold',
                         i === 0 ? 'text-primary' : 'text-ink-muted'
@@ -68,7 +71,7 @@ export function ComparisonTable() {
                           {t('us')}
                         </div>
                       )}
-                      <div>{c}</div>
+                      <div>{c.labelKey ? t(c.labelKey) : 'LaunchForma'}</div>
                     </th>
                   ))}
                 </tr>

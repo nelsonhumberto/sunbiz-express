@@ -16,7 +16,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <JsonLd data={organizationJsonLd()} />
       <SkipLink />
       <NavBar isAuthed={isAuthed} isAdmin={isAdmin} />
-      <main id="main-content" tabIndex={-1} className="focus:outline-none">
+      <main id="main-content" tabIndex={-1} className="overflow-x-clip focus:outline-none">
         {children}
       </main>
       <ChecklistSignupSection />

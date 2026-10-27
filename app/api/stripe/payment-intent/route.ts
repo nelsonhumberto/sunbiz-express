@@ -22,7 +22,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
-import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-offer';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,

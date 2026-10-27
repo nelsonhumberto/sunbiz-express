@@ -181,8 +181,9 @@ describe('Florida annual report late fee', () => {
       'report.reportYear',
     );
     expect(readFileSync('actions/annual-report.ts', 'utf8')).toContain('resolveGuestAnnualReportCharge(');
-    expect(readFileSync('lib/guest-annual-report-offer.ts', 'utf8')).toContain('floridaEasternYear(now)');
-    expect(readFileSync('lib/guest-annual-report-offer.ts', 'utf8')).toContain(
+    expect(readFileSync('lib/guest-annual-report-charge.ts', 'utf8')).toContain('floridaEasternYear(now)');
+    expect(readFileSync('lib/guest-annual-report-offer.ts', 'utf8')).not.toContain("from '@/lib/sunbiz'");
+    expect(readFileSync('lib/guest-annual-report-charge.ts', 'utf8')).toContain(
       "quoteAnnualReport('FL', entityType, input.useOurRa, reportYear, now)",
     );
 

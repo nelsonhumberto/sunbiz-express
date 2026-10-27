@@ -10,6 +10,7 @@ const paymentFindUnique = vi.hoisted(() => vi.fn());
 const annualReportCreate = vi.hoisted(() => vi.fn());
 const transaction = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/email', () => ({ sendEmail }));
 vi.mock('@/lib/stripe', () => ({

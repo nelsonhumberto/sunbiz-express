@@ -10,6 +10,7 @@ const refundsCreate = vi.hoisted(() => vi.fn());
 const rateLimit = vi.hoisted(() => vi.fn());
 const fetchDetail = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
 vi.mock('@/lib/db', () => ({

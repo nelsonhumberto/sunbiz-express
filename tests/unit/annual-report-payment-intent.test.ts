@@ -8,6 +8,7 @@ const userFindUnique = vi.hoisted(() => vi.fn());
 const filingUpdate = vi.hoisted(() => vi.fn());
 const paymentIntentsCreate = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
 vi.mock('@/lib/db', () => ({

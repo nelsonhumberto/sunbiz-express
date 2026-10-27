@@ -10,11 +10,11 @@ import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
   GUEST_LOOKUP_FAILED,
   annualReportYearsOf,
   guestAnnualReportOffer,
-  resolveGuestAnnualReportCharge,
   type GuestAnnualReportOffer,
 } from '@/lib/guest-annual-report-offer';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';

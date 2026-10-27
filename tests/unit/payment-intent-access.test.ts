@@ -10,6 +10,7 @@ const paymentIntentsCreate = vi.hoisted(() => vi.fn());
 const customersUpdate = vi.hoisted(() => vi.fn());
 const headerGet = vi.hoisted(() => vi.fn((_name: string) => null as string | null));
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
 vi.mock('@/lib/db', () => ({

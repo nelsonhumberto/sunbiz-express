@@ -3,16 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 import { parseFloridaAnnualReportYears, readAnnualReportFilings } from '@/lib/sunbiz';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
   GUEST_LOOKUP_FAILED,
   annualReportYearsOf,
   guestAnnualReportOffer,
   guestAnnualReportRefusal,
-  resolveGuestAnnualReportCharge,
 } from '@/lib/guest-annual-report-offer';
 
 const fetchDetail = vi.hoisted(() => vi.fn());
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/sunbiz', async () => {
   const actual = await vi.importActual<typeof import('@/lib/sunbiz')>('@/lib/sunbiz');
   return {

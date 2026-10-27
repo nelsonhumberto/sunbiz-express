@@ -24,6 +24,12 @@ import {
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
 import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
+  DOCUMENT_NUMBER_REQUIRED,
+  guestAnnualReportPaymentIntentMatches,
+  guestDocumentNumberRequiredMessage,
+  isMissingDocumentNumberIssue,
+} from '@/lib/guest-annual-report-offer';
+import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
   certificateOrderQuote,
@@ -108,7 +114,14 @@ const GuestAnnualReportChargeSchema = z.object({
   useOurRa: z.boolean({
     errorMap: () => ({ message: 'Choose whether to add registered agent service.' }),
   }),
-  documentNumber: z.string().trim().min(5).max(24),
+  documentNumber: z
+    .string({
+      required_error: DOCUMENT_NUMBER_REQUIRED,
+      invalid_type_error: DOCUMENT_NUMBER_REQUIRED,
+    })
+    .trim()
+    .min(5)
+    .max(24),
   paymentIntentId: z.string().trim().min(1).optional(),
   guestAttemptId: z.string().trim().min(8).max(80).optional(),
 });
@@ -423,6 +436,16 @@ async function createGuestAnnualReportPaymentIntent(
 
   const parsed = GuestAnnualReportChargeSchema.safeParse(body);
   if (!parsed.success) {
+    const locale = checkoutRequestLocale();
+    if (isMissingDocumentNumberIssue(parsed.error.issues[0])) {
+      return NextResponse.json(
+        {
+          error: guestDocumentNumberRequiredMessage(locale),
+          code: 'document_number_required',
+        },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' },
       { status: 400 },
@@ -455,28 +478,27 @@ async function createGuestAnnualReportPaymentIntent(
   if (parsed.data.paymentIntentId) {
     try {
       const existing = await stripe.paymentIntents.retrieve(parsed.data.paymentIntentId);
-      if (existing.metadata?.purpose !== 'guest_annual_report') {
-        return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
-      }
-      if (existing.status === 'succeeded') {
-        return NextResponse.json({
-          clientSecret: existing.client_secret,
-          paymentIntentId: existing.id,
-          alreadySucceeded: true,
-        });
-      }
-      if (isReusablePaymentIntentStatus(existing.status)) {
-        const paymentIntent =
-          existing.amount === quote.totalCents
-            ? existing
-            : await stripe.paymentIntents.update(existing.id, {
-                amount: quote.totalCents,
-                metadata,
-              });
-        return NextResponse.json({
-          clientSecret: paymentIntent.client_secret,
-          paymentIntentId: paymentIntent.id,
-        });
+      if (guestAnnualReportPaymentIntentMatches(existing.metadata, parsed.data.documentNumber)) {
+        if (existing.status === 'succeeded') {
+          return NextResponse.json({
+            clientSecret: existing.client_secret,
+            paymentIntentId: existing.id,
+            alreadySucceeded: true,
+          });
+        }
+        if (isReusablePaymentIntentStatus(existing.status)) {
+          const paymentIntent =
+            existing.amount === quote.totalCents
+              ? existing
+              : await stripe.paymentIntents.update(existing.id, {
+                  amount: quote.totalCents,
+                  metadata,
+                });
+          return NextResponse.json({
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+          });
+        }
       }
     } catch {
       return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });

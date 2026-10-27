@@ -9,6 +9,7 @@ const paymentIntentsUpdate = vi.hoisted(() => vi.fn());
 const refundsCreate = vi.hoisted(() => vi.fn());
 const rateLimit = vi.hoisted(() => vi.fn());
 const fetchDetail = vi.hoisted(() => vi.fn());
+const headerGet = vi.hoisted(() => vi.fn());
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
@@ -41,7 +42,10 @@ vi.mock('@/lib/sunbiz', () => ({
   fetchFloridaEntityDetailByDocumentNumber: fetchDetail,
 }));
 vi.mock('@/lib/utm-server', () => ({ getServerUtmAttribution: () => null }));
-vi.mock('next/headers', () => ({ cookies: () => ({ get: () => undefined }) }));
+vi.mock('next/headers', () => ({
+  cookies: () => ({ get: () => undefined }),
+  headers: () => ({ get: headerGet }),
+}));
 
 import { POST } from '@/app/api/stripe/payment-intent/route';
 
@@ -70,6 +74,8 @@ beforeEach(() => {
   auth.mockResolvedValue(null);
   getGuestUser.mockResolvedValue(null);
   rateLimit.mockReturnValue({ ok: true, remaining: 9, retryAfterSeconds: 0 });
+  headerGet.mockReset();
+  headerGet.mockReturnValue(null);
   fetchDetail.mockReset();
   fetchDetail.mockResolvedValue({
     corporation_number: 'L12345678901',
@@ -77,6 +83,7 @@ beforeEach(() => {
     status: 'ACTIVE',
     filing_type: 'FLAL',
     filing_type_display: 'Florida Limited Liability Company',
+    file_date: '2015-04-10',
     annual_reports: [{ year: 2025, filed_date: '04/30/2025' }],
   });
   paymentIntentsCreate.mockResolvedValue({
@@ -132,6 +139,7 @@ describe('guest annual report payment intent', () => {
       status: 'A',
       filing_type: 'DOMP',
       filing_type_display: 'Florida Profit Corporation',
+      file_date: '2018-01-15',
       annual_reports: [{ year: 2024 }],
     });
     const res = await post(
@@ -205,7 +213,7 @@ describe('guest annual report payment intent', () => {
       status: 'requires_payment_method',
       amount: 21_875,
       client_secret: 'sec_open',
-      metadata: { purpose: 'guest_annual_report' },
+      metadata: { purpose: 'guest_annual_report', documentNumber: 'L12345678901' },
     });
     paymentIntentsUpdate.mockResolvedValue({
       id: 'pi_open',
@@ -238,7 +246,7 @@ describe('guest annual report payment intent', () => {
       status: 'succeeded',
       amount: 21_875,
       client_secret: 'sec_paid',
-      metadata: { purpose: 'guest_annual_report' },
+      metadata: { purpose: 'guest_annual_report', documentNumber: 'L12345678901' },
     });
     const res = await post(
       { documentNumber: 'L12345678901', entityType: 'LLC', useOurRa: false, paymentIntentId: 'pi_paid' },
@@ -279,6 +287,7 @@ describe('guest annual report payment intent', () => {
       corporation_name: 'Open LLC',
       status: 'A',
       filing_type: 'FLAL',
+      file_date: '04/10/2015',
       annual_reports: [{ year: 2024 }, { year: 2025 }],
     });
     const res = await post(
@@ -320,7 +329,7 @@ describe('guest annual report payment intent', () => {
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
   });
 
-  it('quotes the current year when the lookup fails so manual entry can continue', async () => {
+  it('does not create a PaymentIntent when the lookup cannot confirm the report', async () => {
     fetchDetail.mockRejectedValue(
       new Error('sunbizdaily rejected the API key (401/403). Check SUNBIZDAILY_API_KEY.'),
     );
@@ -333,11 +342,198 @@ describe('guest annual report payment intent', () => {
       },
       'guest_annual_report',
     );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.code).toBe('annual_report_unconfirmed');
+    expect(json.error).toBe("We couldn't confirm this company's annual report status online.");
+    expect(JSON.stringify(json)).not.toMatch(/SUNBIZ|API_KEY/);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(paymentIntentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('translates a missing document number', async () => {
+    const res = await post({ entityType: 'LLC', useOurRa: false }, 'guest_annual_report');
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toMatchObject({
+      code: 'document_number_required',
+      error: 'Enter the document number.',
+    });
+    expect(json.error).not.toBe('Required');
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+
+    headerGet.mockImplementation((name: string) => {
+      if (name === 'referer') return 'https://launchforma.com/es/contacto';
+      if (name === 'host') return 'launchforma.com';
+      return null;
+    });
+    const spanish = await post({ entityType: 'LLC', useOurRa: false }, 'guest_annual_report');
+    expect(spanish.status).toBe(400);
+    expect(await spanish.json()).toMatchObject({
+      code: 'document_number_required',
+      error: 'Escribe el número de documento.',
+    });
+  });
+
+  it('creates a new PaymentIntent when the stored document or purpose does not match', async () => {
+    paymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_other',
+      status: 'succeeded',
+      amount: 63_775,
+      client_secret: 'sec_other',
+      metadata: { purpose: 'guest_annual_report', documentNumber: 'L99999999999' },
+    });
+    const res = await post(
+      {
+        documentNumber: 'L12345678901',
+        entityType: 'LLC',
+        useOurRa: false,
+        paymentIntentId: 'pi_other',
+      },
+      'guest_annual_report',
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(JSON.stringify(json)).not.toMatch(/SUNBIZ|API_KEY/);
+    expect(json.paymentIntentId).toBe('pi_guest');
+    expect(json.alreadySucceeded).toBeUndefined();
+    expect(paymentIntentsUpdate).not.toHaveBeenCalled();
+    expect(paymentIntentsCreate).toHaveBeenCalledTimes(1);
+
+    paymentIntentsCreate.mockClear();
+    paymentIntentsRetrieve.mockResolvedValue({
+      id: 'pi_purpose',
+      status: 'requires_payment_method',
+      amount: 63_775,
+      client_secret: 'sec_purpose',
+      metadata: { purpose: 'formation', documentNumber: 'L12345678901' },
+    });
+    const purpose = await post(
+      {
+        documentNumber: 'L12345678901',
+        entityType: 'LLC',
+        useOurRa: false,
+        paymentIntentId: 'pi_purpose',
+      },
+      'guest_annual_report',
+    );
+    expect(purpose.status).toBe(200);
+    expect(paymentIntentsUpdate).not.toHaveBeenCalled();
+    expect(paymentIntentsCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 400 when a PaymentIntent cannot be retrieved', async () => {
+    paymentIntentsRetrieve.mockRejectedValue(new Error('missing'));
+    const res = await post(
+      {
+        documentNumber: 'L12345678901',
+        entityType: 'LLC',
+        useOurRa: false,
+        paymentIntentId: 'pi_gone',
+      },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: 'Could not reuse that payment.' });
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not sell the keeper fixture companies unless the current report is known unfiled', async () => {
+    const cases = [
+      {
+        name: 'filed 2026',
+        detail: {
+          corporation_number: 'L15000021030',
+          corporation_name: 'SOUTHERN HOLDINGS 9 LLC',
+          status: 'ACTIVE',
+          filing_type: 'FLAL',
+          filing_type_display: 'Florida Limited Liability Company',
+          file_date: '2015-04-10',
+          annual_reports: [{ year: 2026, filed_date: '04/30/2026' }],
+        },
+        code: 'annual_report_filed',
+        error: 'Nothing due until Jan 1, 2027.',
+      },
+      {
+        name: 'formed 2026',
+        detail: {
+          corporation_number: 'L26000537730',
+          corporation_name: 'New LLC',
+          status: 'ACTIVE',
+          filing_type: 'FLAL',
+          filing_type_display: 'Florida Limited Liability Company',
+          file_date: '2026-10-19',
+        },
+        code: 'annual_report_not_due',
+        error: 'Nothing due until Jan 1, 2027.',
+      },
+      {
+        name: 'dissolved',
+        detail: {
+          corporation_number: 'L25000294800',
+          corporation_name: 'Closed LLC',
+          status: 'INACT',
+          filing_type: 'FLAL',
+          filing_type_display: 'Florida Limited Liability Company',
+          file_date: '2025-02-01',
+        },
+        code: 'company_dissolved',
+      },
+    ];
+    for (const item of cases) {
+      paymentIntentsCreate.mockClear();
+      fetchDetail.mockResolvedValue(item.detail);
+      const res = await post(
+        { documentNumber: item.detail.corporation_number, entityType: 'CORP', useOurRa: false },
+        'guest_annual_report',
+      );
+      expect(res.status, item.name).toBe(400);
+      const json = await res.json();
+      expect(json.code, item.name).toBe(item.code);
+      if (item.error) expect(json.error, item.name).toBe(item.error);
+      expect(paymentIntentsCreate, item.name).not.toHaveBeenCalled();
+    }
+
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'L25000509630',
+      corporation_name: 'Open 2025 LLC',
+      status: 'ACTIVE',
+      filing_type: 'FLAL',
+      filing_type_display: 'Florida Limited Liability Company',
+      file_date: '2025-04-02',
+      annual_reports: [],
+    });
+    const sold = await post(
+      { documentNumber: 'L25000509630', entityType: 'CORP', useOurRa: false },
+      'guest_annual_report',
+    );
+    expect(sold.status).toBe(200);
     expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 63_775 }),
+      expect.objectContaining({
+        amount: 63_775,
+        metadata: expect.objectContaining({ entityType: 'LLC', documentNumber: 'L25000509630' }),
+      }),
+      undefined,
+    );
+  });
+
+  it('quotes a corporation prefix even when the client says LLC', async () => {
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'P26QA000001',
+      corporation_name: 'Ada Corp',
+      status: 'ACTIVE',
+      file_date: '2019-05-01',
+      annual_reports: [],
+    });
+    const res = await post(
+      { documentNumber: 'P26QA000001', entityType: 'LLC', useOurRa: false },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(200);
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 64_900,
+        metadata: expect.objectContaining({ entityType: 'CORP' }),
+      }),
       undefined,
     );
   });

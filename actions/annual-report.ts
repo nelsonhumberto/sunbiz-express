@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -12,11 +13,17 @@ import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
 import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
+  DOCUMENT_NUMBER_REQUIRED,
   GUEST_LOOKUP_FAILED,
   annualReportYearsOf,
   guestAnnualReportOffer,
+  guestDocumentNumberRequiredMessage,
+  isMissingDocumentNumberIssue,
+  pricedFloridaEntityType,
   type GuestAnnualReportOffer,
 } from '@/lib/guest-annual-report-offer';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { resolveRequestLocale } from '@/lib/request-locale';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
@@ -44,12 +51,36 @@ const SubmitSchema = SubmitFields.superRefine(refineAnnualReportDraft);
 // Guest schema - no auth required
 const GuestSubmitSchema = SubmitFields.omit({ filingId: true, annualReportId: true })
   .extend({
-    documentNumber: z.string().min(1),
+    documentNumber: z
+      .string({
+        required_error: DOCUMENT_NUMBER_REQUIRED,
+        invalid_type_error: DOCUMENT_NUMBER_REQUIRED,
+      })
+      .trim()
+      .min(1),
     guestEmail: z.string().email(),
     companyName: z.string().min(1),
     entityType: z.enum(['LLC', 'CORP']),
   })
   .superRefine(refineAnnualReportDraft);
+
+function guestActionLocale(): 'en' | 'es' {
+  try {
+    const headerStore = headers();
+    return (
+      resolveRequestLocale({
+        referer: headerStore.get('referer'),
+        nextUrl: headerStore.get('next-url'),
+        publicPath: headerStore.get(PUBLIC_PATH_HEADER),
+        localeHeader: headerStore.get(LOCALE_HEADER),
+        allowedHost: headerStore.get('host'),
+        serverAction: true,
+      }) ?? 'en'
+    );
+  } catch {
+    return 'en';
+  }
+}
 
 /** Resolve the real DB user record - tries by id first, then falls back to email. */
 async function resolveUserId(
@@ -337,11 +368,16 @@ export async function lookupEntityPublic(
 > {
   try {
     const detail = await fetchFloridaEntityDetailByDocumentNumber(documentNumber.trim());
-    const offer = guestAnnualReportOffer({
+    let offer = guestAnnualReportOffer({
       lookupOk: true,
       status: detail.status,
       filedYears: annualReportYearsOf(detail),
+      eventFiledYears: detail.event_filed_years,
+      fileDate: detail.file_date,
     });
+    if (offer.kind === 'sell' && !pricedFloridaEntityType(documentNumber, detail)) {
+      offer = { kind: 'unconfirmed' };
+    }
     return { ok: true, detail, offer };
   } catch {
     return { ok: false, error: GUEST_LOOKUP_FAILED };
@@ -388,7 +424,18 @@ export async function searchEntitiesByName(
 
 /** Guest (unauthenticated) annual report filing. Creates or reuses a guest user. */
 export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitSchema>) {
-  const data = GuestSubmitSchema.parse(input);
+  const locale = guestActionLocale();
+  const parsed = GuestSubmitSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      ok: false as const,
+      error: isMissingDocumentNumberIssue(issue)
+        ? guestDocumentNumberRequiredMessage(locale)
+        : issue?.message ?? 'Check the form and try again.',
+    };
+  }
+  const data = parsed.data;
 
   // Verify the Stripe PaymentIntent before touching the DB
   let pi;
@@ -420,6 +467,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
     entityType: data.entityType,
     useOurRa: data.useOurRa,
     now,
+    locale,
   });
   if (!decision.ok) {
     await alertUnsavedAnnualReport(

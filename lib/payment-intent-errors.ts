@@ -67,6 +67,14 @@ export const PAYMENT_INTENT_ERRORS = {
     en: 'This document can be ordered once your company is filed.',
     es: 'Puedes pedir este documento cuando la empresa ya esté presentada.',
   },
+  document_number_required: {
+    en: 'Enter the document number.',
+    es: 'Escribe el número de documento.',
+  },
+  annual_report_unconfirmed: {
+    en: "We couldn't confirm this company's annual report status online.",
+    es: 'No pudimos confirmar en línea el estado del reporte anual de esta compañía.',
+  },
 } as const;
 
 export type PaymentIntentErrorCode = keyof typeof PAYMENT_INTENT_ERRORS;

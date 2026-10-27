@@ -3,8 +3,8 @@
 import { motion } from 'framer-motion';
 import { useLocale, useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
-import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
-import { type StateCode } from '@/lib/formation-states';
+import { FLORIDA, localizedStateName, type MarketingState } from '@/lib/marketing-states';
+import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 
@@ -15,15 +15,11 @@ interface HowItWorksProps {
 export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const t = useTranslations('howItWorks');
   const tPricing = useTranslations('pricing');
-  const tTiming = useTranslations('stateTiming');
   const locale = useLocale();
-  const stateCode = state.code as StateCode;
-  const stateLabel = locale === 'es' ? state.nameEs : state.name;
+  const shown = isActiveFormationState(state.code) ? state : FLORIDA;
+  const stateCode = shown.code as StateCode;
+  const stateLabel = localizedStateName(shown, locale);
 
-  // Resolve the headline tier prices + names for the current state so the
-  // "Pick your package" step never lies. The audit flagged that WY/DE
-  // pages were quoting Florida's $155/$299/$499 numbers, which are wrong
-  // for those states because the bundled state fees differ.
   const basic = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', stateCode));
   const standard = formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', stateCode));
   const premium = formatCurrency(tierPackagePriceCents('PREMIUM', 'LLC', stateCode));
@@ -31,8 +27,7 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   const tierStandard = tPricing('tier_STANDARD');
   const tierPremium = tPricing('tier_PREMIUM');
 
-  const step1Body =
-    state.code === 'FL' ? t('step1Body') : t('step1BodyState', { state: stateLabel });
+  const step1Body = t('step1Body');
   const step2Body = t('step2Dynamic', {
     basic: tierBasic,
     basicPrice: basic,
@@ -42,13 +37,8 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
     premiumPrice: premium,
     state: stateLabel,
   });
-  const step4Title =
-    state.code === 'FL' ? t('step4Title') : t('step4TitleState', { state: stateLabel });
-  const office = state.code === 'DE' ? t('officeDe') : t('officeSos');
-  const step4Body =
-    state.code === 'FL'
-      ? t('step4Body')
-      : t('step4BodyState', { office, timing: tTiming(state.code) });
+  const step4Title = t('step4Title');
+  const step4Body = t('step4Body');
   const STEPS = [
     { n: '01', title: t('step1Title'), body: step1Body },
     { n: '02', title: t('step2Title'), body: step2Body },
@@ -57,7 +47,7 @@ export function HowItWorks({ state = FLORIDA }: HowItWorksProps = {}) {
   ];
 
   return (
-    <section data-marketing-state={state.code} className="py-20 md:py-28">
+    <section data-marketing-state={shown.code} className="py-20 md:py-28">
       <div className="container">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">

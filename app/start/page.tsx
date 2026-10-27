@@ -10,8 +10,8 @@ import { COPYRIGHT_YEAR } from '@/lib/constants';
 import { GuestStartLaunch } from './guest-start-launch';
 import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 import {
-  ACTIVE_FORMATION_STATES,
-  type StateCode,
+  floridaOnlyNote,
+  resolveRequestedFormationState,
 } from '@/lib/formation-states';
 import { pageTitle } from '@/lib/seo-title';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
@@ -76,10 +76,9 @@ export default async function StartPage({ searchParams }: StartPageProps) {
   const t = await getTranslations('start');
   const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
-  const requested = (searchParams?.state ?? 'FL').toUpperCase();
-  const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
-    ? (requested as StateCode)
-    : 'FL';
+  const resolved = resolveRequestedFormationState(searchParams?.state);
+  const stateCode = resolved.stateCode;
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
   const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
   const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
   const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
@@ -99,6 +98,11 @@ export default async function StartPage({ searchParams }: StartPageProps) {
       </div>
 
       <main className="flex-1 container max-w-lg py-4 sm:py-10">
+        {stateNote ? (
+          <p role="status" className="mb-4 text-sm text-ink-muted text-center">
+            {stateNote}
+          </p>
+        ) : null}
         <GuestStartLaunch
           defaultState={stateCode}
           defaultEntity={entityChoice}

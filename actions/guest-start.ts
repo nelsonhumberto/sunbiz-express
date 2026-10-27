@@ -16,7 +16,7 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { isRedirectError, withActionTimeout } from '@/lib/action-timeout';
 import {
-  ACTIVE_FORMATION_STATES,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
@@ -44,7 +44,7 @@ const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
   lastName: z.string().min(1).max(60),
   email: z.string().email(),
-  state: z.enum(['FL', 'WY', 'DE']).optional(),
+  state: z.string().trim().max(16).optional(),
   // SCORP is a customer-facing label for Corporation + S-Corp tax election.
   entityType: z.enum(['LLC', 'CORP', 'SCORP']).optional(),
   // Preselected package from a pricing CTA. Defaults to STANDARD when absent
@@ -140,10 +140,11 @@ export async function startGuestFiling(
   const localeData = locale ? { locale } : {};
   const entryPath = storedEntryPath();
   const entryData = entryPath ? { entryPath } : {};
-  const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
-  if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
+  const requestedState = (parsed.data.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
     return { error: t('errorStateUnavailable') };
   }
+  const stateCode = requestedState as StateCode;
 
   // Authed users skip guest entirely - go straight to filing creation.
   const session = await auth();
@@ -275,10 +276,11 @@ export async function openGuestDraft(input: {
   returnRedirect?: boolean;
 }): Promise<StartGuestResult> {
   const t = await getTranslations('start');
-  const requestedState = (input.state ?? 'FL').toUpperCase();
-  const stateCode = (
-    ACTIVE_FORMATION_STATES.includes(requestedState as StateCode) ? requestedState : 'FL'
-  ) as StateCode;
+  const requestedState = (input.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
+    return { error: t('errorStateUnavailable') };
+  }
+  const stateCode = requestedState as StateCode;
   const entityChoice = (['LLC', 'CORP', 'SCORP'].includes((input.entityType ?? '').toUpperCase())
     ? (input.entityType ?? 'LLC').toUpperCase()
     : 'LLC') as 'LLC' | 'CORP' | 'SCORP';

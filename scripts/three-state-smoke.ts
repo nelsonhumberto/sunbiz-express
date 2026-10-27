@@ -14,6 +14,7 @@
 
 import {
   ACTIVE_FORMATION_STATES,
+  ENABLED_FORMATION_STATES,
   FORMATION_STATES,
   annualComplianceFor,
   certificateOfStatusFeeCents,
@@ -102,7 +103,11 @@ function includes(label: string, haystack: string, needle: string) {
 }
 
 console.log('\n--- State registry shape ---');
-check('active states are FL/WY/DE', [...ACTIVE_FORMATION_STATES], ['FL', 'WY', 'DE']);
+check(
+  'active states follow ENABLED_FORMATION_STATES',
+  [...ACTIVE_FORMATION_STATES],
+  [...ENABLED_FORMATION_STATES],
+);
 for (const code of ACTIVE_FORMATION_STATES) {
   const rule = FORMATION_STATES[code];
   checkTrue(`${code} registry has LLC + Corp suffixes`, rule.nameRules.llcSuffixes.length > 0 && rule.nameRules.corpSuffixes.length > 0);
@@ -115,7 +120,11 @@ check('FL has live name search', FORMATION_STATES.FL.hasLiveNameSearch, true);
 check('WY does NOT have live name search', FORMATION_STATES.WY.hasLiveNameSearch, false);
 check('DE does NOT have live name search', FORMATION_STATES.DE.hasLiveNameSearch, false);
 check('isActiveFormationState rejects "GA"', isActiveFormationState('GA'), false);
-check('isActiveFormationState accepts "wy"', isActiveFormationState('wy'), true);
+check(
+  'isActiveFormationState accepts "wy" only when Wyoming is enabled',
+  isActiveFormationState('wy'),
+  ENABLED_FORMATION_STATES.includes('WY'),
+);
 check('getFormationState falls back to FL on garbage', getFormationState('XXX').code, 'FL');
 
 console.log('\n--- Document labels ---');

@@ -23,7 +23,8 @@ import {
   checkoutBelowStateFee,
 } from '@/lib/checkout-guard';
 import {
-  ACTIVE_FORMATION_STATES,
+  formationStateUnavailableMessage,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { sendEmail } from '@/lib/email';
@@ -179,11 +180,9 @@ async function recoveredClaimedSignIn(
   return claimedSignInHref(decision.email, filingId, locale);
 }
 
-function asStateCode(input: string | null | undefined): StateCode {
-  const upper = (input ?? 'FL').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(upper as StateCode)
-    ? (upper as StateCode)
-    : 'FL';
+function asStateCode(input: string | null | undefined): StateCode | null {
+  const upper = (input ?? '').trim().toUpperCase();
+  return isActiveFormationState(upper) ? (upper as StateCode) : null;
 }
 
 export interface CheckoutResult {
@@ -228,6 +227,10 @@ export async function processCheckout(input: {
     },
   });
   if (!filing || filing.userId !== actor.id) return { error: 'Filing not found.' };
+  const formationState = asStateCode(filing.state);
+  if (!formationState) {
+    return { error: formationStateUnavailableMessage(filing.locale) };
+  }
   if (filing.status !== 'DRAFT') {
     // The webhook can submit before this request returns. A guest still needs
     // the set-password success page. A signed-in checkout keeps the error.
@@ -292,7 +295,7 @@ export async function processCheckout(input: {
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
-    state: asStateCode(filing.state),
+    state: formationState,
     processingOptionId,
   });
   const discountCents = input.discountCents ?? 0;
@@ -300,7 +303,7 @@ export async function processCheckout(input: {
   const stateFeeMinimum = tierBundledStateFeeCents(
     filing.serviceTier as TierSlug,
     filing.entityType as EntityType,
-    asStateCode(filing.state),
+    formationState,
   );
   if (checkoutBelowStateFee({ totalCents: expectedTotal, stateFeeCents: stateFeeMinimum })) {
     return { error: CHECKOUT_BELOW_STATE_FEE_ERROR };

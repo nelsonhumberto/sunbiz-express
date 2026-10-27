@@ -10,6 +10,7 @@ import { Logo } from './Logo';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { StateSwitcher } from './StateSwitcher';
 import { useCurrentMarketingState } from '@/lib/use-current-state';
+import { isActiveFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
 import { englishPathname, localizedHref } from '@/lib/locale-paths';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,12 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   const pathname = usePathname();
   const barePath = englishPathname(pathname);
   const currentState = useCurrentMarketingState();
+  const startHref = localizedHref(
+    isActiveFormationState(currentState.code) && currentState.code !== 'FL'
+      ? `/start?state=${currentState.code}`
+      : '/start',
+    locale,
+  );
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -98,7 +105,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               </Button>
               <Button asChild>
                 <Link
-                  href={localizedHref(`/start?state=${currentState.code}`, locale)}
+                  href={startHref}
                   onClick={() =>
                     trackCtaClicked('nav_start', { state: currentState.code })
                   }
@@ -151,7 +158,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                     <Link href={localizedHref('/sign-in', locale)}>{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link href={localizedHref(`/start?state=${currentState.code}`, locale)}>
+                    <Link href={startHref}>
                       {t('startFiling')}
                     </Link>
                   </Button>

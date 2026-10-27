@@ -186,11 +186,6 @@
     "badgeState": "Built for {state} entrepreneurs",
     "headlineState": "Form your {state} business",
     "subheadState": "We prepare and file your LLC or Corporation with the State of {state} on your behalf - without the upsells, hidden fees, or 45-minute forms. We include a year of registered agent service, free.",
-    "filingIn": "Filing in",
-    "alsoServe": "We also serve {states}",
-    "alsoFl": "Wyoming and Delaware",
-    "alsoWy": "Florida and Delaware",
-    "alsoDe": "Florida and Wyoming",
     "previewAllIn": "{name} LLC · all-in",
     "formaLine": "Forma is our AI assistant, available 24/7. Forma guides your order and answers your questions. Our team submits the state filing."
   },
@@ -477,7 +472,7 @@
     "and": "and",
     "privacy": "Privacy Policy",
     "errorInvalid": "Please check your details and try again.",
-    "errorStateUnavailable": "That state is not yet available.",
+    "errorStateUnavailable": "That state is not available.",
     "errorTimeout": "That took too long. Please try again.",
     "errorStart": "We couldn't start your draft. Please try again.",
     "existingDraftTitle": "You already have a draft",
@@ -1489,9 +1484,7 @@
     "error": "Payment could not be completed. Please try again."
   },
   "stateTiming": {
-    "FL": "Filed within 1 business day",
-    "WY": "Standard filing in ~3 weeks · expedited available",
-    "DE": "Standard filing in ~6 weeks · 8-day expedited available"
+    "FL": "Filed within 1 business day"
   },
   "guidesChrome": {
     "kicker": "LaunchForma guides",

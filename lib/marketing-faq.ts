@@ -460,6 +460,9 @@ export function getMarketingFaq(
   state: MarketingState,
   locale: string,
 ): MarketingFaqItem[] {
+  if (state.availability === 'inactive') {
+    return locale === 'es' ? FAQ_FLORIDA_ES : FAQ_FLORIDA_EN;
+  }
   if (state.availability === 'active') {
     if (state.code === 'WY') return locale === 'es' ? FAQ_WYOMING_ES : FAQ_WYOMING_EN;
     if (state.code === 'DE') return locale === 'es' ? FAQ_DELAWARE_ES : FAQ_DELAWARE_EN;

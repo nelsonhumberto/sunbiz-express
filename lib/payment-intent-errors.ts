@@ -67,6 +67,10 @@ export const PAYMENT_INTENT_ERRORS = {
     en: 'This document can be ordered once your company is filed.',
     es: 'Puedes pedir este documento cuando la empresa ya esté presentada.',
   },
+  state_unavailable: {
+    en: 'That state is not available.',
+    es: 'Ese estado no está disponible.',
+  },
   document_number_required: {
     en: 'Enter the document number.',
     es: 'Escribe el número de documento.',

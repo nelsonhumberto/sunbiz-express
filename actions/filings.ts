@@ -28,10 +28,11 @@ import {
   safeParseJson,
 } from '@/lib/utils';
 import {
-  ACTIVE_FORMATION_STATES,
   annualComplianceFor,
   defaultProcessingOption,
+  formationStateUnavailableMessage,
   getFormationState,
+  isActiveFormationState,
   resolveProcessingOption,
   type StateCode,
 } from '@/lib/formation-states';
@@ -51,12 +52,12 @@ export async function createFiling(input?: {
   const session = await auth();
   if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
-  const requestedState = (input?.state ?? 'FL').toUpperCase();
-  const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    requestedState as StateCode,
-  )
-    ? (requestedState as StateCode)
-    : 'FL';
+  const requestedState = (input?.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
+    const locale = await storedLocale();
+    return { ok: false as const, error: formationStateUnavailableMessage(locale) };
+  }
+  const stateCode = requestedState as StateCode;
 
   const locale = await storedLocale();
   const entryPath = storedEntryPath();
@@ -134,6 +135,10 @@ export async function submitFilingToState(
     },
   });
   if (!filing || filing.userId !== actorId) throw new Error('Not found');
+  if (!isActiveFormationState(filing.state)) {
+    return { ok: false as const, error: formationStateUnavailableMessage(filing.locale) };
+  }
+  const filingStateCode = filing.state.toUpperCase() as StateCode;
 
   const trackingNumber = generateTrackingNumber();
   const pin = generatePin();
@@ -194,11 +199,6 @@ export async function submitFilingToState(
   // (filing package + add-ons), not the internal state-vs-margin split. We
   // reconstruct the lines directly from `computeCost` so the receipt always
   // matches what the wizard cost sidebar showed.
-  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    filing.state.toUpperCase() as StateCode,
-  )
-    ? (filing.state.toUpperCase() as StateCode)
-    : 'FL';
   const stateRule = getFormationState(filingStateCode);
   const optionalForCost = safeParseJson<Record<string, unknown> | null>(
     filing.optionalDetails,

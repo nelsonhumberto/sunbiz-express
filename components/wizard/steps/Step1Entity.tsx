@@ -289,13 +289,14 @@ export function Step1Entity({
       />
 
       <div className="space-y-4">
-        {stateCode === 'WY' && (
+        {ACTIVE_FORMATION_STATES.includes('WY') && stateCode === 'WY' && (
           <p className="text-xs text-ink-muted leading-relaxed">{t('customerNoteWY')}</p>
         )}
-        {stateCode === 'DE' && (
+        {ACTIVE_FORMATION_STATES.includes('DE') && stateCode === 'DE' && (
           <p className="text-xs text-ink-muted leading-relaxed">{t('customerNoteDE')}</p>
         )}
-        {(stateCode === 'WY' || stateCode === 'DE') && (
+        {((ACTIVE_FORMATION_STATES.includes('WY') && stateCode === 'WY') ||
+          (ACTIVE_FORMATION_STATES.includes('DE') && stateCode === 'DE')) && (
           <p className="text-xs text-ink-muted leading-relaxed">{t('entityHeadsUp', { state: stateRule.name })}</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

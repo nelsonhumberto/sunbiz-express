@@ -169,24 +169,26 @@ describe('annual report payment intent', () => {
     );
   });
 
-  it('does not add the Florida late fee to a Wyoming annual report', async () => {
-    filingFindUnique.mockResolvedValue(filingOwnedBy('user_1', 'WY'));
-    annualReportFindUnique.mockResolvedValue({
-      id: 'ar_1',
-      filingId: 'filing_1',
-      status: 'PENDING',
-      reportYear: 2026,
-    });
-    const res = await post({
-      filingId: 'filing_1',
-      purpose: 'annual_report',
-      annualReportId: 'ar_1',
-      annualReport: validDraft,
-    });
-    expect(res.status).toBe(200);
-    expect(paymentIntentsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 15_900 }),
-      undefined,
-    );
+  it('refuses a PaymentIntent when the filing state is not Florida', async () => {
+    for (const state of ['WY', 'DE']) {
+      filingFindUnique.mockResolvedValue(filingOwnedBy('user_1', state));
+      paymentIntentsCreate.mockClear();
+      annualReportFindUnique.mockClear();
+      const formation = await post({ filingId: 'filing_1' });
+      expect(formation.status).toBe(400);
+      expect(await formation.json()).toMatchObject({
+        code: 'state_unavailable',
+        error: 'That state is not available.',
+      });
+      const annual = await post({
+        filingId: 'filing_1',
+        purpose: 'annual_report',
+        annualReportId: 'ar_1',
+        annualReport: validDraft,
+      });
+      expect(annual.status).toBe(400);
+      expect(paymentIntentsCreate).not.toHaveBeenCalled();
+      expect(annualReportFindUnique).not.toHaveBeenCalled();
+    }
   });
 });

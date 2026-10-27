@@ -204,7 +204,10 @@ export async function POST(request: Request) {
         }
       },
     });
-    return attachAssistantSession(result.toUIMessageStreamResponse(), conversationId);
+    return attachAssistantSession(
+      result.toUIMessageStreamResponse({ sendReasoning: false }),
+      conversationId,
+    );
   } catch (err) {
     logger.error('assistant stream failed', { area: 'assistant', tag: 'stream' }, err);
     return NextResponse.json({ error: 'The assistant had a problem. Please try again.' }, { status: 500 });

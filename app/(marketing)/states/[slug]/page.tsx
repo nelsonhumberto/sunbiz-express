@@ -35,15 +35,17 @@ function pickFirst(value: string | string[] | undefined): string | undefined {
 }
 
 export function generateStaticParams() {
-  return ALL_MARKETING_STATES.map((s) => ({ slug: s.slug }));
+  return ALL_MARKETING_STATES.filter((s) => s.availability !== 'inactive').map((s) => ({
+    slug: s.slug,
+  }));
 }
 
 export async function generateMetadata({
   params,
 }: StateLandingPageProps): Promise<Metadata> {
   const state = resolveMarketingState(params.slug);
-  if (state.slug !== params.slug.toLowerCase()) {
-    return {};
+  if (state.slug !== params.slug.toLowerCase() || state.availability === 'inactive') {
+    notFound();
   }
   const locale = await getLocale();
   const canonical = `/states/${state.slug}`;
@@ -94,7 +96,7 @@ export default async function StateLandingPage({
   // The slug must exactly match a known state; otherwise 404 instead of
   // silently falling back to Florida (which would let any garbage slug
   // resolve to "/").
-  if (state.slug !== params.slug.toLowerCase()) {
+  if (state.slug !== params.slug.toLowerCase() || state.availability === 'inactive') {
     notFound();
   }
 

@@ -51,10 +51,10 @@ describe('registered agent renewal price source', () => {
       expect(english).not.toMatch(/\$150|\$119|\$149/);
       expect(spanish).not.toMatch(/\$150|\$119|\$149/);
     }
-    expect(es.guideWyDe.body).toContain('{wyPrice} al año en la renovación');
-    expect(es.guideWyDe.body).toContain('{dePrice} al año en la renovación');
+    expect(es.guideWyDe.body).toContain('dirección física en Wyoming');
+    expect(es.guideWyDe.body).toContain('dirección física en Delaware');
     expect(es.guideWyDe.body).not.toContain('$150');
-    expect(es.guideWyDe.body).not.toContain('{price}');
+    expect(es.guideWyDe.body).not.toMatch(/\{wyPrice\}|\{dePrice\}|\{price\}/);
 
     const faqEn = getMarketingFaq(FLORIDA, 'en').map((item) => item.a).join('\n');
     const faqEs = getMarketingFaq(FLORIDA, 'es').map((item) => item.a).join('\n');
@@ -63,16 +63,18 @@ describe('registered agent renewal price source', () => {
     expect(faqEn).not.toMatch(/\$119|\$149\b/);
     const wyoming = ALL_MARKETING_STATES.find((state) => state.code === 'WY')!;
     const delaware = ALL_MARKETING_STATES.find((state) => state.code === 'DE')!;
-    const wyomingFaq = getMarketingFaq(wyoming, 'en').map((item) => item.a).join('\n');
-    const delawareFaq = getMarketingFaq(delaware, 'es').map((item) => item.a).join('\n');
-    expect(wyomingFaq).toContain('$119/year');
-    expect(wyomingFaq).not.toContain('$150/year');
-    expect(delawareFaq).toContain('$149/año');
-    expect(delawareFaq).not.toContain('$150/año');
+    expect(wyoming.availability).toBe('inactive');
+    expect(delaware.availability).toBe('inactive');
+    expect(getMarketingFaq(wyoming, 'en').map((item) => item.a).join('\n')).toContain(`${price}/year`);
+    expect(getMarketingFaq(delaware, 'es').map((item) => item.a).join('\n')).toContain(`${price}/año`);
+    const faqSource = readFileSync('lib/marketing-faq.ts', 'utf8');
+    expect(faqSource).toContain('renewal is ${WY_RA_PRICE}/year');
+    expect(faqSource).toContain('la renovación es ${DE_RA_PRICE}/año');
     const guide = readFileSync('app/(marketing)/guides/wyoming-llc-vs-delaware-corp/page.tsx', 'utf8');
-    expect(guide).toContain('FORMATION_STATES.WY.registeredAgent.renewalCents');
-    expect(guide).toContain('FORMATION_STATES.DE.registeredAgent.renewalCents');
+    expect(guide).toContain('must have a Wyoming physical address');
+    expect(guide).toContain('must have a Delaware physical address');
     expect(guide).not.toContain('RA_RENEWAL_PRICE');
+    expect(guide).not.toContain('$150/year');
 
     const facts = readFileSync('lib/assistant/docs.ts', 'utf8');
     const knowledge = readFileSync('lib/assistant/knowledge.ts', 'utf8');

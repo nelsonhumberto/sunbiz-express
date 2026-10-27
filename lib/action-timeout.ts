@@ -6,6 +6,9 @@
 
 export const WIZARD_ACTION_TIMEOUT_MS = 20_000;
 
+/** Step 2 must leave Saving even when Sunbiz or the database is slow. */
+export const STEP2_SAVE_TIMEOUT_MS = 5_000;
+
 export class ActionTimeoutError extends Error {
   constructor() {
     super('ACTION_TIMEOUT');

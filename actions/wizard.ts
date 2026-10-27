@@ -12,7 +12,6 @@ import { getGuestUser, getWizardActor } from '@/lib/guest';
 import { planMismatchedGuestSignIn, readGuestAsideEmails } from '@/lib/guest-identity';
 import { encryptString } from '@/lib/encryption';
 import {
-  computeCost,
   filingHasOperatingAgreement,
   isWizardAddOn,
   type AddOnSlug,
@@ -31,6 +30,8 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
 import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
+import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActionTimeout } from '@/lib/action-timeout';
+import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
 import { getTranslations } from 'next-intl/server';
 import { saveGuestEmail } from '@/actions/guest-email';
 import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
@@ -125,34 +126,10 @@ async function recomputeCost(filingId: string) {
     },
   });
   if (!filing) return;
-  const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug
-  );
-  const optional = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
-  const processingOptionId =
-    optional && typeof optional.processingOption === 'string'
-      ? (optional.processingOption as string)
-      : undefined;
-  const breakdown = computeCost({
-    entityType: filing.entityType as 'LLC' | 'CORP',
-    tier: filing.serviceTier as TierSlug,
-    addOnSlugs,
-    state: asStateCode(filing.state),
-    processingOptionId,
-  });
+  const totals = quoteDraftFiling(filing);
   await prisma.filing.update({
     where: { id: filingId },
-    data: {
-      // Customer-facing pricing is presented as a single all-in package; the
-      // DB columns now act as the internal accounting ledger:
-      //   stateFeeCents     = total amount we forward to Florida
-      //   serviceFeeCents   = LaunchForma margin baked into the package
-      //   addOnsTotalCents  = customer-paid add-on subtotal
-      stateFeeCents: breakdown.governmentRemittanceCents,
-      serviceFeeCents: breakdown.packageMarginCents,
-      addOnsTotalCents: breakdown.addOnsCents,
-      totalCents: breakdown.totalCents,
-    },
+    data: totals,
   });
 }
 
@@ -279,6 +256,19 @@ const Step2Schema = z.object({
 });
 
 export async function saveStep2(input: z.infer<typeof Step2Schema>) {
+  try {
+    return await withActionTimeout(saveStep2Now(input), STEP2_SAVE_TIMEOUT_MS);
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    if (isActionTimeoutError(err)) {
+      const t = await wizardCopy();
+      return { ok: false as const, error: t('errorTimeout') };
+    }
+    throw err;
+  }
+}
+
+async function saveStep2Now(input: z.infer<typeof Step2Schema>) {
   const parsed = Step2Schema.safeParse(input);
   if (!parsed.success) {
     const t = await wizardCopy();
@@ -1156,6 +1146,23 @@ export async function getWizardFiling(filingId: string) {
       }
     }
     return await redirectLocalized(actor.kind === 'guest' ? '/' : '/dashboard');
+  }
+  if (filing.status === 'DRAFT') {
+    const totals = quoteDraftFiling(filing);
+    if (filingTotalsChanged(filing, totals)) {
+      try {
+        await prisma.filing.update({
+          where: { id: filing.id },
+          data: totals,
+        });
+        filing.totalCents = totals.totalCents;
+        filing.stateFeeCents = totals.stateFeeCents;
+        filing.serviceFeeCents = totals.serviceFeeCents;
+        filing.addOnsTotalCents = totals.addOnsTotalCents;
+      } catch {
+        // The wizard prices from the catalog. The next visit retries the write.
+      }
+    }
   }
   return filing;
 }

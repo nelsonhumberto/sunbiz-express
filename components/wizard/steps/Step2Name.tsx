@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
@@ -29,6 +29,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { STEP2_SAVE_TIMEOUT_MS } from '@/lib/action-timeout';
 import { nameCheckBlocksContinue, nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
 export function Step2Name({
@@ -52,6 +53,7 @@ export function Step2Name({
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [showNameError, setShowNameError] = useState(false);
   const { pending, error, run } = useWizardSubmit();
+  const cancelNameCheck = useRef<() => void>(() => {});
   const router = useLocalizedRouter(filing.locale);
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
@@ -66,6 +68,9 @@ export function Step2Name({
   const canContinue = !nameTooShort && !isHardBlocked && !nameTaken;
 
   const saveAndAdvance = () => {
+    // A slow Sunbiz lookup must not sit in front of the save. Abort it and
+    // keep the "we'll check it before filing" note. The save has its own cap.
+    cancelNameCheck.current();
     run(async () => {
       const res = await saveStep2({
         filingId: filing.id,
@@ -85,7 +90,7 @@ export function Step2Name({
         return { ok: false, error: res.error };
       }
       router.push(`/wizard/${filing.id}/3`);
-    });
+    }, STEP2_SAVE_TIMEOUT_MS);
   };
 
   const onContinue = () => {
@@ -130,6 +135,7 @@ export function Step2Name({
         initialName={seededBusinessName(filing.businessName)}
         entityType={filing.entityType as 'LLC' | 'CORP'}
         formationState={formationState}
+        cancelRef={cancelNameCheck}
         onChange={(n, r, a) => {
           setName(n);
           setResult(r);

@@ -6,10 +6,12 @@
  * while available is false is not a successful check.
  */
 
+import { linkAbortSignals } from '@/lib/abort-signals';
 import { joinEntityName } from '@/lib/florida';
 
 export const NAME_CHECK_MAX_LENGTH = 100;
-export const NAME_CHECK_CLIENT_TIMEOUT_MS = 15_000;
+/** Matches the server name-check budget so the widget does not outwait Sunbiz. */
+export const NAME_CHECK_CLIENT_TIMEOUT_MS = 5_000;
 export const NAME_CHECK_DEBOUNCE_MS = 600;
 /** How long Retry stays disabled after a 429. */
 export const NAME_CHECK_RATE_LIMIT_COOLDOWN_MS = 8_000;
@@ -353,13 +355,15 @@ export async function requestNameCheck(
   url: string,
   fetchImpl: typeof fetch = fetch,
   timeoutMs = NAME_CHECK_CLIENT_TIMEOUT_MS,
+  externalSignal?: AbortSignal,
 ): Promise<NameCheckOutcome> {
   const started = performance.now();
   try {
-    const signal =
+    const timeoutSignal =
       typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
         ? AbortSignal.timeout(timeoutMs)
         : undefined;
+    const signal = linkAbortSignals([timeoutSignal, externalSignal]);
     const res = await fetchImpl(url, {
       ...(signal ? { signal } : {}),
       cache: 'no-store',

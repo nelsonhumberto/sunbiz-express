@@ -118,7 +118,9 @@ describe('displayed prices derive from lib/pricing.ts', () => {
   it('computes Stripe amounts on the server from the catalog', () => {
     const route = source('app/api/stripe/payment-intent/route.ts');
     expect(route).toContain('The amount is computed here and the client amount is ignored.');
-    expect(route).toContain('computeCost(');
+    expect(route).toContain('quoteDraftFiling(');
+    expect(source('lib/filing-totals.ts')).toContain('computeCost(');
+    expect(route).not.toContain('filing.totalCents');
     expect(route).toContain('amount: priced.amountCents');
     expect(route).toContain('quoteAnnualReport(');
     expect(route).not.toMatch(/amount:\s*body\.amountCents/);

@@ -37,7 +37,8 @@ const Step11AddOns = nextDynamic(() =>
 const Step12Payment = nextDynamic(() =>
   import('@/components/wizard/steps/Step12Payment').then((m) => m.Step12Payment),
 );
-import { computeCost, type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { quoteDraftFiling } from '@/lib/filing-totals';
 import { guestWizardStep } from '@/lib/start-draft';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
@@ -178,12 +179,12 @@ export default async function WizardStepPage({ params }: PageProps) {
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   });
-  const serverTotalCents = computeCost({
-    entityType: cost.entityType,
-    tier: cost.tier,
-    addOnSlugs: cost.addOnSlugs,
-    state: cost.state,
-    processingOptionId: cost.processingOptionId,
+  const serverTotalCents = quoteDraftFiling({
+    entityType: filing.entityType,
+    serviceTier: filing.serviceTier,
+    state: filing.state,
+    optionalDetails: filing.optionalDetails,
+    filingAdditionalServices: filing.filingAdditionalServices,
   }).totalCents;
 
   if (isGuest && stepNum === 1) {

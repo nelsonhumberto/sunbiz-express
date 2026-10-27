@@ -15,14 +15,15 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
-  computeCost,
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
-  type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
 import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
+import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
 import {
   DOCUMENT_NUMBER_REQUIRED,
   guestAnnualReportPaymentIntentMatches,
@@ -675,23 +676,28 @@ async function priceOwnedCharge(input: {
     return paymentError('already_paid', 409);
   }
 
-  const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
-  const processingOptionId =
-    optionalDetails && typeof optionalDetails.processingOption === 'string'
-      ? optionalDetails.processingOption
-      : undefined;
-  const breakdown = computeCost({
-    entityType: filing.entityType as 'LLC' | 'CORP',
-    tier: filing.serviceTier as TierSlug,
-    addOnSlugs: filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
-    state: asStateCode(filing.state),
-    processingOptionId,
-  });
-  const discount = await formationCouponDiscount(input.couponCode, breakdown.totalCents);
+  // Catalog price plus selected add-ons. Stored totals and the client body are ignored.
+  const totals = quoteDraftFiling(filing);
+  if (filingTotalsChanged(filing, totals)) {
+    try {
+      await prisma.filing.update({
+        where: { id: filing.id },
+        data: totals,
+      });
+    } catch (err) {
+      logger.warn('draft total refresh failed', {
+        area: 'stripe',
+        tag: 'draft-total-refresh',
+        entityId: filing.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  const discount = await formationCouponDiscount(input.couponCode, totals.totalCents);
   if (!discount.ok) {
     return paymentError('invalid_coupon', 400);
   }
-  const amountCents = Math.max(0, breakdown.totalCents - discount.discountCents);
+  const amountCents = Math.max(0, totals.totalCents - discount.discountCents);
   const stateFeeMinimum = tierBundledStateFeeCents(
     filing.serviceTier as TierSlug,
     filing.entityType as EntityType,

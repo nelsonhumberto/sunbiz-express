@@ -64,7 +64,7 @@ export function Step12Payment({
   isGuest?: boolean;
   guestEmail?: string;
   pendingAccountEmail?: string;
-  /** Order total from computeCost on the server, in cents. */
+  /** Catalog total from the server, in cents. The client amount is not charged. */
   serverTotalCents: number;
 }) {
   const t = useTranslations('wizard');

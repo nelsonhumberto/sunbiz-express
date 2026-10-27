@@ -17,6 +17,7 @@
 import * as cheerio from 'cheerio';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { linkAbortSignals } from './abort-signals';
 import { normalizeDistinguishableName, stripSuffix } from './florida';
 
 export interface SunbizEntity {
@@ -69,6 +70,12 @@ const HARD_BLOCK_STATUSES = new Set(['ACTIVE', 'NAME HS']);
 const SOFT_WARN_STATUSES = new Set(['INACT', 'CROSS RF']);
 
 const REQUEST_TIMEOUT_MS = 12_000;
+
+/**
+ * Name availability must not stack one 12s timeout per search term.
+ * Every term shares this budget and runs together.
+ */
+export const NAME_CHECK_UPSTREAM_BUDGET_MS = 5_000;
 const DEFAULT_LIMIT = 25;
 const MAX_QUERY_LEN = 100;
 
@@ -518,7 +525,21 @@ export async function searchSunbiz(
  * suffix-stripped base) and de-duplicate by document number, since
  * sunbizdaily's prefix-style search may miss filings with extra leading
  * articles or different suffix forms.
+ *
+ * Search terms run together under one budget, so three slow lookups cannot
+ * add up past NAME_CHECK_UPSTREAM_BUDGET_MS.
  */
+export async function runBudgetedSearches<T>(
+  terms: string[],
+  opts: { signal?: AbortSignal; budgetMs?: number },
+  search: (term: string, signal: AbortSignal) => Promise<T>,
+): Promise<T[]> {
+  const budget = AbortSignal.timeout(opts.budgetMs ?? NAME_CHECK_UPSTREAM_BUDGET_MS);
+  const signal = linkAbortSignals([opts.signal, budget]);
+  if (!signal) return Promise.all(terms.map((term) => search(term, budget)));
+  return Promise.all(terms.map((term) => search(term, signal)));
+}
+
 export async function checkNameAvailability(
   query: string,
   entityType: 'LLC' | 'CORP',
@@ -541,14 +562,12 @@ export async function checkNameAvailability(
   const seen = new Set<string>();
   const allEntities: SunbizEntity[] = [];
 
-  for (const term of searchTerms) {
-    let res;
-    try {
-      res = await searchSunbiz(term, opts);
-    } catch (err) {
-      // If any term fails, propagate - caller maps to user-facing error.
-      throw err;
-    }
+  // Parallel under one budget. A slow term used to add another 12s wait
+  // after the previous term had already timed out.
+  const settled = await runBudgetedSearches(searchTerms, { signal: opts.signal }, (term, signal) =>
+    searchSunbiz(term, { ...opts, signal }),
+  );
+  for (const res of settled) {
     mergedSource = mergedSource ?? res.source;
     for (const e of res.entities) {
       if (!e.documentNumber || seen.has(e.documentNumber)) continue;

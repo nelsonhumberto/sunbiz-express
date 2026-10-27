@@ -8,13 +8,19 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, floridaEasternYear } from '@/lib/pricing';
+import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import {
+  GUEST_LOOKUP_FAILED,
+  annualReportYearsOf,
+  guestAnnualReportOffer,
+  resolveGuestAnnualReportCharge,
+  type GuestAnnualReportOffer,
+} from '@/lib/guest-annual-report-offer';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   searchSunbiz,
-  SunbizError,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
 import { logger } from '@/lib/logger';
@@ -325,13 +331,20 @@ export async function submitAnnualReport(input: unknown) {
 /** Public (no-auth) Sunbiz entity lookup for the guest annual report form. */
 export async function lookupEntityPublic(
   documentNumber: string,
-): Promise<{ ok: true; detail: FloridaEntityDetail } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; detail: FloridaEntityDetail; offer: GuestAnnualReportOffer }
+  | { ok: false; error: typeof GUEST_LOOKUP_FAILED }
+> {
   try {
     const detail = await fetchFloridaEntityDetailByDocumentNumber(documentNumber.trim());
-    return { ok: true, detail };
-  } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Could not load that entity. Please try again.' };
+    const offer = guestAnnualReportOffer({
+      lookupOk: true,
+      status: detail.status,
+      filedYears: annualReportYearsOf(detail),
+    });
+    return { ok: true, detail, offer };
+  } catch {
+    return { ok: false, error: GUEST_LOOKUP_FAILED };
   }
 }
 
@@ -348,6 +361,7 @@ export interface EntitySearchHit {
  */
 export async function searchEntitiesByName(
   query: string,
+  options?: { includeInactive?: boolean },
 ): Promise<{ ok: true; results: EntitySearchHit[] } | { ok: false; error: string }> {
   if (!query.trim() || query.trim().length < 2) {
     return { ok: false, error: 'Enter at least 2 characters.' };
@@ -358,18 +372,17 @@ export async function searchEntitiesByName(
   if (limited) return { ok: false, error: limited };
   try {
     const { entities } = await searchSunbiz(query.trim(), { limit: 50 });
-    const active = entities
-      .filter((e) => e.status === 'Active' || e.status?.toUpperCase() === 'ACTIVE')
-      .slice(0, 10)
-      .map<EntitySearchHit>((e) => ({
-        name: e.name,
-        documentNumber: e.documentNumber,
-        status: e.status,
-      }));
-    return { ok: true, results: active };
-  } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Search failed. Please try again.' };
+    const rows = options?.includeInactive
+      ? entities
+      : entities.filter((e) => e.status === 'Active' || e.status?.toUpperCase() === 'ACTIVE');
+    const results = rows.slice(0, 10).map<EntitySearchHit>((e) => ({
+      name: e.name,
+      documentNumber: e.documentNumber,
+      status: e.status,
+    }));
+    return { ok: true, results };
+  } catch {
+    return { ok: false, error: GUEST_LOOKUP_FAILED };
   }
 }
 
@@ -400,9 +413,22 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
 
   // Guest annual reports are Florida-only. The year is the Eastern calendar
   // year on the server. A client reportYear, late fee, or amount is ignored.
+  // The lookup is repeated here so a dissolved or already-filed company is not saved.
   const now = new Date();
-  const reportYear = floridaEasternYear(now);
-  const quote = quoteAnnualReport('FL', data.entityType, data.useOurRa, reportYear, now);
+  const decision = await resolveGuestAnnualReportCharge({
+    documentNumber: data.documentNumber,
+    entityType: data.entityType,
+    useOurRa: data.useOurRa,
+    now,
+  });
+  if (!decision.ok) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. ${decision.error} No refund was issued.`,
+    );
+    return { ok: false as const, error: decision.error };
+  }
+  const reportYear = decision.reportYear;
+  const quote = decision.quote;
   const email = data.guestEmail.toLowerCase().trim();
 
   // Verify Stripe amount matches our expected total (±1 cent for rounding).
@@ -457,7 +483,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       const filing = await tx.filing.create({
         data: {
           userId: user!.id,
-          entityType: data.entityType,
+          entityType: decision.entityType,
           state: 'FL',
           businessName: data.companyName,
           filingSource: 'LINKED',

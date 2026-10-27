@@ -8,6 +8,7 @@ const paymentIntentsRetrieve = vi.hoisted(() => vi.fn());
 const paymentIntentsUpdate = vi.hoisted(() => vi.fn());
 const refundsCreate = vi.hoisted(() => vi.fn());
 const rateLimit = vi.hoisted(() => vi.fn());
+const fetchDetail = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/auth', () => ({ auth }));
 vi.mock('@/lib/guest', () => ({ getGuestUser }));
@@ -34,6 +35,9 @@ vi.mock('@/lib/stripe', () => ({
 vi.mock('@/lib/rate-limit', () => ({
   rateLimit,
   clientIp: () => '203.0.113.8',
+}));
+vi.mock('@/lib/sunbiz', () => ({
+  fetchFloridaEntityDetailByDocumentNumber: fetchDetail,
 }));
 vi.mock('@/lib/utm-server', () => ({ getServerUtmAttribution: () => null }));
 vi.mock('next/headers', () => ({ cookies: () => ({ get: () => undefined }) }));
@@ -65,6 +69,15 @@ beforeEach(() => {
   auth.mockResolvedValue(null);
   getGuestUser.mockResolvedValue(null);
   rateLimit.mockReturnValue({ ok: true, remaining: 9, retryAfterSeconds: 0 });
+  fetchDetail.mockReset();
+  fetchDetail.mockResolvedValue({
+    corporation_number: 'L12345678901',
+    corporation_name: 'Ada LLC',
+    status: 'ACTIVE',
+    filing_type: 'FLAL',
+    filing_type_display: 'Florida Limited Liability Company',
+    annual_reports: [{ year: 2025, filed_date: '04/30/2025' }],
+  });
   paymentIntentsCreate.mockResolvedValue({
     id: 'pi_guest',
     client_secret: 'sec_guest',
@@ -81,6 +94,7 @@ describe('guest annual report payment intent', () => {
   it('prices a logged-out checkout from the server year and ignores the client amount', async () => {
     const res = await post(
       {
+        documentNumber: 'L12345678901',
         entityType: 'LLC',
         useOurRa: false,
         amountCents: 1,
@@ -111,9 +125,18 @@ describe('guest annual report payment intent', () => {
 
   it('prices a signed-in guest annual report without a filing', async () => {
     auth.mockResolvedValue({ user: { id: 'user_1' } });
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'P12345678901',
+      corporation_name: 'Ada Corp',
+      status: 'A',
+      filing_type: 'DOMP',
+      filing_type_display: 'Florida Profit Corporation',
+      annual_reports: [{ year: 2024 }],
+    });
     const res = await post(
       {
-        entityType: 'CORP',
+        documentNumber: 'P12345678901',
+        entityType: 'LLC',
         useOurRa: true,
         amountCents: 50,
         reportYear: 2030,
@@ -140,7 +163,7 @@ describe('guest annual report payment intent', () => {
   it('does not block a formation guest cookie from the public annual report checkout', async () => {
     getGuestUser.mockResolvedValue({ id: 'guest_cookie' });
     const res = await post(
-      { entityType: 'LLC', useOurRa: false },
+      { documentNumber: 'L12345678901', entityType: 'LLC', useOurRa: false },
       'guest_annual_report',
     );
     expect(res.status).toBe(200);
@@ -190,6 +213,7 @@ describe('guest annual report payment intent', () => {
     });
     const res = await post(
       {
+        documentNumber: 'L12345678901',
         entityType: 'LLC',
         useOurRa: false,
         paymentIntentId: 'pi_open',
@@ -216,7 +240,7 @@ describe('guest annual report payment intent', () => {
       metadata: { purpose: 'guest_annual_report' },
     });
     const res = await post(
-      { entityType: 'LLC', useOurRa: false, paymentIntentId: 'pi_paid' },
+      { documentNumber: 'L12345678901', entityType: 'LLC', useOurRa: false, paymentIntentId: 'pi_paid' },
       'guest_annual_report',
     );
     expect(res.status).toBe(200);
@@ -225,6 +249,96 @@ describe('guest annual report payment intent', () => {
     expect(paymentIntentsCreate).not.toHaveBeenCalled();
     expect(paymentIntentsUpdate).not.toHaveBeenCalled();
     expect(refundsCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not charge a dissolved company', async () => {
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'L12345678901',
+      corporation_name: 'Closed LLC',
+      status: 'INACT',
+      filing_type: 'FLAL',
+      annual_reports: [],
+    });
+    const res = await post(
+      { documentNumber: 'L12345678901', entityType: 'LLC', useOurRa: false, amountCents: 63_775 },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.code).toBe('company_dissolved');
+    expect(json.error).toMatch(/dissolved/i);
+    expect(json.error).not.toMatch(/SUNBIZ|API_KEY|process\.env/i);
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+    expect(paymentIntentsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('charges the late 2026 report when the company is active and the year is unfiled', async () => {
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'L12345678901',
+      corporation_name: 'Open LLC',
+      status: 'A',
+      filing_type: 'FLAL',
+      annual_reports: [{ year: 2024 }, { year: 2025 }],
+    });
+    const res = await post(
+      {
+        documentNumber: 'L12345678901',
+        entityType: 'CORP',
+        useOurRa: false,
+        amountCents: 1,
+        reportYear: 2027,
+      },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(200);
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 63_775,
+        metadata: expect.objectContaining({ entityType: 'LLC', reportYear: '2026' }),
+      }),
+      undefined,
+    );
+  });
+
+  it('does not charge when the 2026 annual report is already filed', async () => {
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'L12345678901',
+      corporation_name: 'Current LLC',
+      status: 'ACTIVE',
+      filing_type: 'FLAL',
+      annual_reports: [{ year: 2025 }, { year: 2026 }],
+    });
+    const res = await post(
+      { documentNumber: 'L12345678901', entityType: 'LLC', useOurRa: false, amountCents: 63_775 },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.code).toBe('annual_report_filed');
+    expect(json.error).toBe('Nothing due until Jan 1, 2027.');
+    expect(paymentIntentsCreate).not.toHaveBeenCalled();
+  });
+
+  it('quotes the current year when the lookup fails so manual entry can continue', async () => {
+    fetchDetail.mockRejectedValue(
+      new Error('sunbizdaily rejected the API key (401/403). Check SUNBIZDAILY_API_KEY.'),
+    );
+    const res = await post(
+      {
+        documentNumber: 'L12345678901',
+        entityType: 'LLC',
+        useOurRa: false,
+        amountCents: 1,
+      },
+      'guest_annual_report',
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(JSON.stringify(json)).not.toMatch(/SUNBIZ|API_KEY/);
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 63_775 }),
+      undefined,
+    );
   });
 
   it('still returns 401 before reading the body for a logged-out formation request', async () => {

@@ -415,6 +415,19 @@ def _parse_detail_page(html: str, doc_number: str) -> dict[str, Any]:
     if "officers" not in result:
         result["officers"] = []
 
+    # Sunbiz lists filed annual reports in a table: year, then filed date.
+    reports: list[dict[str, Any]] = []
+    for table in soup.find_all("table"):
+        for tr in table.find_all("tr"):
+            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+            if len(cells) < 2 or not re.fullmatch(r"20\d{2}", cells[0]):
+                continue
+            if not re.fullmatch(r"\d{2}/\d{2}/\d{4}", cells[1]):
+                continue
+            reports.append({"year": int(cells[0]), "filed_date": cells[1]})
+    if reports:
+        result["annual_reports"] = reports
+
     return result
 
 

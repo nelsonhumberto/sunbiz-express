@@ -16,13 +16,13 @@ import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
   computeCost,
-  floridaEasternYear,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-offer';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
@@ -108,6 +108,7 @@ const GuestAnnualReportChargeSchema = z.object({
   useOurRa: z.boolean({
     errorMap: () => ({ message: 'Choose whether to add registered agent service.' }),
   }),
+  documentNumber: z.string().trim().min(5).max(24),
   paymentIntentId: z.string().trim().min(1).optional(),
   guestAttemptId: z.string().trim().min(8).max(80).optional(),
 });
@@ -396,8 +397,9 @@ async function createGuestFormationPaymentIntent(
 }
 
 /**
- * Public Florida annual report PaymentIntent. The amount is quoteAnnualReport
- * for the Eastern year. Client amount, late fee, and year are ignored.
+ * Public Florida annual report PaymentIntent. The amount is quoted again here
+ * from the company lookup and the Eastern year. Client amount, late fee, and
+ * year are ignored. A dissolved or already-filed company is not charged.
  * An open or succeeded guest PaymentIntent is reused. The card is not refunded here.
  */
 async function createGuestAnnualReportPaymentIntent(
@@ -428,20 +430,25 @@ async function createGuestAnnualReportPaymentIntent(
   }
 
   const now = new Date();
-  const reportYear = floridaEasternYear(now);
-  const quote = quoteAnnualReport(
-    'FL',
-    parsed.data.entityType,
-    parsed.data.useOurRa,
-    reportYear,
+  const decision = await resolveGuestAnnualReportCharge({
+    documentNumber: parsed.data.documentNumber,
+    entityType: parsed.data.entityType,
+    useOurRa: parsed.data.useOurRa,
     now,
-  );
+    locale: checkoutRequestLocale(),
+  });
+  if (!decision.ok) {
+    return NextResponse.json({ error: decision.error, code: decision.code }, { status: 400 });
+  }
+  const quote = decision.quote;
+  const reportYear = decision.reportYear;
   const stripe = getStripe();
   const metadata: Stripe.MetadataParam = {
     purpose: 'guest_annual_report',
-    entityType: parsed.data.entityType,
+    entityType: decision.entityType,
     useOurRa: parsed.data.useOurRa ? 'true' : 'false',
     reportYear: String(reportYear),
+    documentNumber: parsed.data.documentNumber,
     ...(userId ? { userId } : {}),
   };
 

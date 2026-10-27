@@ -134,6 +134,7 @@ const InnerCard = forwardRef(function InnerCard(
           ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
           ...(email ? { email } : {}),
           ...(entityType ? { entityType } : {}),
+          ...(opts.metadata?.documentNumber ? { documentNumber: opts.metadata.documentNumber } : {}),
           ...(guestAttemptId ? { guestAttemptId } : {}),
           ...(paymentIntentId ? { paymentIntentId } : {}),
           ...(annualReportId ? { annualReportId } : {}),

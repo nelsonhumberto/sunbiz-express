@@ -13,7 +13,7 @@ export const NICHE_STYLISTS_ES_URL = `${SITE}${NICHE_STYLISTS_ES_PATH}`;
 /**
  * Feature flag `niche_bundle_block`.
  * Server env NICHE_BUNDLE_BLOCK_ENABLED. Unset, empty, and any value other
- * than true/1/yes/on stay off. Default is off. English page only.
+ * than true/1/yes/on stay off. Default is off. Both locales.
  */
 export function nicheBundleBlockEnabled(): boolean {
   const raw = process.env['NICHE_BUNDLE_BLOCK_ENABLED'];

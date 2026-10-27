@@ -1,11 +1,41 @@
 import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { load } from 'cheerio';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AbstractIntlMessages } from 'next-intl';
+import StylistsBarbersPage from '@/app/(marketing)/llc-for/stylists-barbers/page';
 import sitemap from '@/app/sitemap';
+
+const pageI18n = vi.hoisted(() => {
+  const { readFileSync } = require('node:fs') as typeof import('node:fs');
+  return {
+    locale: 'en' as 'en' | 'es',
+    en: JSON.parse(readFileSync('messages/en.json', 'utf8')) as {
+      nicheStylists: Record<string, string>;
+    },
+    es: JSON.parse(readFileSync('messages/es.json', 'utf8')) as {
+      nicheStylists: Record<string, string>;
+    },
+  };
+});
+
+vi.mock('next/cache', () => ({
+  unstable_noStore: () => {},
+}));
+
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => pageI18n.locale,
+  getTranslations: async () => {
+    const bag = pageI18n.locale === 'es' ? pageI18n.es.nicheStylists : pageI18n.en.nicheStylists;
+    return (key: string) => {
+      const value = bag[key];
+      if (typeof value !== 'string') throw new Error(`missing nicheStylists.${key}`);
+      return value;
+    };
+  },
+}));
 import { NicheStylistsPage } from '@/components/marketing/NicheStylistsPage';
 import { omitNicheClientMessages } from '@/i18n/config';
 import { routing } from '@/i18n/routing';
@@ -158,7 +188,7 @@ describe('stylists and barbers copy', () => {
     );
     expect(enBundle.title).toBe('Launch Bundle, $299 for our first 10 customers');
     expect(enBundle.body).toBe(
-      'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. [See the Launch Bundle](/launch-bundle)',
+      'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. [See the Launch Bundle](/pricing)',
     );
     expect(enBundle.body).not.toMatch(/year-1 registered agent/);
     expect(enCopy.faq).toHaveLength(7);
@@ -211,7 +241,7 @@ describe('stylists and barbers copy', () => {
       'Launch Bundle, $299 para nuestros primeros 10 clientes',
     );
     expect(es.nicheStylists.bundleBody).toBe(
-      'Esencial con la tarifa estatal de $125, más tu EIN y un acuerdo operativo para un solo miembro. [Ver el Launch Bundle](/launch-bundle)',
+      'Esencial con la tarifa estatal de $125, más tu EIN y un acuerdo operativo para un solo miembro. [Ver el Launch Bundle](/es/pricing)',
     );
     expect(es.nicheStylists).not.toHaveProperty('bossTitle');
     expect(es.nicheStylists).not.toHaveProperty('howTitle');
@@ -329,7 +359,7 @@ describe('stylists and barbers copy', () => {
     expect($('[data-bundle-block] p').text()).toBe(
       'Essential with the $125 state fee, plus your EIN, plus a single-member Operating Agreement. See the Launch Bundle',
     );
-    expect($('[data-bundle-block] a').attr('href')).toBe('/launch-bundle');
+    expect($('[data-bundle-block] a').attr('href')).toBe('/pricing');
     const schema = JSON.parse($('script[type="application/ld+json"]').text());
     expect(JSON.stringify(schema)).not.toContain('Launch Bundle');
     expect(JSON.stringify(schema)).not.toContain('$299');
@@ -353,13 +383,40 @@ describe('niche bundle flag', () => {
     else process.env.NICHE_BUNDLE_BLOCK_ENABLED = previous;
   });
 
+  it('renders the Spanish bundle copy when the flag is on', async () => {
+    const previous = process.env.NICHE_BUNDLE_BLOCK_ENABLED;
+    const previousLocale = pageI18n.locale;
+    process.env.NICHE_BUNDLE_BLOCK_ENABLED = 'true';
+    pageI18n.locale = 'es';
+    try {
+      const html = renderToStaticMarkup(await StylistsBarbersPage());
+      const $ = load(html);
+      expect($('[data-bundle-block]')).toHaveLength(1);
+      expect($('[data-bundle-block] h2').text()).toBe(
+        'Launch Bundle, $299 para nuestros primeros 10 clientes',
+      );
+      expect($('[data-bundle-block] p').text()).toBe(
+        'Esencial con la tarifa estatal de $125, más tu EIN y un acuerdo operativo para un solo miembro. Ver el Launch Bundle',
+      );
+      expect($('[data-bundle-block] a').text()).toBe('Ver el Launch Bundle');
+      expect($('[data-bundle-block] a').attr('href')).toBe('/es/pricing');
+      const schema = JSON.parse($('script[type="application/ld+json"]').text());
+      expect(JSON.stringify(schema)).not.toMatch(/Launch Bundle|\$299|\/es\/pricing/);
+    } finally {
+      pageI18n.locale = previousLocale;
+      if (previous === undefined) delete process.env.NICHE_BUNDLE_BLOCK_ENABLED;
+      else process.env.NICHE_BUNDLE_BLOCK_ENABLED = previous;
+    }
+  });
+
   it('keeps bundle strings out of the client message catalog', () => {
     const client = omitNicheClientMessages(en as unknown as AbstractIntlMessages);
     expect(client).not.toHaveProperty('nicheStylists');
     expect(JSON.stringify(client)).not.toContain('Launch Bundle');
     expect(JSON.stringify(client)).not.toContain('first 10 customers');
     const page = readFileSync('app/(marketing)/llc-for/stylists-barbers/page.tsx', 'utf8');
-    expect(page).toContain("locale === 'en' && nicheBundleBlockEnabled()");
+    expect(page).toContain('nicheBundleBlockEnabled() ? readNicheBundleCopy');
+    expect(page).not.toContain("locale === 'en' && nicheBundleBlockEnabled()");
     expect(page).not.toContain('?ref=');
     expect(page).toContain('title: { absolute: copy.metaTitle }');
     expect(page).toContain('nicheMetadataAlternates(locale)');

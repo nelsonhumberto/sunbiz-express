@@ -107,8 +107,11 @@ describe('displayed prices derive from lib/pricing.ts', () => {
     expect(source('app/(marketing)/file-annual-report/page.tsx')).toContain(
       'ANNUAL_REPORT_SERVICE_FEE_CENTS',
     );
-    expect(source('components/marketing/GuestAnnualReportForm.tsx')).toContain(
-      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raAddon',
+    const guest = source('components/marketing/GuestAnnualReportForm.tsx');
+    expect(guest).toContain("quoteAnnualReport('FL', entityType, useOurRa, reportYear, now)");
+    expect(guest).toContain('const totalCents = quote.totalCents');
+    expect(source('lib/annual-report-quote.ts')).toContain(
+      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents + raFee',
     );
   });
 
@@ -117,15 +120,16 @@ describe('displayed prices derive from lib/pricing.ts', () => {
     expect(route).toContain('The amount is computed here and the client amount is ignored.');
     expect(route).toContain('computeCost(');
     expect(route).toContain('amount: priced.amountCents');
-    expect(route).toContain(
-      'ANNUAL_REPORT_SERVICE_FEE_CENTS + compliance.baseFeeCents + raFee',
-    );
+    expect(route).toContain('quoteAnnualReport(');
     expect(route).not.toMatch(/amount:\s*body\.amountCents/);
     expect(route).not.toMatch(/prices\.(create|retrieve)|price_/);
 
     const report = source('actions/annual-report.ts');
-    expect(report).toContain('ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee');
-    expect(report).toContain('Math.abs(pi.amount - totalCents)');
+    expect(report).toContain('quoteAnnualReport(');
+    expect(report).toContain('Math.abs(pi.amount - quote.totalCents)');
+    expect(source('lib/annual-report-quote.ts')).toContain(
+      'ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFilingFeeCents + raFee',
+    );
   });
 
   it('leaves no stale formation headlines in customer-facing copy', () => {

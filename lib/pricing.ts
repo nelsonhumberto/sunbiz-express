@@ -20,6 +20,7 @@
 
 import {
   FORMATION_STATES,
+  annualComplianceFor,
   certificateOfStatusFeeCents,
   certifiedCopyFeeCents,
   defaultProcessingOption,
@@ -205,14 +206,110 @@ export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 
 /**
  * Our service fee for filing an annual report (EXCLUDING the state fee).
- *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state-specific fee
- *   FL LLC  total: $99 + $138.75 = $237.75
- *   FL Corp total: $99 + $150.00 = $249.00
+ *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state fees
+ *   FL LLC  on time: $99 + $138.75 = $237.75
+ *   FL LLC  after May 1: $99 + $138.75 + $400 late fee = $637.75
+ *   FL Corp on time: $99 + $150.00 = $249.00
+ *   FL Corp after May 1: $99 + $150.00 + $400 late fee = $649.00
+ *   The $400 is a Florida state fee, not part of the $99 service fee.
  *   WY LLC/Corp total: $99 + $60.00 minimum = $159.00 minimum
  *   DE LLC total: $99 + $300.00 = $399.00 (annual tax, no report)
  *   DE Corp total: $99 + $225.00 minimum (franchise tax min) = $324.00 minimum
  */
 export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 9_900; // $99.00
+
+/**
+ * Nelson approved charging Florida's $400 annual-report late fee after May 1.
+ * Set this to false to stop adding the fee. The $99 service fee never includes it.
+ */
+export const FL_AR_LATE_FEE_ENABLED = true;
+
+const FLORIDA_TIME_ZONE = 'America/New_York';
+
+export interface FloridaAnnualReportStateFees {
+  /** On-time Sunbiz fee. $138.75 for an LLC, $150 for a for-profit corporation. */
+  filingFeeCents: number;
+  /** Separate state late fee. $400 after May 1 Eastern, otherwise 0. */
+  lateFeeCents: number;
+  /** filingFeeCents + lateFeeCents. This is what we remit to Florida. */
+  totalCents: number;
+}
+
+export interface FloridaAnnualReportStateFeeOptions {
+  /** Defaults to LLC ($138.75). Corporations use the $150 Sunbiz fee. */
+  entityType?: EntityType;
+  /** Defaults to {@link FL_AR_LATE_FEE_ENABLED} when omitted. */
+  enabled?: boolean;
+}
+
+/**
+ * Calendar year, month, and day in America/New_York. Month is 1-12.
+ * Sunbiz's "received after May 1" rule follows Florida's clock, not UTC.
+ */
+function floridaCalendarDate(now: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: FLORIDA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const read = (type: Intl.DateTimeFormatPartTypes) => {
+    const value = parts.find((part) => part.type === type)?.value;
+    if (!value) {
+      throw new Error(`Missing ${type} in Florida calendar date`);
+    }
+    return Number(value);
+  };
+  return { year: read('year'), month: read('month'), day: read('day') };
+}
+
+/** Calendar year in America/New_York. */
+export function floridaEasternYear(now: Date = new Date()): number {
+  return floridaCalendarDate(now).year;
+}
+
+/**
+ * True when Sunbiz would assess the late fee for this report year.
+ * The deadline is May 1, 11:59:59 PM Eastern of `reportYear`.
+ * May 1 itself is on time. May 2 of that year is late.
+ * A later calendar year is also late. A future report year is not.
+ *
+ * Source: https://dos.fl.gov/sunbiz/forms/fees/
+ * LLC annual report $138.75, or $538.75 if received after May 1.
+ * Profit corporation annual report $150.00, or $550.00 if received after May 1.
+ */
+function isFloridaAnnualReportLate(now: Date, reportYear: number): boolean {
+  const today = floridaCalendarDate(now);
+  if (today.year > reportYear) return true;
+  if (today.year < reportYear) return false;
+  if (today.month > 5) return true;
+  if (today.month < 5) return false;
+  return today.day > 1;
+}
+
+/**
+ * Florida annual-report state fees for `reportYear`, received at `now`.
+ * Adds a separate $400 late-fee line only when `now` in America/New_York
+ * is after May 1 of that report year and {@link FL_AR_LATE_FEE_ENABLED}
+ * is true. The late fee is a state fee. It is not part of our service fee.
+ */
+export function getFloridaAnnualReportStateFees(
+  reportYear: number,
+  now: Date = new Date(),
+  options?: FloridaAnnualReportStateFeeOptions,
+): FloridaAnnualReportStateFees {
+  const entityType = options?.entityType ?? 'LLC';
+  const enabled = options?.enabled ?? FL_AR_LATE_FEE_ENABLED;
+  const compliance = annualComplianceFor(FORMATION_STATES.FL, entityType);
+  const filingFeeCents = compliance.baseFeeCents;
+  const lateFeeCents =
+    enabled && isFloridaAnnualReportLate(now, reportYear) ? compliance.lateFeeCents : 0;
+  return {
+    filingFeeCents,
+    lateFeeCents,
+    totalCents: filingFeeCents + lateFeeCents,
+  };
+}
 
 /** Optional Registered Agent service upsell added to annual report checkout. */
 export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00

@@ -15,14 +15,14 @@ import {
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
-  ANNUAL_REPORT_SERVICE_FEE_CENTS,
   computeCost,
-  RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
   type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
@@ -37,7 +37,6 @@ import {
 } from '@/lib/checkout-guard';
 import {
   ACTIVE_FORMATION_STATES,
-  annualComplianceFor,
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
@@ -60,6 +59,8 @@ import {
   type PaymentIntentErrorCode,
 } from '@/lib/payment-intent-errors';
 import { resolveRequestLocale } from '@/lib/request-locale';
+import { AnnualReportDraftSchema } from '@/lib/annual-report-draft';
+import { z } from 'zod';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -100,6 +101,26 @@ function asStateCode(input: string | null | undefined): StateCode {
   return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
 }
 
+const GuestAnnualReportChargeSchema = z.object({
+  entityType: z.enum(['LLC', 'CORP'], {
+    errorMap: () => ({ message: 'Choose LLC or corporation.' }),
+  }),
+  useOurRa: z.boolean({
+    errorMap: () => ({ message: 'Choose whether to add registered agent service.' }),
+  }),
+  documentNumber: z.string().trim().min(5).max(24),
+  paymentIntentId: z.string().trim().min(1).optional(),
+  guestAttemptId: z.string().trim().min(8).max(80).optional(),
+});
+
+/**
+ * Guest annual report checkout is flagged on the URL so a logged-out formation
+ * request still returns 401 before the body is read.
+ */
+function isGuestAnnualReportCheckout(request: NextRequest): boolean {
+  return request.nextUrl?.searchParams?.get('purpose') === 'guest_annual_report';
+}
+
 interface PaymentBody {
   filingId?: string;
   posthogDistinctId?: string;
@@ -110,6 +131,8 @@ interface PaymentBody {
   useOurRa?: boolean;
   /** Real mailbox a guest types on the payment step. Ignored for signed-in users. */
   email?: string;
+  annualReportId?: string;
+  annualReport?: unknown;
 }
 
 /**
@@ -129,6 +152,11 @@ export async function POST(request: NextRequest) {
 
   const session = await auth();
   const userId = session?.user?.id;
+
+  if (isGuestAnnualReportCheckout(request)) {
+    return createGuestAnnualReportPaymentIntent(request, userId);
+  }
+
   if (!userId) {
     const guest = await getGuestUser();
     if (!guest) {
@@ -163,6 +191,8 @@ export async function POST(request: NextRequest) {
       couponCode,
       raServiceId,
       useOurRa: body.useOurRa === true,
+      annualReportId: body.annualReportId,
+      annualReport: body.annualReport,
     });
     if (priced instanceof NextResponse) return priced;
 
@@ -366,6 +396,112 @@ async function createGuestFormationPaymentIntent(
   });
 }
 
+/**
+ * Public Florida annual report PaymentIntent. The amount is quoted again here
+ * from the company lookup and the Eastern year. Client amount, late fee, and
+ * year are ignored. A dissolved or already-filed company is not charged.
+ * An open or succeeded guest PaymentIntent is reused. The card is not refunded here.
+ */
+async function createGuestAnnualReportPaymentIntent(
+  request: NextRequest,
+  userId: string | undefined,
+) {
+  const guestLimit = rateLimit(`guest-annual-report:${clientIp()}`, 10, 60 * 1000);
+  if (!guestLimit.ok) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a moment.' },
+      { status: 429 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Check the form and try again.' }, { status: 400 });
+  }
+
+  const parsed = GuestAnnualReportChargeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' },
+      { status: 400 },
+    );
+  }
+
+  const now = new Date();
+  const decision = await resolveGuestAnnualReportCharge({
+    documentNumber: parsed.data.documentNumber,
+    entityType: parsed.data.entityType,
+    useOurRa: parsed.data.useOurRa,
+    now,
+    locale: checkoutRequestLocale(),
+  });
+  if (!decision.ok) {
+    return NextResponse.json({ error: decision.error, code: decision.code }, { status: 400 });
+  }
+  const quote = decision.quote;
+  const reportYear = decision.reportYear;
+  const stripe = getStripe();
+  const metadata: Stripe.MetadataParam = {
+    purpose: 'guest_annual_report',
+    entityType: decision.entityType,
+    useOurRa: parsed.data.useOurRa ? 'true' : 'false',
+    reportYear: String(reportYear),
+    documentNumber: parsed.data.documentNumber,
+    ...(userId ? { userId } : {}),
+  };
+
+  if (parsed.data.paymentIntentId) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(parsed.data.paymentIntentId);
+      if (existing.metadata?.purpose !== 'guest_annual_report') {
+        return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
+      }
+      if (existing.status === 'succeeded') {
+        return NextResponse.json({
+          clientSecret: existing.client_secret,
+          paymentIntentId: existing.id,
+          alreadySucceeded: true,
+        });
+      }
+      if (isReusablePaymentIntentStatus(existing.status)) {
+        const paymentIntent =
+          existing.amount === quote.totalCents
+            ? existing
+            : await stripe.paymentIntents.update(existing.id, {
+                amount: quote.totalCents,
+                metadata,
+              });
+        return NextResponse.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+        });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
+    }
+  }
+
+  const attemptId = parsed.data.guestAttemptId?.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  const idempotencyKey = attemptId
+    ? `guest_ar_${attemptId}_amt_${quote.totalCents}`.slice(0, 255)
+    : undefined;
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: quote.totalCents,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      metadata,
+    },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
 async function rememberCheckoutEmail(
   filingId: string,
   existing: string | null,
@@ -408,6 +544,8 @@ async function priceOwnedCharge(input: {
   couponCode?: string;
   raServiceId?: string;
   useOurRa: boolean;
+  annualReportId?: string;
+  annualReport?: unknown;
 }): Promise<PricedCharge | NextResponse> {
   if (input.purpose === 'ra_renewal') {
     if (!input.raServiceId) {
@@ -467,13 +605,42 @@ async function priceOwnedCharge(input: {
   }
 
   if (input.purpose === 'annual_report') {
-    const compliance = annualComplianceFor(
-      getFormationState(filing.state),
-      filing.entityType === 'CORP' ? 'CORP' : 'LLC',
+    // Reject an incomplete form before Stripe creates a PaymentIntent.
+    const draft = AnnualReportDraftSchema.safeParse(input.annualReport);
+    if (!draft.success) {
+      return NextResponse.json(
+        { error: draft.error.issues[0]?.message ?? 'Check the form and try again.' },
+        { status: 400 },
+      );
+    }
+    if (!input.annualReportId) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    const report = await prisma.annualReport.findUnique({
+      where: { id: input.annualReportId },
+      select: { id: true, filingId: true, status: true, reportYear: true },
+    });
+    if (!report || report.filingId !== filing.id) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    if (report.status === 'FILED') {
+      return NextResponse.json(
+        { error: 'This annual report has already been filed.' },
+        { status: 409 },
+      );
+    }
+    const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
+    const rule = getFormationState(filing.state);
+    // The report year comes from the database. A client year cannot skip the fee.
+    const quote = quoteAnnualReport(
+      rule.code,
+      entityType,
+      draft.data.useOurRa,
+      report.reportYear,
+      new Date(),
     );
-    const raFee = input.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
     return {
-      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + compliance.baseFeeCents + raFee,
+      amountCents: quote.totalCents,
       filingId: filing.id,
       purpose: 'annual_report',
       storedPaymentIntentId: null,

@@ -46,5 +46,6 @@ describe('guest-open rate limit', () => {
     const limiter = readFileSync('lib/rate-limit.ts', 'utf8');
     expect(limiter).toContain('const key = `${scope}:${ip}');
     expect(limiter).toContain("return value.split(',')[0]?.trim() ?? ''");
+    expect(limiter).toContain("firstHop(h.get('x-forwarded-for'))");
   });
 });

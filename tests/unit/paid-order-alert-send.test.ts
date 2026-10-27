@@ -131,6 +131,16 @@ describe('notifyAdminOfPaidOrder', () => {
     );
     await notifyAdminOfPaidOrder('fil_1');
     expect(sendEmail.mock.calls[0][0].context.annualReportDocumentNumber).toBe('L25000509630');
+
+    sendEmail.mockClear();
+    findUnique.mockResolvedValue(
+      filing({
+        sunbizFilingNumber: 'L25000509630',
+        annualReports: [{ status: 'PENDING', totalCostCents: 63_775 }],
+      }),
+    );
+    await notifyAdminOfPaidOrder('fil_1');
+    expect(sendEmail.mock.calls[0][0].context.annualReportDocumentNumber).toBe('L25000509630');
   });
 });
 

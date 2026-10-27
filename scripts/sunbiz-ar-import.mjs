@@ -426,16 +426,59 @@ export function statementForRecord(record, year) {
   );
 }
 
-export function buildSunbizArSql({ records, year, chunkSize = CHUNK_SIZE }) {
-  const statements = dedupeRecords(records).map((record) => statementForRecord(record, year));
+function chunkHeader(year) {
+  return (
+    `-- Sunbiz annual report candidates. Target year ${year}.\n` +
+    `-- Idempotent. A later sourceFileDate wins. Safe to run again.\n`
+  );
+}
+
+function chunkBodies(statements, year, chunkSize) {
   const size = Math.max(1, chunkSize);
   const chunks = [];
+  const header = chunkHeader(year);
   for (let i = 0; i < statements.length; i += size) {
     const body = statements.slice(i, i + size).join('\n');
-    const header =
-      `-- Sunbiz annual report candidates. Target year ${year}.\n` +
-      `-- Idempotent. A later sourceFileDate wins. Safe to run again.\n`;
     chunks.push(`${header}${body}\n`);
+  }
+  return chunks;
+}
+
+/**
+ * One guarded delete for every document number in the chunk.
+ * Callers group by source file date first, so the date guard matches each row.
+ */
+export function deleteStatementForDocuments(documentNumbers, sourceFileDate) {
+  const list = documentNumbers.map((doc) => sqlString(doc)).join(', ');
+  return (
+    `DELETE FROM "SunbizArCandidate" ` +
+    `WHERE "documentNumber" IN (${list}) ` +
+    `AND "sourceFileDate" <= DATE ${sqlString(sourceFileDate)};`
+  );
+}
+
+export function buildSunbizArSql({ records, year, chunkSize = CHUNK_SIZE, candidatesOnly = false }) {
+  const size = Math.max(1, chunkSize);
+  const insertStatements = [];
+  const deletesByDate = new Map();
+  for (const record of dedupeRecords(records)) {
+    if (isArCandidate(record, year)) {
+      insertStatements.push(statementForRecord(record, year));
+      continue;
+    }
+    if (candidatesOnly) continue;
+    const bucket = deletesByDate.get(record.sourceFileDate) ?? [];
+    bucket.push(record.documentNumber);
+    deletesByDate.set(record.sourceFileDate, bucket);
+  }
+  const chunks = chunkBodies(insertStatements, year, size);
+  const dates = [...deletesByDate.keys()].sort();
+  for (const sourceFileDate of dates) {
+    const docs = deletesByDate.get(sourceFileDate);
+    for (let i = 0; i < docs.length; i += size) {
+      const body = deleteStatementForDocuments(docs.slice(i, i + size), sourceFileDate);
+      chunks.push(`${chunkHeader(year)}${body}\n`);
+    }
   }
   return chunks;
 }
@@ -486,7 +529,7 @@ function usage() {
   return [
     'Usage:',
     '  unzip -p cordata.zip | node scripts/sunbiz-ar-import.mjs --source-date 2026-10-07 --year 2026 --out tmp/sunbiz-ar',
-    '  node scripts/sunbiz-ar-import.mjs --input <file|-> [--filename <name>] [--out <dir>] [--year <yyyy>] [--source-date <yyyy-mm-dd>] [--chunk-size 2000] [--db]',
+    '  node scripts/sunbiz-ar-import.mjs --input <file|-> [--filename <name>] [--out <dir>] [--year <yyyy>] [--source-date <yyyy-mm-dd>] [--chunk-size 2000] [--candidates-only] [--db]',
     '  node scripts/sunbiz-ar-import.mjs --delete <doc-number-list> [--out <dir>] [--chunk-size 2000] [--db]',
     'CSV columns: doc_number, entity_type, status, formation_date, ar_year_1, ar_year_2, ar_year_3, source_file_date',
     'entity_type is the raw Sunbiz filing type (FLAL, FORL, DOMP, DOMNP, FORP, FORNP).',
@@ -494,6 +537,8 @@ function usage() {
     'This script does not unzip. The quarterly zip is Deflate64. Pipe extracted text or pass a .txt/.csv file.',
     '--input - reads stdin. A pipe with no --input also reads stdin.',
     '--delete reads one document number per line and emits unconditional DELETE chunks.',
+    '--candidates-only writes upserts and skips deletes for non-candidates.',
+    'Without that flag, non-candidates are one DELETE ... IN (...) per chunk.',
     'Daily c files contain only new filings. Removals belong in --delete, not in the c file.',
     'Writes SQL chunks. Does not connect unless you pass --db and DATABASE_URL is set.',
   ].join('\n');
@@ -594,7 +639,12 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
       console.error(err instanceof Error ? err.message : String(err));
       return 1;
     }
-    const chunks = buildSunbizArSql({ records, year, chunkSize });
+    const chunks = buildSunbizArSql({
+      records,
+      year,
+      chunkSize,
+      candidatesOnly: argv.includes('--candidates-only'),
+    });
     const files = writeSqlChunks(chunks, outDir);
     const inserts = chunks.join('\n').split('INSERT INTO').length - 1;
     const deletes = chunks.join('\n').split('DELETE FROM').length - 1;

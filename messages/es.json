@@ -1514,7 +1514,6 @@
     "unconfirmedTitle": "No pudimos confirmar el estado del reporte anual",
     "unconfirmedBody": "No pudimos confirmar en línea el estado del reporte anual de esta compañía.",
     "unconfirmedContact": "Escríbenos",
-    "unconfirmedChecklist": "O deja tu correo en el formulario de esta página.",
     "nothingDueTitle": "El reporte anual de {year} ya está presentado",
     "nothingDue": "Nada pendiente hasta el 1 de enero de {year}.",
     "lookupFailed": "No pudimos confirmar en línea el estado del reporte anual de esta compañía.",

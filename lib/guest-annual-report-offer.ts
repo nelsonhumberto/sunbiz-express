@@ -127,7 +127,8 @@ export function candidateFormationIso(value: string | Date | null | undefined): 
  * What the guest annual report page may sell after a lookup.
  * Sell only when a candidate row is an LLC or corporation, active, formed
  * before January 1 of the report year, and does not list that year, and the
- * live lookup does not show the company dissolved or inactive.
+ * live lookup shows an explicitly active status. A blank or unknown live
+ * status does not sell when a candidate row exists.
  * A missing row or any other filing type is unconfirmed.
  * Live dissolved, inactive, current-year formation, and a live filed year
  * keep the same results as before.
@@ -142,7 +143,14 @@ export function guestAnnualReportOffer(input: {
   candidate?: SunbizArCandidateFacts | null;
 }): GuestAnnualReportOffer {
   if (!input.lookupOk) return { kind: 'unconfirmed' };
-  if (isFloridaEntityDissolved(input.status) || ((input.status ?? '').trim() && !isFloridaEntityActive(input.status))) {
+  if (isFloridaEntityDissolved(input.status)) {
+    return { kind: 'dissolved' };
+  }
+  // A candidate row is not enough. Live Sunbiz must say the company is active.
+  if (input.candidate && !isFloridaEntityActive(input.status)) {
+    return { kind: 'unconfirmed' };
+  }
+  if ((input.status ?? '').trim() && !isFloridaEntityActive(input.status)) {
     return { kind: 'dissolved' };
   }
   const reportYear = floridaEasternYear(input.now ?? new Date());

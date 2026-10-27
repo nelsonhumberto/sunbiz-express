@@ -6,6 +6,7 @@ import {
   OVERDUE_SOON_MS,
   filingOverdueBadge,
   formatEasternDateTime,
+  paidAnnualReportDocumentNumber,
   paidOrderDeadline,
 } from '@/lib/paid-order-alert';
 
@@ -80,6 +81,22 @@ describe('admin paid order email', () => {
     expect(mail.html).not.toContain('do not file and refund');
     expect(mail.subject).not.toMatch(/\u2014|\u2013/);
     expect(mail.html).not.toMatch(/\u2014|\u2013/);
+  });
+
+  it('warns before filing a paid annual report in any status', () => {
+    for (const status of ['FILED', 'PENDING', 'OVERDUE', 'DELINQUENT']) {
+      expect(paidAnnualReportDocumentNumber({
+        sunbizFilingNumber: 'L25000509630',
+        annualReports: [{ status, totalCostCents: 63_775 }],
+      })).toBe('L25000509630');
+    }
+    expect(paidAnnualReportDocumentNumber({
+      sunbizFilingNumber: 'L25000509630',
+      annualReports: [{ status: 'PENDING', totalCostCents: 0 }],
+    })).toBeNull();
+    expect(paidAnnualReportDocumentNumber({
+      annualReports: [{ status: 'PENDING', totalCostCents: 13_875 }],
+    })).toBe('');
   });
 
   it('tells admin to check live Sunbiz before filing a paid annual report', () => {

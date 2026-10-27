@@ -7,6 +7,8 @@ import {
   buildDeleteSql,
   buildSunbizArSql,
   databaseUrlFrom,
+  deleteStatementForDocuments,
+  statementForRecord,
   isArCandidate,
   parseDeleteList,
   parseSunbizArInput,
@@ -50,7 +52,7 @@ describe('sunbiz annual report import', () => {
     const records = parseSunbizArInput({ text, filename: 'candidates.csv' });
     expect(records).toHaveLength(6);
     const chunks = buildSunbizArSql({ records, year: YEAR, chunkSize: CHUNK_SIZE });
-    expect(chunks).toHaveLength(1);
+    expect(chunks).toHaveLength(2);
     const sql = chunks[0];
     expect(sql).toContain('INSERT INTO "SunbizArCandidate"');
     expect(sql).toContain("'L25000509630'");
@@ -59,15 +61,11 @@ describe('sunbiz annual report import', () => {
     expect(sql).toContain("DATE '2026-10-01'");
     expect(sql).toContain('ON CONFLICT ("documentNumber") DO UPDATE');
     expect(sql).toContain('WHERE "SunbizArCandidate"."sourceFileDate" <= EXCLUDED."sourceFileDate"');
-    expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L15000021030' AND "sourceFileDate" <= DATE '2026-10-01';`,
+    const joined = chunks.join('\n');
+    expect(joined).toContain(
+      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" IN ('L15000021030', 'L25000294800', 'L26000537730') AND "sourceFileDate" <= DATE '2026-10-01';`,
     );
-    expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L25000294800' AND "sourceFileDate" <= DATE '2026-10-01';`,
-    );
-    expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L26000537730' AND "sourceFileDate" <= DATE '2026-10-01';`,
-    );
+    expect(joined.match(/DELETE FROM/g)).toHaveLength(1);
     expect(sql).toContain("'L11000000001'");
     expect(sql).toContain("DATE '2026-10-25'");
     const sellable = records.find((row) => row.documentNumber === 'L25000509630');
@@ -129,14 +127,16 @@ describe('sunbiz annual report import', () => {
       sourceFileDate: '2026-10-25',
     });
     expect(isArCandidate(kept, YEAR)).toBe(false);
-    const sql = buildSunbizArSql({ records, year: YEAR, chunkSize: 2 }).join('\n');
+    const chunksForDeletes = buildSunbizArSql({ records, year: YEAR, chunkSize: 2 });
+    const sql = chunksForDeletes.join('\n');
     expect(sql).not.toContain('INSERT INTO "SunbizArCandidate"');
     expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L25000509630' AND "sourceFileDate" <= DATE '2026-10-25';`,
+      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" IN ('L15000021030', 'L25000294800') AND "sourceFileDate" <= DATE '2026-10-25';`,
     );
-    expect(sql).toContain(`'L15000021030'`);
-    expect(sql).toContain(`'L26000537730'`);
-    expect(buildSunbizArSql({ records, year: YEAR, chunkSize: 2 })).toHaveLength(2);
+    expect(sql).toContain(
+      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" IN ('L25000509630', 'L26000537730') AND "sourceFileDate" <= DATE '2026-10-25';`,
+    );
+    expect(chunksForDeletes).toHaveLength(2);
   });
 
   it('lets the later source date win inside one file', () => {
@@ -189,11 +189,11 @@ describe('sunbiz annual report import', () => {
     expect(sql).toContain('ARRAY[2025]::INTEGER[]');
     expect(sql.match(/INSERT INTO/g)).toHaveLength(1);
     expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L25000000002' AND "sourceFileDate" <= DATE '2026-10-07';`,
+      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" IN ('L25000000002', 'L25000000003') AND "sourceFileDate" <= DATE '2026-10-07';`,
     );
-    expect(sql).toContain(
-      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'L25000000003' AND "sourceFileDate" <= DATE '2026-10-07';`,
-    );
+    const candidatesOnly = buildSunbizArSql({ records, year: YEAR, candidatesOnly: true }).join('\n');
+    expect(candidatesOnly).not.toContain('DELETE FROM');
+    expect(candidatesOnly).toContain('INSERT INTO "SunbizArCandidate"');
   });
 
   it('emits unconditional deletes for a document-number list', () => {
@@ -204,6 +204,32 @@ describe('sunbiz annual report import', () => {
     expect(sql).toContain(`DELETE FROM "SunbizArCandidate" WHERE "documentNumber" = 'P26QA000001';`);
     expect(sql).not.toContain('sourceFileDate');
     expect(buildDeleteSql(docs, 1)).toHaveLength(2);
+  });
+
+  it('keeps a candidates-only load as upsert chunks with no deletes', () => {
+    const records = parseSunbizArInput({
+      text: [
+        'doc_number,entity_type,status,formation_date,ar_year_1,ar_year_2,ar_year_3,source_file_date',
+        'L11000000001,FLAL,A,2011-01-15,2023,2024,2025,2026-10-07',
+        'L25000509630,FLAL,A,2025-04-02,2024,2025,,2026-10-07',
+        'L25000000002,TRUST,A,2015-04-02,2025,,,2026-10-07',
+      ].join('\n'),
+      filename: 'candidates_load.csv',
+    });
+    const kept = records.filter((row) => isArCandidate(row, YEAR));
+    const expected = buildSunbizArSql({ records: kept, year: YEAR, chunkSize: 1 });
+    const flagged = buildSunbizArSql({ records, year: YEAR, chunkSize: 1, candidatesOnly: true });
+    expect(flagged.join('')).toBe(expected.join(''));
+    expect(flagged).toHaveLength(2);
+    expect(flagged.join('')).not.toContain('DELETE FROM');
+    expect(flagged[0]).toBe(
+      `-- Sunbiz annual report candidates. Target year ${YEAR}.\n` +
+        `-- Idempotent. A later sourceFileDate wins. Safe to run again.\n` +
+        `${statementForRecord(kept[0], YEAR)}\n`,
+    );
+    expect(deleteStatementForDocuments(['L25000000002', 'L25000000003'], '2026-10-07')).toBe(
+      `DELETE FROM "SunbizArCandidate" WHERE "documentNumber" IN ('L25000000002', 'L25000000003') AND "sourceFileDate" <= DATE '2026-10-07';`,
+    );
   });
 
   it('does not connect unless DATABASE_URL is set', () => {

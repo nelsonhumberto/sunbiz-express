@@ -91,14 +91,12 @@ type PaidFiling = {
   annualReports?: { status: string; totalCostCents: number }[];
 };
 
-/** A paid guest annual report, not a future compliance reminder on a formation. */
+/** A paid annual report in any status. A zero-cost compliance row is not one. */
 export function paidAnnualReportDocumentNumber(filing: {
   sunbizFilingNumber?: string | null;
   annualReports?: { status: string; totalCostCents: number }[];
 }): string | null {
-  const paid = (filing.annualReports ?? []).some(
-    (report) => report.status === 'FILED' && report.totalCostCents > 0,
-  );
+  const paid = (filing.annualReports ?? []).some((report) => report.totalCostCents > 0);
   if (!paid) return null;
   return filing.sunbizFilingNumber?.trim() ?? '';
 }

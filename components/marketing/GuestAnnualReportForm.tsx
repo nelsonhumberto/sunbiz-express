@@ -349,10 +349,6 @@ export function GuestAnnualReportForm() {
               <Link href={hrefForLocale('/contact', locale === 'es' ? 'es' : 'en')} className="font-medium text-primary underline">
                 {t('unconfirmedContact')}
               </Link>
-              {' '}
-              <a href="#checklist-signup-heading" className="font-medium text-primary underline">
-                {t('unconfirmedChecklist')}
-              </a>
             </p>
           ) : null}
           <Button

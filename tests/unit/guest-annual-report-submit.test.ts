@@ -9,6 +9,7 @@ const userCreate = vi.hoisted(() => vi.fn());
 const paymentFindUnique = vi.hoisted(() => vi.fn());
 const annualReportCreate = vi.hoisted(() => vi.fn());
 const transaction = vi.hoisted(() => vi.fn());
+const fetchDetail = vi.hoisted(() => vi.fn());
 
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/auth', () => ({ auth }));
@@ -32,14 +33,8 @@ vi.mock('@/lib/rate-limit', () => ({
   clientIp: () => '203.0.113.8',
 }));
 vi.mock('@/lib/sunbiz', () => ({
-  fetchFloridaEntityDetailByDocumentNumber: vi.fn(async () => ({
-    corporation_number: 'L12345678901',
-    corporation_name: 'Ada LLC',
-    status: 'ACTIVE',
-    filing_type: 'FLAL',
-    filing_type_display: 'Florida Limited Liability Company',
-    annual_reports: [{ year: 2025 }],
-  })),
+  fetchFloridaEntityDetailByDocumentNumber: fetchDetail,
+  searchSunbiz: vi.fn(),
 }));
 
 import { submitGuestAnnualReport } from '@/actions/annual-report';
@@ -85,6 +80,16 @@ beforeEach(() => {
   paymentFindUnique.mockReset();
   annualReportCreate.mockReset();
   transaction.mockReset();
+  fetchDetail.mockReset();
+  fetchDetail.mockResolvedValue({
+    corporation_number: 'L12345678901',
+    corporation_name: 'Ada LLC',
+    status: 'ACTIVE',
+    filing_type: 'FLAL',
+    filing_type_display: 'Florida Limited Liability Company',
+    file_date: '2015-04-10',
+    annual_reports: [{ year: 2025 }],
+  });
   auth.mockResolvedValue(null);
   sendEmail.mockResolvedValue({ status: 'SENT' });
   userFindUnique.mockResolvedValue(null);
@@ -153,5 +158,132 @@ describe('submitGuestAnnualReport', () => {
     );
     expect(sendEmail).not.toHaveBeenCalled();
     expect(refundsCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not save a filing when the report status cannot be confirmed', async () => {
+    retrieve.mockResolvedValue({
+      id: 'pi_guest_1',
+      status: 'succeeded',
+      amount: 63_775,
+      livemode: false,
+      payment_method: null,
+    });
+    fetchDetail.mockRejectedValue(new Error('SUNBIZDAILY_API_KEY missing'));
+    const result = await submitGuestAnnualReport(input());
+    expect(result).toEqual({
+      ok: false,
+      error: "We couldn't confirm this company's annual report status online.",
+    });
+    expect(JSON.stringify(result)).not.toMatch(/SUNBIZ|API_KEY/);
+    expect(transaction).not.toHaveBeenCalled();
+    expect(refundsCreate).not.toHaveBeenCalled();
+  });
+
+  it('applies the keeper fixtures at submit', async () => {
+    retrieve.mockResolvedValue({
+      id: 'pi_guest_1',
+      status: 'succeeded',
+      amount: 63_775,
+      livemode: false,
+      payment_method: null,
+    });
+    const blocked = [
+      {
+        documentNumber: 'L15000021030',
+        detail: {
+          corporation_number: 'L15000021030',
+          corporation_name: 'SOUTHERN HOLDINGS 9 LLC',
+          status: 'ACTIVE',
+          filing_type: 'FLAL',
+          file_date: '2015-04-10',
+          annual_reports: [{ year: 2026 }],
+        },
+        error: 'Nothing due until Jan 1, 2027.',
+      },
+      {
+        documentNumber: 'L26000537730',
+        detail: {
+          corporation_number: 'L26000537730',
+          corporation_name: 'New LLC',
+          status: 'ACTIVE',
+          filing_type: 'FLAL',
+          file_date: '10/19/2026',
+        },
+        error: 'Nothing due until Jan 1, 2027.',
+      },
+      {
+        documentNumber: 'L25000294800',
+        detail: {
+          corporation_number: 'L25000294800',
+          corporation_name: 'Closed LLC',
+          status: 'ADMIN DISSOLVED',
+          filing_type: 'FLAL',
+          file_date: '2025-01-15',
+        },
+        error: 'This company is dissolved and needs reinstatement. We are not selling a filing.',
+      },
+    ];
+    for (const item of blocked) {
+      fetchDetail.mockResolvedValue(item.detail);
+      const result = await submitGuestAnnualReport(input({ documentNumber: item.documentNumber }));
+      expect(result, item.documentNumber).toEqual({ ok: false, error: item.error });
+      expect(transaction).not.toHaveBeenCalled();
+    }
+
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'L25000509630',
+      corporation_name: 'Open 2025 LLC',
+      status: 'ACTIVE',
+      filing_type: 'FLAL',
+      filing_type_display: 'Florida Limited Liability Company',
+      file_date: '2025-04-02',
+      annual_reports: [],
+    });
+    const sold = await submitGuestAnnualReport(input({
+      documentNumber: 'L25000509630',
+      entityType: 'CORP',
+    }));
+    expect(sold.ok).toBe(true);
+    expect(annualReportCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ reportYear: 2026, totalCostCents: 63_775 }),
+      }),
+    );
+  });
+
+  it('stores the corporation type from a P document prefix', async () => {
+    retrieve.mockResolvedValue({
+      id: 'pi_guest_1',
+      status: 'succeeded',
+      amount: 64_900,
+      livemode: false,
+      payment_method: null,
+    });
+    fetchDetail.mockResolvedValue({
+      corporation_number: 'P26QA000001',
+      corporation_name: 'Ada Corp',
+      status: 'ACTIVE',
+      file_date: '2019-05-01',
+      annual_reports: [],
+    });
+    const filingCreate = vi.fn(async () => ({ id: 'filing_corp' }));
+    transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        filing: { create: filingCreate },
+        managerMember: { create: async () => ({}) },
+        annualReport: { create: annualReportCreate },
+        payment: { create: async () => ({}) },
+      }),
+    );
+    const result = await submitGuestAnnualReport(input({
+      documentNumber: 'P26QA000001',
+      entityType: 'LLC',
+    }));
+    expect(result.ok).toBe(true);
+    expect(filingCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ entityType: 'CORP' }),
+      }),
+    );
   });
 });

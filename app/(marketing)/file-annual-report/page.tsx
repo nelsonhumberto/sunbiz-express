@@ -131,8 +131,9 @@ export default async function FileAnnualReportPage() {
         <h2 className="text-center font-display text-2xl font-medium mb-6">
           {t ? t('compare') : 'How we compare'}
         </h2>
-        <div className="rounded-2xl overflow-hidden border border-border shadow-card">
-          <table className="w-full text-sm">
+        <div className="rounded-2xl border border-border shadow-card overflow-hidden">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[36rem] text-sm">
             <thead>
               <tr className="bg-muted/50">
                 <th className="text-left px-5 py-3 font-semibold text-ink">{t ? t('colCompany') : 'Company'}</th>
@@ -175,16 +176,13 @@ export default async function FileAnnualReportPage() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-muted/30">
-                <td colSpan={4} className="px-5 py-2 text-xs text-ink-subtle">
-                  {t
-                    ? t('footnote')
-                    : '* Totals shown are the on-time price and include the Florida state filing fee ($138.75 LLC · $150.00 Corp). Florida adds a $400 late fee for reports filed after May 1. Competitor prices as of 2026.'}
-                </td>
-              </tr>
-            </tfoot>
           </table>
+          </div>
+          <p className="px-5 py-2 text-xs text-ink-subtle border-t border-border">
+            {t
+              ? t('footnote')
+              : '* Totals shown are the on-time price and include the Florida state filing fee ($138.75 LLC · $150.00 Corp). Florida adds a $400 late fee for reports filed after May 1. Competitor prices as of 2026.'}
+          </p>
         </div>
       </section>
 

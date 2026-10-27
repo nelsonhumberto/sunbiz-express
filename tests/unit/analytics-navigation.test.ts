@@ -95,13 +95,15 @@ describe('start navigation event properties', () => {
     });
   });
 
-  it('places the /start captures before the full-page navigation', () => {
+  it('places the /start captures before client navigation', () => {
     const launch = readFileSync('app/start/guest-start-launch.tsx', 'utf8');
     const captureAt = launch.indexOf('await captureThenNavigate');
+    const redirectPush = launch.indexOf('router.push(redirectTo)');
     const redirectAssign = launch.indexOf('window.location.assign(redirectTo)');
     const fallbackAssign = launch.indexOf('window.location.assign(href)');
     expect(captureAt).toBeGreaterThan(-1);
-    expect(redirectAssign).toBeGreaterThan(captureAt);
+    expect(redirectPush).toBeGreaterThan(captureAt);
+    expect(redirectAssign).toBeGreaterThan(redirectPush);
     expect(fallbackAssign).toBeGreaterThan(redirectAssign);
     expect(launch).toContain('returnRedirect: true');
     expect(launch).toContain('startNavigationEvents({ filingId, locale, entity })');

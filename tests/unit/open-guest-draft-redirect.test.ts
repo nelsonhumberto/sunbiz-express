@@ -192,6 +192,7 @@ describe('openGuestDraft navigation', () => {
     ]);
     const launch = readFileSync('app/start/guest-start-launch.tsx', 'utf8');
     expect(launch).toContain('returnRedirect: true');
+    expect(launch).toContain('router.push(redirectTo)');
     expect(launch).toContain('window.location.assign(redirectTo)');
     expect(launch).toContain('window.location.assign(href)');
   });

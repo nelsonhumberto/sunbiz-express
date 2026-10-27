@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { openGuestDraft, type DraftNameChoice } from '@/actions/guest-start';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ export function GuestStartLaunch({
   showOptionalEmail: boolean;
 }) {
   const t = useTranslations('start');
+  const router = useRouter();
   const locale = useLocale() === 'es' ? 'es' : 'en';
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -88,10 +90,17 @@ export function GuestStartLaunch({
       if (result?.redirectTo) {
         const redirectTo = result.redirectTo;
         const filingId = filingIdFromWizardPath(redirectTo);
+        // The action response already stored the guest cookie. Pushing the
+        // localized path keeps that cookie and does not unload the page, so
+        // the PostHog requests can finish. Assign only if the router throws.
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
-            window.location.assign(redirectTo);
+            try {
+              router.push(redirectTo);
+            } catch {
+              window.location.assign(redirectTo);
+            }
           },
         });
         return;
@@ -107,7 +116,11 @@ export function GuestStartLaunch({
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
-            window.location.assign(href);
+            try {
+              router.push(href);
+            } catch {
+              window.location.assign(href);
+            }
           },
         });
         return;

@@ -33,7 +33,7 @@ function eventsFrom(payload: unknown): CapturedEvent[] {
   return [];
 }
 
-async function serveBundle(): Promise<{ server: Server; origin: string }> {
+async function serveBundle(options?: { beacon?: boolean }): Promise<{ server: Server; origin: string }> {
   const bundled = await build({
     entryPoints: ['tests/e2e/start-events-entry.ts'],
     bundle: true,
@@ -46,16 +46,29 @@ async function serveBundle(): Promise<{ server: Server; origin: string }> {
     },
   });
   const js = bundled.outputFiles[0]?.text ?? '';
-  // sendBeacon is removed so the SDK uses fetch, which this test can read.
-  // A real browser still beacons. The page bundle calls the same captureThenNavigate
-  // path GuestStartLaunch uses after openGuestDraft returns redirectTo.
+  // Fetch mode removes sendBeacon so the SDK uses fetch, which Playwright can read.
+  // Beacon mode installs a recorder before the SDK loads. The bundle calls the
+  // same captureThenNavigate path GuestStartLaunch uses after redirectTo.
+  const setup = options?.beacon
+    ? `<script>
+        window.__beacons = [];
+        Object.defineProperty(navigator, 'sendBeacon', {
+          configurable: true,
+          writable: true,
+          value: function (url, data) {
+            window.__beacons.push({ url: String(url), data: data });
+            return true;
+          },
+        });
+      </script>`
+    : `<script>try { Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: undefined }); } catch (e) {}</script>`;
   const html = `<!doctype html><html><body>
     <form id="start">
       <label for="businessName">Name your LLC</label>
       <input id="businessName" name="businessName" value="Sol Norte LLC" />
       <button type="submit">Continue</button>
     </form>
-    <script>try { Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: undefined }); } catch (e) {}</script>
+    ${setup}
     <script src="/app.js"></script>
   </body></html>`;
   const server = createServer((req, res) => {
@@ -153,6 +166,72 @@ test('sends the three step 1 events before navigation, in English and Spanish', 
       if (!item.event || !EVENTS.includes(item.event as (typeof EVENTS)[number])) continue;
       const props = item.properties ?? {};
       expect(props.entity === undefined || props.entity === 'LLC' || props.entity === 'CORP').toBe(true);
+      for (const key of FORBIDDEN) expect(props).not.toHaveProperty(key);
+      const blob = JSON.stringify(props).toLowerCase();
+      expect(blob).not.toContain('sol norte');
+      expect(blob).not.toContain('@');
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
+test('sends the three step 1 events through sendBeacon before navigation', async ({ page }) => {
+  const { server, origin } = await serveBundle({ beacon: true });
+  const traces: TraceItem[][] = [];
+  try {
+    await page.exposeFunction('__report', (trace: TraceItem[]) => {
+      traces.push(trace);
+    });
+    await page.goto(origin);
+    const redirectTo = '/wizard/filing_en/2';
+    const navigated = page.waitForURL((url) => url.pathname === redirectTo);
+    await Promise.all([
+      navigated,
+      page
+        .evaluate((href) => {
+          const run = (
+            window as unknown as {
+              __runStart?: (redirectTo: string, locale: 'en' | 'es', entity: 'LLC' | 'CORP') => Promise<void>;
+            }
+          ).__runStart;
+          return run?.(href, 'en', 'LLC');
+        }, redirectTo)
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/context was destroyed|navigation/i.test(message)) throw err;
+        }),
+    ]);
+
+    expect(traces).toHaveLength(1);
+    const trace = traces[0] ?? [];
+    const names = trace.map((item) => item.event);
+    const assignAt = names.indexOf('__assign');
+    expect(assignAt).toBeGreaterThan(2);
+    for (const eventName of EVENTS) {
+      expect(names.indexOf(eventName)).toBeGreaterThan(-1);
+      expect(names.indexOf(eventName)).toBeLessThan(assignAt);
+    }
+    const assign = trace.find((item) => item.event === '__assign');
+    const elapsed = assign?.properties?.elapsedMs;
+    expect(typeof elapsed).toBe('number');
+    expect(elapsed as number).toBeLessThan(250);
+
+    const beacons = (assign?.properties?.beacons ?? []) as { url: string; base64: string }[];
+    expect(beacons.length).toBeGreaterThan(0);
+    const networkEvents = beacons.flatMap((item) => {
+      expect(item.url).toContain('us.i.posthog.com');
+      expect(item.url).toContain('beacon=1');
+      return eventsFrom(decodeBody(Buffer.from(item.base64, 'base64')));
+    });
+    for (const eventName of EVENTS) {
+      expect(networkEvents.some((item) => item.event === eventName)).toBe(true);
+    }
+    const entityEvent = networkEvents.find((item) => item.event === 'wizard_entity_selected');
+    expect(entityEvent?.properties?.entity).toBe('LLC');
+    for (const item of networkEvents) {
+      if (!item.event || !EVENTS.includes(item.event as (typeof EVENTS)[number])) continue;
+      const props = item.properties ?? {};
       for (const key of FORBIDDEN) expect(props).not.toHaveProperty(key);
       const blob = JSON.stringify(props).toLowerCase();
       expect(blob).not.toContain('sol norte');

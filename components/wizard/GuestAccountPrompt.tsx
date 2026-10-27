@@ -240,7 +240,9 @@ export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: P
                 </Button>
               </div>
               <p className="text-[11px] text-ink-subtle text-center">
-                {firstName ? `${firstName}, you` : 'You'} can keep filing as a guest and create an account later.
+                {firstName
+                  ? t('guestKeepFiling', { name: firstName })
+                  : t('guestKeepFilingAnon')}
               </p>
             </form>
           </div>

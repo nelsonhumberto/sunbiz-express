@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
+import { useTranslations } from 'next-intl';
 import { Check, MapPin } from 'lucide-react';
 import { saveStep5 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
@@ -13,6 +14,7 @@ import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 
 export function Step5Mailing({ filing }: { filing: WizardFiling }) {
+  const t = useTranslations('wizard');
   const filingState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
     : 'FL';
@@ -83,7 +85,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-ink leading-snug">
-            Use the same address as my principal office
+            {t('sameAsPrincipal')}
           </p>
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
             {principal.street1 ? (
@@ -93,7 +95,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
                 {principal.state} {principal.zip}
               </>
             ) : (
-              'We will reuse the address you entered in the previous step.'
+              t('sameAsPrincipalEmpty')
             )}
           </p>
         </div>
@@ -101,7 +103,7 @@ export function Step5Mailing({ filing }: { filing: WizardFiling }) {
 
       {!sameAsPrincipal && (
         <div className="space-y-3">
-          <Label className="text-base">Mailing address</Label>
+          <Label className="text-base">{t('mailingAddressLabel')}</Label>
           <AddressForm
             value={address}
             onChange={setAddress}

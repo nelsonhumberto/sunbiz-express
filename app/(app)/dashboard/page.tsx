@@ -252,7 +252,7 @@ export default async function DashboardPage() {
                         },
                         locale,
                       )}{' '}
-                      · {t('raRenewalPrice')}
+                      · {t('raRenewalPrice', { price: formatCurrency(svc.renewalPriceCents) })}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-ink-subtle" />

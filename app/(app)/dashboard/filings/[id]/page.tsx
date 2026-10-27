@@ -31,6 +31,7 @@ import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib
 import { fillDueMessage } from '@/lib/due-label';
 import {
   ADD_ON_BY_SLUG,
+  RA_RENEWAL_PRICE_CENTS,
   filingHasOperatingAgreement,
   type AddOnSlug,
   type TierSlug,
@@ -261,7 +262,9 @@ export default async function FilingDetailPage({ params }: PageProps) {
               <Card className="border-warn/30 bg-warn-subtle/30">
                 <CardContent className="p-6 space-y-2">
                   <h3 className="font-semibold text-ink">{t('nonUsRaTitle')}</h3>
-                  <p className="text-sm text-ink-muted">{t('nonUsRaBody')}</p>
+                  <p className="text-sm text-ink-muted">
+                    {t('nonUsRaBody', { price: formatCurrency(RA_RENEWAL_PRICE_CENTS) })}
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -416,12 +419,8 @@ export default async function FilingDetailPage({ params }: PageProps) {
               <Landmark className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-ink">No BOI report needed</h3>
-              <p className="mt-1 text-sm text-ink-muted leading-relaxed">
-                FinCEN&apos;s final rule (August 2026) exempts companies formed in the United
-                States from beneficial ownership (BOI) reporting, so there is nothing to file for
-                this company.
-              </p>
+              <h3 className="font-semibold text-ink">{t('boiTitle')}</h3>
+              <p className="mt-1 text-sm text-ink-muted leading-relaxed">{t('boiBody')}</p>
             </div>
           </div>
         </CardContent>
@@ -436,7 +435,10 @@ export default async function FilingDetailPage({ params }: PageProps) {
           <div className="space-y-4">
             <TimelineEvent
               icon={<CheckCircle2 className="h-4 w-4" />}
-              title={`Submitted to ${stateRule.name} ${stateRule.code === 'DE' ? 'Division of Corporations' : 'Secretary of State'}`}
+              title={t('timelineSubmitted', {
+                state: stateRule.name,
+                office: stateRule.code === 'DE' ? t('officeDivision') : t('officeSecretary'),
+              })}
               detail={
                 filing.sunbizSubmittedAt
                   ? formatDateLong(filing.sunbizSubmittedAt, locale)
@@ -446,7 +448,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
             />
             <TimelineEvent
               icon={<CheckCircle2 className="h-4 w-4" />}
-              title={`${stateRule.name} approved`}
+              title={t('timelineApproved', { state: stateRule.name })}
               detail={
                 filing.sunbizApprovedAt
                   ? formatDateLong(filing.sunbizApprovedAt, locale)
@@ -472,7 +474,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
               title={t('nextAnnualReport')}
               detail={
                 filing.annualReports[0]
-                  ? fillDueMessage(t.raw('dueDateOn'), filing.annualReports[0].dueDate)
+                  ? fillDueMessage(t.raw('dueDateOn'), filing.annualReports[0].dueDate, locale)
                   : t('annualReportEstimate')
               }
               done={false}

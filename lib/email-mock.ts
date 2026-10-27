@@ -2,6 +2,7 @@
 // Real implementation would use SendGrid; UI/admin Outbox view shows the same data.
 
 import { prisma } from './db';
+import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency, formatDateLong } from './utils';
 
 export type NotificationType =
@@ -85,7 +86,7 @@ const TEMPLATES: Record<
     subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
     body: html`
       <h1>Heads up - RA renewal in 60 days</h1>
-      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is $149/year - well below LegalZoom's $249/year - and keeps your home address off the public Florida record.</p>
+      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is ${formatCurrency(RA_RENEWAL_PRICE_CENTS)}/year. That keeps your home address off the public Florida record.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Manage Registered Agent</a>
     `,
   }),

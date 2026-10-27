@@ -26,7 +26,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { safeParseJson, cn } from '@/lib/utils';
+import { safeParseJson, cn, formatCurrency } from '@/lib/utils';
+import { RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
 import { isPoBox } from '@/lib/formation-validation';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
@@ -42,6 +43,7 @@ interface RAStored extends AddressValue {
 
 export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('wizard');
+  const raPrice = formatCurrency(RA_RENEWAL_PRICE_CENTS);
   const stateCode = (filing.state ?? 'FL') as StateCode;
   const stateRule = FORMATION_STATES[stateCode] ?? FORMATION_STATES.FL;
   const internalAgent = stateRule.registeredAgent;
@@ -173,7 +175,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
             <li>· {t('useOurAgentP1', { state: stateRule.name })}</li>
             <li>· {t('useOurAgentP2')}</li>
-            <li>· {t('useOurAgentP3')}</li>
+            <li>· {t('useOurAgentP3', { price: raPrice })}</li>
             <li>· {t('useOurAgentP4')}</li>
           </ul>
         </button>
@@ -201,7 +203,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
             </div>
           </div>
           <p className="mt-2 text-[11px] text-ink-subtle italic">
-            Most owners don&apos;t - review the responsibilities first.
+            {t('mostOwnersOwnAgent')}
           </p>
         </button>
       </div>
@@ -281,7 +283,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
                 id="raName"
                 value={external.name}
                 onChange={(e) => setExternal({ ...external, name: e.target.value })}
-                placeholder="Jane Doe or Doe Registered Agent Services LLC"
+                placeholder={t('agentNamePlaceholder')}
                 aria-invalid={showMissing && !external.name.trim()}
                 className={
                   showMissing && !external.name.trim()
@@ -390,7 +392,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
               <ul className="space-y-1 text-xs text-ink-muted">
                 {[
                   t('ownAgentConfirmBenefit1', { state: stateRule.name }),
-                  t('ownAgentConfirmBenefit2'),
+                  t('ownAgentConfirmBenefit2', { price: raPrice }),
                   t('ownAgentConfirmBenefit3'),
                   t('ownAgentConfirmBenefit4'),
                 ].map((line, i) => (

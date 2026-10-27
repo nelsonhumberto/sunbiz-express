@@ -7,6 +7,10 @@
 // promise filing dates or fees we cannot back up yet.
 
 import { localizedStateName, type MarketingState } from './marketing-states';
+import { RA_RENEWAL_PRICE_CENTS } from './pricing';
+import { formatCurrency } from './utils';
+
+const RA_RENEWAL_PRICE = formatCurrency(RA_RENEWAL_PRICE_CENTS);
 
 export interface MarketingFaqItem {
   /**
@@ -50,7 +54,7 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $150/year - well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
+    a: `Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is ${RA_RENEWAL_PRICE}/year, well below typical online filers that charge $199 to $249/year. You can cancel any time and switch to your own agent.`,
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -102,7 +106,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $150/año - muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: `Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es ${RA_RENEWAL_PRICE}/año, muy por debajo de los $199 a $249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.`,
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
@@ -163,7 +167,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Wyoming registered agent?',
-    a: 'Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is $150/year.',
+    a: `Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is ${RA_RENEWAL_PRICE}/year.`,
   },
   {
     q: 'When is the Wyoming annual report due?',
@@ -225,7 +229,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Wyoming?',
-    a: 'Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es $150/año.',
+    a: `Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es ${RA_RENEWAL_PRICE}/año.`,
   },
   {
     q: '¿Cuándo se debe presentar el reporte anual de Wyoming?',
@@ -289,7 +293,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Delaware registered agent?',
-    a: 'Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is $150/year.',
+    a: `Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is ${RA_RENEWAL_PRICE}/year.`,
   },
   {
     q: 'When are Delaware annual taxes due?',
@@ -355,7 +359,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Delaware?',
-    a: 'Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es $150/año.',
+    a: `Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es ${RA_RENEWAL_PRICE}/año.`,
   },
   {
     q: '¿Cuándo se deben pagar los impuestos anuales de Delaware?',

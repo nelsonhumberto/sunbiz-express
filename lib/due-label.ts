@@ -46,6 +46,7 @@ export function formatDueLabel(
 export function fillDueMessage(
   template: string,
   date: Date | string | null | undefined,
+  locale: string = 'en',
 ): string {
-  return template.replaceAll('{when}', formatLongDate(date)).replace(/\\/g, '');
+  return template.replaceAll('{when}', formatLongDate(date, locale)).replace(/\\/g, '');
 }

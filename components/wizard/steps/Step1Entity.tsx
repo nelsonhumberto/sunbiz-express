@@ -165,7 +165,7 @@ export function Step1Entity({
       </div>
 
       <div
-        className="grid grid-cols-3 gap-2"
+        className="grid min-w-0 grid-cols-3 gap-2"
         role="radiogroup"
         aria-label={t('entityTypeLabel')}
       >
@@ -189,7 +189,7 @@ export function Step1Entity({
                 );
               }}
               className={cn(
-                'relative text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',
+                'relative min-w-0 text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',
                 isSelected
                   ? 'border-primary bg-primary/5 shadow-glow'
                   : 'border-border bg-white hover:border-primary/30 hover:shadow-card'
@@ -200,11 +200,17 @@ export function Step1Entity({
                   {tPricing('ribbon_recommended')}
                 </span>
               )}
-              <div className="flex items-center gap-1.5">
-                <option.icon className={cn('h-4 w-4 shrink-0', isSelected ? 'text-primary' : 'text-ink-muted')} />
-                <span className="font-display text-sm font-medium leading-tight">{option.title}</span>
-                {isSelected && <Check className="h-3.5 w-3.5 text-primary ml-auto shrink-0" strokeWidth={3} />}
+              <div className={cn('flex min-w-0 items-start gap-1.5', isSelected && 'pr-5')}>
+                <option.icon className={cn('mt-0.5 h-4 w-4 shrink-0', isSelected ? 'text-primary' : 'text-ink-muted')} />
+                <span className="min-w-0 break-words font-display text-sm font-medium leading-tight">{option.title}</span>
               </div>
+              {isSelected && (
+                <Check
+                  aria-hidden
+                  className="pointer-events-none absolute right-1 top-2 h-3.5 w-3.5 text-primary"
+                  strokeWidth={3}
+                />
+              )}
             </button>
           );
         })}

@@ -20,6 +20,8 @@ import {
   manualConfirmLinkedEntity,
   previewLinkedEntity,
 } from '@/actions/linked-entity';
+import { RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 import { searchEntitiesByName, type EntitySearchHit } from '@/actions/annual-report';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -275,7 +277,9 @@ export function AddCompanyForm() {
                   <Shield className="h-4 w-4 text-warn" />
                   {t('raUpsellTitle')}
                 </div>
-                <p className="text-ink-muted">{t('raUpsellBody')}</p>
+                <p className="text-ink-muted">
+                  {t('raUpsellBody', { price: formatCurrency(RA_RENEWAL_PRICE_CENTS) })}
+                </p>
               </div>
             )}
 

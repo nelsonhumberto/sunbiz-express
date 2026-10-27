@@ -29,12 +29,27 @@ export function buildKnowledge(opts: {
     const price = dollars(
       tierPackagePriceCents(t.slug as TierSlug, opts.entityType, opts.stateCode),
     );
-    return `- ${t.name} (${t.slug}): ${price} all-in for a ${opts.entityType} in ${state.name}`;
+    const included = t.features
+      .filter((feature) => feature.included)
+      .map((feature) => feature.label)
+      .join('; ');
+    return `- ${t.name} (${t.slug}): ${price} all-in for a ${opts.entityType} in ${state.name}. Included: ${included}`;
   }).join('\n');
+
+  const domainTiers = TIERS.filter((tier) =>
+    tier.features.some((feature) => feature.included && /domain/i.test(feature.label)),
+  ).map((tier) => tier.name);
+  const withoutDomain = TIERS.filter((tier) => !domainTiers.includes(tier.name)).map(
+    (tier) => tier.name,
+  );
+  const domainSentence =
+    domainTiers.length > 0
+      ? `A free .com domain (year 1) is included only with ${domainTiers.join(' and ')}. ${withoutDomain.join(' and ')} do not include a domain.`
+      : '';
 
   return [
     COMPANY_FACTS,
-    `\nCurrent package prices (${opts.entityType}, ${state.name}). Use the getPricing tool for exact line items + add-ons:\n${pricing}`,
+    `\nCurrent package prices (${opts.entityType}, ${state.name}). Use the getPricing tool for exact line items + add-ons:\n${pricing}\n${domainSentence}`,
     `\nFrequently asked questions for ${state.name}:\n${faq}`,
   ].join('\n');
 }

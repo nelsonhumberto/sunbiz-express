@@ -107,6 +107,9 @@ describe('start navigation event properties', () => {
     expect(fallbackAssign).toBeGreaterThan(redirectAssign);
     expect(launch).toContain('returnRedirect: true');
     expect(launch).toContain('startNavigationEvents({ filingId, locale, entity })');
+    expect(launch).toContain('NAVIGATION_FALLBACK_MS = 4000');
+    expect(launch).toContain('window.location.pathname !== fromPath');
+    expect(launch).not.toMatch(/try\s*\{[^}]*router\.push/);
     expect(launch).not.toMatch(/if\s*\(\s*locale/);
   });
 });

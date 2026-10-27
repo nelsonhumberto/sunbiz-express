@@ -196,7 +196,7 @@ export function Step1Entity({
               )}
             >
               {option.recommended && (
-                <span className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider">
+                <span className="absolute -top-2 left-2 max-w-[calc(100%-0.5rem)] whitespace-nowrap rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
                   {tPricing('ribbon_recommended')}
                 </span>
               )}

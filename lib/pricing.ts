@@ -90,7 +90,6 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
       { label: 'Filing within 1 business day', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
-      { label: 'Free .com domain', included: false },
     ],
   },
   {
@@ -104,14 +103,13 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     // DE LLC: $189 + $110 + $50 + $50 = $399. DE CORP: $189 + $109 + $50 + $50 = $398.
     serviceMarginCents: 18_900,
     recommended: true,
-    ribbon: 'Most Popular',
+    ribbon: 'Recommended',
     features: [
       { label: 'Everything in Filing Only', included: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
       { label: 'Certificate of Status (state-issued)', included: true },
       { label: 'Certified Copy of Articles', included: true },
       { label: 'Priority email support', included: true },
-      { label: 'Free .com domain', included: false },
       { label: 'Annual Compliance Service', included: false },
     ],
   },

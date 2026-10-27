@@ -45,7 +45,6 @@ const FEATURE_KEYS: Record<string, string> = {
   'Certified Copy of Articles': 'feat_certCopy',
   'Certificate of Status (state-issued)': 'feat_certStatus',
   'Priority email support': 'feat_chatSupport',
-  'Free .com domain': 'feat_domain',
   'Free .com domain (year 1)': 'feat_domainConcierge',
   'Annual Compliance Service': 'feat_compliance',
   'Compliance Alerts Plus (year 1)': 'feat_complianceAlerts',
@@ -121,7 +120,7 @@ export function PricingTable({
                 {tier.ribbon && (
                   <div
                     className={cn(
-                      'absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-wider',
+                      'absolute -top-3 left-1/2 z-10 max-w-[calc(100%-1rem)] -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider sm:px-4',
                       tier.recommended
                         ? 'bg-primary text-white'
                         : 'bg-gradient-gold text-white shadow-md'

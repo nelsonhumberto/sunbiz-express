@@ -72,7 +72,9 @@ describe('guest start flow', () => {
     expect(action).toContain('decideDraftNameResume');
     expect(page).not.toContain('prisma.filing.create');
     expect(page).not.toContain('prisma.user.create');
-    expect(launch).not.toContain('useEffect');
+    const cleanup = launch.slice(launch.indexOf('useEffect(() =>'), launch.indexOf('async function run'));
+    expect(cleanup).toContain('setPending(false)');
+    expect(cleanup).not.toContain('openGuestDraft');
     expect(launch).toContain("t('continue')");
     expect(launch).toContain('openGuestDraft');
     expect(action).not.toContain('seededName ? 3');

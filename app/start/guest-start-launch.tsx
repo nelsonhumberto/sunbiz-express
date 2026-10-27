@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -21,6 +21,9 @@ import { isDeliverableEmail } from '@/lib/email-address';
 import { startNameIsAcceptable } from '@/lib/start-draft';
 
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
+
+/** router.push does not throw when client navigation stalls. */
+const NAVIGATION_FALLBACK_MS = 4000;
 
 /**
  * /start launch. A guest user and draft are created only when the visitor
@@ -51,6 +54,15 @@ export function GuestStartLaunch({
   const router = useRouter();
   const locale = useLocale() === 'es' ? 'es' : 'en';
   const [pending, setPending] = useState(false);
+  const fallbackTimers = useRef<number[]>([]);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of fallbackTimers.current) window.clearTimeout(timer);
+      fallbackTimers.current = [];
+      setPending(false);
+    };
+  }, []);
   const [formError, setFormError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -92,15 +104,20 @@ export function GuestStartLaunch({
         const filingId = filingIdFromWizardPath(redirectTo);
         // The action response already stored the guest cookie. Pushing the
         // localized path keeps that cookie and does not unload the page, so
-        // the PostHog requests can finish. Assign only if the router throws.
+        // the PostHog requests can finish. If the path is unchanged after
+        // 4 seconds, load it directly.
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
-            try {
-              router.push(redirectTo);
-            } catch {
-              window.location.assign(redirectTo);
-            }
+            const fromPath = window.location.pathname;
+            router.push(redirectTo);
+            fallbackTimers.current.push(
+              window.setTimeout(() => {
+                if (window.location.pathname !== fromPath) return;
+                setPending(false);
+                window.location.assign(redirectTo);
+              }, NAVIGATION_FALLBACK_MS),
+            );
           },
         });
         return;
@@ -116,11 +133,15 @@ export function GuestStartLaunch({
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
-            try {
-              router.push(href);
-            } catch {
-              window.location.assign(href);
-            }
+            const fromPath = window.location.pathname;
+            router.push(href);
+            fallbackTimers.current.push(
+              window.setTimeout(() => {
+                if (window.location.pathname !== fromPath) return;
+                setPending(false);
+                window.location.assign(href);
+              }, NAVIGATION_FALLBACK_MS),
+            );
           },
         });
         return;

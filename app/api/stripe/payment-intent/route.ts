@@ -33,7 +33,6 @@ import {
   certificateOffer,
   certificateOrderQuote,
   filingEntityType,
-  filingFormationState,
   isCertificateAddOnSlug,
 } from '@/lib/certificate-addons';
 import {
@@ -41,8 +40,8 @@ import {
   checkoutBelowStateFee,
 } from '@/lib/checkout-guard';
 import {
-  ACTIVE_FORMATION_STATES,
   getFormationState,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -101,9 +100,9 @@ function paymentError(code: PaymentIntentErrorCode, status: number) {
   return NextResponse.json({ error, code }, { status });
 }
 
-function asStateCode(input: string | null | undefined): StateCode {
-  const upper = (input ?? 'FL').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
+function refuseInactiveFormationState(state: string | null | undefined): NextResponse | null {
+  if (isActiveFormationState(state)) return null;
+  return paymentError('state_unavailable', 400);
 }
 
 const GuestAnnualReportChargeSchema = z.object({
@@ -284,6 +283,7 @@ async function createGuestFormationPaymentIntent(
       id: true,
       userId: true,
       status: true,
+      state: true,
       optionalDetails: true,
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
     },
@@ -324,6 +324,13 @@ async function createGuestFormationPaymentIntent(
       return paymentError('already_paid', 409);
     }
     return paymentError('invalid_email', 400);
+  }
+
+  if (!filing) {
+    return paymentError('filing_not_found', 404);
+  }
+  if (!isActiveFormationState(filing.state)) {
+    return paymentError('state_unavailable', 400);
   }
 
   if (normalizeEmail(guest.email) !== decision.email) {
@@ -579,6 +586,7 @@ async function priceOwnedCharge(input: {
           select: {
             id: true,
             userId: true,
+            state: true,
             utmSource: true,
             utmMedium: true,
             utmCampaign: true,
@@ -591,6 +599,8 @@ async function priceOwnedCharge(input: {
     if (!service || service.filing.userId !== input.userId) {
       return paymentError('filing_not_found', 404);
     }
+    const inactiveRa = refuseInactiveFormationState(service.filing.state);
+    if (inactiveRa) return inactiveRa;
     return {
       amountCents: service.renewalPriceCents,
       purpose: 'ra_renewal',
@@ -614,6 +624,8 @@ async function priceOwnedCharge(input: {
   if (!filing || filing.userId !== input.userId) {
     return paymentError('filing_not_found', 404);
   }
+  const inactiveFiling = refuseInactiveFormationState(filing.state);
+  if (inactiveFiling) return inactiveFiling;
 
     if (input.purpose === 'ein') {
     return {
@@ -699,7 +711,7 @@ async function priceOwnedCharge(input: {
   const stateFeeMinimum = tierBundledStateFeeCents(
     filing.serviceTier as TierSlug,
     filing.entityType as EntityType,
-    asStateCode(filing.state),
+    filing.state as StateCode,
   );
   if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
     return paymentError('below_state_fee', 400);
@@ -875,8 +887,11 @@ async function createCertificatePaymentIntent(input: {
     return paymentError(offer.kind === 'included' ? 'document_included' : 'document_not_ready', 400);
   }
 
+  const inactiveCertificate = refuseInactiveFormationState(filing.state);
+  if (inactiveCertificate) return inactiveCertificate;
+
   const entityType = filingEntityType(filing.entityType);
-  const state = filingFormationState(filing.state);
+  const state = filing.state as StateCode;
   const quote = certificateOrderQuote(slug, entityType, state);
   const attribution = readPaymentAttribution(input.posthogDistinctId);
   const customerId = await ensureStripeCustomer(stripe, actorId);

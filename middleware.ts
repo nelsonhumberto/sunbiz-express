@@ -19,8 +19,11 @@ import {
   adOptOutCookieSecure,
   gpcCookieDecision,
 } from '@/lib/ad-opt-out';
+import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 
-const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
+function isEnabledFormationState(value: string): value is StateCode {
+  return (ACTIVE_FORMATION_STATES as readonly string[]).includes(value);
+}
 
 /**
  * Preference + attribution-aware routing middleware.
@@ -39,10 +42,9 @@ const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
  *       • `/es` and `/es/<path>` rewrite to the unprefixed route with the
  *         Spanish locale, so ad URLs like `/es/business-services` render
  *         instead of 404ing.
- *       • If `?state=XX` is an active formation state (FL/WY/DE), persist
- *         the choice in the `preferred_state` cookie so subsequent
- *         navigations (sign-up → dashboard → wizard) carry it forward
- *         without polluting URLs.
+ *       • If `?state=XX` is in the active formation set, persist the choice
+ *         in the `preferred_state` cookie so later navigations carry it
+ *         forward without polluting URLs. Wyoming and Delaware are not written.
  *       • Capture UTM params into a JSON `lf_utm` cookie so ad attribution
  *         survives the funnel.
  *
@@ -231,7 +233,7 @@ export function middleware(request: NextRequest) {
   const stateParam = searchParams.get('state');
   if (stateParam) {
     const upper = stateParam.toUpperCase();
-    if (ACTIVE_FORMATION_STATES.has(upper) && request.cookies.get('preferred_state')?.value !== upper) {
+    if (isEnabledFormationState(upper) && request.cookies.get('preferred_state')?.value !== upper) {
       response.cookies.set('preferred_state', upper, {
         path: '/',
         sameSite: 'lax',

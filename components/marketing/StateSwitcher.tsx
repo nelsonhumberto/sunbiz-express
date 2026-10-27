@@ -46,6 +46,8 @@ export function StateSwitcher({
   const router = useRouter();
   const locale = useLocale();
   const [pending, start] = useTransition();
+  const choices = ACTIVE_MARKETING_STATES.filter((state) => !isRetiredStateSlug(state.slug));
+  if (choices.length < 2) return null;
 
   const switchTo = (state: MarketingState) => {
     if (state.code === currentState.code) return;
@@ -95,7 +97,7 @@ export function StateSwitcher({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[180px]">
-        {ACTIVE_MARKETING_STATES.filter((state) => !isRetiredStateSlug(state.slug)).map((state) => (
+        {choices.map((state) => (
           <DropdownMenuItem
             key={state.code}
             onClick={() => switchTo(state)}

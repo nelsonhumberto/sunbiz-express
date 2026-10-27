@@ -5,13 +5,14 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { createFiling } from '@/actions/filings';
+import { ACTIVE_FORMATION_STATES, FORMATION_STATES } from '@/lib/formation-states';
 import { cn } from '@/lib/utils';
 
-const STATES = [
-  { code: 'FL', name: 'Florida', flag: 'FL' },
-  { code: 'WY', name: 'Wyoming', flag: 'WY' },
-  { code: 'DE', name: 'Delaware', flag: 'DE' },
-] as const;
+const STATES = ACTIVE_FORMATION_STATES.map((code) => ({
+  code,
+  name: FORMATION_STATES[code].name,
+  flag: code,
+}));
 
 interface StartFilingButtonProps {
   entityType?: 'LLC' | 'CORP';
@@ -25,6 +26,7 @@ export function StartFilingButton({ entityType, state: initialState }: StartFili
     STATES.find((s) => s.code === initialState?.toUpperCase()) ?? STATES[0],
   );
   const [open, setOpen] = useState(false);
+  const showMenu = STATES.length > 1;
 
   return (
     <div className="flex items-stretch w-full min-w-0">
@@ -40,13 +42,16 @@ export function StartFilingButton({ entityType, state: initialState }: StartFili
           type="submit"
           size="lg"
           disabled={pending}
-          className="group rounded-r-none w-full min-w-0 whitespace-normal h-auto min-h-12 px-3 sm:px-8 text-center"
+          className={cn(
+            'group w-full min-w-0 whitespace-normal h-auto min-h-12 px-3 sm:px-8 text-center',
+            showMenu && 'rounded-r-none',
+          )}
         >
           <Plus className="h-4 w-4" />
           {pending ? t('starting') : t('startFiling')}
         </Button>
       </form>
-      <div className="relative">
+      {showMenu ? <div className="relative">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -92,7 +97,7 @@ export function StartFilingButton({ entityType, state: initialState }: StartFili
             </div>
           </>
         )}
-      </div>
+      </div> : null}
     </div>
   );
 }

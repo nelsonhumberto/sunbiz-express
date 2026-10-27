@@ -5,7 +5,20 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
-import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
+import {
+  ACTIVE_FORMATION_STATES,
+  FORMATION_STATE_UNAVAILABLE,
+  type StateCode,
+} from '@/lib/formation-states';
+
+/** Thrown when a quote is asked to price a state that is not for sale. */
+export class InactiveFormationStateError extends Error {
+  readonly code = 'inactive_formation_state';
+  constructor() {
+    super(FORMATION_STATE_UNAVAILABLE.en);
+    this.name = 'InactiveFormationStateError';
+  }
+}
 
 /** Columns written on Filing. Customer totals are recomputed, never trusted. */
 export interface FilingTotalColumns {
@@ -24,8 +37,9 @@ export interface DraftQuoteInput {
 }
 
 function asStateCode(input: string | null | undefined): StateCode {
-  const upper = (input ?? 'FL').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
+  const upper = (input ?? '').trim().toUpperCase();
+  if (ACTIVE_FORMATION_STATES.includes(upper as StateCode)) return upper as StateCode;
+  throw new InactiveFormationStateError();
 }
 
 function numberOrZero(value: unknown): number {

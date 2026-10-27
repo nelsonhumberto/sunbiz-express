@@ -3,10 +3,10 @@
 // Single source of truth for state-specific business formation rules used by
 // the wizard, pricing, document generation, admin, and marketing layers.
 //
-// Currently active for production: Florida, Wyoming, Delaware. Adding a new
-// state means adding a new entry to {@link FORMATION_STATES} and (optionally)
-// custom validation in this file - no changes to the wizard UI should be
-// required as long as the state matches the standard rule shape.
+// Visitor-facing formation is Florida only. Wyoming and Delaware rules stay
+// in {@link FORMATION_STATES}. Add their codes to {@link ENABLED_FORMATION_STATES}
+// when an office or partner is ready. The wizard reads the active set, so it
+// does not need a separate state list.
 //
 // Where a sub-rule needs special handling (e.g. Wyoming's "consent to
 // electronic service" or Delaware's stock-structure dependent corp fee), the
@@ -20,7 +20,65 @@
 export type StateCode = 'FL' | 'WY' | 'DE';
 export type EntityType = 'LLC' | 'CORP';
 
-export const ACTIVE_FORMATION_STATES: readonly StateCode[] = ['FL', 'WY', 'DE'] as const;
+/**
+ * States a visitor can start, buy, or get a registered agent for.
+ * Defaults to Florida. Wyoming and Delaware stay defined below and stay
+ * off until their codes are added here.
+ */
+export const ENABLED_FORMATION_STATES: readonly StateCode[] = ['FL'];
+
+/** Same list as {@link ENABLED_FORMATION_STATES}. Import this name at call sites. */
+export const ACTIVE_FORMATION_STATES: readonly StateCode[] = ENABLED_FORMATION_STATES;
+
+/** Shown only when a Wyoming or Delaware request falls back to Florida. */
+export const FLORIDA_ONLY_NOTE = {
+  en: 'We currently form Florida companies only.',
+  es: 'Por ahora solo formamos empresas en Florida.',
+} as const;
+
+/** Clean refusal when a server action is asked to file outside the active set. */
+export const FORMATION_STATE_UNAVAILABLE = {
+  en: 'That state is not available.',
+  es: 'Ese estado no está disponible.',
+} as const;
+
+export function floridaOnlyNote(locale: string | null | undefined): string {
+  return locale === 'es' ? FLORIDA_ONLY_NOTE.es : FLORIDA_ONLY_NOTE.en;
+}
+
+export function formationStateUnavailableMessage(locale: string | null | undefined): string {
+  return locale === 'es' ? FORMATION_STATE_UNAVAILABLE.es : FORMATION_STATE_UNAVAILABLE.en;
+}
+
+const INACTIVE_FORMATION_TOKENS = new Set(['WY', 'DE', 'WYOMING', 'DELAWARE']);
+
+/**
+ * True when the visitor asked for Wyoming or Delaware and that state is
+ * not in the active set. Other unknown values are not this case.
+ */
+export function isInactiveFormationRequest(input: string | null | undefined): boolean {
+  if (!input?.trim()) return false;
+  const token = input.trim().toUpperCase().replace(/[\s_-]+/g, '');
+  if (!INACTIVE_FORMATION_TOKENS.has(token)) return false;
+  const code: StateCode = token === 'DE' || token === 'DELAWARE' ? 'DE' : 'WY';
+  return !ACTIVE_FORMATION_STATES.includes(code);
+}
+
+/**
+ * Active state from a query or form value. Wyoming and Delaware fall back
+ * to Florida with {@link isInactiveFormationRequest} so the page can show
+ * {@link floridaOnlyNote}. Any other unknown value is Florida with no note.
+ */
+export function resolveRequestedFormationState(input: string | null | undefined): {
+  stateCode: StateCode;
+  fellBackFromInactive: boolean;
+} {
+  const upper = (input ?? '').trim().toUpperCase();
+  if (ACTIVE_FORMATION_STATES.includes(upper as StateCode)) {
+    return { stateCode: upper as StateCode, fellBackFromInactive: false };
+  }
+  return { stateCode: 'FL', fellBackFromInactive: isInactiveFormationRequest(input) };
+}
 
 /**
  * A group of restricted/regulated words that share a regulatory owner

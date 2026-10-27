@@ -25,6 +25,7 @@ import {
   TOTAL_STEPS,
   displayStepNumber,
 } from '@/lib/wizard-constants';
+import { isActiveFormationState } from '@/lib/formation-states';
 import { StartFilingButton } from './start-filing-button';
 import { AddExistingCompanyButton } from '@/components/dashboard/AddExistingCompanyButton';
 import { ArchiveDraftButton } from '@/components/dashboard/ArchiveDraftButton';
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
 
   const preferredState = cookies().get('preferred_state')?.value?.toUpperCase();
-  const filingState = preferredState && ['FL', 'WY', 'DE'].includes(preferredState)
+  const filingState = preferredState && isActiveFormationState(preferredState)
     ? preferredState
     : 'FL';
 

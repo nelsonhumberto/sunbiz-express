@@ -25,7 +25,11 @@ import {
 import { findSunbizArCandidate } from '@/lib/sunbiz-ar-candidate';
 import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
 import { resolveRequestLocale } from '@/lib/request-locale';
-import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
+import {
+  formationStateUnavailableMessage,
+  isActiveFormationState,
+  type StateCode,
+} from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   floridaLookupUsedScraper,
@@ -163,16 +167,15 @@ export async function submitAnnualReport(input: unknown) {
 
   const filing = await prisma.filing.findUnique({
     where: { id: data.filingId },
-    select: { id: true, userId: true, entityType: true, businessName: true, state: true },
+    select: { id: true, userId: true, entityType: true, businessName: true, state: true, locale: true },
   });
   if (!filing || filing.userId !== userId) {
     return { ok: false as const, error: 'Filing not found.' };
   }
-  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    filing.state.toUpperCase() as StateCode,
-  )
-    ? (filing.state.toUpperCase() as StateCode)
-    : 'FL';
+  if (!isActiveFormationState(filing.state)) {
+    return { ok: false as const, error: formationStateUnavailableMessage(filing.locale) };
+  }
+  const filingStateCode = filing.state.toUpperCase() as StateCode;
 
   const annualReport = await prisma.annualReport.findUnique({
     where: { id: data.annualReportId },

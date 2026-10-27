@@ -178,6 +178,31 @@ describe('openGuestDraft navigation', () => {
     expect(invalidRedirect).toBeNull();
   });
 
+  it('rejects Wyoming and Delaware without creating a draft', async () => {
+    for (const state of ['WY', 'DE', 'wyoming', 'delaware']) {
+      filingCreate.mockClear();
+      const opened = await openGuestDraft({
+        state,
+        entityType: 'LLC',
+        businessName: 'Sol Norte LLC',
+        browserPath: '/start',
+        returnRedirect: true,
+      });
+      expect(opened).toEqual({ error: 'errorStateUnavailable' });
+      expect(filingCreate).not.toHaveBeenCalled();
+    }
+
+    const form = new FormData();
+    form.set('firstName', 'Ada');
+    form.set('lastName', 'Lovelace');
+    form.set('email', 'ada@example.com');
+    form.set('state', 'DE');
+    form.set('businessName', 'Sol Norte LLC');
+    const started = await startGuestFiling({}, form);
+    expect(started).toEqual({ error: 'errorStateUnavailable' });
+    expect(filingCreate).not.toHaveBeenCalled();
+  });
+
   it('is only called from the /start client', () => {
     const files: string[] = [];
     for (const dir of ['app', 'components', 'actions', 'lib']) {

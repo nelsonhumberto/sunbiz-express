@@ -125,7 +125,9 @@ export default async function WizardStepPage({ params }: PageProps) {
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
-    state: (isActiveFormationState(filing.state) ? filing.state : 'FL') as StateCode,
+    state: ((filing.state === 'FL' || filing.state === 'WY' || filing.state === 'DE')
+      ? filing.state
+      : 'FL') as StateCode,
     processingOptionId,
   };
 
@@ -179,13 +181,15 @@ export default async function WizardStepPage({ params }: PageProps) {
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   });
-  const serverTotalCents = quoteDraftFiling({
-    entityType: filing.entityType,
-    serviceTier: filing.serviceTier,
-    state: filing.state,
-    optionalDetails: filing.optionalDetails,
-    filingAdditionalServices: filing.filingAdditionalServices,
-  }).totalCents;
+  const serverTotalCents = isActiveFormationState(filing.state)
+    ? quoteDraftFiling({
+        entityType: filing.entityType,
+        serviceTier: filing.serviceTier,
+        state: filing.state,
+        optionalDetails: filing.optionalDetails,
+        filingAdditionalServices: filing.filingAdditionalServices,
+      }).totalCents
+    : filing.totalCents;
 
   if (isGuest && stepNum === 1) {
     const landing = guestWizardStep({

@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
+import { FLORIDA, localizedStateName, type MarketingState } from '@/lib/marketing-states';
+import { isActiveFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
 import { localizedHref } from '@/lib/locale-paths';
 
@@ -17,22 +18,18 @@ interface CTABannerProps {
 export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
   const t = useTranslations('ctaBanner');
   const locale = useLocale();
-  const stateLabel = locale === 'es' ? state.nameEs : state.name;
-  // Route to the low-friction guest flow (/start) rather than full account
-  // creation (/sign-up). Cold ad traffic gets straight into the wizard; an
-  // account is auto-created after payment.
+  const bookable = isActiveFormationState(state.code);
+  const stateLabel = localizedStateName(bookable ? state : FLORIDA, locale);
   const signUpHref = localizedHref(
-    state.code === 'FL' ? '/start' : `/start?state=${state.code}`,
+    bookable && state.code !== 'FL' ? `/start?state=${state.code}` : '/start',
     locale,
   );
   const headlineState =
-    state.code === 'FL' ? t('headline2') : t('headlineState', { state: stateLabel });
-  // The default subhead promises same-business-day submission everywhere we
-  // file, and names slower state processing on WY/DE.
+    bookable && state.code !== 'FL' ? t('headlineState', { state: stateLabel }) : t('headline2');
   const subhead =
-    state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel });
+    bookable && state.code !== 'FL' ? t('subheadState', { state: stateLabel }) : t('subhead');
   return (
-    <section data-marketing-state={state.code} className="overflow-hidden py-16 md:py-24">
+    <section data-marketing-state={bookable ? state.code : 'FL'} className="overflow-hidden py-16 md:py-24">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -59,7 +56,7 @@ export function CTABanner({ state = FLORIDA }: CTABannerProps = {}) {
               <Button asChild size="xl" variant="accent" className="text-base shadow-xl">
                 <Link
                   href={signUpHref}
-                  onClick={() => trackCtaClicked('cta_banner', { state: state.code })}
+                  onClick={() => trackCtaClicked('cta_banner', { state: bookable ? state.code : 'FL' })}
                 >
                   {t('cta')}
                   <ArrowRight className="h-5 w-5" />

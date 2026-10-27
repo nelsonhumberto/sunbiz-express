@@ -282,16 +282,21 @@ export function navigationFlushBudget(requested?: number): number {
   return Math.min(NAVIGATION_FLUSH_MAX_MS, requested);
 }
 
+type CaptureRequest = {
+  callback?: (response: unknown) => void;
+};
+
 type AnalyticsClient = {
   capture: (
     event: string,
     properties?: Record<string, unknown>,
     options?: { send_instantly?: boolean; transport?: 'sendBeacon' },
   ) => void;
-  flush?: () => Promise<void> | void;
   config?: { api_transport?: string };
   _requestQueue?: { unload?: () => void };
   _retryQueue?: { unload?: () => void };
+  _send_retriable_request?: (options: CaptureRequest) => void;
+  _send_request?: (options: CaptureRequest) => void;
 };
 
 function analyticsClient(): AnalyticsClient | null {
@@ -339,23 +344,72 @@ function beaconQueuedEvents(client: AnalyticsClient): void {
 }
 
 /**
- * Wait until PostHog flushes, or until the budget elapses.
- * Returns immediately when PostHog is missing or has no flush.
+ * Watch the request callback posthog-js runs after a capture is sent.
+ * posthog-js 1.373.2 has no flush(), and sendBeacon never calls this callback.
+ * Returns null when the client has no send method to wrap.
  */
-export async function flushAnalyticsBeforeNavigation(maxWaitMs?: number): Promise<void> {
+function listenForCaptureSend(client: AnalyticsClient): { sent: Promise<void>; restore: () => void } | null {
+  const key =
+    typeof client._send_retriable_request === 'function'
+      ? '_send_retriable_request'
+      : typeof client._send_request === 'function'
+        ? '_send_request'
+        : null;
+  if (!key) return null;
+  const original = client[key];
+  if (typeof original !== 'function') return null;
+  let pending = 0;
+  let settled = false;
+  let resolveSent: () => void = () => undefined;
+  const sent = new Promise<void>((resolve) => {
+    resolveSent = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+  });
+  const wrapped = (options?: CaptureRequest) => {
+    pending += 1;
+    const next: CaptureRequest = { ...(options ?? {}) };
+    const previous = next.callback;
+    next.callback = (response: unknown) => {
+      try {
+        previous?.(response);
+      } finally {
+        pending -= 1;
+        if (pending <= 0) resolveSent();
+      }
+    };
+    return original.call(client, next);
+  };
+  client[key] = wrapped;
+  return {
+    sent,
+    restore: () => {
+      if (client[key] === wrapped) client[key] = original;
+    },
+  };
+}
+
+/**
+ * Wait until every capture callback has fired, or until the budget elapses.
+ * posthog-js 1.373.2 has no flush(), so a missing callback is not an instant
+ * return. PostHog missing does not wait. The budget never exceeds
+ * {@link NAVIGATION_FLUSH_MAX_MS}.
+ */
+export async function flushAnalyticsBeforeNavigation(
+  maxWaitMs?: number,
+  sent?: Promise<void>,
+): Promise<void> {
   const client = analyticsClient();
-  const flush = client?.flush;
-  if (!client || typeof flush !== 'function') return;
+  if (!client) return;
   const waitMs = navigationFlushBudget(maxWaitMs);
   if (waitMs <= 0) return;
 
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      Promise.resolve()
-        .then(() => flush.call(client))
-        .then(() => undefined)
-        .catch(() => undefined),
+      sent ?? new Promise<void>(() => undefined),
       new Promise<void>((resolve) => {
         timeoutId = setTimeout(resolve, waitMs);
       }),
@@ -367,14 +421,17 @@ export async function flushAnalyticsBeforeNavigation(maxWaitMs?: number): Promis
 
 /**
  * Capture, then navigate. PostHog missing is a no-op and does not delay
- * navigation. A sendBeacon send does not wait. Otherwise a flush is bounded
- * by {@link NAVIGATION_FLUSH_MAX_MS}.
+ * navigation. A sendBeacon send does not wait, because the beacon is already
+ * queued. Otherwise navigation waits for the capture callback, and still runs
+ * once {@link NAVIGATION_FLUSH_MAX_MS} elapses if that callback never fires.
  */
 export async function captureThenNavigate(input: {
   events: ReadonlyArray<{ event: string; properties?: Record<string, unknown> }>;
   navigate: () => void;
   maxWaitMs?: number;
 }): Promise<void> {
+  const client = analyticsClient();
+  const listener = client ? listenForCaptureSend(client) : null;
   let sentWithBeacon = false;
   try {
     sentWithBeacon = withNavigationTransport(() => {
@@ -386,12 +443,12 @@ export async function captureThenNavigate(input: {
         }
       }
     });
-    const client = analyticsClient();
     if (client) beaconQueuedEvents(client);
     if (!sentWithBeacon) {
-      await flushAnalyticsBeforeNavigation(input.maxWaitMs);
+      await flushAnalyticsBeforeNavigation(input.maxWaitMs, listener?.sent);
     }
   } finally {
+    listener?.restore();
     input.navigate();
   }
 }

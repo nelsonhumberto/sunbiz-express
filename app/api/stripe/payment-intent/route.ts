@@ -326,6 +326,9 @@ async function createGuestFormationPaymentIntent(
     return paymentError('invalid_email', 400);
   }
 
+  if (!filing) {
+    return paymentError('filing_not_found', 404);
+  }
   if (!isActiveFormationState(filing.state)) {
     return paymentError('state_unavailable', 400);
   }

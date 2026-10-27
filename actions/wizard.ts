@@ -47,7 +47,7 @@ function asStateCode(input: string | null | undefined): StateCode | null {
 function inactiveStateResult(
   state: string | null | undefined,
   locale: string | null | undefined,
-): { ok: false; error: string } | null {
+): { ok: false; error: string; needsSignIn?: boolean } | null {
   if (asStateCode(state)) return null;
   return { ok: false, error: formationStateUnavailableMessage(locale) };
 }

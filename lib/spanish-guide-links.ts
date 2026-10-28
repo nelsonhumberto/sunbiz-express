@@ -6,6 +6,11 @@ export type SpanishGuideLink = {
   label: string;
 };
 
+export const SPANISH_GUIDE_LLC_COSTO: SpanishGuideLink = {
+  href: '/es/guides/costo-llc-florida',
+  label: 'Precio de una LLC en Florida',
+};
+
 export const SPANISH_GUIDE_LLC_SIN_SSN: SpanishGuideLink = {
   href: '/es/guides/llc-florida-sin-seguro-social',
   label: 'Abrir una LLC en Florida sin SSN',

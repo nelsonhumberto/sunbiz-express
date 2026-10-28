@@ -51,6 +51,8 @@ vi.mock('next-intl/server', () => ({
     return (key: string, values?: Record<string, string | number>) => {
       const value = bag[key];
       if (typeof value !== 'string') throw new Error(`missing ${ns}.${key}`);
+      const needsValues = value.includes('{');
+      if (needsValues && !values) return `${ns}.${key}`;
       let text = value;
       if (values) {
         for (const [name, replacement] of Object.entries(values)) {
@@ -64,8 +66,9 @@ vi.mock('next-intl/server', () => ({
 
 import CostoPage, {
   generateMetadata as costoMeta,
-  renderFloridaLlcCostMeta,
 } from '@/app/(marketing)/guides/costo-llc-florida/page';
+import { renderFloridaLlcCostMeta } from '@/lib/guide-meta';
+import { withBrand } from '@/lib/seo-title';
 import SsnPage, {
   generateMetadata as ssnMeta,
 } from '@/app/(marketing)/guides/llc-florida-sin-seguro-social/page';
@@ -194,6 +197,15 @@ describe('Spanish buyer-intent guides', () => {
           'Abrir una LLC en Florida cuesta $125 en tarifas del estado. Con LaunchForma pagas $199 todo incluido. El reporte anual es $138.75, del 1 de enero al 1 de mayo.',
         );
         expect(rendered.length).toBe(159);
+        expect(meta.description).not.toContain('{');
+        expect(meta.description).not.toBe('guideLlcCosto.metaDescription');
+        const titled = withBrand(es.guideLlcExtranjeros.metaTitle);
+        expect(titled.endsWith(' · LaunchForma')).toBe(true);
+        expect(titled).toContain('extranjero');
+        expect(titled.length).toBeLessThanOrEqual(60);
+        expect(es.guideLlcExtranjeros.title).toBe(
+          'Abrir una LLC en Florida siendo extranjero no residente',
+        );
         const long = renderFloridaLlcCostMeta(
           'Abrir una LLC en Florida cuesta {stateFee} en tarifas del estado. Con LaunchForma pagas {total} todo incluido. El reporte anual es {annual}, del 1 de enero al 1 de mayo, con texto de mas para pasar el limite de la meta.',
         );
@@ -284,6 +296,8 @@ describe('Spanish buyer-intent guides', () => {
     expect(pricing).toContain('<SpanishSsnGuideLink />');
     const link = readFileSync('components/marketing/SpanishSsnGuideLink.tsx', 'utf8');
     expect(link).toContain('SPANISH_GUIDE_LLC_SIN_SSN');
+    expect(link).toContain('SPANISH_GUIDE_LLC_COSTO');
+    expect(link).toContain('SPANISH_GUIDE_LLC_EXTRANJEROS');
     expect(link).toContain("locale !== 'es'");
 
     const tracking = readFileSync('components/marketing/GuideTracking.tsx', 'utf8');

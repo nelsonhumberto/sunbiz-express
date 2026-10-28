@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { MIAMI_LAKES_EN } from '@/components/marketing/FloridaLlcLanding';
 import { auth } from '@/lib/auth';
 import { FloridaLlcLanding } from '@/components/marketing/FloridaLlcLanding';
 import { FAQSection } from '@/components/marketing/FAQSection';
@@ -48,6 +49,16 @@ export default async function FloridaLlcLandingPage({ searchParams }: LandingPro
   const actor = await adsActorForUser(session?.user?.id, session?.user?.email);
   const stateName = localizedStateName(FLORIDA, locale);
   const faq = getMarketingFaq(FLORIDA, locale);
+  const tNiche = await getTranslations('nicheStylists');
+  const tHero = await getTranslations('hero');
+  const trustLines =
+    locale === 'es'
+      ? [
+          tNiche('subhead'),
+          (await getTranslations('guideLlcSinSsn'))('ctaSubhead'),
+          tHero('previewBankReadyDetail'),
+        ]
+      : [tNiche('subhead'), MIAMI_LAKES_EN, tHero('previewBankReadyDetail')];
 
   return (
     <>
@@ -59,6 +70,7 @@ export default async function FloridaLlcLandingPage({ searchParams }: LandingPro
         stateName={stateName}
         accountEmail={actor.email}
         isTester={actor.isTester}
+        trustLines={trustLines}
       />
       <FAQSection state={FLORIDA} suppressJsonLd />
       <div className="container max-w-lg px-4 pb-16">

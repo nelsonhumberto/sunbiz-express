@@ -16,6 +16,7 @@ import {
   readChecklistConfirmToken,
   signChecklistConfirmToken,
 } from '@/lib/checklist-opt-in';
+import type { UtmData } from '@/lib/utm';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -87,6 +88,8 @@ export async function savePendingChecklistLead(input: {
   locale: DripLocale;
   consentText: string;
   now?: Date;
+  source?: string | null;
+  utm?: UtmData | null;
 }): Promise<void> {
   const email = normalizeEmail(input.email);
   const now = input.now ?? new Date();
@@ -106,6 +109,15 @@ export async function savePendingChecklistLead(input: {
 
   const expires = checklistConfirmExpiry(now.getTime());
   const token = signChecklistConfirmToken(email, expires.getTime(), unsubscribeSigningSecret());
+  const campaign = {
+    source: input.source?.slice(0, 64) || null,
+    utmSource: input.utm?.utm_source ?? null,
+    utmMedium: input.utm?.utm_medium ?? null,
+    utmCampaign: input.utm?.utm_campaign ?? null,
+    utmContent: input.utm?.utm_content ?? null,
+    utmTerm: input.utm?.utm_term ?? null,
+    gclid: input.utm?.gclid ?? null,
+  };
   await prisma.checklistSignup.upsert({
     where: { email },
     create: {
@@ -117,6 +129,7 @@ export async function savePendingChecklistLead(input: {
       isTest: isChecklistTestAddress(email),
       confirmTokenHash: hashChecklistToken(token),
       confirmTokenExpiresAt: expires,
+      ...campaign,
     },
     update: {
       locale: input.locale,
@@ -128,6 +141,7 @@ export async function savePendingChecklistLead(input: {
       confirmTokenExpiresAt: expires,
       confirmedAt: null,
       checklistSentAt: null,
+      ...campaign,
     },
   });
 

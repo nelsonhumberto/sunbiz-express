@@ -2161,6 +2161,24 @@
     "readyTitle": "Cuando tú digas",
     "readyBody": "Tú atiendes a tu clientela. Nosotros nos encargamos de presentar tu LLC. Solo toma unos minutos."
   },
+  "cookieNotice": {
+    "label": "Elección de cookies",
+    "body": "Google Analytics y Google Ads, incluido el remarketing, se cargan solo si aceptas. Las cookies esenciales mantienen el sitio funcionando de cualquier forma.",
+    "accept": "Aceptar",
+    "essential": "Solo lo esencial"
+  },
+  "lpFlorida": {
+    "needTitle": "Qué necesitas",
+    "need1": "Un nombre para la empresa. Puedes cambiarlo antes de que hagamos el registro.",
+    "need2": "Una dirección física en Florida para el agente registrado. El primer año está incluido.",
+    "need3": "La tarifa estatal, ya incluida en el precio de arriba.",
+    "stepsTitle": "Pasos",
+    "trustTitle": "Por qué usan LaunchForma",
+    "emailTitle": "Envíame la lista y el desglose del costo",
+    "emailButton": "Envíame la lista y el desglose del costo",
+    "stickyCta": "Empieza con el nombre de tu empresa",
+    "repeatCta": "Empieza tu LLC en Florida"
+  },
   "privacyChoices": {
     "metaTitle": "No vender ni compartir mi información personal",
     "metaDescription": "Exclúyete de compartir datos de tu visita con herramientas de anuncios para publicidad conductual entre contextos. LaunchForma respeta Global Privacy Control.",

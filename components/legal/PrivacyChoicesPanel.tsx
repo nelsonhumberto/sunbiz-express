@@ -12,6 +12,7 @@ import {
   syncGpcDerivedCookie,
   writeClientAdOptOut,
 } from '@/lib/ad-opt-out';
+import { ADS_CONSENT_ALL, serializeAdsConsentCookie, ADS_CONSENT_EVENT } from '@/lib/ad-consent';
 
 export function PrivacyChoicesPanel({
   initialOptedOut,
@@ -44,6 +45,8 @@ export function PrivacyChoicesPanel({
 
   function optIn() {
     writeClientAdOptOut(false);
+    document.cookie = serializeAdsConsentCookie(ADS_CONSENT_ALL);
+    window.dispatchEvent(new Event(ADS_CONSENT_EVENT));
     setOptedOut(false);
   }
 

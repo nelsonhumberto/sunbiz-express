@@ -90,6 +90,17 @@ export function CheckoutConversionTracker({
         }),
       );
     }
+    trackEvent('checkout_paid', {
+      ...purchaseCompletedEventProperties({
+        filingId,
+        amountCents,
+        currency,
+        state,
+        entityType,
+        tier,
+      }),
+      ...utmProps,
+    });
     trackPurchaseCompleted({
       ...purchaseCompletedEventProperties({
         filingId,

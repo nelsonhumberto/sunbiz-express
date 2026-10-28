@@ -40,11 +40,6 @@ const blocked = [
   '/start/extra',
   '/start/guest',
   '/es/start/extra',
-  '/wizard/filing_1/1',
-  '/wizard/filing_1/11',
-  '/wizard/filing_1/11?addon=ein',
-  '/es/wizard/filing_1/2',
-  '/es/wizard/filing_1/11',
   '/checkout',
   '/checkout/success',
   '/checkout/success?session=cs_test&filing=filing_1',
@@ -87,6 +82,11 @@ const allowed = [
   '/start?state=FL&name=Acme',
   '/es/start',
   '/es/start?state=FL',
+  '/wizard/filing_1/1',
+  '/wizard/filing_1/11',
+  '/es/wizard/filing_1/2',
+  '/lp/other',
+  '/es/lp/otra',
   '/lp/florida-llc',
   '/lp/florida-llc?utm_source=google&gclid=abc',
   '/es/lp/llc-florida',
@@ -140,12 +140,9 @@ describe('session replay routes', () => {
   });
 
   it('covers the requested prefixes and exact auth/resume pages', () => {
-    expect(SESSION_REPLAY_BLOCKED_PREFIXES).toEqual([
-      '/dashboard',
-      '/admin',
-      '/wizard',
-      '/checkout',
-    ]);
+    expect(SESSION_REPLAY_BLOCKED_PREFIXES).toEqual(['/dashboard', '/admin', '/checkout']);
+    expect(isSessionReplayBlockedPath('/wizard/filing_1/2')).toBe(false);
+    expect(isSessionReplayBlockedPath('/checkout')).toBe(true);
     expect(SESSION_REPLAY_BLOCKED_NESTED).toEqual(['/start']);
     expect(isSessionReplayBlockedPath('/start')).toBe(false);
     expect(isSessionReplayBlockedPath('/es/start')).toBe(false);
@@ -263,10 +260,10 @@ describe('syncSessionReplay', () => {
     at('/start');
     expect(posthog.startSessionRecording).toHaveBeenCalledTimes(2);
     at('/wizard/filing_1/1');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(2);
+    at('/checkout');
     expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(3);
     at('/es/start');
-    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(3);
-    at('/pricing');
     expect(posthog.startSessionRecording).toHaveBeenCalledTimes(3);
   });
 
@@ -336,6 +333,10 @@ describe('syncSessionReplay', () => {
 
     location.pathname = '/wizard/filing_1/2';
     syncSessionReplay('/wizard/filing_1/2');
+    expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
+
+    location.pathname = '/checkout';
+    syncSessionReplay('/checkout');
     expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
 
     location.pathname = '/es/start';

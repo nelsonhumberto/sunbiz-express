@@ -50,7 +50,7 @@ describe('Florida LLC ad landing', () => {
     expect(landing).toContain('tierPackagePriceCents');
     expect(landing).not.toMatch(/\$199/);
     expect(landing).toContain("tPricing('feat_sameDay')");
-    expect(landing).toContain("tHero('previewBankReadyDetail')");
+    expect(page).toContain("tHero('previewBankReadyDetail')");
     expect(landing).toContain("tPricing('allIn')");
     expect(landing).toContain("tPricing('serviceGuarantee')");
     expect(landing).toContain('trackGoogleBeginFiling');

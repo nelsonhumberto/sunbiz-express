@@ -11,7 +11,6 @@ import { englishPathname } from '@/lib/locale-paths';
 export const SESSION_REPLAY_BLOCKED_PREFIXES = [
   '/dashboard',
   '/admin',
-  '/wizard',
   '/checkout',
 ] as const;
 

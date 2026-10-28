@@ -16,6 +16,7 @@ import {
   syncGpcDerivedCookie,
   tearDownAdMeasurement,
 } from '@/lib/ad-opt-out';
+import { ADS_CONSENT_EVENT, marketingTagsAllowed, readAdsConsent } from '@/lib/ad-consent';
 
 /**
  * Injects Google (gtag.js / GA4 / Google Ads) and the OpenAI ads pixel only
@@ -38,10 +39,14 @@ export function AdMeasurementGate({
       syncGpcDerivedCookie(serverGpc || readGlobalPrivacyControl());
       const liveCookie = readAdOptOutCookieFromDocument();
       const cookie = clientChose.current ? liveCookie : (liveCookie ?? serverCookie);
-      const allow = shouldInjectAdScripts({
+      const optedOut = !shouldInjectAdScripts({
         serverGpc,
         cookie,
         globalPrivacyControl: readGlobalPrivacyControl(),
+      });
+      const allow = marketingTagsAllowed({
+        consent: readAdsConsent(document.cookie),
+        optedOut,
       });
       if (!allow) {
         // Unmount first. A throw while stopping gtag must not leave the tags mounted.
@@ -61,8 +66,12 @@ export function AdMeasurementGate({
       sync();
     };
     window.addEventListener(AD_OPT_OUT_EVENT, onChoice);
+    window.addEventListener(ADS_CONSENT_EVENT, onChoice);
     sync();
-    return () => window.removeEventListener(AD_OPT_OUT_EVENT, onChoice);
+    return () => {
+      window.removeEventListener(AD_OPT_OUT_EVENT, onChoice);
+      window.removeEventListener(ADS_CONSENT_EVENT, onChoice);
+    };
   }, [serverGpc, serverCookie]);
 
   if (!enabled) return null;

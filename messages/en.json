@@ -1670,6 +1670,24 @@
     "readyTitle": "Ready when you are",
     "readyBody": "You take care of your clients. We take care of the filing. It only takes a few minutes."
   },
+  "cookieNotice": {
+    "label": "Cookie choice",
+    "body": "Google Analytics and Google Ads, including remarketing, load only after you accept. Essential cookies keep the site working either way.",
+    "accept": "Accept",
+    "essential": "Essential only"
+  },
+  "lpFlorida": {
+    "needTitle": "What you need",
+    "need1": "A company name. You can change it before we file.",
+    "need2": "A Florida street address for the registered agent. Your first year is included.",
+    "need3": "The state filing fee, already included in the price above.",
+    "stepsTitle": "How it works",
+    "trustTitle": "Why people use LaunchForma",
+    "emailTitle": "Send me the checklist and cost breakdown",
+    "emailButton": "Send me the checklist and cost breakdown",
+    "stickyCta": "Start with your company name",
+    "repeatCta": "Start your Florida LLC"
+  },
   "privacyChoices": {
     "metaTitle": "Do Not Sell or Share My Personal Information",
     "metaDescription": "Opt out of sharing visit data with advertising tools for cross-context behavioral advertising. LaunchForma honors Global Privacy Control.",

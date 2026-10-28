@@ -8,6 +8,7 @@ import { savePendingChecklistLead } from '@/lib/checklist-lead';
 import { isSignupHoneypot } from '@/lib/checklist-opt-in';
 import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from '@/lib/rate-limit';
+import { getServerUtmAttribution } from '@/lib/utm-server';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -16,6 +17,7 @@ const Input = z.object({
   consent: z.boolean(),
   locale: z.enum(['en', 'es']).optional(),
   website: z.string().optional(),
+  source: z.string().trim().max(64).optional(),
 });
 
 export type ChecklistSignupResult =
@@ -47,7 +49,13 @@ export async function captureChecklistSignup(
   const consentText = checklistConsentText(locale, privacyPolicyUrl(locale, SITE_URL));
 
   try {
-    await savePendingChecklistLead({ email, locale, consentText });
+    await savePendingChecklistLead({
+      email,
+      locale,
+      consentText,
+      source: parsed.data.source,
+      utm: getServerUtmAttribution(),
+    });
   } catch (err) {
     logger.error('captureChecklistSignup failed', { area: 'marketing', tag: 'checklist-signup' }, err);
     return { ok: false, error: 'generic' };

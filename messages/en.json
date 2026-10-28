@@ -263,6 +263,8 @@
     "allIn": "all-in",
     "filingFeeIncluded": "State filing fee included",
     "feeSplit": "Service fee {service} + {state} state fee {stateFee}",
+    "feeDetails": "Service and state fees",
+    "feeDetailsHide": "Hide service and state fees",
     "feeSplitCorp": "Corporation: Service fee {service} + {state} state fee {stateFee} ({total})",
     "corpGuide": "How to form a Florida corporation",
     "whatsIncluded": "What's included",
@@ -1668,13 +1670,32 @@
     "readyTitle": "Ready when you are",
     "readyBody": "You take care of your clients. We take care of the filing. It only takes a few minutes."
   },
+  "cookieNotice": {
+    "label": "Cookies",
+    "body": "We use cookies to improve your visit.",
+    "privacy": "Privacy",
+    "accept": "Accept",
+    "essential": "Essential only"
+  },
+  "lpFlorida": {
+    "needTitle": "What you need",
+    "need1": "A company name. You can change it before we file.",
+    "need2": "A Florida street address for the registered agent. Your first year is included.",
+    "need3": "The state filing fee, already included in the price above.",
+    "stepsTitle": "How it works",
+    "trustTitle": "Why people use LaunchForma",
+    "emailTitle": "Send me the checklist and cost breakdown",
+    "emailButton": "Send me the checklist and cost breakdown",
+    "stickyCta": "Start with your company name",
+    "repeatCta": "Start your Florida LLC"
+  },
   "privacyChoices": {
     "metaTitle": "Do Not Sell or Share My Personal Information",
     "metaDescription": "Opt out of sharing visit data with advertising tools for cross-context behavioral advertising. LaunchForma honors Global Privacy Control.",
     "title": "Do Not Sell or Share My Personal Information",
-    "intro": "Some states (such as California) may treat sharing visit data with ad tools for cross-context behavioral advertising as \"sharing.\" Use this page to opt out in this browser. We honor Global Privacy Control (GPC) browser signals as an opt-out.",
+    "intro": "Some states (such as California) may treat sharing visit data with ad tools for cross-context behavioral advertising as \"sharing.\" Google Analytics and Google Ads, including remarketing, load only after you accept cookies. Use this page to opt out in this browser, or to opt back in. We honor Global Privacy Control (GPC) browser signals as an opt-out.",
     "statusOn": "Ad measurement is on in this browser.",
-    "statusOff": "You are opted out in this browser. We do not load the Google Analytics and Google Ads tags or the OpenAI ads pixel.",
+    "statusOff": "You are opted out in this browser. We do not load the Google Analytics and Google Ads tags, including remarketing, or the OpenAI ads pixel.",
     "gpc": "GPC signal detected, you're opted out",
     "optOut": "Opt out",
     "optIn": "Opt back in",

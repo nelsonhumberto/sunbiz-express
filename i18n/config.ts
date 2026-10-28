@@ -88,6 +88,7 @@ export function messagesForPath(
         disclaimer: pickString(footer, 'disclaimer'),
         doNotSell: pickString(footer, 'doNotSell'),
       },
+      cookieNotice: messages.cookieNotice ?? {},
     };
   }
   // x-lf-pathname is the unprefixed route, so /es/contacto is `/contact` here.
@@ -118,6 +119,7 @@ const CONTACT_CLIENT_NAMESPACES = [
   'assistant',
   'businessServices',
   'common',
+  'cookieNotice',
   'disclosure',
   'footer',
   'nav',

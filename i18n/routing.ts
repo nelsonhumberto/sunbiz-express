@@ -29,5 +29,9 @@ export const routing = defineRouting({
       en: '/llc-for/stylists-barbers',
       es: '/llc-para/estilistas-barberos',
     },
+    '/lp/florida-llc': {
+      en: '/lp/florida-llc',
+      es: '/lp/llc-florida',
+    },
   } as Pathnames<['en', 'es']>,
 });

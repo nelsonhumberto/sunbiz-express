@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
+import { adsActorForUser } from '@/lib/ads-actor';
 import { retrieveCheckoutSession } from '@/lib/retrieve-checkout-session';
 import {
   checkoutFilingCandidates,
@@ -47,6 +48,7 @@ export default async function CheckoutSuccessPage({
 }) {
   const session = await auth();
   if (!session?.user?.id) return await redirectLocalized('/sign-in');
+  const actor = await adsActorForUser(session.user.id, session.user.email);
 
   const t = await getTranslations('checkoutSuccess');
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
@@ -73,7 +75,7 @@ export default async function CheckoutSuccessPage({
             where: { status: 'SUCCEEDED' },
             orderBy: { completedAt: 'desc' },
             take: 1,
-            select: { amountCents: true, currency: true },
+            select: { amountCents: true, currency: true, isTest: true },
           },
         },
       })
@@ -208,7 +210,14 @@ export default async function CheckoutSuccessPage({
       entityType={filing?.entityType}
       tier={filing?.serviceTier}
       locale={locale}
-      isTest={typeof filing?.isTest === 'boolean' ? filing.isTest : undefined}
+      isTest={
+        filing?.isTest === true ||
+        (paidFiling?.payments[0] && 'isTest' in paidFiling.payments[0]
+          ? paidFiling.payments[0].isTest === true
+          : false)
+      }
+      isTester={actor.isTester}
+      email={actor.email}
       utm={
         filing
           ? {

@@ -15,6 +15,7 @@ import { auth } from '@/lib/auth';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { AdMeasurementGate } from '@/components/analytics/AdMeasurementGate';
+import { CookieConsentBar } from '@/components/analytics/CookieConsentBar';
 import { AD_OPT_OUT_COOKIE } from '@/lib/ad-opt-out';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
@@ -107,6 +108,7 @@ export default async function RootLayout({
                 className: 'font-sans',
               }}
             />
+            <CookieConsentBar />
           </NextIntlClientProvider>
           <Analytics />
           <SpeedInsights />

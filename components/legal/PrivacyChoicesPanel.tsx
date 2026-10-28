@@ -43,6 +43,8 @@ export function PrivacyChoicesPanel({
   }
 
   function optIn() {
+    // Clearing the opt-out does not accept cookies. Measurement stays off
+    // until the visitor chooses Accept on the cookie bar.
     writeClientAdOptOut(false);
     setOptedOut(false);
   }

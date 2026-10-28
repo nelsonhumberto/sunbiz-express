@@ -222,6 +222,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             needsGuestEmail={needsGuestEmail}
             initialGuestEmail={guestEmailPrefill}
             pendingAccountEmail={pendingAccountEmail}
+            isTester={isTester}
           />
         )}
         {stepNum === 2 && (

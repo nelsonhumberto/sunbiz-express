@@ -7,6 +7,16 @@
 import posthog from 'posthog-js';
 
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import {
+  adsDebugActive,
+  adsSendTo,
+  beginConversionStorageKey,
+  beginFilingPayload,
+  purchaseConversionStorageKey,
+  purchasePayload,
+  shouldSuppressAdsConversion,
+  type AdsSuppressionInput,
+} from '@/lib/ads-conversions';
 import { definedAttributionProps } from '@/lib/utm';
 
 function ph() {
@@ -159,6 +169,55 @@ export function markCheckoutSuccessViewed(filingId: string): void {
   } catch {
     /* private mode: the component ref still blocks a second fire in this mount */
   }
+}
+
+const CHECKOUT_PAID_PREFIX = 'lf_checkout_paid:';
+const PURCHASE_COMPLETED_PREFIX = 'lf_purchase_completed:';
+
+export function checkoutPaidStorageKey(filingId: string): string {
+  return `${CHECKOUT_PAID_PREFIX}${filingId}`;
+}
+
+export function purchaseCompletedStorageKey(filingId: string): string {
+  return `${PURCHASE_COMPLETED_PREFIX}${filingId}`;
+}
+
+function filingEventAlreadySent(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markFilingEventSent(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, '1');
+  } catch {
+    /* private mode: a later full reload may send again */
+  }
+}
+
+export function checkoutPaidAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(checkoutPaidStorageKey(filingId));
+}
+
+export function markCheckoutPaidSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(checkoutPaidStorageKey(filingId));
+}
+
+export function purchaseCompletedAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(purchaseCompletedStorageKey(filingId));
+}
+
+export function markPurchaseCompletedSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(purchaseCompletedStorageKey(filingId));
 }
 
 /** Filing id from `/wizard/:id` or `/es/wizard/:id`. */
@@ -458,17 +517,7 @@ export async function captureThenNavigate(input: {
 // These fire on top of PostHog so Google Ads can attribute conversions. All
 // calls are safe no-ops when gtag isn't loaded (env vars unset).
 
-function gtag(): ((...args: unknown[]) => void) | null {
-  if (typeof window === 'undefined') return null;
-  const fn = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-  return typeof fn === 'function' ? fn : null;
-}
-
-/**
- * Report a purchase to GA4 and (when configured) fire the Google Ads
- * conversion. `send_to` targets the Ads conversion action so Ads counts it
- * even though the GA4 `purchase` event is also recorded.
- */
+/** Poll until gtag.js has loaded. A slow tag still counts. */
 function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
   if (typeof window === 'undefined') return;
   const start = Date.now();
@@ -483,36 +532,141 @@ function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
   tick();
 }
 
+function browserSearch(): string {
+  try {
+    return window.location?.search ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function readConversionFlag(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeConversionFlag(key: string): void {
+  try {
+    window.localStorage.setItem(key, '1');
+  } catch {
+    /* private mode: Ads transaction_id still dedupes a later hit */
+  }
+}
+
+function logAdsDebug(kind: string, payload: unknown): void {
+  console.info(`[lf_ads_debug] ${kind}`, payload);
+}
+
+function suppressionInput(
+  input: AdsSuppressionInput & { email?: string | null },
+): AdsSuppressionInput {
+  const emails = [...(input.emails ?? [])];
+  if (input.email) emails.push(input.email);
+  return { isTester: input.isTester, isTest: input.isTest, emails };
+}
+
+/**
+ * GA4 `purchase` plus the Filing Purchase Ads conversion.
+ * One hit per transaction id in this browser. Refreshing the receipt does not
+ * send again. `transaction_id` is also sent for Ads-side dedup.
+ * Test users are skipped. On a preview deploy, `?lf_ads_debug=1` logs the
+ * payload instead of sending that skipped hit.
+ */
 export function trackGooglePurchase(input: {
   transactionId: string;
   valueCents: number;
   currency?: string;
+  isTester?: boolean | null;
+  isTest?: boolean | null;
+  email?: string | null;
 }) {
-  if (isClientAdMeasurementOptedOut()) return;
-  const g = gtag();
-  if (!g) return;
+  if (typeof window === 'undefined') return;
+  const payload = purchasePayload(input);
+  if (!payload) return;
+  const storageKey = purchaseConversionStorageKey(payload.transaction_id);
+  if (readConversionFlag(storageKey)) return;
 
-  const value = input.valueCents / 100;
-  const currency = input.currency ?? 'USD';
+  const suppressed = shouldSuppressAdsConversion(suppressionInput(input));
+  const debug = adsDebugActive(browserSearch());
+  const sendTo = adsSendTo(
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL,
+  );
+  const conversion = sendTo ? { send_to: sendTo, ...payload } : null;
 
-  // GA4 ecommerce purchase event.
-  g('event', 'purchase', {
-    transaction_id: input.transactionId,
-    value,
-    currency,
-  });
-
-  // Google Ads conversion (only when both Ads ID + label are configured).
-  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-  const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL;
-  if (adsId && label) {
-    g('event', 'conversion', {
-      send_to: `${adsId}/${label}`,
-      transaction_id: input.transactionId,
-      value,
-      currency,
-    });
+  if (suppressed) {
+    if (debug) logAdsDebug('purchase suppressed', { purchase: payload, conversion });
+    return;
   }
+  if (isClientAdMeasurementOptedOut()) return;
+
+  whenReady(
+    () => typeof window.gtag === 'function',
+    () => {
+      if (readConversionFlag(storageKey)) return;
+      if (isClientAdMeasurementOptedOut()) return;
+      if (shouldSuppressAdsConversion(suppressionInput(input))) return;
+      window.gtag('event', 'purchase', payload);
+      if (conversion) window.gtag('event', 'conversion', conversion);
+      if (debug) logAdsDebug('purchase', { purchase: payload, conversion });
+      writeConversionFlag(storageKey);
+    },
+    10000,
+  );
+}
+
+/**
+ * Begin Filing Ads conversion. Once per filing id, on the /lp CTA and on
+ * step 1 submit. The same id from the landing CTA into step 1 does not send
+ * again. Value is 1 USD. Sends only when the Begin Filing label env is set.
+ * Test users are skipped and do not consume the dedupe key.
+ */
+export function trackGoogleBeginFiling(input?: {
+  filingId?: string | null;
+  isTester?: boolean | null;
+  isTest?: boolean | null;
+  email?: string | null;
+  emails?: Array<string | null | undefined>;
+}) {
+  if (typeof window === 'undefined') return;
+  const base = beginFilingPayload(input?.filingId);
+  if (!base) return;
+  const storageKey = beginConversionStorageKey(base.transaction_id);
+  if (readConversionFlag(storageKey)) return;
+
+  const sendTo = adsSendTo(
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING,
+  );
+  const payload = sendTo ? { send_to: sendTo, ...base } : null;
+  const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
+  const debug = adsDebugActive(browserSearch());
+
+  if (suppressed) {
+    if (debug) logAdsDebug('begin_filing suppressed', payload ?? { missingLabel: true });
+    return;
+  }
+  if (isClientAdMeasurementOptedOut()) return;
+  if (!payload) {
+    if (debug) logAdsDebug('begin_filing missing label', { missingLabel: true });
+    return;
+  }
+
+  whenReady(
+    () => typeof window.gtag === 'function',
+    () => {
+      if (readConversionFlag(storageKey)) return;
+      if (isClientAdMeasurementOptedOut()) return;
+      if (shouldSuppressAdsConversion(suppressionInput(input ?? {}))) return;
+      window.gtag('event', 'conversion', payload);
+      if (debug) logAdsDebug('begin_filing', payload);
+      writeConversionFlag(storageKey);
+    },
+    10000,
+  );
 }
 
 /** GA4 generate_lead, plus a Google Ads conversion when a lead label is set. */

@@ -11,10 +11,14 @@ import { englishPathname } from '@/lib/locale-paths';
 export const SESSION_REPLAY_BLOCKED_PREFIXES = [
   '/dashboard',
   '/admin',
-  '/wizard',
   '/checkout',
-  '/start',
 ] as const;
+
+/**
+ * Nested under the public start page only. `/start` and `/es/start` stay
+ * recordable. `/starting` is not this prefix.
+ */
+export const SESSION_REPLAY_BLOCKED_NESTED = ['/start'] as const;
 
 export const SESSION_REPLAY_BLOCKED_EXACT = [
   '/sign-in',
@@ -62,9 +66,14 @@ export function canonicalReplayPath(pathname: string): string {
 export function isSessionReplayBlockedPath(pathname: string): boolean {
   const path = canonicalReplayPath(pathname);
   if (BLOCKED_EXACT.has(path)) return true;
-  return SESSION_REPLAY_BLOCKED_PREFIXES.some(
-    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
-  );
+  if (
+    SESSION_REPLAY_BLOCKED_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+    )
+  ) {
+    return true;
+  }
+  return SESSION_REPLAY_BLOCKED_NESTED.some((prefix) => path.startsWith(`${prefix}/`));
 }
 
 /**

@@ -79,6 +79,7 @@ export function Step12Payment({
 
   useEffect(() => {
     trackEvent('checkout_payment_step_viewed', paymentEventProps);
+    trackEvent('checkout_started', paymentEventProps);
     // The view is once per mount of this payment step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filing.id]);

@@ -57,9 +57,6 @@ export function WizardShell({
 
   useEffect(() => {
     trackEvent('wizard_step_viewed', { step, filing_id: filingId });
-    if (step === TOTAL_STEPS) {
-      trackEvent('checkout_started', { step, filing_id: filingId });
-    }
   }, [step, filingId]);
 
   const stepKey = `step${step}Title` as keyof IntlMessages;

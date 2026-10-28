@@ -574,6 +574,14 @@ model ChecklistSignup {
   confirmTokenExpiresAt DateTime?
   isTest                Boolean   @default(false)
   checklistSentAt       DateTime?
+  // Where the opt-in was submitted, plus the lf_utm cookie at that moment.
+  source                String?
+  utmSource             String?
+  utmMedium             String?
+  utmCampaign           String?
+  utmContent            String?
+  utmTerm               String?
+  gclid                 String?
   createdAt             DateTime  @default(now())
 
   @@index([createdAt])

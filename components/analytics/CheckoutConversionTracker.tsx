@@ -3,9 +3,13 @@
 import { useEffect, useRef } from 'react';
 import {
   checkoutFunnelEventProperties,
+  checkoutPaidAlreadySent,
   checkoutSuccessAlreadyViewed,
   identifyUser,
+  markCheckoutPaidSent,
   markCheckoutSuccessViewed,
+  markPurchaseCompletedSent,
+  purchaseCompletedAlreadySent,
   purchaseCompletedEventProperties,
   trackEvent,
   trackPurchaseCompleted,
@@ -25,6 +29,8 @@ interface CheckoutConversionTrackerProps {
   tier?: string | null;
   locale?: string | null;
   isTest?: boolean | null;
+  isTester?: boolean | null;
+  email?: string | null;
   utm?: {
     utmSource?: string | null;
     utmMedium?: string | null;
@@ -50,6 +56,8 @@ export function CheckoutConversionTracker({
   tier,
   locale,
   isTest,
+  isTester,
+  email,
   utm,
 }: CheckoutConversionTrackerProps) {
   const fired = useRef(false);
@@ -86,7 +94,7 @@ export function CheckoutConversionTracker({
         }),
       );
     }
-    trackPurchaseCompleted({
+    const paidProps = {
       ...purchaseCompletedEventProperties({
         filingId,
         amountCents,
@@ -96,7 +104,15 @@ export function CheckoutConversionTracker({
         tier,
       }),
       ...utmProps,
-    });
+    };
+    if (filingId && !checkoutPaidAlreadySent(filingId)) {
+      trackEvent('checkout_paid', paidProps);
+      markCheckoutPaidSent(filingId);
+    }
+    if (filingId && !purchaseCompletedAlreadySent(filingId)) {
+      trackPurchaseCompleted(paidProps);
+      markPurchaseCompletedSent(filingId);
+    }
 
     // GA4 + Google Ads conversion (no-op when gtag/env not configured).
     if (filingId && typeof amountCents === 'number') {
@@ -104,9 +120,12 @@ export function CheckoutConversionTracker({
         transactionId: filingId,
         valueCents: amountCents,
         ...(currency ? { currency } : {}),
+        isTest,
+        isTester,
+        email,
       });
     }
-  }, [userId, filingId, amountCents, currency, state, entityType, tier, locale, isTest, utm]);
+  }, [userId, filingId, amountCents, currency, state, entityType, tier, locale, isTest, isTester, email, utm]);
 
   return null;
 }

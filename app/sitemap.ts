@@ -18,6 +18,12 @@ interface PageDef {
   englishOnly?: boolean;
   /** Emit en, es, and x-default xhtml:link alternates on both URLs. */
   hreflang?: boolean;
+  /**
+   * Spanish URL when the slug is not /es plus this path.
+   * The English entry carries hreflang. This PR does not emit that Spanish
+   * URL on its own, so a page #89 already lists is not duplicated.
+   */
+  alternateEs?: string;
 }
 
 const STATIC_PAGES: PageDef[] = [
@@ -126,6 +132,36 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.7,
     spanishOnly: true,
   },
+  {
+    path: '/guides/cheapest-way-to-form-florida-llc',
+    file: 'app/(marketing)/guides/cheapest-way-to-form-florida-llc/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
+  },
+  {
+    path: '/guides/florida-llc-non-resident',
+    file: 'app/(marketing)/guides/florida-llc-non-resident/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
+    alternateEs: '/es/guides/llc-florida-para-extranjeros',
+  },
+  {
+    path: '/guides/florida-llc-without-ssn',
+    file: 'app/(marketing)/guides/florida-llc-without-ssn/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
+    alternateEs: '/es/guides/llc-florida-sin-seguro-social',
+  },
+  {
+    path: '/guides/how-long-to-form-florida-llc',
+    file: 'app/(marketing)/guides/how-long-to-form-florida-llc/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
+  },
   { path: '/terms', file: 'app/(legal)/terms/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/privacy', file: 'app/(legal)/privacy/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   {
@@ -154,7 +190,17 @@ function toEntry(page: PageDef, spanish: boolean): MetadataRoute.Sitemap[number]
     changeFrequency: page.changeFrequency,
     priority: page.priority,
   };
-  if (page.hreflang && !page.spanishOnly && !page.englishOnly) {
+  if (page.alternateEs) {
+    const en = absoluteUrl(page.path);
+    const es = absoluteUrl(page.alternateEs);
+    entry.alternates = {
+      languages: {
+        en,
+        es,
+        'x-default': en,
+      },
+    };
+  } else if (page.hreflang && !page.spanishOnly && !page.englishOnly) {
     const en = absoluteUrl(page.path);
     const es = absoluteUrl(toSpanishUrl(page.path));
     entry.alternates = {

@@ -55,6 +55,33 @@ const GUIDES = [
     readingMinutes: 5,
   },
   {
+    slug: 'cheapest-way-to-form-florida-llc',
+    title: 'Cheapest way to form an LLC in Florida',
+    description:
+      'File on Sunbiz yourself for the state fee, or use a service when you want help with the form and the registered agent.',
+    readingMinutes: 6,
+  },
+  {
+    slug: 'florida-llc-non-resident',
+    title: 'Florida LLC for a non resident',
+    description:
+      'Sunbiz does not require you to live in Florida. You still need a registered agent with a Florida street address.',
+    readingMinutes: 6,
+  },
+  {
+    slug: 'florida-llc-without-ssn',
+    title: 'Florida LLC without SSN',
+    description: 'Sunbiz has no SSN field on the Florida LLC filing form.',
+    readingMinutes: 5,
+  },
+  {
+    slug: 'how-long-to-form-florida-llc',
+    title: 'How long does it take to form an LLC in Florida',
+    description:
+      'Sunbiz processes filings in the order received. The state posts current dates on its Document Processing Dates page.',
+    readingMinutes: 5,
+  },
+  {
     slug: 'how-to-form-a-florida-corporation',
     title: 'How to Form a Florida Corporation',
     description:

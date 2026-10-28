@@ -28,7 +28,7 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
-import { stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
@@ -170,6 +170,7 @@ export async function startGuestFiling(
       userId: session.user.id,
       filingId: filing.id,
       emails: [session.user.email],
+      qaMarked: qaMarkedFromRequest(),
     });
     return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
@@ -237,6 +238,7 @@ export async function startGuestFiling(
     userId: guestUser.id,
     filingId: filing.id,
     emails: [email, guestUser.email],
+    qaMarked: qaMarkedFromRequest(),
   });
 
   return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
@@ -342,6 +344,7 @@ export async function openGuestDraft(input: {
       userId: session.user.id,
       filingId: filing.id,
       emails: [session.user.email, optionalEmail],
+      qaMarked: qaMarkedFromRequest(),
     });
     return await finishGuestDraft(`/wizard/${filing.id}/2`, locale, input.returnRedirect);
   }
@@ -488,6 +491,7 @@ export async function openGuestDraft(input: {
       userId,
       filingId: filing.id,
       emails: [optionalEmail, guestRecord?.email],
+      qaMarked: qaMarkedFromRequest(),
     });
     if (guestRecord) {
       await rememberStartEmail(

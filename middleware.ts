@@ -20,6 +20,7 @@ import {
   gpcCookieDecision,
 } from '@/lib/ad-opt-out';
 import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
+import { QA_COOKIE, QA_MAX_AGE, qaMarkerPathAllowed, qaMarkerRequested } from '@/lib/qa-marker';
 
 function isEnabledFormationState(value: string): value is StateCode {
   return (ACTIVE_FORMATION_STATES as readonly string[]).includes(value);
@@ -245,6 +246,19 @@ export function middleware(request: NextRequest) {
   // No geo-redirect: every visitor lands on the homepage (or whatever path
   // they requested). State preference is honored via the StateSwitcher
   // dropdown + `preferred_state` cookie.
+  if (
+    qaMarkerPathAllowed(pathname) &&
+    qaMarkerRequested(request.nextUrl.search) &&
+    request.cookies.get(QA_COOKIE)?.value !== '1'
+  ) {
+    response.cookies.set(QA_COOKIE, '1', {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: QA_MAX_AGE,
+      httpOnly: false,
+      secure: request.nextUrl.protocol === 'https:',
+    });
+  }
   return withGpcOptOut(response);
 }
 

@@ -22,6 +22,7 @@ import { AD_OPT_OUT_COOKIE } from '@/lib/ad-opt-out';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
 import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
+import { VITALS_BEACON_BOOTSTRAP } from '@/lib/vitals-beacon';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -97,6 +98,14 @@ export default async function RootLayout({
         <Script id="strip-li-fat-id" strategy="beforeInteractive">
           {LI_FAT_ID_STRIP_SCRIPT}
         </Script>
+        <Script id="vitals-beacon" strategy="beforeInteractive">
+          {VITALS_BEACON_BOOTSTRAP}
+        </Script>
+        {isTester ? (
+          <Script id="lf-tester-flag" strategy="beforeInteractive">
+            {`try{window.__lf_tester=1;document.cookie='lf_tester=1; Path=/; Max-Age=86400; SameSite=Lax'+(location.protocol==='https:'?'; Secure':'')}catch(e){}`}
+          </Script>
+        ) : null}
         <PostHogProvider>
           <InternalTrafficFlag
             userId={session?.user?.id}

@@ -193,6 +193,14 @@ export function GuestStartLaunch({
     void run({ businessName: trimmed });
   }
 
+  const continueRef = useRef<HTMLDivElement>(null);
+
+  function scrollContinueIntoView() {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    continueRef.current?.scrollIntoView({ block: 'nearest' });
+  }
+
   const essentialPrice = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
   return (
@@ -266,6 +274,7 @@ export function GuestStartLaunch({
                       setFormError(null);
                     }
                   }}
+                  onFocus={scrollContinueIntoView}
                   autoComplete="organization"
                   autoCapitalize="words"
                   enterKeyHint="go"
@@ -275,10 +284,30 @@ export function GuestStartLaunch({
                   aria-describedby={nameError ? 'start-name-help start-name-error' : 'start-name-help'}
                   className="h-12 text-base"
                 />
-                <p id="start-name-help" className="text-[11px] text-ink-subtle">
-                  {t('nameHelper')}
-                </p>
               </div>
+
+              <div ref={continueRef}>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full h-12 text-base"
+                  disabled={pending}
+                  aria-disabled={pending}
+                >
+                  {pending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t('starting')}
+                    </>
+                  ) : (
+                    t('continue')
+                  )}
+                </Button>
+              </div>
+
+              <p id="start-name-help" className="text-[11px] text-ink-subtle">
+                {t('nameHelper')}
+              </p>
 
               <button
                 type="button"
@@ -297,23 +326,6 @@ export function GuestStartLaunch({
                   {formError || nameError}
                 </p>
               )}
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full h-12 text-base"
-                disabled={pending}
-                aria-disabled={pending}
-              >
-                {pending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('starting')}
-                  </>
-                ) : (
-                  t('continue')
-                )}
-              </Button>
 
               {showOptionalEmail && (
                 <div className="space-y-1.5 text-left">

@@ -14,6 +14,7 @@ import {
   beginFilingPayload,
   purchaseConversionStorageKey,
   purchasePayload,
+  qaCookieSuppressesAds,
   shouldSuppressAdsConversion,
   type AdsSuppressionInput,
 } from '@/lib/ads-conversions';
@@ -560,6 +561,14 @@ function browserSearch(): string {
   }
 }
 
+function browserCookie(): string {
+  try {
+    return document.cookie ?? '';
+  } catch {
+    return '';
+  }
+}
+
 function readConversionFlag(key: string): boolean {
   try {
     return window.localStorage.getItem(key) === '1';
@@ -585,7 +594,12 @@ function suppressionInput(
 ): AdsSuppressionInput {
   const emails = [...(input.emails ?? [])];
   if (input.email) emails.push(input.email);
-  return { isTester: input.isTester, isTest: input.isTest, emails };
+  return {
+    isTester: input.isTester,
+    isTest: input.isTest,
+    qaMarked: input.qaMarked || qaCookieSuppressesAds(browserCookie()),
+    emails,
+  };
 }
 
 /**

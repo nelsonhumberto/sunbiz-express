@@ -14,6 +14,8 @@
  * The flag does nothing in production.
  */
 
+import { hasQaCookie } from '@/lib/qa-marker';
+
 export const BEGIN_FILING_LABEL_ENV = 'NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING';
 export const PURCHASE_LABEL_ENV = 'NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL';
 export const ADS_ID_ENV = 'NEXT_PUBLIC_GOOGLE_ADS_ID';
@@ -26,6 +28,7 @@ const QA_LAUNCHFORMA = /^qa\+.*@launchforma\.com$/i;
 export type AdsSuppressionInput = {
   isTester?: boolean | null;
   isTest?: boolean | null;
+  qaMarked?: boolean | null;
   emails?: Array<string | null | undefined>;
 };
 
@@ -37,7 +40,13 @@ export function isLaunchformaQaEmail(email: string | null | undefined): boolean 
 export function shouldSuppressAdsConversion(input: AdsSuppressionInput): boolean {
   if (input.isTester) return true;
   if (input.isTest) return true;
+  if (input.qaMarked) return true;
   return (input.emails ?? []).some((email) => isLaunchformaQaEmail(email));
+}
+
+/** The QA cookie only suppresses this browser. It is not an authorization signal. */
+export function qaCookieSuppressesAds(cookieHeader: string | null | undefined): boolean {
+  return hasQaCookie(cookieHeader);
 }
 
 export function purchaseConversionStorageKey(transactionId: string): string {

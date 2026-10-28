@@ -28,7 +28,7 @@ We share information with the services that help us run LaunchForma:
 - **Vercel**: to host our website and app, and for basic site performance and visitor analytics.
 - **Supabase**: to host our database.
 - **PostHog**: for product analytics (pageviews and events) and session replay. Data is processed in the United States.
-- **Google (Google Analytics and Google Ads)**: to measure site traffic and our Google Ads campaigns, including remarketing and purchase and signup conversions. These tags load only after you accept cookies in this browser, and they stay off if you opt out or opt back in later from the Do Not Sell or Share page.
+- **Google (Google Analytics and Google Ads)**: to measure site traffic and our Google Ads campaigns, including remarketing and purchase and signup conversions. These tags load only after you accept cookies in this browser. They stay off if you opt out. Opting back in on the Do Not Sell or Share page turns them on again when cookies are accepted.
 - **OpenAI**: through the OpenAI ads measurement pixel, to measure our ads shown in ChatGPT, including signups.
 - **DeepSeek**: to power our in-app assistant. We remove SSNs and tax IDs before anything is sent.
 - **Telnyx**: to send and receive faxes related to your filings.

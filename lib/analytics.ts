@@ -77,6 +77,26 @@ export function identifyUser(userId: string, traits?: Record<string, unknown>) {
  * events. `identify` and `setPersonProperties` set the person property so
  * the account can be filtered out.
  */
+/**
+ * Tester accounts are filtered with the same PostHog flags as internal traffic.
+ * `register` stamps later events. Person properties cover the account filter.
+ */
+export function markTesterTraffic(userId?: string | null) {
+  const apply = () => {
+    const client = ph();
+    if (!client) return;
+    client.register({ is_test: true, is_internal: true });
+    client.setPersonProperties?.({ is_test: true, is_internal: true });
+    if (!userId?.trim()) return;
+    client.identify(userId, { is_test: true, is_internal: true });
+  };
+  if (ph()) {
+    apply();
+    return;
+  }
+  whenReady(() => Boolean(ph()), apply);
+}
+
 export function markInternalTraffic(userId?: string | null, email?: string | null) {
   const apply = () => {
     const client = ph();

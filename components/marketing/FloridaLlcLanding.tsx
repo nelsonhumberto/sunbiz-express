@@ -288,11 +288,11 @@ export function FloridaLlcLanding({
 
       <section className="container max-w-lg px-4 pt-3" aria-label={tLp('emailTitle')}>
         {leadDone ? (
-          <p className="text-sm text-ink" role="status">
+          <p className="mb-2 text-sm text-ink" role="status">
             {checklist.thanksBody}
           </p>
-        ) : (
-          <form onSubmit={onLead} noValidate>
+        ) : null}
+        <form onSubmit={onLead} noValidate>
             <p className="text-sm font-semibold">{tLp('emailTitle')}</p>
             <input
               type="email"
@@ -329,7 +329,6 @@ export function FloridaLlcLanding({
               {tLp('emailButton')}
             </button>
           </form>
-        )}
       </section>
 
       <section className="container max-w-lg px-4 pt-8">

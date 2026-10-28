@@ -9,6 +9,7 @@ declare module 'next-auth' {
     user: {
       id: string;
       role: string;
+      isTester?: boolean;
     } & DefaultSession['user'];
   }
 }
@@ -41,6 +42,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
+          isTester: user.isTester === true,
         };
       },
     }),
@@ -60,6 +62,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
+          isTester: user.isTester === true,
         };
       },
     }),
@@ -69,6 +72,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (user) {
         token.id = (user as { id?: string }).id;
         token.role = (user as { role?: string }).role;
+        token.isTester = (user as { isTester?: boolean }).isTester === true;
       }
       return token;
     },
@@ -80,20 +84,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         // a demoted/suspended admin loses access immediately instead of at
         // token expiry. Falls back to the token value if the lookup fails.
         let role = (token.role as string) ?? 'USER';
+        let isTester = token.isTester === true;
         if (userId) {
           try {
             const fresh = await prisma.user.findUnique({
               where: { id: userId },
-              select: { role: true, accountStatus: true },
+              select: { role: true, accountStatus: true, isTester: true },
             });
             if (fresh) {
               role = fresh.accountStatus === 'SUSPENDED' ? 'USER' : fresh.role;
+              isTester = fresh.isTester === true;
             }
           } catch {
             /* keep token role on transient DB error */
           }
         }
         session.user.role = role;
+        session.user.isTester = isTester;
       }
       return session;
     },

@@ -55,6 +55,7 @@ export async function getGuestUser(): Promise<{
   email: string;
   firstName: string;
   lastName: string;
+  isTester: boolean;
 } | null> {
   const token = cookies().get(GUEST_COOKIE)?.value;
   if (!token) return null;
@@ -66,6 +67,7 @@ export async function getGuestUser(): Promise<{
       firstName: true,
       lastName: true,
       accountStatus: true,
+      isTester: true,
     },
   });
   if (!user || user.accountStatus !== 'GUEST') return null;
@@ -74,6 +76,7 @@ export async function getGuestUser(): Promise<{
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    isTester: user.isTester === true,
   };
 }
 

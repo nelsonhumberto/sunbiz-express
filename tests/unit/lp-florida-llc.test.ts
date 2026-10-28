@@ -79,6 +79,8 @@ describe('Florida LLC ad landing', () => {
     );
     expect(table).toContain('active:scale-100');
     expect(table).toContain('touch-manipulation');
+    expect(table).toContain("trackCtaClicked('pricing_choose'");
+    expect(table).toContain("location: 'pricing'");
     const start = source('app/start/page.tsx');
     const launch = source('app/start/guest-start-launch.tsx');
     expect(start.indexOf('<GuestStartLaunch')).toBeLessThan(start.indexOf('<GovDisclosure'));

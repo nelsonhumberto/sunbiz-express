@@ -13,6 +13,8 @@ import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/auth';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
+import { TesterTrafficFlag } from '@/components/analytics/TesterTrafficFlag';
+import { getGuestUser } from '@/lib/guest';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { AdMeasurementGate } from '@/components/analytics/AdMeasurementGate';
 import { CookieConsentBar } from '@/components/analytics/CookieConsentBar';
@@ -76,6 +78,9 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const session = await auth();
+  const guest = session?.user?.isTester ? null : await getGuestUser();
+  const testerUserId = session?.user?.isTester ? session.user.id : guest?.isTester ? guest.id : null;
+  const isTester = session?.user?.isTester === true || guest?.isTester === true;
   const headerStore = headers();
   const pathname = headerStore.get('x-lf-pathname') ?? '';
   const serverGpc = headerStore.get('sec-gpc') === '1';
@@ -98,6 +103,7 @@ export default async function RootLayout({
             email={session?.user?.email}
             role={session?.user?.role}
           />
+          <TesterTrafficFlag isTester={isTester} userId={testerUserId} />
           <NextIntlClientProvider locale={locale} messages={messagesForPath(pathname, messages)}>
             {children}
             <Toaster

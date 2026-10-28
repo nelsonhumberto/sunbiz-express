@@ -1,0 +1,10 @@
+# An entry needs Nelson's explicit OK.
+# One migration folder name per line.
+# Blank lines and lines that start with # are ignored.
+
+# Already on main. Each rewrites existing rows with UPDATE.
+20260804180000_add_ra_renewal_fields
+20261023120000_email_suppression_and_test_drafts
+20261023120000_payment_is_test
+20261023230000_extend_payment_is_test_backfill
+20261024220000_resume_drip_send_claim

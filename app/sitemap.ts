@@ -34,6 +34,13 @@ const STATIC_PAGES: PageDef[] = [
     priority: 0.6,
     hreflang: true,
   },
+  {
+    path: '/llc-for/stylists-barbers',
+    file: 'app/(marketing)/llc-for/stylists-barbers/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    hreflang: true,
+  },
   { path: '/file-annual-report', file: 'app/(marketing)/file-annual-report/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/states', file: 'app/(marketing)/states/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
   { path: '/boi-reporting', file: 'app/(marketing)/boi-reporting/page.tsx', changeFrequency: 'monthly', priority: 0.8 },
@@ -43,6 +50,13 @@ const STATIC_PAGES: PageDef[] = [
     file: 'app/(marketing)/guides/how-to-form-an-llc-in-florida/page.tsx',
     changeFrequency: 'monthly',
     priority: 0.7,
+  },
+  {
+    path: '/guides/florida-llc-cost',
+    file: 'app/(marketing)/guides/florida-llc-cost/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    englishOnly: true,
   },
   {
     path: '/guides/how-to-form-a-florida-corporation',
@@ -114,6 +128,12 @@ const STATIC_PAGES: PageDef[] = [
   },
   { path: '/terms', file: 'app/(legal)/terms/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/privacy', file: 'app/(legal)/privacy/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
+  {
+    path: '/privacy-choices',
+    file: 'app/(legal)/privacy-choices/page.tsx',
+    changeFrequency: 'yearly',
+    priority: 0.2,
+  },
   { path: '/disclaimer', file: 'app/(legal)/disclaimer/page.tsx', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/refund-policy', file: 'app/(legal)/refund-policy/page.tsx', changeFrequency: 'yearly', priority: 0.4 },
 ];

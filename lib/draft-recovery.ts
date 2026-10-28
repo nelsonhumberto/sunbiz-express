@@ -7,8 +7,9 @@
 import { prisma } from './db';
 import { renderTemplate, sendEmail, type NotificationType } from './email';
 import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
-import { readTypedGuestEmail } from './guest-identity';
+import { readGuestAsideEmails } from './guest-identity';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
+import { hrefForLocale } from './app-href';
 import { isSpanishPublicPath } from './locale-paths';
 import { captureResumeEmailSent } from './posthog-server';
 import {
@@ -39,7 +40,7 @@ export interface RecoveryDraft {
   isTest: boolean;
   adminArchivedAt: Date | null;
   userArchivedAt: Date | null;
-  user: { role: string; email: string };
+  user: { role: string; email: string; isTester?: boolean };
 }
 
 /** Exact mailboxes the recovery jobs never mail. Compared after trim, lowercasing, and plus-tag removal. */
@@ -100,8 +101,9 @@ export function resumeDripMailbox(
 ): string | null {
   const direct = (userEmail ?? '').trim().toLowerCase();
   if (direct && isDeliverableEmail(direct)) return direct;
-  const typed = readTypedGuestEmail(optionalDetails);
-  if (typed && isDeliverableEmail(typed)) return typed;
+  for (const aside of readGuestAsideEmails(optionalDetails)) {
+    if (isDeliverableEmail(aside)) return aside;
+  }
   return null;
 }
 
@@ -192,6 +194,7 @@ function resumeRecipientFilter() {
 
 export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
   if (draft.isTest) return true;
+  if (draft.user.isTester) return true;
   if (draft.adminArchivedAt || draft.userArchivedAt) return true;
   if (draft.user.role === 'ADMIN') return true;
   const email = draft.user.email.trim().toLowerCase();
@@ -268,10 +271,11 @@ export async function runDraftRecovery(now: number) {
     // password/dashboard, so we hand them a tokenized /resume link that
     // re-authorizes them straight back into the wizard. Account holders go to
     // their dashboard (they can sign in).
+    const recoveryLocale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
     const resumeUrl =
       draft.user.accountStatus === 'GUEST' && draft.user.guestToken
-        ? `${SITE_URL}/resume?f=${draft.id}&t=${draft.user.guestToken}`
-        : `${SITE_URL}/dashboard`;
+        ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken, recoveryLocale)
+        : `${SITE_URL}${hrefForLocale('/dashboard', recoveryLocale === 'es' ? 'es' : 'en')}`;
 
     const delivery = await sendEmail({
       type: bucket.type,
@@ -322,6 +326,10 @@ export const RESUME_DRIP_MAX_AGE_HOURS = 96;
 
 /**
  * About 1 hour, 1 day, and 3 days after a draft goes idle.
+ * RESUME_1H is the abandoned-cart note. The cron is not hourly, so the
+ * send is the next of the four daily runs after the draft has been idle
+ * at least 1 hour. The longest gap is 02:00 to 13:00 UTC, so the real
+ * wait is about 1 hour to about 12 hours.
  * RESUME_1H is 1 to 24 hours and RESUME_1D is 24 to 72 hours.
  * RESUME_3D stays open from 72 to 96 hours so the four daily crons can send it.
  * An older backlog matches no step, so it cannot receive the 1 hour email.
@@ -457,14 +465,30 @@ export function resumeLinkPlan(user: {
   return 'sign-in';
 }
 
-export function guestResumeUrl(siteUrl: string, filingId: string, guestToken: string): string {
+export function guestResumeUrl(
+  siteUrl: string,
+  filingId: string,
+  guestToken: string,
+  locale?: string | null,
+): string {
   const base = siteUrl.replace(/\/$/, '');
-  return `${base}/resume?f=${filingId}&t=${guestToken}`;
+  const path = hrefForLocale(
+    `/resume?f=${filingId}&t=${guestToken}`,
+    locale === 'es' ? 'es' : 'en',
+  );
+  return `${base}${path}`;
 }
 
-export function signInResumeUrl(siteUrl: string, wizardPath: string): string {
+export function signInResumeUrl(
+  siteUrl: string,
+  wizardPath: string,
+  locale?: string | null,
+): string {
   const base = siteUrl.replace(/\/$/, '');
-  return `${base}/sign-in?next=${encodeURIComponent(wizardPath)}`;
+  const siteLocale = locale === 'es' ? 'es' : 'en';
+  const next = hrefForLocale(wizardPath, siteLocale);
+  const path = hrefForLocale(`/sign-in?next=${encodeURIComponent(next)}`, siteLocale);
+  return `${base}${path}`;
 }
 
 /**
@@ -538,6 +562,7 @@ export function resumeDraftListArgs(now: number) {
       payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
         role: { not: 'ADMIN' as const },
+        isTester: false,
         accountStatus: { not: 'DELETED' as const },
         AND: [
           ...recoverySkipFilters({ placeholderDomain: false }),
@@ -604,6 +629,33 @@ async function runResumeDrip(now: number) {
   return { scanned, sent, skipped, failed };
 }
 
+/** Why a claimed resume send must not go out. Paid wins over a status change. */
+export function resumeSendHoldReason(input: {
+  paid: boolean;
+  status: string;
+}): 'paid' | 'not-draft' | null {
+  if (input.paid) return 'paid';
+  if (input.status !== 'DRAFT') return 'not-draft';
+  return null;
+}
+
+/** Re-checked immediately before the provider call, after the send is claimed. */
+async function resumeSendBlocked(filingId: string): Promise<boolean> {
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: {
+      status: true,
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
+  });
+  return (
+    resumeSendHoldReason({
+      paid: (filing?.payments.length ?? 0) > 0,
+      status: filing?.status ?? '',
+    }) != null
+  );
+}
+
 async function attemptResumeDraft(
   draft: {
     id: string;
@@ -626,6 +678,7 @@ async function attemptResumeDraft(
       accountStatus: string;
       guestToken: string | null;
       locale: string | null;
+      isTester?: boolean;
     };
   },
   now: number,
@@ -662,20 +715,21 @@ async function attemptResumeDraft(
       });
       if (!decision.send) return 'skipped';
 
+      const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
       const wizardPath = wizardPathForDraft(draft.id, draft.currentStep);
+      const localizedWizard = hrefForLocale(wizardPath, locale === 'es' ? 'es' : 'en');
       const linkKind = resumeLinkPlan(draft.user);
       const rawResumeUrl =
         linkKind === 'guest' && draft.user.guestToken
-          ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken)
+          ? guestResumeUrl(SITE_URL, draft.id, draft.user.guestToken, locale)
           : linkKind === 'login-link'
-            ? await createLoginLink(draft.userId, wizardPath)
-            : signInResumeUrl(SITE_URL, wizardPath);
+            ? await createLoginLink(draft.userId, localizedWizard)
+            : signInResumeUrl(SITE_URL, wizardPath, locale);
       const resumeUrl = withResumeUtms(rawResumeUrl, decision.send);
       const unsubscribeUrl = withResumeUtms(
         unsubscribeLink(SITE_URL, mailbox),
         decision.send,
       );
-      const locale = resolveDripLocale(draft.locale, draft.user.locale, draft.entryPath);
       const context = {
         firstName: draft.user.firstName ?? undefined,
         businessName: draft.businessName ?? undefined,
@@ -694,6 +748,14 @@ async function attemptResumeDraft(
         nowMs: now,
       });
       if (!claim.ok) return 'skipped';
+
+      if (await resumeSendBlocked(draft.id)) {
+        await prisma.emailNotification.update({
+          where: { id: claim.id },
+          data: { status: 'SKIPPED', errorMessage: 'Paid before send.' },
+        });
+        return 'skipped';
+      }
 
       const delivery = await sendEmail({
         type: decision.send,

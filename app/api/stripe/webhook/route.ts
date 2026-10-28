@@ -1,10 +1,9 @@
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { submitFilingToState } from '@/actions/filings';
+import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
@@ -12,6 +11,8 @@ import { isTestPayment } from '@/lib/payment-test';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
+import { planWebhookPaidReplay } from '@/lib/guest-checkout';
+import { claimPaidGuestAccount } from '@/lib/guest-checkout-claim';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,11 +90,17 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   const filingId = pi.metadata?.filingId;
   if (!filingId) return 'noop'; // not a formation checkout
 
-  // Already recorded by processCheckout (or a prior webhook delivery)? Done.
+  // Already recorded by processCheckout (or a prior webhook delivery)?
+  // Do not insert again. Claim only if that payer is still a guest, so a
+  // crash between the insert and the account email can finish, and a repeat
+  // after a successful claim does not send a second set-password email.
   const existing = await prisma.payment.findUnique({
     where: { stripePaymentIntentId: pi.id },
   });
-  if (existing) return 'noop';
+  if (existing) {
+    await claimGuestPaymentAccount(existing.userId, existing.filingId, true);
+    return 'noop';
+  }
 
   const filing = await prisma.filing.findUnique({ where: { id: filingId } });
   if (!filing) return 'noop';
@@ -188,6 +195,8 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     /* non-fatal */
   }
 
+  await notifyAdminOfPaidOrder(filing.id);
+
   // Apply the SAME completeness + EIN gate the wizard's processCheckout uses,
   // so the backstop can never submit a half-finished draft (blank documents).
   const readiness = await assertFilingReadyForSubmission(filing.id);
@@ -203,44 +212,43 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     await submitFilingToState(filing.id, { skipAuth: true });
   }
 
-  // Guest conversion: the client checkout normally turns a guest into a real
-  // account (and signs them in). Since the backstop ran instead, convert the
-  // guest here and email credentials so the buyer can sign in and access their
-  // filing - otherwise they're locked out of the account-only dashboard.
-  try {
-    const owner = await prisma.user.findUnique({
-      where: { id: filing.userId },
-      select: { accountStatus: true, email: true, firstName: true },
-    });
-    if (owner?.accountStatus === 'GUEST' && owner.email) {
-      const tempPassword = generateTempPassword();
-      const passwordHash = await bcrypt.hash(tempPassword, 10);
-      await prisma.user.update({
-        where: { id: filing.userId },
-        data: { passwordHash, accountStatus: 'ACTIVE', guestToken: null },
-      });
-      await sendEmail({
-        type: 'WELCOME',
-        to: owner.email,
-        userId: filing.userId,
-        context: { firstName: owner.firstName ?? undefined, tempPassword, loginEmail: owner.email },
-      });
-    }
-  } catch (err) {
-    logger.error('webhook guest conversion failed', { area: 'stripe', entityId: filing.id, tag: 'webhook-guest-convert' }, err);
-  }
+  // The browser checkout normally claims the guest. If it never ran, claim
+  // here and email the set-password link. No session is created from the
+  // webhook, and a non-guest owner is left alone.
+  await claimGuestPaymentAccount(filing.userId, filing.id, false);
 
   return 'done';
 }
 
-function generateTempPassword(): string {
-  const lower = 'abcdefghjkmnpqrstuvwxyz';
-  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-  const digits = '23456789';
-  const symbols = '!@#$%^&*';
-  const all = lower + upper + digits + symbols;
-  const pick = (s: string) => s[crypto.randomInt(0, s.length)];
-  const required = [pick(lower), pick(upper), pick(digits), pick(symbols)];
-  const rest = Array.from({ length: 10 }, () => pick(all));
-  return [...required, ...rest].sort(() => crypto.randomInt(0, 2) - 0.5).join('');
+async function claimGuestPaymentAccount(
+  userId: string,
+  filingId: string,
+  paymentAlreadyRecorded: boolean,
+) {
+  try {
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { accountStatus: true },
+    });
+    const plan = planWebhookPaidReplay({
+      paymentAlreadyRecorded,
+      accountStatus: owner?.accountStatus,
+    });
+    if (!plan.claimAccount) return;
+    const filing = await prisma.filing.findUnique({
+      where: { id: filingId },
+      select: { locale: true },
+    });
+    await claimPaidGuestAccount({
+      userId,
+      filingId,
+      locale: filing?.locale,
+    });
+  } catch (err) {
+    logger.error(
+      'webhook guest conversion failed',
+      { area: 'stripe', entityId: filingId, tag: 'webhook-guest-convert' },
+      err,
+    );
+  }
 }

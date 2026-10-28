@@ -4,6 +4,7 @@ import { routing } from '@/i18n/routing';
 /**
  * English public path -> Spanish slug (no `/es` prefix), taken from
  * next-intl pathnames. `/contact` is `/contacto` in Spanish.
+ * `/llc-for/stylists-barbers` is `/llc-para/estilistas-barberos`.
  */
 const EN_TO_ES_SLUG: Record<string, string> = {};
 const ES_TO_EN_PATH: Record<string, string> = {};

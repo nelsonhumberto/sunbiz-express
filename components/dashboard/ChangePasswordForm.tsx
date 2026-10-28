@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { changePassword, type ChangePasswordResult } from '@/actions/account-settings';
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label';
 const initial: ChangePasswordResult = {};
 
 export function ChangePasswordForm() {
+  const t = useTranslations('dashboard');
   const [state, formAction] = useFormState(changePassword, initial);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -19,7 +21,7 @@ export function ChangePasswordForm() {
 
   useEffect(() => {
     if (state.ok) {
-      toast.success('Password changed.');
+      toast.success(t('passwordChanged'));
       formRef.current?.reset();
     }
     if (state.error && !state.fieldErrors) toast.error(state.error);
@@ -28,7 +30,7 @@ export function ChangePasswordForm() {
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       <div className="space-y-1.5">
-        <Label htmlFor="currentPassword">Current password</Label>
+        <Label htmlFor="currentPassword">{t('passwordCurrent')}</Label>
         <div className="relative">
           <Input
             id="currentPassword"
@@ -46,7 +48,7 @@ export function ChangePasswordForm() {
             type="button"
             onClick={() => setShowCurrent((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-muted"
-            aria-label={showCurrent ? 'Hide password' : 'Show password'}
+            aria-label={showCurrent ? t('hidePassword') : t('showPassword')}
           >
             {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
@@ -58,7 +60,7 @@ export function ChangePasswordForm() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="newPassword">New password</Label>
+          <Label htmlFor="newPassword">{t('passwordNew')}</Label>
           <div className="relative">
             <Input
               id="newPassword"
@@ -76,7 +78,7 @@ export function ChangePasswordForm() {
               type="button"
               onClick={() => setShowNew((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-muted"
-              aria-label={showNew ? 'Hide password' : 'Show password'}
+              aria-label={showNew ? t('hidePassword') : t('showPassword')}
             >
               {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -86,7 +88,7 @@ export function ChangePasswordForm() {
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="confirmPassword">Confirm new password</Label>
+          <Label htmlFor="confirmPassword">{t('passwordConfirm')}</Label>
           <Input
             id="confirmPassword"
             name="confirmPassword"
@@ -106,13 +108,13 @@ export function ChangePasswordForm() {
       </div>
 
       <p className="text-xs text-ink-subtle">
-        Use 8+ characters with at least one uppercase letter and one number.
+        {t('passwordRule')}
       </p>
 
       {state.ok && (
         <p className="text-xs text-success inline-flex items-center gap-1.5">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Password updated.
+          {t('passwordUpdated')}
         </p>
       )}
 
@@ -122,16 +124,18 @@ export function ChangePasswordForm() {
 }
 
 function ChangeButton() {
+  const t = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Saving…
+          {tCommon('saving')}
         </>
       ) : (
-        'Change password'
+        t('changePassword')
       )}
     </Button>
   );

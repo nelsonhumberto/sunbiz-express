@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
@@ -185,6 +186,10 @@ export default async function HowToFormFloridaLlcGuide() {
           </table>
         </div>
         <p>Required minimum: $125.00. With both optional documents: $160.00.</p>
+        <p>
+          State fees are listed in{' '}
+          <a href="/guides/florida-llc-cost">How Much Does It Cost to Start an LLC in Florida? (2026 State Fees)</a>.
+        </p>
 
         <h2>Step 5: After approval</h2>
         <p>Common next steps for many new LLCs:</p>
@@ -209,7 +214,7 @@ export default async function HowToFormFloridaLlcGuide() {
           You can file directly on Sunbiz. A filing service such as LaunchForma prepares
           and submits the filing for you and adds things like registered agent service.
           LaunchForma is a private filing service, not a government agency and not a law
-          firm. <a href="/pricing">See pricing</a> or <a href="/start">start a filing</a>.
+          firm. <Link href="/pricing">See pricing</Link> or <Link href="/start">start a filing</Link>.
         </p>
         <p>
           Forming a corporation instead? Read{' '}

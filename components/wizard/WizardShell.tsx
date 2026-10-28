@@ -21,6 +21,7 @@ import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPre
 import { GuestSaveExitDialog } from './GuestSaveExitDialog';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
+import { WizardStepAnalyticsProvider } from './WizardStepAnalytics';
 import type { TierSlug } from '@/lib/pricing';
 import type { StateCode } from '@/lib/formation-states';
 
@@ -55,10 +56,7 @@ export function WizardShell({
   const tDisc = useTranslations('disclosure');
 
   useEffect(() => {
-    trackEvent('wizard_step_viewed', { step });
-    if (step === TOTAL_STEPS) {
-      trackEvent('checkout_started', { step, filing_id: filingId });
-    }
+    trackEvent('wizard_step_viewed', { step, filing_id: filingId });
   }, [step, filingId]);
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
@@ -154,7 +152,9 @@ export function WizardShell({
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.25 }}
               >
-                {children}
+                <WizardStepAnalyticsProvider filingId={filingId} step={step}>
+                  {children}
+                </WizardStepAnalyticsProvider>
               </motion.div>
             </AnimatePresence>
 
@@ -239,6 +239,7 @@ export function WizardActions({
   onBlocked,
   isSubmit,
   hideBack,
+  fullWidth,
 }: {
   prevHref?: string;
   nextLabel?: string;
@@ -251,6 +252,8 @@ export function WizardActions({
   onBlocked?: () => void;
   isSubmit?: boolean;
   hideBack?: boolean;
+  /** First step: one full-width primary button, still a real submit control. */
+  fullWidth?: boolean;
 }) {
   const tCommon = useTranslations('common');
   const label = nextLabel ?? tCommon('continue');
@@ -273,7 +276,10 @@ export function WizardActions({
   return (
     <div
       ref={barRef}
-      className="sticky bottom-0 z-20 mt-10 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border"
+      className={cn(
+        'sticky bottom-0 z-20 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border',
+        fullWidth ? 'mt-4' : 'mt-10',
+      )}
     >
       {error && (
         <p
@@ -283,7 +289,7 @@ export function WizardActions({
           {error}
         </p>
       )}
-      <div className="flex items-center justify-between gap-3">
+      <div className={cn('flex items-center gap-3', fullWidth ? 'flex-col' : 'justify-between')}>
         {prevHref && !hideBack ? (
           <Link
             href={prevHref}
@@ -292,7 +298,7 @@ export function WizardActions({
             <ArrowLeft className="h-4 w-4" />
             {tCommon('back')}
           </Link>
-        ) : (
+        ) : fullWidth ? null : (
           <span />
         )}
         <button
@@ -308,8 +314,9 @@ export function WizardActions({
           disabled={pending}
           aria-disabled={nextDisabled || pending}
           className={cn(
-            'inline-flex items-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
+            'inline-flex items-center justify-center gap-2 h-12 px-8 rounded-lg text-base font-semibold transition-all',
             'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-md active:scale-[0.98]',
+            fullWidth && 'w-full',
             (pending || nextDisabled) && 'opacity-50',
             pending && 'cursor-not-allowed active:scale-100',
           )}

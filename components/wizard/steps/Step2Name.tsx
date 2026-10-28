@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
@@ -29,6 +29,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { STEP2_SAVE_TIMEOUT_MS } from '@/lib/action-timeout';
 import { nameCheckBlocksContinue, nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
 
 export function Step2Name({
@@ -52,6 +53,7 @@ export function Step2Name({
   const [showUnavailable, setShowUnavailable] = useState(false);
   const [showNameError, setShowNameError] = useState(false);
   const { pending, error, run } = useWizardSubmit();
+  const cancelNameCheck = useRef<() => void>(() => {});
   const router = useLocalizedRouter(filing.locale);
   const formationState: StateCode = isActiveFormationState(filing.state)
     ? (filing.state as StateCode)
@@ -66,6 +68,9 @@ export function Step2Name({
   const canContinue = !nameTooShort && !isHardBlocked && !nameTaken;
 
   const saveAndAdvance = () => {
+    // A slow Sunbiz lookup must not sit in front of the save. Abort it and
+    // keep the "we'll check it before filing" note. The save has its own cap.
+    cancelNameCheck.current();
     run(async () => {
       const res = await saveStep2({
         filingId: filing.id,
@@ -85,7 +90,7 @@ export function Step2Name({
         return { ok: false, error: res.error };
       }
       router.push(`/wizard/${filing.id}/3`);
-    });
+    }, STEP2_SAVE_TIMEOUT_MS);
   };
 
   const onContinue = () => {
@@ -130,6 +135,7 @@ export function Step2Name({
         initialName={seededBusinessName(filing.businessName)}
         entityType={filing.entityType as 'LLC' | 'CORP'}
         formationState={formationState}
+        cancelRef={cancelNameCheck}
         onChange={(n, r, a) => {
           setName(n);
           setResult(r);
@@ -149,12 +155,8 @@ export function Step2Name({
         <div className="rounded-lg border border-warn/30 bg-warn-subtle/40 p-4 flex items-start gap-3 text-sm text-ink leading-relaxed">
           <FileText className="h-5 w-5 text-warn shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-semibold">This filing will be processed manually.</p>
-            <p className="text-xs text-ink-muted">
-              Your chosen name triggers a state rule that requires our team or the Secretary of
-              State to file it on paper. The filing is still going through - it just won't run on
-              the standard online queue, so expect additional processing time.
-            </p>
+            <p className="font-semibold">{t('nameManualTitle')}</p>
+            <p className="text-xs text-ink-muted">{t('nameManualBody')}</p>
           </div>
         </div>
       )}
@@ -172,10 +174,8 @@ export function Step2Name({
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3 text-sm text-destructive leading-relaxed">
           <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-semibold">We can't file this name as-is.</p>
-            <p className="text-xs">
-              {assessment?.error ?? 'Please adjust the name to continue.'}
-            </p>
+            <p className="font-semibold">{t('nameHardBlockTitle')}</p>
+            <p className="text-xs">{assessment?.error ?? t('nameHardBlockFallback')}</p>
           </div>
         </div>
       )}

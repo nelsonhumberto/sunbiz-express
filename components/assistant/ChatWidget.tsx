@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -38,22 +39,32 @@ export function ChatWidget() {
   const t = useTranslations('assistant');
   const locale = useLocale();
   const pathname = usePathname();
-  const router = useRouter();
+  const router = useLocalizedRouter(locale);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const handledWrites = useRef<Set<string>>(new Set());
-  const conversationId = useRef<string>(
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2),
-  );
+  // The server assigns the id, returns it on x-assistant-conversation-id,
+  // and stores the signed value in the LF_CHAT cookie. This ref only echoes
+  // an id the server already issued.
+  const conversationId = useRef<string | undefined>(undefined);
 
   const filingId = filingIdFromPath(pathname);
   const onWizard = isWizardPath(pathname);
+  const onAdLanding = /\/lp(\/|$)/.test(pathname ?? '');
 
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: '/api/assistant' }),
+    () =>
+      new DefaultChatTransport({
+        api: '/api/assistant',
+        credentials: 'same-origin',
+        fetch: async (input, init) => {
+          const response = await globalThis.fetch(input, init);
+          const assigned = response.headers.get('x-assistant-conversation-id');
+          if (assigned) conversationId.current = assigned;
+          return response;
+        },
+      }),
     [],
   );
   const { messages, sendMessage, status } = useChat({ transport });
@@ -67,7 +78,13 @@ export function ChatWidget() {
     trackEvent('assistant_message_sent', { inWizard: !!filingId });
     void sendMessage(
       { text: trimmed },
-      { body: { filingId, locale, conversationId: conversationId.current } },
+      {
+        body: {
+          filingId,
+          locale,
+          ...(conversationId.current ? { conversationId: conversationId.current } : {}),
+        },
+      },
     );
   };
 
@@ -117,6 +134,7 @@ export function ChatWidget() {
           className={cn(
             'fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2',
             onWizard && 'max-md:hidden',
+            onAdLanding && 'hidden',
           )}
         >
           <MessageCircle className="h-6 w-6" />

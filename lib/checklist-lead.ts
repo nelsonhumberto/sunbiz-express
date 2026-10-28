@@ -16,8 +16,47 @@ import {
   readChecklistConfirmToken,
   signChecklistConfirmToken,
 } from '@/lib/checklist-opt-in';
+import type { UtmData } from '@/lib/utm';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+
+export interface ChecklistCampaign {
+  source: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  utmTerm: string | null;
+  gclid: string | null;
+}
+
+export function checklistCampaignFromInput(
+  source: string | null | undefined,
+  utm: UtmData | null | undefined,
+): ChecklistCampaign {
+  return {
+    source: source?.slice(0, 64) || null,
+    utmSource: utm?.utm_source ?? null,
+    utmMedium: utm?.utm_medium ?? null,
+    utmCampaign: utm?.utm_campaign ?? null,
+    utmContent: utm?.utm_content ?? null,
+    utmTerm: utm?.utm_term ?? null,
+    gclid: utm?.gclid ?? null,
+  };
+}
+
+/** Keep the first stored source and UTM. A later submit with empty fields does not clear them. */
+export function checklistFirstTouch(
+  existing: Partial<ChecklistCampaign> | null | undefined,
+  incoming: ChecklistCampaign,
+): ChecklistCampaign {
+  const kept = { ...incoming };
+  (Object.keys(incoming) as (keyof ChecklistCampaign)[]).forEach((key) => {
+    const prior = existing?.[key];
+    if (typeof prior === 'string' && prior.length > 0) kept[key] = prior;
+  });
+  return kept;
+}
 
 function asLocale(value: string | null | undefined): DripLocale {
   return value === 'en' ? 'en' : 'es';
@@ -87,6 +126,8 @@ export async function savePendingChecklistLead(input: {
   locale: DripLocale;
   consentText: string;
   now?: Date;
+  source?: string | null;
+  utm?: UtmData | null;
 }): Promise<void> {
   const email = normalizeEmail(input.email);
   const now = input.now ?? new Date();
@@ -106,6 +147,8 @@ export async function savePendingChecklistLead(input: {
 
   const expires = checklistConfirmExpiry(now.getTime());
   const token = signChecklistConfirmToken(email, expires.getTime(), unsubscribeSigningSecret());
+  const incoming = checklistCampaignFromInput(input.source, input.utm);
+  const campaign = checklistFirstTouch(existing, incoming);
   await prisma.checklistSignup.upsert({
     where: { email },
     create: {
@@ -117,6 +160,7 @@ export async function savePendingChecklistLead(input: {
       isTest: isChecklistTestAddress(email),
       confirmTokenHash: hashChecklistToken(token),
       confirmTokenExpiresAt: expires,
+      ...incoming,
     },
     update: {
       locale: input.locale,
@@ -128,6 +172,7 @@ export async function savePendingChecklistLead(input: {
       confirmTokenExpiresAt: expires,
       confirmedAt: null,
       checklistSentAt: null,
+      ...campaign,
     },
   });
 

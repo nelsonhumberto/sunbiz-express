@@ -22,11 +22,12 @@ import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
 import { buildChecklistConfirmEmail, buildChecklistEmail, buildResumeEmail } from './drip-email';
 import { buildNewsletterEmail } from './newsletter-email';
 import { buildPostFormationEmail } from './post-formation-email';
-import type { NewsletterIssueNumber } from './newsletter';
+import { newsletterDeliveryLocale, normalizeNewsletterIssue } from './newsletter';
 import type { PostFormationStepId } from './post-formation';
 import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
 import { isResumeDripType, RESUME_DRIP_MAX_ATTEMPTS } from './resume-drip-claim';
+import { hrefForLocale } from './app-href';
 import { listUnsubscribeHeaders } from './unsubscribe';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -54,6 +55,8 @@ export type NotificationType =
   | 'EIN_ORDERED'
   | 'CERTIFICATE_ORDERED'
   | 'PAYMENT_CONFIRMATION'
+  | 'ADMIN_PAID_ORDER'
+  | 'ADMIN_FILING_OVERDUE'
   | 'FILING_SUBMITTED'
   | 'FILING_APPROVED'
   | 'FILING_REJECTED'
@@ -62,16 +65,30 @@ export type NotificationType =
   | 'ANNUAL_REPORT_FINAL'
   | 'COMPLIANCE_ALERT'
   | 'PASSWORD_RESET'
+  | 'GUEST_SET_PASSWORD'
   | 'CHECKOUT_LOGIN_LINK'
   | 'SERVICE_INQUIRY'
   | 'OA_TEMPLATE_CONFIRM'
-  | 'OA_TEMPLATE_DOWNLOAD';
+  | 'OA_TEMPLATE_DOWNLOAD'
+  | 'ANNUAL_REPORT_UNSAVED';
 
 interface EmailContext {
   firstName?: string;
   businessName?: string;
   entityType?: 'LLC' | 'CORP';
   totalCents?: number;
+  /** True for isTest payments and tester accounts. Prefixes the admin subject. */
+  testOrder?: boolean;
+  customerName?: string;
+  customerEmail?: string;
+  orderState?: string;
+  orderEntity?: string;
+  orderPlan?: string;
+  paidAtLabel?: string;
+  deadlineLabel?: string;
+  adminFilingUrl?: string;
+  /** overdue_soon at 20h, overdue at 24h. */
+  overdueKind?: 'overdue_soon' | 'overdue';
   filingNumber?: string;
   trackingNumber?: string;
   pin?: string;
@@ -96,7 +113,7 @@ interface EmailContext {
   /** Signed confirm link for the checklist double opt-in. */
   checklistConfirmUrl?: string;
   /** Weekly issue. Defaults to 001 when missing. */
-  newsletterIssue?: NewsletterIssueNumber;
+  newsletterIssue?: string;
   /** Filing id used in post-formation certificate links. */
   linkFilingId?: string;
   // ── Manual draft re-engagement ──
@@ -130,6 +147,12 @@ interface EmailContext {
   inquiryEmail?: string;
   inquiryPhone?: string;
   inquiryService?: string;
+  /** `[Reinstatement]` or `[Late annual report]` for those contact inquiries. */
+  inquirySubjectPrefix?: string;
+  /** Optional Sunbiz document number collected with reinstatement or a late report. */
+  inquirySunbizDocumentNumber?: string;
+  /** Optional company name collected with reinstatement or a late report. */
+  inquiryCompanyName?: string;
   inquiryMessage?: string;
   inquiryLocale?: string;
   inquiryUtmSource?: string;
@@ -146,6 +169,13 @@ interface EmailContext {
   oaMultiPdfUrl?: string;
   oaMultiDocxUrl?: string;
   oaUnsubscribeUrl?: string;
+  /** Admin-only detail when an annual-report charge did not finish saving. */
+  unsavedChargeDetail?: string;
+  /**
+   * Set only on the admin paid-order email for a paid annual report.
+   * Empty means there is no document number to link. Absent means this is not that email.
+   */
+  annualReportDocumentNumber?: string;
 }
 
 export interface SendEmailArgs {
@@ -170,6 +200,10 @@ export interface SendEmailArgs {
 // ─── Templates ───────────────────────────────────────────────────────────────
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
+
+function localeUrl(locale: string | null | undefined, path: string): string {
+  return `${siteUrl}${hrefForLocale(path, locale === 'es' ? 'es' : 'en')}`;
+}
 
 /**
  * Registered Agent renewal reminder body, shared by the 60/30/7-day cascade.
@@ -285,36 +319,82 @@ const TEMPLATES: Record<
   NotificationType,
   (ctx: EmailContext) => { subject: string; body: string }
 > = {
-  WELCOME: ({ firstName, tempPassword, loginEmail }) => ({
-    subject: tempPassword
-      ? 'Your LaunchForma account is ready'
-      : 'Welcome to LaunchForma',
-    body: tempPassword
-      ? html`
-          <h1>Welcome, ${firstName ?? 'there'} - your account is ready</h1>
-          <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
-          <div class="panel mono">
-            <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
-            <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
-          </div>
-          <a class="cta" href="${siteUrl}/sign-in">Sign in to my dashboard</a>
-          <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> - a real person will help.</p>
-        `
-      : html`
-          <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
-          <p>You're moments away from forming your business. When you're ready, your dashboard is waiting - no busywork, one clear price.</p>
-          <a class="cta" href="${siteUrl}/dashboard">Go to dashboard</a>
-          <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
-        `,
-  }),
-  FILING_STARTED: ({ firstName, businessName, resumeUrl }) => ({
-    subject: `Your filing for ${businessName ?? 'your business'} is started`,
-    body: html`
+  WELCOME: ({ firstName, tempPassword, loginEmail, locale }) => {
+    const spanish = locale === 'es';
+    const signInUrl = localeUrl(locale, '/sign-in');
+    const dashboardUrl = localeUrl(locale, '/dashboard');
+    const name = firstName?.trim() || '';
+    if (spanish) {
+      return {
+        subject: tempPassword ? 'Tu cuenta de LaunchForma está lista' : 'Tu cuenta de LaunchForma',
+        body: tempPassword
+          ? html`
+              <h1>Tu cuenta está lista</h1>
+              <p>${name ? `Hola ${name}.` : 'Hola.'} Usa estos datos para entrar cuando quieras y seguir con tu trámite. Por seguridad, cambia esta contraseña después de entrar.</p>
+              <div class="panel mono">
+                <div style="margin-bottom:6px"><span style="color:#667085">Correo</span><br/><strong>${loginEmail ?? ''}</strong></div>
+                <div><span style="color:#667085">Contraseña temporal</span><br/><strong>${tempPassword}</strong></div>
+              </div>
+              <a class="cta" href="${signInUrl}">Entrar a mi panel</a>
+              <p class="muted">¿Necesitas ayuda? Responde a este correo o escribe a <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+            `
+          : html`
+              <h1>Tu cuenta está lista</h1>
+              <p>${name ? `Hola ${name}.` : 'Hola.'} Cuando quieras, tu panel está listo para seguir con el trámite.</p>
+              <a class="cta" href="${dashboardUrl}">Ir al panel</a>
+              <p class="muted">¿Preguntas? Responde cuando quieras o escribe a <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+            `,
+      };
+    }
+    return {
+      subject: tempPassword
+        ? 'Your LaunchForma account is ready'
+        : 'Welcome to LaunchForma',
+      body: tempPassword
+        ? html`
+            <h1>Welcome, ${firstName ?? 'there'} - your account is ready</h1>
+            <p>Use the credentials below to sign in anytime and pick up your filing. For security, change this password after your first sign-in.</p>
+            <div class="panel mono">
+              <div style="margin-bottom:6px"><span style="color:#667085">Email</span><br/><strong>${loginEmail ?? ''}</strong></div>
+              <div><span style="color:#667085">Temporary password</span><br/><strong>${tempPassword}</strong></div>
+            </div>
+            <a class="cta" href="${signInUrl}">Sign in to my dashboard</a>
+            <p class="muted">Need a hand? Reply to this email or write <a href="mailto:help@launchforma.com">help@launchforma.com</a> - a real person will help.</p>
+          `
+        : html`
+            <h1>Welcome aboard, ${firstName ?? 'there'}</h1>
+            <p>You're moments away from forming your business. When you're ready, your dashboard is waiting - no busywork, one clear price.</p>
+            <a class="cta" href="${dashboardUrl}">Go to dashboard</a>
+            <p class="muted">Questions? Reply anytime or email <a href="mailto:help@launchforma.com">help@launchforma.com</a>.</p>
+          `,
+    };
+  },
+  FILING_STARTED: ({ firstName, businessName, resumeUrl, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'tu empresa';
+      const name = firstName?.trim();
+      const href = resumeUrl ?? localeUrl('es', '/dashboard');
+      return {
+        subject: `Tu trámite para ${company} ya empezó`,
+        body: wrap(
+          `
+      <h1>Tu trámite empezó</h1>
+      <p>${name ? `Hola ${name}.` : 'Hola.'} Guardamos tu avance. Sigues justo donde lo dejaste.</p>
+      <a class="cta" href="${href}">Seguir con el trámite</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `Your filing for ${businessName ?? 'your business'} is started`,
+      body: html`
       <h1>Filing started</h1>
       <p>Hi ${firstName ?? 'there'} - we've saved your progress. Pick up exactly where you left off.</p>
       <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">Resume Filing</a>
     `,
-  }),
+    };
+  },
   ABANDONED_24H: ({ firstName, businessName, resumeUrl }) => ({
     subject: `Continue forming ${businessName ?? 'your business'} - pick up where you left off`,
     body: html`
@@ -378,8 +458,8 @@ const TEMPLATES: Record<
   POST_FORMATION_DAY_14: (ctx) => postFormationTemplate('DAY_14', ctx),
   POST_FORMATION_DAY_30: (ctx) => postFormationTemplate('DAY_30', ctx),
   WEEKLY_NEWSLETTER: (ctx) => {
-    const issue: NewsletterIssueNumber = ctx.newsletterIssue === '002' ? '002' : '001';
-    const locale = dripShellLocale(ctx.locale);
+    const issue = normalizeNewsletterIssue(ctx.newsletterIssue);
+    const locale = newsletterDeliveryLocale(issue, dripShellLocale(ctx.locale));
     const built = buildNewsletterEmail({
       issue,
       locale,
@@ -462,31 +542,91 @@ const TEMPLATES: Record<
     };
   },
   CERTIFICATE_ORDERED: (ctx) => certificateOrderedEmail(ctx),
-  PAYMENT_CONFIRMATION: ({ businessName, totalCents }) => ({
-    subject: `Payment confirmed for ${businessName ?? 'your business'}`,
-    body: html`
-      <h1>Payment received - thank you</h1>
-      <p>We charged <strong>${totalCents != null ? formatCurrency(totalCents) : 'your card'}</strong> for <strong>${businessName ?? 'your business'}</strong>. Your filing is being prepared and submitted to the state now.</p>
-      <a class="cta" href="${siteUrl}/dashboard">View filing status</a>
-      <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
+  PAYMENT_CONFIRMATION: ({ businessName, totalCents, locale }) => {
+    const spanish = locale === 'es';
+    const dashboardUrl = localeUrl(locale, '/dashboard');
+    const company = businessName?.trim() || (spanish ? 'tu empresa' : 'your business');
+    const amount = totalCents != null ? formatCurrency(totalCents) : spanish ? 'tu tarjeta' : 'your card';
+    if (spanish) {
+      return {
+        subject: `Pago confirmado para ${company}`,
+        body: html`
+          <h1>Recibimos tu pago. Gracias.</h1>
+          <p>Recibimos tu pedido y estamos preparando tu registro. Cobramos <strong>${amount}</strong> por <strong>${company}</strong>.</p>
+          <a class="cta" href="${dashboardUrl}">Ver el estado del trámite</a>
+          <p class="muted">El recibo también queda en tu panel cuando termine el proceso.</p>
+        `,
+      };
+    }
+    return {
+      subject: `Payment confirmed for ${company}`,
+      body: html`
+        <h1>Payment received - thank you</h1>
+        <p>We received your order and are preparing your filing. We charged <strong>${amount}</strong> for <strong>${company}</strong>.</p>
+        <a class="cta" href="${dashboardUrl}">View filing status</a>
+        <p class="muted">A receipt is also available from your dashboard once processing finishes.</p>
+      `,
+    };
+  },
+  FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl, locale }) => {
+    const spanish = locale === 'es';
+    const statusUrl = resumeUrl ?? localeUrl(locale, '/dashboard');
+    if (spanish) {
+      const company = businessName ?? 'Tu empresa';
+      return {
+        subject: `Recibimos tu pedido para ${company}`,
+        body: wrap(
+          `
+      <h1>Recibimos tu pedido</h1>
+      <p>Recibimos tu pedido y estamos preparando tu registro.</p>
+      <table class="meta">
+        <tr><td>Referencia</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
+        <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
+      </table>
+      <p class="muted">Tu referencia y tu PIN identifican este trámite en tu panel de LaunchForma y cuando escribes a soporte. Las actualizaciones están en tu panel. No hay una página pública de seguimiento.</p>
+      <a class="cta" href="${statusUrl}">Ver el estado del trámite</a>
     `,
-  }),
-  FILING_SUBMITTED: ({ businessName, trackingNumber, pin, resumeUrl }) => ({
-    subject: `${businessName ?? 'Your business'} has been submitted to the state`,
-    body: html`
-      <h1>Your filing is with the state</h1>
-      <p><strong>${businessName ?? 'Your business'}</strong> has been submitted. We'll email you the moment it's approved - usually within 1–2 business days.</p>
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `We received your order for ${businessName ?? 'your business'}`,
+      body: html`
+      <h1>We received your order</h1>
+      <p>We received your order and are preparing your filing.</p>
       <table class="meta">
         <tr><td>Reference #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>
       </table>
       <p class="muted">Your reference # and PIN identify this filing in your LaunchForma dashboard (and on support requests). Status updates live in your dashboard - there isn't a separate public tracking page.</p>
-      <a class="cta" href="${resumeUrl ?? `${siteUrl}/dashboard`}">View filing status</a>
+      <a class="cta" href="${statusUrl}">View filing status</a>
     `,
-  }),
-  FILING_APPROVED: ({ businessName, filingNumber }) => ({
-    subject: `${businessName ?? 'Your business'} is officially formed`,
-    body: html`
+    };
+  },
+  FILING_APPROVED: ({ businessName, filingNumber, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'Tu empresa';
+      const dashboardUrl = localeUrl('es', '/dashboard');
+      return {
+        subject: `${company} ya es oficial`,
+        body: wrap(
+          `
+      <h1>Tu empresa ya es oficial</h1>
+      <p>El estado aprobó <strong>${company}</strong>. Ya puedes descargar los documentos de formación.</p>
+      <table class="meta">
+        <tr><td>Número de trámite</td><td><code>${filingNumber ?? '-'}</code></td></tr>
+      </table>
+      <p>Revisa tu panel para ver qué sigue, abre una cuenta de banco para la empresa y guarda la fecha del informe anual. Te avisamos cuando se acerque.</p>
+      <a class="cta" href="${dashboardUrl}">Descargar documentos</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `${businessName ?? 'Your business'} is officially formed`,
+      body: html`
       <h1>You're official - congrats!</h1>
       <p>The state has approved <strong>${businessName ?? 'your business'}</strong>. Your formation documents are ready to download.</p>
       <table class="meta">
@@ -495,17 +635,37 @@ const TEMPLATES: Record<
       <p>Next up: check your dashboard for next steps, open a business bank account, and keep your annual report deadline on the calendar - we'll remind you.</p>
       <a class="cta" href="${siteUrl}/dashboard">Download documents</a>
     `,
-  }),
-  FILING_REJECTED: ({ businessName, rejectionReason }) => ({
-    subject: `Action needed: ${businessName ?? 'your business'} filing`,
-    body: html`
+    };
+  },
+  FILING_REJECTED: ({ businessName, rejectionReason, locale }) => {
+    if (locale === 'es') {
+      const company = businessName ?? 'tu empresa';
+      const dashboardUrl = localeUrl('es', '/dashboard');
+      return {
+        subject: `Acción necesaria: el trámite de ${company}`,
+        body: wrap(
+          `
+      <h1>El estado pidió cambios</h1>
+      <p>El estado pidió cambios en tu trámite.</p>
+      <blockquote>${rejectionReason ?? 'Revisa tu panel para ver el detalle.'}</blockquote>
+      <p>Lo volvemos a enviar. No hay una tarifa estatal extra.</p>
+      <a class="cta" href="${dashboardUrl}">Ver el detalle</a>
+    `,
+          { locale: 'es', preferencesUrl: localeUrl('es', '/dashboard/settings') },
+        ),
+      };
+    }
+    return {
+      subject: `Action needed: ${businessName ?? 'your business'} filing`,
+      body: html`
       <h1>State requested changes</h1>
       <p>The state has requested changes to your filing.</p>
       <blockquote>${rejectionReason ?? 'See dashboard for details.'}</blockquote>
       <p>We'll handle the resubmission - no extra state fee.</p>
       <a class="cta" href="${siteUrl}/dashboard">View details</a>
     `,
-  }),
+    };
+  },
   ANNUAL_REPORT_60: ({ businessName, dueDate }) => ({
     subject: `${businessName ?? 'Your business'}'s annual report is due ${dueDate ? formatDateLong(dueDate) : 'soon'}`,
     body: html`
@@ -538,6 +698,33 @@ const TEMPLATES: Record<
       <a class="cta" href="${siteUrl}/dashboard">Review now</a>
     `,
   }),
+  GUEST_SET_PASSWORD: ({ firstName, resetUrl, locale, loginEmail }) => {
+    const spanish = locale === 'es';
+    const href = escapeHtml(resetUrl ?? '#');
+    const name = escapeHtml(firstName?.trim() || '');
+    const mailbox = escapeHtml(loginEmail?.trim() || '');
+    if (spanish) {
+      return {
+        subject: 'Crea tu contraseña de LaunchForma',
+        body: html`
+          <h1>Crea tu contraseña</h1>
+          <p>${name ? `Hola ${name}.` : 'Hola.'} Tu pago ya se completó. Este enlace crea la contraseña de tu cuenta${mailbox ? ` (${mailbox})` : ''} y abre tu trámite.</p>
+          <a class="cta" href="${href}">Crear contraseña</a>
+          <p class="muted">El enlace vence en 3 días y funciona una sola vez. Si no pagaste un trámite, ignora este correo.</p>
+        `,
+      };
+    }
+    const hello = name ? `Hi ${name}.` : 'Hi there.';
+    return {
+      subject: 'Set your LaunchForma password',
+      body: html`
+        <h1>Set your password</h1>
+        <p>${hello} Your payment went through. This link sets a password for your account${mailbox ? ` (${mailbox})` : ''} and opens your filing.</p>
+        <a class="cta" href="${href}">Set your password</a>
+        <p class="muted">The link expires in 3 days and works once. If you did not pay for a filing, you can ignore this email.</p>
+      `,
+    };
+  },
   CHECKOUT_LOGIN_LINK: ({ firstName, resumeUrl, locale, linkExpiresInDays }) => {
     const spanish = locale === 'es';
     const days = linkExpiresInDays ?? 3;
@@ -577,8 +764,14 @@ const TEMPLATES: Record<
   SERVICE_INQUIRY: (ctx) => {
     const cell = (value?: string) => escapeHtml(value?.trim() || 'Not provided');
     const message = ctx.inquiryMessage?.trim();
+    const label = (ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80);
+    const prefix = (ctx.inquirySubjectPrefix ?? '').replace(/[\r\n]/g, ' ').trim();
+    const knownPrefix = prefix === '[Reinstatement]' || prefix === '[Late annual report]';
+    const companyRows = knownPrefix
+      ? `<tr><td>Sunbiz document number</td><td>${cell(ctx.inquirySunbizDocumentNumber)}</td></tr><tr><td>Company name</td><td>${cell(ctx.inquiryCompanyName)}</td></tr>`
+      : '';
     return {
-      subject: `Service request: ${(ctx.inquiryService ?? 'business services').replace(/[\r\n]/g, ' ').slice(0, 80)}`,
+      subject: knownPrefix ? `${prefix} Service request: ${label}` : `Service request: ${label}`,
       body: html`
         <h1>New business-services request</h1>
         <p>Someone asked for a service from the ad landing page. Reply by phone or WhatsApp. Use email only when one is listed.</p>
@@ -587,6 +780,7 @@ const TEMPLATES: Record<
           <tr><td>Email</td><td>${cell(ctx.inquiryEmail)}</td></tr>
           <tr><td>Phone</td><td>${cell(ctx.inquiryPhone)}</td></tr>
           <tr><td>Service</td><td>${cell(ctx.inquiryService)}</td></tr>
+          ${companyRows}
           <tr><td>Language</td><td>${cell(ctx.inquiryLocale)}</td></tr>
           <tr><td>utm_source</td><td>${cell(ctx.inquiryUtmSource)}</td></tr>
           <tr><td>utm_medium</td><td>${cell(ctx.inquiryUtmMedium)}</td></tr>
@@ -626,6 +820,14 @@ const TEMPLATES: Record<
       `,
     };
   },
+  ANNUAL_REPORT_UNSAVED: (ctx) => ({
+    subject: 'Annual report charged but not saved',
+    body: html`
+      <h1>Annual report charge needs a save</h1>
+      <p>A customer was charged for an annual report, and the filing was not saved. If the charged amount matches the quote, ask them to submit the same page again. That retry uses the same payment and does not charge the card again. If the amounts differ, do not refund the card from this alert.</p>
+      <p>${escapeHtml(ctx.unsavedChargeDetail?.trim() || 'No extra detail was recorded.')}</p>
+    `,
+  }),
   OA_TEMPLATE_DOWNLOAD: (ctx) => {
     const singlePdf = escapeHtml(ctx.oaSinglePdfUrl ?? '#');
     const singleDocx = escapeHtml(ctx.oaSingleDocxUrl ?? '#');
@@ -662,9 +864,71 @@ const TEMPLATES: Record<
       `,
     };
   },
+  ADMIN_PAID_ORDER: (ctx) => adminOrderEmail(ctx, 'paid'),
+  ADMIN_FILING_OVERDUE: (ctx) => adminOrderEmail(ctx, 'overdue'),
 };
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
+
+function adminOrderEmail(ctx: EmailContext, kind: 'paid' | 'overdue') {
+  const name = ctx.businessName?.trim() || 'Untitled filing';
+  const deadline = ctx.deadlineLabel?.trim() || '';
+  const prefix = ctx.testOrder ? '[TEST] ' : '';
+  const overdueWord = ctx.overdueKind === 'overdue' ? 'Overdue' : 'Overdue soon';
+  const subject = (
+    kind === 'paid'
+      ? `${prefix}New paid order: ${name} (file by ${deadline})`
+      : `${prefix}${overdueWord}: ${name} (file by ${deadline})`
+  ).replace(/[\r\n]+/g, ' ');
+  const heading = kind === 'paid' ? `${prefix}New paid order` : `${prefix}${overdueWord}`;
+  const intro =
+    kind === 'paid'
+      ? 'Payment succeeded. File this order by the deadline below.'
+      : 'This paid order still has no state filing number.';
+  const row = (label: string, value: string) =>
+    `<tr><td>${escapeHtml(label)}</td><td>${value}</td></tr>`;
+  const documentNumber = ctx.annualReportDocumentNumber?.trim();
+  const annualReportNote =
+    kind === 'paid' && typeof ctx.annualReportDocumentNumber === 'string'
+      ? `<blockquote><strong>${escapeHtml(LIVE_SUNBIZ_FILING_WARNING)}</strong></blockquote>${
+          documentNumber
+            ? `<p><a href="${escapeHtml(sunbizDocumentSearchUrl(documentNumber))}">Search ${escapeHtml(documentNumber)} on Sunbiz</a></p>`
+            : ''
+        }`
+      : '';
+  return {
+    subject,
+    body: html`
+      ${annualReportNote}
+      <h1>${escapeHtml(heading)}</h1>
+      <p>${escapeHtml(intro)}</p>
+      <table class="meta">
+        ${row('Filing id', `<code>${escapeHtml(ctx.linkFilingId ?? '')}</code>`)}
+        ${row('Business', escapeHtml(name))}
+        ${row('Customer', escapeHtml(ctx.customerName?.trim() || ''))}
+        ${row('Email', escapeHtml(ctx.customerEmail?.trim() || ''))}
+        ${row('State', escapeHtml(ctx.orderState?.trim() || ''))}
+        ${row('Entity', escapeHtml(ctx.orderEntity?.trim() || ''))}
+        ${row('Plan', escapeHtml(ctx.orderPlan?.trim() || ''))}
+        ${row('Amount paid', escapeHtml(ctx.totalCents != null ? formatCurrency(ctx.totalCents) : ''))}
+        ${row('Paid', escapeHtml(ctx.paidAtLabel ?? ''))}
+        ${row('File by', escapeHtml(deadline))}
+      </table>
+      <a class="cta" href="${escapeHtml(ctx.adminFilingUrl ?? '')}">Open filing</a>
+    `,
+  };
+}
+
+/** First line of a paid annual report alert. Filing with the state is manual. */
+export const LIVE_SUNBIZ_FILING_WARNING =
+  "Before filing, check the company on live Sunbiz. If this year's annual report is already filed, do not file and refund the customer.";
+
+export function sunbizDocumentSearchUrl(documentNumber: string): string {
+  return (
+    'https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResults' +
+    `?inquiryType=DocumentNumber&searchTerm=${encodeURIComponent(documentNumber.trim())}`
+  );
+}
 
 function escapeHtml(value: string): string {
   return value

@@ -9,11 +9,21 @@ import {
   localizedPublicRedirect,
   PUBLIC_PATH_HEADER,
 } from '@/lib/locale-paths';
+import { browserPathFromAction } from '@/lib/request-locale';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { INTERNAL_TRAFFIC_HEADER, internalTrafficQueryRequested } from '@/lib/internal-traffic';
 import { UTM_COOKIE, UTM_MAX_AGE, mergeAttribution, parseUtmJson, utmFromSearchParams } from '@/lib/utm';
+import {
+  AD_OPT_OUT_COOKIE,
+  AD_OPT_OUT_GPC_VALUE,
+  adOptOutCookieSecure,
+  gpcCookieDecision,
+} from '@/lib/ad-opt-out';
+import { ACTIVE_FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 
-const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
+function isEnabledFormationState(value: string): value is StateCode {
+  return (ACTIVE_FORMATION_STATES as readonly string[]).includes(value);
+}
 
 /**
  * Preference + attribution-aware routing middleware.
@@ -32,10 +42,9 @@ const ACTIVE_FORMATION_STATES = new Set(['FL', 'WY', 'DE']);
  *       • `/es` and `/es/<path>` rewrite to the unprefixed route with the
  *         Spanish locale, so ad URLs like `/es/business-services` render
  *         instead of 404ing.
- *       • If `?state=XX` is an active formation state (FL/WY/DE), persist
- *         the choice in the `preferred_state` cookie so subsequent
- *         navigations (sign-up → dashboard → wizard) carry it forward
- *         without polluting URLs.
+ *       • If `?state=XX` is in the active formation set, persist the choice
+ *         in the `preferred_state` cookie so later navigations carry it
+ *         forward without polluting URLs. Wyoming and Delaware are not written.
  *       • Capture UTM params into a JSON `lf_utm` cookie so ad attribution
  *         survives the funnel.
  *
@@ -63,6 +72,33 @@ const PRIMARY_CANONICAL_HOST = CANONICAL_HOSTS[0];
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // GPC opts this response out of ad tags via the request header. It does not
+  // write the 1-year lf_ad_optout=1 cookie. A GPC-only visit may set the
+  // session marker lf_ad_optout=gpc, which a later request without Sec-GPC clears.
+  // An explicit lf_ad_optout=1 choice is left alone.
+  const withGpcOptOut = (response: NextResponse): NextResponse => {
+    const gpc = request.headers.get('sec-gpc') === '1';
+    const existing = request.cookies.get(AD_OPT_OUT_COOKIE)?.value ?? null;
+    const decision = gpcCookieDecision(existing, gpc);
+    if (decision === 'set-gpc') {
+      response.cookies.set(AD_OPT_OUT_COOKIE, AD_OPT_OUT_GPC_VALUE, {
+        path: '/',
+        sameSite: 'lax',
+        secure: adOptOutCookieSecure(),
+        httpOnly: false,
+      });
+    } else if (decision === 'clear') {
+      response.cookies.set(AD_OPT_OUT_COOKIE, '', {
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 0,
+        secure: adOptOutCookieSecure(),
+        httpOnly: false,
+      });
+    }
+    return response;
+  };
+
   // ── Canonical host enforcement ─────────────────────────────────────────
   // Forward any request landing on a non-canonical host (the old
   // sunbiz-express.vercel.app checkout host, raw preview URLs, etc.) to
@@ -82,7 +118,7 @@ export function middleware(request: NextRequest) {
       const target = request.nextUrl.clone();
       target.host = PRIMARY_CANONICAL_HOST;
       target.protocol = 'https:';
-      return NextResponse.redirect(target, { status: 308 });
+      return withGpcOptOut(NextResponse.redirect(target, { status: 308 }));
     }
   }
 
@@ -92,7 +128,7 @@ export function middleware(request: NextRequest) {
   if (unprefixed) {
     const url = request.nextUrl.clone();
     url.pathname = unprefixed;
-    return NextResponse.redirect(url, 308);
+    return withGpcOptOut(NextResponse.redirect(url, 308));
   }
 
   // Delaware and Wyoming marketing URLs 308 to the Florida equivalent.
@@ -101,7 +137,7 @@ export function middleware(request: NextRequest) {
   if (retiredTo) {
     const url = request.nextUrl.clone();
     url.pathname = retiredTo;
-    return NextResponse.redirect(url, 308);
+    return withGpcOptOut(NextResponse.redirect(url, 308));
   }
 
   // Localized slugs (`/contact` vs `/es/contacto`). Non-canonical URLs 308
@@ -110,7 +146,7 @@ export function middleware(request: NextRequest) {
   if (slugTo) {
     const url = request.nextUrl.clone();
     url.pathname = slugTo;
-    return NextResponse.redirect(url, 308);
+    return withGpcOptOut(NextResponse.redirect(url, 308));
   }
 
   // `?lang=` moves onto the path. This response does not set NEXT_LOCALE.
@@ -119,12 +155,25 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = localeJump.pathname;
     url.search = localeJump.search ? `?${localeJump.search}` : '';
-    return NextResponse.redirect(url, 308);
+    return withGpcOptOut(NextResponse.redirect(url, 308));
   }
 
   const strippedPath = stripSpanishPrefix(pathname);
   // `/es/contacto` rewrites to the `/contact` page. Other /es URLs drop the prefix.
   const appPath = strippedPath == null ? pathname : englishPathname(pathname);
+
+  // Server actions POST to the rewritten path (`/start`, `/wizard/...`).
+  // The browser address is the Referer or next-url. That path wins over the
+  // rewrite, the NEXT_LOCALE cookie, and Accept-Language. A normal document
+  // request ignores Referer so the previous page cannot change this URL.
+  const actionPath = request.headers.get('next-action')
+    ? browserPathFromAction({
+        referer: request.headers.get('referer'),
+        nextUrl: request.headers.get('next-url'),
+        allowedHost: request.headers.get('host'),
+      })
+    : null;
+  const pathnameForLocale = actionPath ?? pathname;
 
   // Bare /wizard (and /es/wizard) is not a filing. Send visitors to /start
   // before the wizard layout asks them to sign in. Keep /es so Spanish
@@ -132,7 +181,7 @@ export function middleware(request: NextRequest) {
   if (appPath === '/wizard') {
     const url = request.nextUrl.clone();
     url.pathname = localeFromPublicPath(pathname) === 'es' ? '/es/start' : '/start';
-    return NextResponse.redirect(url, 308);
+    return withGpcOptOut(NextResponse.redirect(url, 308));
   }
   // Forward the public path into this render. `headers()` in the root layout
   // reads `x-lf-pathname` so the ad landing page can omit the rest of the
@@ -141,9 +190,9 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-lf-pathname', appPath);
   // Original browser path (keeps /es) so canonicals and html lang follow the URL.
-  requestHeaders.set(PUBLIC_PATH_HEADER, pathname);
-  // routing.localeDetection is false: do not read NEXT_LOCALE.
-  const effectiveLocale = localeFromPublicPath(pathname);
+  requestHeaders.set(PUBLIC_PATH_HEADER, pathnameForLocale);
+  // routing.localeDetection is false: do not read NEXT_LOCALE or Accept-Language.
+  const effectiveLocale = localeFromPublicPath(pathnameForLocale);
   requestHeaders.set(
     LOCALE_HEADER,
     effectiveLocale === 'es' ? 'es' : routing.defaultLocale,
@@ -184,7 +233,7 @@ export function middleware(request: NextRequest) {
   const stateParam = searchParams.get('state');
   if (stateParam) {
     const upper = stateParam.toUpperCase();
-    if (ACTIVE_FORMATION_STATES.has(upper) && request.cookies.get('preferred_state')?.value !== upper) {
+    if (isEnabledFormationState(upper) && request.cookies.get('preferred_state')?.value !== upper) {
       response.cookies.set('preferred_state', upper, {
         path: '/',
         sameSite: 'lax',
@@ -196,7 +245,7 @@ export function middleware(request: NextRequest) {
   // No geo-redirect: every visitor lands on the homepage (or whatever path
   // they requested). State preference is honored via the StateSwitcher
   // dropdown + `preferred_state` cookie.
-  return response;
+  return withGpcOptOut(response);
 }
 
 export const config = {

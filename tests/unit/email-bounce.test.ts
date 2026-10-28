@@ -69,6 +69,12 @@ describe('draft recovery skips', () => {
       shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email: 'Laura@LaunchForma.com' } }),
     ).toBe(true);
     expect(shouldSkipDraftRecovery({ ...customer, isTest: true })).toBe(true);
+    expect(
+      shouldSkipDraftRecovery({
+        ...customer,
+        user: { role: 'USER', email: 'buyer@example.com', isTester: true },
+      }),
+    ).toBe(true);
     expect(shouldSkipDraftRecovery({ ...customer, adminArchivedAt: new Date() })).toBe(true);
     expect(shouldSkipDraftRecovery({ ...customer, userArchivedAt: new Date() })).toBe(true);
     expect(

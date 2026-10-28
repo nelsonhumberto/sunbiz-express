@@ -1,15 +1,18 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
 import { Link } from '@/i18n/navigation';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
+import { adsActorForUser } from '@/lib/ads-actor';
 import { GuestStartLaunch } from './guest-start-launch';
 import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 import {
-  ACTIVE_FORMATION_STATES,
-  type StateCode,
+  floridaOnlyNote,
+  resolveRequestedFormationState,
 } from '@/lib/formation-states';
 import { pageTitle } from '@/lib/seo-title';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
@@ -74,40 +77,46 @@ export default async function StartPage({ searchParams }: StartPageProps) {
   const t = await getTranslations('start');
   const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
-  const requested = (searchParams?.state ?? 'FL').toUpperCase();
-  const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(requested as StateCode)
-    ? (requested as StateCode)
-    : 'FL';
+  const resolved = resolveRequestedFormationState(searchParams?.state);
+  const stateCode = resolved.stateCode;
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
   const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
   const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
   const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
-  const entityLabel =
-    entityChoice === 'SCORP' ? t('entitySCorp') : entityChoice === 'CORP' ? t('entityCorp') : t('entityLLC');
+  const session = await auth();
+  const actor = await adsActorForUser(session?.user?.id, session?.user?.email);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <header className="container py-6 flex items-center justify-between">
+      <header className="container py-2 sm:py-6 flex items-center justify-between">
         <Logo />
         <Link href="/sign-in" className="text-sm text-ink-muted hover:text-primary">
           {t('signInLink')}
         </Link>
       </header>
 
-      <div className="container max-w-3xl">
-        <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
-      </div>
-
-      <main className="flex-1 container max-w-3xl py-10">
+      <main className="flex-1 container max-w-lg py-2 sm:py-10">
+        {stateNote ? (
+          <p role="status" className="mb-2 text-sm text-ink-muted text-center">
+            {stateNote}
+          </p>
+        ) : null}
         <GuestStartLaunch
           defaultState={stateCode}
           defaultEntity={entityChoice}
           defaultTier={resolveTier(searchParams?.tier)}
           defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
           stateName={stateName}
-          entityLabel={entityLabel}
+          showOptionalEmail={!session?.user?.id}
+          accountEmail={actor.email}
+          isTester={actor.isTester}
         />
 
-        <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">
+        <div className="mt-4">
+          <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
+        </div>
+
+        <p className="text-xs text-ink-subtle text-center mt-4 max-w-md mx-auto leading-relaxed">
           {t('termsPrefix')}{' '}
           <Link href="/terms" className="underline hover:text-ink-muted">
             {t('terms')}
@@ -120,7 +129,10 @@ export default async function StartPage({ searchParams }: StartPageProps) {
         </p>
       </main>
 
-      <footer className="container py-6 text-center">
+      <footer className="container py-6 text-center space-y-2">
+        <p className="text-xs text-ink-subtle">
+          <DoNotSellLink className="underline hover:text-ink-muted" />
+        </p>
         <p className="text-xs text-ink-subtle">© {COPYRIGHT_YEAR} LaunchForma</p>
       </footer>
     </div>

@@ -13,7 +13,13 @@
 
 import { ALL_MARKETING_STATES, FLORIDA, localizedStateName } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
+import { tierPriceParts } from '@/lib/pricing';
 import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
+import { formatCurrency } from '@/lib/utils';
+
+const ESSENTIAL_FL_LLC = tierPriceParts('BASIC', 'LLC', 'FL');
+const ESSENTIAL_PRICE = formatCurrency(ESSENTIAL_FL_LLC.totalCents);
+const ESSENTIAL_STATE_FEE = formatCurrency(ESSENTIAL_FL_LLC.stateFeeCents);
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -36,6 +42,7 @@ const CORE_PAGES: LinkEntry[] = [
   { title: 'FAQ', path: '/faq', note: 'Answers about formation, registered agent, annual reports, and timelines.' },
   { title: 'About', path: '/about', note: 'Company mission: transparent, all-in business formation.' },
   { title: 'Contact', path: '/contact', note: 'Phone, mailing address, and the service inquiry form.' },
+  { title: 'LLC for Hair Stylists and Barbers', path: '/llc-for/stylists-barbers', note: `Florida LLC formation for hair stylists and barbers. Essential is ${ESSENTIAL_PRICE} and includes the ${ESSENTIAL_STATE_FEE} state fee. Spanish alternate: /es/llc-para/estilistas-barberos.` },
   { title: 'File an Annual Report', path: '/file-annual-report', note: 'Florida annual report filing service and deadlines.' },
   { title: 'BOI Reporting', path: '/boi-reporting', note: 'BOI update: U.S.-formed companies are exempt from FinCEN beneficial ownership reporting (August 2026 final rule).' },
   { title: 'States', path: '/states', note: 'States where LaunchForma files and coming-soon states.' },
@@ -45,6 +52,7 @@ const CORE_PAGES: LinkEntry[] = [
 const GUIDES: LinkEntry[] = [
   { title: 'Guides index', path: '/guides', note: 'Long-form formation and compliance guides.' },
   { title: 'How to Form an LLC in Florida', path: '/guides/how-to-form-an-llc-in-florida', note: 'Steps, Division of Corporations fees, and what to do after Articles of Organization are filed.' },
+  { title: 'Florida LLC Cost', path: '/guides/florida-llc-cost', note: 'State fees to form a Florida LLC ($125 = $100 filing + $25 registered agent), $138.75 annual report ($538.75 after May 1), free EIN, and commonly missed costs.' },
   { title: 'How to Form a Florida Corporation', path: '/guides/how-to-form-a-florida-corporation', note: 'Steps, Sunbiz fees ($70 to form, $150 annual report), and what to do after Articles of Incorporation are filed. Spanish alternate: /es/guides/how-to-form-a-florida-corporation.' },
   { title: 'Florida Fictitious Name (DBA)', path: '/guides/florida-fictitious-name-dba', note: 'Who needs a DBA, the $50 Sunbiz fee, newspaper ad, 5-year renewal, cancellation.' },
   { title: 'Florida Annual Report', path: '/guides/florida-annual-report', note: 'Deadline (January 1 through May 1), LLC and corporation fees, and late filing.' },
@@ -55,7 +63,8 @@ const GUIDES: LinkEntry[] = [
 
 const LEGAL: LinkEntry[] = [
   { title: 'Terms', path: '/terms', note: 'Terms of service.' },
-  { title: 'Privacy Policy', path: '/privacy', note: 'How LaunchForma handles data; no data sales.' },
+  { title: 'Privacy Policy', path: '/privacy', note: 'How LaunchForma handles data, ad measurement, and the Do Not Sell or Share choice. Effective October 25, 2026.' },
+  { title: 'Do Not Sell or Share', path: '/privacy-choices', note: 'Opt out of Google and OpenAI ad measurement. Global Privacy Control is honored.' },
   { title: 'Disclaimer', path: '/disclaimer', note: 'Not-a-law-firm disclaimer.' },
   { title: 'Refund Policy', path: '/refund-policy', note: 'Refund terms.' },
 ];
@@ -67,6 +76,7 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'Preguntas frecuentes', path: '/es/faq', note: 'Preguntas sobre formación, agente registrado y reportes anuales.' },
   { title: 'Nosotros', path: '/es/about', note: 'Qué es LaunchForma y cómo trabajamos.' },
   { title: 'Contacto', path: '/es/contacto', note: 'Teléfono, dirección postal y el formulario de servicios.' },
+  { title: 'LLC para estilistas y barberos', path: '/es/llc-para/estilistas-barberos', note: `LLC en Florida para estilistas y barberos. Esencial cuesta ${ESSENTIAL_PRICE} e incluye la tarifa estatal de ${ESSENTIAL_STATE_FEE}. Alterna en inglés: /llc-for/stylists-barbers.` },
   { title: 'Reporte anual', path: '/es/file-annual-report', note: 'Presentación del reporte anual de Florida.' },
   { title: 'Informe BOI', path: '/es/boi-reporting', note: 'Actualización BOI: las empresas formadas en EE. UU. están exentas (regla final del 11 de agosto de 2026, fincen.gov/boi).' },
   { title: 'Estados', path: '/es/states', note: 'Estados donde LaunchForma presenta trámites.' },
@@ -84,13 +94,18 @@ const SPANISH_PAGES: LinkEntry[] = [
   { title: 'LLC o negocio individual', path: '/es/guides/llc-o-negocio-individual-florida', note: 'Cómo define el IRS cada figura y qué cobra Sunbiz por la LLC, el reporte anual y el nombre ficticio.' },
   { title: 'LLC para tu app', path: '/es/guides/llc-para-tu-app-florida', note: 'Qué piden Apple y Google para una cuenta de organización, y cómo encaja una LLC de Florida.' },
   { title: 'Términos (borrador)', path: '/es/terms', note: 'Traducción en borrador. La versión en inglés es la que rige: /terms.' },
-  { title: 'Privacidad (borrador)', path: '/es/privacy', note: 'Traducción en borrador. La versión en inglés es la que rige: /privacy.' },
+  { title: 'Política de privacidad', path: '/es/privacy', note: 'Qué recopilamos, con quién lo compartimos y cómo excluirte de la medición de anuncios. Vigente desde el 25 de octubre de 2026.' },
+  { title: 'No vender ni compartir', path: '/es/privacy-choices', note: 'Exclusión de la medición de anuncios de Google y OpenAI. Se respeta Global Privacy Control.' },
   { title: 'Aviso legal (borrador)', path: '/es/disclaimer', note: 'Traducción en borrador. La versión en inglés es la que rige: /disclaimer.' },
   { title: 'Reembolsos (borrador)', path: '/es/refund-policy', note: 'Traducción en borrador. La versión en inglés es la que rige: /refund-policy.' },
 ];
 
 function line(entry: LinkEntry): string {
   return `- [${entry.title}](${BASE_URL}${entry.path}): ${entry.note}`;
+}
+
+function published(entries: LinkEntry[]): string[] {
+  return entries.map(line);
 }
 
 function stateLines(): string[] {
@@ -112,22 +127,22 @@ export function buildLlmsTxt(): string {
   parts.push(ABOUT);
   parts.push('');
   parts.push('## Core pages');
-  parts.push(...CORE_PAGES.map(line));
+  parts.push(...published(CORE_PAGES));
   parts.push('');
   parts.push('## Guides');
-  parts.push(...GUIDES.map(line));
+  parts.push(...published(GUIDES));
   parts.push('');
   parts.push('## States');
   parts.push(...stateLines());
   parts.push('');
   parts.push('## Legal');
-  parts.push(...LEGAL.map(line));
+  parts.push(...published(LEGAL));
   parts.push('');
   parts.push('## Español');
   parts.push(
-    'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Las páginas legales en español son una traducción en borrador y rige la versión en inglés.',
+    'Páginas en español neutro. Forma, el asistente, guía el pedido. El equipo de LaunchForma presenta el trámite ante el estado. No es asesoría legal ni fiscal. Los términos, el aviso legal y la política de reembolso en español siguen en borrador y rige la versión en inglés.',
   );
-  parts.push(...SPANISH_PAGES.map(line));
+  parts.push(...published(SPANISH_PAGES));
   parts.push('');
   parts.push('## Optional');
   parts.push(

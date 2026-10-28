@@ -17,6 +17,7 @@
 import * as cheerio from 'cheerio';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { linkAbortSignals } from './abort-signals';
 import { normalizeDistinguishableName, stripSuffix } from './florida';
 
 export interface SunbizEntity {
@@ -69,6 +70,12 @@ const HARD_BLOCK_STATUSES = new Set(['ACTIVE', 'NAME HS']);
 const SOFT_WARN_STATUSES = new Set(['INACT', 'CROSS RF']);
 
 const REQUEST_TIMEOUT_MS = 12_000;
+
+/**
+ * Name availability must not stack one 12s timeout per search term.
+ * Every term shares this budget and runs together.
+ */
+export const NAME_CHECK_UPSTREAM_BUDGET_MS = 5_000;
 const DEFAULT_LIMIT = 25;
 const MAX_QUERY_LEN = 100;
 
@@ -518,7 +525,21 @@ export async function searchSunbiz(
  * suffix-stripped base) and de-duplicate by document number, since
  * sunbizdaily's prefix-style search may miss filings with extra leading
  * articles or different suffix forms.
+ *
+ * Search terms run together under one budget, so three slow lookups cannot
+ * add up past NAME_CHECK_UPSTREAM_BUDGET_MS.
  */
+export async function runBudgetedSearches<T>(
+  terms: string[],
+  opts: { signal?: AbortSignal; budgetMs?: number },
+  search: (term: string, signal: AbortSignal) => Promise<T>,
+): Promise<T[]> {
+  const budget = AbortSignal.timeout(opts.budgetMs ?? NAME_CHECK_UPSTREAM_BUDGET_MS);
+  const signal = linkAbortSignals([opts.signal, budget]);
+  if (!signal) return Promise.all(terms.map((term) => search(term, budget)));
+  return Promise.all(terms.map((term) => search(term, signal)));
+}
+
 export async function checkNameAvailability(
   query: string,
   entityType: 'LLC' | 'CORP',
@@ -541,14 +562,12 @@ export async function checkNameAvailability(
   const seen = new Set<string>();
   const allEntities: SunbizEntity[] = [];
 
-  for (const term of searchTerms) {
-    let res;
-    try {
-      res = await searchSunbiz(term, opts);
-    } catch (err) {
-      // If any term fails, propagate - caller maps to user-facing error.
-      throw err;
-    }
+  // Parallel under one budget. A slow term used to add another 12s wait
+  // after the previous term had already timed out.
+  const settled = await runBudgetedSearches(searchTerms, { signal: opts.signal }, (term, signal) =>
+    searchSunbiz(term, { ...opts, signal }),
+  );
+  for (const res of settled) {
     mergedSource = mergedSource ?? res.source;
     for (const e of res.entities) {
       if (!e.documentNumber || seen.has(e.documentNumber)) continue;
@@ -667,6 +686,31 @@ export interface SunbizDailyOfficer {
   officer_type?: string;
 }
 
+export interface FloridaAnnualReportFiling {
+  year: number;
+  filed_date?: string;
+}
+
+const annualReportScraperUsed = new WeakSet<object>();
+
+function markAnnualReportScraper(detail: object) {
+  annualReportScraperUsed.add(detail);
+}
+
+function finishAnnualReportDetail(
+  before: FloridaEntityDetail,
+  after: FloridaEntityDetail,
+  scraped: boolean,
+): FloridaEntityDetail {
+  if (scraped || annualReportScraperUsed.has(before)) markAnnualReportScraper(after);
+  return after;
+}
+
+/** True when this lookup called the Sunbiz scraper or the local scraper sidecar. */
+export function floridaLookupUsedScraper(detail: object): boolean {
+  return annualReportScraperUsed.has(detail);
+}
+
 export interface FloridaEntityDetail {
   corporation_number: string;
   corporation_name: string;
@@ -685,6 +729,17 @@ export interface FloridaEntityDetail {
   } | null;
   officers?: SunbizDailyOfficer[];
   industries?: { label?: string; is_primary?: boolean }[];
+  /**
+   * Years present on the Sunbiz annual report table.
+   * Absent means the source did not include the table.
+   * An empty array means the table was present and had no years.
+   */
+  annual_reports?: FloridaAnnualReportFiling[];
+  /**
+   * Years an annual-report event explicitly names.
+   * This is evidence a year was filed. It is not a complete table.
+   */
+  event_filed_years?: number[];
   url?: string;
 }
 
@@ -709,15 +764,231 @@ export function normalizeFloridaDocumentNumber(raw: string): string {
   return s;
 }
 
-function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
+/** Years in a Sunbiz detail page annual report table. */
+export function parseFloridaAnnualReportYears(html: string): number[] {
+  const years = new Set<number>();
+  const row = /<td[^>]*>\s*(20\d{2})\s*<\/td>\s*<td[^>]*>\s*(\d{2}\/\d{2}\/\d{4})\s*<\/td>/gi;
+  for (const match of html.matchAll(row)) {
+    years.add(Number(match[1]));
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function calendarYear(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1900 && value <= 2200) {
+    return value;
+  }
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  const iso = text.match(/^(\d{4})-\d{2}-\d{2}/);
+  if (iso) return Number(iso[1]);
+  const us = text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  if (us) return Number(us[3]);
+  if (/^\d{4}$/.test(text)) return Number(text);
+  return null;
+}
+
+function filedDateText(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function filingFromItem(item: unknown): FloridaAnnualReportFiling | null {
+  if (typeof item === 'number' || typeof item === 'string') {
+    const year = calendarYear(item);
+    return year ? { year } : null;
+  }
+  const record = asRecord(item);
+  if (!record) return null;
+  const filed = filedDateText(
+    record.filed_date ?? record.filedDate ?? record.file_date ?? record.date,
+  );
+  const year = calendarYear(
+    record.year ?? record.report_year ?? record.reportYear ?? record.ar_year ?? filed,
+  );
+  if (!year) return null;
+  return { year, ...(filed ? { filed_date: filed } : {}) };
+}
+
+function filingsFromList(value: unknown): FloridaAnnualReportFiling[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const filings: FloridaAnnualReportFiling[] = [];
+  for (const item of value) {
+    const filing = filingFromItem(item);
+    if (filing) filings.push(filing);
+  }
+  return filings;
+}
+
+const ANNUAL_REPORT_LIST_KEYS = [
+  'annual_reports',
+  'annualReports',
+  'report_years',
+  'reportYears',
+  'annual_report_years',
+  'annualReportYears',
+  'last_three_annual_reports',
+  'lastThreeAnnualReports',
+  'annual_report_filings',
+  'annualReportFilings',
+  'ar_filings',
+  'arFilings',
+];
+
+function numberedReportFilings(source: Record<string, unknown>): FloridaAnnualReportFiling[] | undefined {
+  let found = false;
+  const filings: FloridaAnnualReportFiling[] = [];
+  for (const slot of [1, 2, 3]) {
+    const yearKey = [`ar_year_${slot}`, `report_year_${slot}`, `annual_report_year_${slot}`].find(
+      (key) => key in source,
+    );
+    const dateKey = [
+      `ar_date_${slot}`,
+      `ar_filed_date_${slot}`,
+      `report_date_${slot}`,
+      `annual_report_date_${slot}`,
+      `filed_date_${slot}`,
+    ].find((key) => key in source);
+    if (!yearKey && !dateKey) continue;
+    found = true;
+    const filed = dateKey ? filedDateText(source[dateKey]) : undefined;
+    const year = calendarYear(yearKey ? source[yearKey] : undefined) ?? calendarYear(filed);
+    if (year) filings.push({ year, ...(filed ? { filed_date: filed } : {}) });
+  }
+  return found ? filings : undefined;
+}
+
+function recordSources(body: unknown): Record<string, unknown>[] {
+  const record = asRecord(body);
+  if (!record) return [];
+  return [record, asRecord(record.cordata), asRecord(record.cordata_record)].filter(
+    (source): source is Record<string, unknown> => Boolean(source),
+  );
+}
+
+/**
+ * Annual-report years from a Sunbiz Daily or cordata record.
+ * A returned array, including an empty one, means the table was present.
+ * `undefined` means the record did not say which years were filed.
+ */
+export function readAnnualReportFilings(body: unknown): FloridaAnnualReportFiling[] | undefined {
+  for (const source of recordSources(body)) {
+    for (const key of ANNUAL_REPORT_LIST_KEYS) {
+      if (key in source && Array.isArray(source[key])) return filingsFromList(source[key]);
+    }
+    const numbered = numberedReportFilings(source);
+    if (numbered) return numbered;
+  }
+  return undefined;
+}
+
+function isAnnualReportEvent(value: unknown): boolean {
+  return typeof value === 'string' && /annual\s*reports?/i.test(value);
+}
+
+/** Years named by a last-event or history row. Not a complete filing table. */
+export function readEventFiledYears(body: unknown): number[] {
+  const years = new Set<number>();
+  for (const source of recordSources(body)) {
+    const event = ['last_event', 'lastEvent', 'last_transaction', 'lastTransaction']
+      .map((key) => source[key])
+      .find((value) => typeof value === 'string');
+    const eventDate = [
+      'last_event_file_date',
+      'lastEventFileDate',
+      'event_date_filed',
+      'eventDateFiled',
+      'last_event_date',
+      'lastEventDate',
+    ]
+      .map((key) => source[key])
+      .find((value) => typeof value === 'string');
+    if (isAnnualReportEvent(event)) {
+      const year = calendarYear(eventDate) ?? calendarYear(event);
+      if (year) years.add(year);
+    }
+    const history = source.events ?? source.filing_history ?? source.filingHistory ?? source.history;
+    if (!Array.isArray(history)) continue;
+    for (const item of history) {
+      const record = asRecord(item);
+      const label = record
+        ? [record.type, record.event, record.label, record.description, record.name]
+            .filter((part) => typeof part === 'string')
+            .join(' ')
+        : typeof item === 'string'
+          ? item
+          : '';
+      if (!isAnnualReportEvent(label)) continue;
+      const year = record
+        ? calendarYear(record.year ?? record.report_year) ??
+          calendarYear(record.date ?? record.filed_date ?? record.file_date ?? record.event_date)
+        : calendarYear(label);
+      if (year) years.add(year);
+    }
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
+const FILE_DATE_KEYS = [
+  'file_date',
+  'fileDate',
+  'filing_date',
+  'filingDate',
+  'date_filed',
+  'dateFiled',
+  'formation_date',
+  'formationDate',
+];
+
+/** Formation date as printed on the record. The year is not shifted through UTC. */
+export function readFloridaFileDate(body: unknown): string | undefined {
+  for (const source of recordSources(body)) {
+    for (const key of FILE_DATE_KEYS) {
+      const value = filedDateText(source[key]);
+      if (value) return value;
+    }
+  }
+  return undefined;
+}
+
+export function parseFloridaDetailFacts(html: string): {
+  years: number[];
+  hasAnnualReportTable: boolean;
+  fileDate?: string;
+  lastEvent?: string;
+  lastEventDate?: string;
+} {
+  const labeled = (id: string) => {
+    const match = html.match(
+      new RegExp(`<label[^>]*for="${id}"[^>]*>[^<]*</label>\\s*<span>([^<]+)</span>`, 'i'),
+    );
+    const value = match?.[1]?.replace(/\s+/g, ' ').trim();
+    return value || undefined;
+  };
+  return {
+    years: parseFloridaAnnualReportYears(html),
+    hasAnnualReportTable: html.includes('Annual Reports'),
+    fileDate: labeled('Detail_FileDate'),
+    lastEvent: labeled('Detail_LastEvent'),
+    lastEventDate: labeled('Detail_LastEventFileDate'),
+  };
+}
+
+export function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
   const b = body as FloridaEntityDetail;
+  const annual_reports = readAnnualReportFilings(body);
+  const event_filed_years = readEventFiledYears(body);
   return {
     corporation_number: String(b.corporation_number ?? ''),
     corporation_name: String(b.corporation_name ?? ''),
     filing_type: b.filing_type,
     filing_type_display: b.filing_type_display,
     status: b.status,
-    file_date: b.file_date,
+    file_date: readFloridaFileDate(body),
     source_date: b.source_date,
     fei_number: b.fei_number,
     principal_address: b.principal_address ?? null,
@@ -725,6 +996,8 @@ function mapSunbizDailyDetailBody(body: unknown): FloridaEntityDetail {
     registered_agent: b.registered_agent ?? null,
     officers: Array.isArray(b.officers) ? b.officers : [],
     industries: Array.isArray(b.industries) ? b.industries : [],
+    ...(annual_reports !== undefined ? { annual_reports } : {}),
+    ...(event_filed_years.length ? { event_filed_years } : {}),
     url: b.url,
   };
 }
@@ -874,7 +1147,9 @@ async function findViaSunbizOrgNameScrape(
     const entities = await searchSunbizScrape(legalName, { limit: 100, signal });
     const hit = entities.find((e) => normalizeFloridaDocumentNumber(e.documentNumber) === docNorm);
     if (!hit) return null;
-    return detailFromSunbizEntityHit(hit);
+    const detail = detailFromSunbizEntityHit(hit);
+    markAnnualReportScraper(detail);
+    return detail;
   } catch {
     return null;
   }
@@ -965,6 +1240,48 @@ async function fetchFloridaEntityFromLocalProxy(
  *      `SUNBIZ_SCRAPER_PROXY` on most hosts due to Cloudflare)
  *   4. Local seed when `LINK_ENTITY_ALLOW_SEED_LOOKUP=true` and no API key
  */
+/**
+ * Sunbiz Daily's documented filing JSON has file_date and no annual-report table.
+ * Any report years, last-three dates, or annual-report events on the record are
+ * read first. A configured scraper can fill a missing table from search.sunbiz.org.
+ * A missing proxy, a Cloudflare block, or a failed scrape leaves the table unknown.
+ * Unknown years are not a reason to quote.
+ */
+async function withAnnualReports(
+  detail: FloridaEntityDetail,
+  signal?: AbortSignal,
+): Promise<FloridaEntityDetail> {
+  const needsYears = detail.annual_reports === undefined;
+  const needsDate = !detail.file_date;
+  const needsEvent = !detail.event_filed_years?.length;
+  if (!needsYears && !needsDate && !needsEvent) return detail;
+  const proxy = process.env.SUNBIZ_SCRAPER_PROXY?.trim();
+  if (!proxy || !detail.corporation_number) return detail;
+  const target =
+    `https://search.sunbiz.org/Inquiry/CorporationSearch/SearchResults` +
+    `?inquiryType=DocumentNumber&searchTerm=${encodeURIComponent(detail.corporation_number)}`;
+  try {
+    const html = await fetchScrapeViaProxy(target, proxy, signal);
+    if (looksLikeCloudflareChallenge(html)) return finishAnnualReportDetail(detail, detail, true);
+    const facts = parseFloridaDetailFacts(html);
+    const eventYears = isAnnualReportEvent(facts.lastEvent)
+      ? [calendarYear(facts.lastEventDate) ?? calendarYear(facts.lastEvent)].filter(
+          (year): year is number => year !== null,
+        )
+      : [];
+    return finishAnnualReportDetail(detail, {
+      ...detail,
+      file_date: detail.file_date || facts.fileDate,
+      ...(needsYears && facts.hasAnnualReportTable
+        ? { annual_reports: facts.years.map((year) => ({ year })) }
+        : {}),
+      ...(needsEvent && eventYears.length ? { event_filed_years: eventYears } : {}),
+    }, true);
+  } catch {
+    return finishAnnualReportDetail(detail, detail, true);
+  }
+}
+
 export async function fetchFloridaEntityDetailByDocumentNumber(
   rawDocumentNumber: string,
   opts: FetchFloridaEntityOptions = {},
@@ -977,7 +1294,9 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
   // ── Step 0: local cloudscraper sidecar (highest priority in dev) ────────
   const localProxy = process.env.SUNBIZ_LOCAL_PROXY_URL?.trim();
   if (localProxy) {
-    return fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal);
+    const fromProxy = await fetchFloridaEntityFromLocalProxy(documentNumber, opts.signal);
+    markAnnualReportScraper(fromProxy);
+    return withAnnualReports(fromProxy, opts.signal);
   }
 
   const apiKey = process.env.SUNBIZDAILY_API_KEY?.trim();
@@ -985,7 +1304,10 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
 
   if (apiKey) {
     try {
-      return await fetchFloridaEntityFromSunbizDaily(documentNumber, apiKey, opts.signal);
+      return withAnnualReports(
+        await fetchFloridaEntityFromSunbizDaily(documentNumber, apiKey, opts.signal),
+        opts.signal,
+      );
     } catch (err) {
       if (!(err instanceof SunbizError) || err.code !== 'not_found') throw err;
 
@@ -996,10 +1318,10 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
           apiKey,
           opts.signal,
         );
-        if (viaNameDaily) return viaNameDaily;
+        if (viaNameDaily) return withAnnualReports(viaNameDaily, opts.signal);
 
         const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
-        if (viaScrape) return viaScrape;
+        if (viaScrape) return withAnnualReports(viaScrape, opts.signal);
 
         throw new SunbizError(
           'not_found',
@@ -1017,11 +1339,11 @@ export async function fetchFloridaEntityDetailByDocumentNumber(
   }
 
   const seedDetail = detailFromLocalSeed(documentNumber);
-  if (seedDetail) return seedDetail;
+  if (seedDetail) return withAnnualReports(seedDetail, opts.signal);
 
   if (legal) {
     const viaScrape = await findViaSunbizOrgNameScrape(documentNumber, legal, opts.signal);
-    if (viaScrape) return viaScrape;
+    if (viaScrape) return withAnnualReports(viaScrape, opts.signal);
     throw new SunbizError(
       'not_found',
       `No match for document ${documentNumber} when searching Sunbiz for "${legal}". ` +

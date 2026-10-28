@@ -1,6 +1,6 @@
 import type { ResumeStepId } from './drip-copy';
 
-/** Campaign value for one resume-order step. */
+/** Campaign value for the later resume steps. The 1 hour note uses abandoned-cart. */
 export function resumeUtmCampaign(step: ResumeStepId): 'resume_1h' | 'resume_1d' | 'resume_3d' {
   switch (step) {
     case 'RESUME_1H':
@@ -10,6 +10,22 @@ export function resumeUtmCampaign(step: ResumeStepId): 'resume_1h' | 'resume_1d'
     case 'RESUME_3D':
       return 'resume_3d';
   }
+}
+
+/** Query params stamped on resume links. The 1 hour email is the abandoned-cart note. */
+export function resumeUtmParams(step: ResumeStepId): {
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+} {
+  if (step === 'RESUME_1H') {
+    return { utm_source: 'email', utm_medium: 'reminder', utm_campaign: 'abandoned-cart' };
+  }
+  return {
+    utm_source: 'resume_email',
+    utm_medium: 'email',
+    utm_campaign: resumeUtmCampaign(step),
+  };
 }
 
 /**
@@ -24,9 +40,10 @@ export function withResumeUtms(url: string, step: ResumeStepId): string {
     return url;
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return url;
-  parsed.searchParams.set('utm_source', 'resume_email');
-  parsed.searchParams.set('utm_medium', 'email');
-  parsed.searchParams.set('utm_campaign', resumeUtmCampaign(step));
+  const params = resumeUtmParams(step);
+  parsed.searchParams.set('utm_source', params.utm_source);
+  parsed.searchParams.set('utm_medium', params.utm_medium);
+  parsed.searchParams.set('utm_campaign', params.utm_campaign);
   return parsed.toString();
 }
 

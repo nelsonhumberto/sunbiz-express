@@ -5,15 +5,19 @@ import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
-import { localizedStateName, resolveMarketingState } from '@/lib/marketing-states';
+import { localizedStateName, marketingStateForVisitor } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
-import { type StateCode } from '@/lib/formation-states';
+import { floridaOnlyNote, type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withLocaleMeta } from '@/lib/locale-seo';
+import { formatCurrency } from '@/lib/utils';
+import { searchParamsToQueryString } from '@/lib/utm';
+
+const FL_LLC_FROM = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
 interface PricingPageProps {
-  searchParams?: { state?: string | string[] };
+  searchParams?: Record<string, string | string[] | undefined>;
 }
 
 function pickFirst(value: string | string[] | undefined): string | undefined {
@@ -26,10 +30,10 @@ export async function generateMetadata({
 }: PricingPageProps): Promise<Metadata> {
   const explicitState = pickFirst(searchParams?.state);
   const preferred = cookies().get('preferred_state')?.value;
-  const state = resolveMarketingState(explicitState ?? preferred);
+  const { state } = marketingStateForVisitor(explicitState ?? preferred);
   // Self-canonical avoids duplicate-content signals from `?state=` query
-  // permutations. The canonical always points at the bare `/pricing` URL
-  // for FL and a state-scoped form for WY/DE.
+  // permutations. Florida, including a Wyoming or Delaware fallback, stays on
+  // the bare `/pricing` URL.
   const locale = await getLocale();
   const canonical =
     state.code === 'FL' ? '/pricing' : `/pricing?state=${state.code}`;
@@ -46,7 +50,7 @@ export async function generateMetadata({
       ? t('descFl')
       : t('descState', { state: state.name })
     : state.code === 'FL'
-      ? 'Florida LLC and Corporation formation packages from $149 all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.'
+      ? `Florida LLC and Corporation formation packages from ${FL_LLC_FROM} all-in. State filing fee included, free Year-1 Registered Agent, Operating Agreement options - no surprise checkout fees.`
       : `${state.name} LLC and Corporation formation pricing with the ${state.name} filing fee included. Free Year-1 Registered Agent, transparent all-in pricing, no upsell tricks.`;
   return withLocaleMeta(
     canonical,
@@ -64,7 +68,9 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
   const locale = await getLocale();
   const explicitState = pickFirst(searchParams?.state);
   const preferred = cookies().get('preferred_state')?.value;
-  const state = resolveMarketingState(explicitState ?? preferred);
+  const resolved = marketingStateForVisitor(explicitState ?? preferred);
+  const state = resolved.state;
+  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
   const faqItems = getMarketingFaq(state, locale);
   const stateName = localizedStateName(state, locale);
 
@@ -90,23 +96,35 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         })}
       />
       <JsonLd data={faqPageJsonLd(faqItems)} />
-      <section className="pt-16 pb-8">
+      <section className="relative overflow-hidden pt-4 pb-1 md:pt-16 md:pb-8">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
             {t('kicker')}
           </span>
-          <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
+          <h1 className="mt-1 font-display text-3xl leading-tight md:mt-3 md:text-6xl font-medium tracking-tight">
             {state.availability === 'active'
               ? t('pageHeadline', { state: stateName })
               : t('headline')}
           </h1>
-          <p className="mt-6 text-lg text-ink-muted leading-relaxed">{t('subhead')}</p>
+          <p className="mt-2 text-sm leading-snug text-ink-muted md:mt-6 md:text-lg md:leading-relaxed">{t('subhead')}</p>
+          {stateNote ? (
+            <p role="status" className="mt-4 text-sm text-ink-muted">
+              {stateNote}
+            </p>
+          ) : null}
         </div>
       </section>
       <PricingTable
         showHeader={false}
+        className="py-4 md:py-28"
+        attributionSearch={searchParamsToQueryString(searchParams)}
         state={state}
         feeNote={state.code === 'FL' ? t('floridaBundledStateFees') : undefined}
+        feeNoteLink={
+          state.code === 'FL' && locale === 'en'
+            ? { href: '/guides/florida-llc-cost', label: 'What the state charges' }
+            : undefined
+        }
       />
       <ComparisonTable />
       <FAQSection state={state} suppressJsonLd />

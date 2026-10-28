@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Poppins } from 'next/font/google';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -13,11 +13,12 @@ import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/auth';
 import { InternalTrafficFlag } from '@/components/analytics/InternalTrafficFlag';
+import { TesterTrafficFlag } from '@/components/analytics/TesterTrafficFlag';
+import { getGuestUser } from '@/lib/guest';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
-import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
-import { OpenAiPixel } from '@/components/analytics/OpenAiPixel';
-import { openAiPixelBootstrap } from '@/lib/openai-pixel';
-import { openAiPixelId } from '@/lib/tracking-ids';
+import { AdMeasurementGate } from '@/components/analytics/AdMeasurementGate';
+import { CookieConsentBar } from '@/components/analytics/CookieConsentBar';
+import { AD_OPT_OUT_COOKIE } from '@/lib/ad-opt-out';
 import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
 import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
@@ -44,8 +45,6 @@ export const metadata: Metadata = {
     'Corporation formation',
     'business formation',
     'Florida LLC',
-    'Wyoming LLC',
-    'Delaware LLC',
     'registered agent',
     'incorporate online',
     'form an LLC',
@@ -79,10 +78,13 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const session = await auth();
-  const pathname = headers().get('x-lf-pathname') ?? '';
-  const openAiId = openAiPixelId();
-  // Token URLs stay out of ad pixels. /es/... is rewritten before this header is set.
-  const loadOpenAiPixel = Boolean(openAiId) && pathname !== '/reset-password';
+  const guest = session?.user?.isTester ? null : await getGuestUser();
+  const testerUserId = session?.user?.isTester ? session.user.id : guest?.isTester ? guest.id : null;
+  const isTester = session?.user?.isTester === true || guest?.isTester === true;
+  const headerStore = headers();
+  const pathname = headerStore.get('x-lf-pathname') ?? '';
+  const serverGpc = headerStore.get('sec-gpc') === '1';
+  const serverCookie = cookies().get(AD_OPT_OUT_COOKIE)?.value ?? null;
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -95,17 +97,13 @@ export default async function RootLayout({
         <Script id="strip-li-fat-id" strategy="beforeInteractive">
           {LI_FAT_ID_STRIP_SCRIPT}
         </Script>
-        {loadOpenAiPixel && openAiId ? (
-          <Script id="openai-ads-pixel" strategy="beforeInteractive">
-            {openAiPixelBootstrap(openAiId)}
-          </Script>
-        ) : null}
         <PostHogProvider>
           <InternalTrafficFlag
             userId={session?.user?.id}
             email={session?.user?.email}
             role={session?.user?.role}
           />
+          <TesterTrafficFlag isTester={isTester} userId={testerUserId} />
           <NextIntlClientProvider locale={locale} messages={messagesForPath(pathname, messages)}>
             {children}
             <Toaster
@@ -116,12 +114,12 @@ export default async function RootLayout({
                 className: 'font-sans',
               }}
             />
+            <CookieConsentBar />
           </NextIntlClientProvider>
           <Analytics />
           <SpeedInsights />
           <Suspense fallback={null}>
-            <GoogleAnalytics />
-            <OpenAiPixel />
+            <AdMeasurementGate serverGpc={serverGpc} serverCookie={serverCookie} />
           </Suspense>
         </PostHogProvider>
       </body>

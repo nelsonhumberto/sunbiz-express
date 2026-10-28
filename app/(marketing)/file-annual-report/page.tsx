@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { GuestAnnualReportForm } from '@/components/marketing/GuestAnnualReportForm';
-import { FL } from '@/lib/florida';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import {
+  ANNUAL_REPORT_SERVICE_FEE_CENTS,
+  floridaEasternYear,
+  getFloridaAnnualReportStateFees,
+} from '@/lib/pricing';
 import { pageTitle, withBrand } from '@/lib/seo-title';
 import { formatCurrency } from '@/lib/utils';
 import { withLocaleMeta } from '@/lib/locale-seo';
@@ -46,22 +49,30 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const OUR_SERVICE_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS;
-const LLC_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportLLC; // $80 + $138.75 = $218.75
-const CORP_TOTAL = OUR_SERVICE_FEE + FL.fees.annualReportCorp; // $80 + $150 = $230
+const SOLD_YEAR = floridaEasternYear();
+// On-time state fee only. The late fee is called out separately, so "from" stays true all year.
+const LLC_STATE = getFloridaAnnualReportStateFees(SOLD_YEAR, new Date(), {
+  entityType: 'LLC',
+}).filingFeeCents;
+const CORP_STATE = getFloridaAnnualReportStateFees(SOLD_YEAR, new Date(), {
+  entityType: 'CORP',
+}).filingFeeCents;
+const LLC_TOTAL = OUR_SERVICE_FEE + LLC_STATE; // $99 + $138.75 = $237.75
+const CORP_TOTAL = OUR_SERVICE_FEE + CORP_STATE; // $99 + $150 = $249
 
 const competitors = [
   {
     name: 'LegalZoom',
     serviceFee: 9_900,
-    llcTotal: 9_900 + FL.fees.annualReportLLC,
-    corpTotal: 9_900 + FL.fees.annualReportCorp,
+    llcTotal: 9_900 + LLC_STATE,
+    corpTotal: 9_900 + CORP_STATE,
     highlight: false,
   },
   {
     name: 'FilingServices.com',
     serviceFee: 14_900,
-    llcTotal: 14_900 + FL.fees.annualReportLLC,
-    corpTotal: 14_900 + FL.fees.annualReportCorp,
+    llcTotal: 14_900 + LLC_STATE,
+    corpTotal: 14_900 + CORP_STATE,
     highlight: false,
   },
   {
@@ -103,10 +114,15 @@ export default async function FileAnnualReportPage() {
             </>
           )}
         </p>
-        <div className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-full text-sm font-semibold">
-          {t
-            ? `${t('llcBadge', { price: formatCurrency(LLC_TOTAL) })} \u00a0·\u00a0 ${t('corpBadge', { price: formatCurrency(CORP_TOTAL) })}`
-            : <>LLC: {formatCurrency(LLC_TOTAL)} all-in &nbsp;·&nbsp; Corp: {formatCurrency(CORP_TOTAL)} all-in</>}
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-full text-sm font-semibold">
+            {t
+              ? `${t('llcBadge', { price: formatCurrency(LLC_TOTAL) })} \u00a0·\u00a0 ${t('corpBadge', { price: formatCurrency(CORP_TOTAL) })}`
+              : <>LLC from {formatCurrency(LLC_TOTAL)} &nbsp;·&nbsp; Corp from {formatCurrency(CORP_TOTAL)}</>}
+          </div>
+          <p className="text-sm text-ink-muted">
+            {t ? t('lateFeeNote') : 'Florida adds a $400 late fee for reports filed after May 1.'}
+          </p>
         </div>
       </section>
 
@@ -115,8 +131,9 @@ export default async function FileAnnualReportPage() {
         <h2 className="text-center font-display text-2xl font-medium mb-6">
           {t ? t('compare') : 'How we compare'}
         </h2>
-        <div className="rounded-2xl overflow-hidden border border-border shadow-card">
-          <table className="w-full text-sm">
+        <div className="rounded-2xl border border-border shadow-card overflow-hidden">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[36rem] text-sm">
             <thead>
               <tr className="bg-muted/50">
                 <th className="text-left px-5 py-3 font-semibold text-ink">{t ? t('colCompany') : 'Company'}</th>
@@ -159,16 +176,13 @@ export default async function FileAnnualReportPage() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-muted/30">
-                <td colSpan={4} className="px-5 py-2 text-xs text-ink-subtle">
-                  {t
-                    ? t('footnote')
-                    : '* All totals include the Florida state filing fee ($138.75 LLC · $150.00 Corp). Competitor prices as of 2026.'}
-                </td>
-              </tr>
-            </tfoot>
           </table>
+          </div>
+          <p className="px-5 py-2 text-xs text-ink-subtle border-t border-border">
+            {t
+              ? t('footnote')
+              : '* Totals shown are the on-time price and include the Florida state filing fee ($138.75 LLC · $150.00 Corp). Florida adds a $400 late fee for reports filed after May 1. Competitor prices as of 2026.'}
+          </p>
         </div>
       </section>
 

@@ -6,11 +6,12 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import {
+  inquiryCompanyFieldValues,
+  inquiryStoredMessage,
   SERVICE_INQUIRY_LABELS,
-  ServiceInquirySchema,
-  inquiryHoneypotTripped,
-  type ServiceInquiryOption,
-} from '@/lib/service-inquiry';
+  serviceInquirySubjectPrefix,
+} from '@/lib/service-inquiry-note';
+import { ServiceInquirySchema, inquiryHoneypotTripped } from '@/lib/service-inquiry';
 import { utmToPrismaFields } from '@/lib/utm';
 import { getServerUtmAttribution } from '@/lib/utm-server';
 
@@ -37,12 +38,19 @@ export async function submitServiceInquiry(
   const parsed = ServiceInquirySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  const { name, phone, service, message, locale } = parsed.data;
+  const { name, phone, service, message, locale, documentNumber, companyName } = parsed.data;
   const email = parsed.data.email?.trim() ? parsed.data.email.trim().toLowerCase() : null;
   const utm = getServerUtmAttribution();
   const attribution = utmToPrismaFields(utm);
   const safeLocale = locale === 'es' ? 'es' : 'en';
-  const note = message?.trim() ? message.trim() : null;
+  const visitorMessage = message?.trim() ? message.trim() : null;
+  const note = inquiryStoredMessage({
+    service,
+    message: visitorMessage,
+    documentNumber,
+    companyName,
+  });
+  const companyFields = inquiryCompanyFieldValues({ service, documentNumber, companyName });
 
   try {
     await prisma.serviceInquiry.create({
@@ -73,8 +81,11 @@ export async function submitServiceInquiry(
         inquiryName: name,
         inquiryEmail: email ?? undefined,
         inquiryPhone: phone,
-        inquiryService: SERVICE_INQUIRY_LABELS[service as ServiceInquiryOption],
-        inquiryMessage: note ?? undefined,
+        inquiryService: SERVICE_INQUIRY_LABELS[service],
+        inquirySubjectPrefix: serviceInquirySubjectPrefix(service),
+        inquirySunbizDocumentNumber: companyFields.documentNumber,
+        inquiryCompanyName: companyFields.companyName,
+        inquiryMessage: visitorMessage ?? undefined,
         inquiryLocale: safeLocale,
         inquiryUtmSource: utm?.utm_source,
         inquiryUtmMedium: utm?.utm_medium,

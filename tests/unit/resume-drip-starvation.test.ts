@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const filingFindMany = vi.hoisted(() => vi.fn());
+const filingFindUnique = vi.hoisted(() => vi.fn());
 const noteFindMany = vi.hoisted(() => vi.fn());
 const noteCreate = vi.hoisted(() => vi.fn());
 const optOutFind = vi.hoisted(() => vi.fn());
@@ -8,7 +9,7 @@ const sendEmail = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    filing: { findMany: filingFindMany, updateMany: vi.fn() },
+    filing: { findMany: filingFindMany, findUnique: filingFindUnique, updateMany: vi.fn() },
     emailNotification: {
       findMany: noteFindMany,
       create: noteCreate,
@@ -98,6 +99,7 @@ describe('resume drip starvation', () => {
       id: `ntf-${data.filingId}`,
     }));
     optOutFind.mockResolvedValue(null);
+    filingFindUnique.mockResolvedValue({ status: 'DRAFT', payments: [] });
     sendEmail.mockResolvedValue({ status: 'SENT' });
 
     const result = await runScheduledDraftRecovery(NOW);

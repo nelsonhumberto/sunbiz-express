@@ -101,6 +101,9 @@ describe('Registered Agent renewal price', () => {
     expect(high.inner).toContain('keep the service for $150 a year');
     expect(missing.inner).toContain('keep the service for $150 a year');
     expect(spanish.inner).toContain('mantener el servicio por $119 al año');
+    expect(spanish.inner).toContain('puedes mantener');
+    expect(spanish.inner).toContain('inicia sesión');
+    expect(spanish.inner).not.toMatch(/\busted\b/i);
     expect(spanish.inner).not.toContain('$150');
     expect(spanish.inner).not.toContain('—');
     expect(spanish.inner).not.toContain('–');
@@ -126,10 +129,23 @@ describe('Registered Agent renewal price', () => {
     expect(es.dashboard.raRenewalPrice).not.toContain('–');
 
     expect(withPrice(en.addCompany.raUpsellBody, null)).toContain('$150/year');
-    expect(withPrice(es.addCompany.raUpsellBody, 11900)).toContain('$119 al año');
+    expect(withPrice(en.addCompany.raUpsellBody, null)).not.toContain('$119');
+    expect(withPrice(es.addCompany.raUpsellBody, null)).toContain('$150/año');
+    expect(withPrice(es.addCompany.raUpsellBody, 11900)).toContain('$119/año');
+    expect(es.addCompany.raUpsellBody).toContain('cuando quieras');
+    expect(es.addCompany.raUpsellBody).not.toMatch(/\busted\b/i);
+    expect(es.addCompany.raUpsellBody).not.toContain('—');
+    expect(es.addCompany.raUpsellBody).not.toContain('–');
+
     expect(withPrice(en.filingDetail.nonUsRaBody, 11900)).toContain('$119/year');
-    expect(withPrice(es.filingDetail.nonUsRaBody, 15000)).toContain('$150 al año');
+    expect(withPrice(en.filingDetail.nonUsRaBody, 11900)).not.toContain('$150');
+    expect(withPrice(en.filingDetail.nonUsRaBody, null)).toContain('$150/year');
+    expect(withPrice(es.filingDetail.nonUsRaBody, 11900)).toContain('$119/año');
+    expect(withPrice(es.filingDetail.nonUsRaBody, null)).toContain('$150/año');
+    expect(es.filingDetail.nonUsRaBody).toContain('tu agente');
+    expect(es.filingDetail.nonUsRaBody).not.toMatch(/\busted\b/i);
     expect(es.filingDetail.nonUsRaBody).not.toContain('—');
+    expect(es.filingDetail.nonUsRaBody).not.toContain('–');
 
     expect(withPrice(en.wizard.useOurAgentP3, null)).toBe('Year-1 free, then $150/year (cancel anytime)');
     expect(withPrice(es.wizard.useOurAgentP3, null)).toBe(
@@ -143,15 +159,47 @@ describe('Registered Agent renewal price', () => {
     );
   });
 
-  it('keeps the new-formation snapshot and the renewal charge on the customer record', () => {
+  it('wires each customer row into the email, dashboard, and reminder, and leaves new-buyer pages on the catalog', () => {
     const filings = readFileSync('actions/filings.ts', 'utf8');
-    expect(filings).toContain('renewalPriceCents: RA_RENEWAL_PRICE_CENTS');
+    expect(filings).toContain('renewalPriceCents: stateRule.registeredAgent.renewalCents');
     const route = readFileSync('app/api/stripe/payment-intent/route.ts', 'utf8');
     expect(route).toContain('amountCents: service.renewalPriceCents');
     const reminders = readFileSync('lib/draft-recovery.ts', 'utf8');
     expect(reminders).toContain('raRenewalPriceCents: svc.renewalPriceCents');
-    const pricing = readFileSync('lib/pricing.ts', 'utf8');
-    expect(pricing).toContain('export const RA_RENEWAL_PRICE_CENTS = 15_000;');
-    expect(pricing).toContain('export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000;');
+    expect(readFileSync('lib/email.ts', 'utf8')).toContain('formatRaRenewalPrice(ctx.raRenewalPriceCents)');
+    expect(readFileSync('lib/post-formation-job.ts', 'utf8')).toContain(
+      'raRenewalPriceCents: filing.raServices[0]?.renewalPriceCents ?? null',
+    );
+    expect(readFileSync('app/(app)/dashboard/page.tsx', 'utf8')).toContain(
+      'formatRaRenewalPrice(svc.renewalPriceCents)',
+    );
+    expect(readFileSync('app/(app)/dashboard/filings/[id]/page.tsx', 'utf8')).toContain(
+      'formatRaRenewalPrice(activeRa?.renewalPriceCents)',
+    );
+    expect(readFileSync('components/dashboard/AddCompanyForm.tsx', 'utf8')).toContain(
+      'formatRaRenewalPrice(null)',
+    );
+    expect(readFileSync('components/dashboard/RenewRegisteredAgentForm.tsx', 'utf8')).toContain(
+      'raRenewalChargeCents(props.renewalPriceCents)',
+    );
+    const leaf = readFileSync('lib/ra-renewal-price.ts', 'utf8');
+    expect(leaf).toContain('export const RA_RENEWAL_PRICE_CENTS = 15_000');
+    expect(leaf).toContain('return renewalPriceCents ?? RA_RENEWAL_PRICE_CENTS');
+    expect(readFileSync('lib/pricing.ts', 'utf8')).toContain('export { RA_RENEWAL_PRICE_CENTS }');
+    expect(readFileSync('lib/pricing.ts', 'utf8')).toContain(
+      'export const RA_ANNUAL_SERVICE_FEE_CENTS = RA_RENEWAL_PRICE_CENTS',
+    );
+
+    // New buyers and generic marketing stay on the catalog price, not a customer row.
+    const step6 = readFileSync('components/wizard/steps/Step6RegisteredAgent.tsx', 'utf8');
+    expect(step6).toContain('formatCurrency(internalAgent.renewalCents)');
+    expect(step6).not.toContain('formatRaRenewalPrice');
+    expect(readFileSync('components/marketing/AnnualReportSection.tsx', 'utf8')).toContain(
+      'formatCurrency(RA_RENEWAL_PRICE_CENTS)',
+    );
+    expect(readFileSync('app/(compliance-landing)/business-services/page.tsx', 'utf8')).toContain(
+      'formatCurrency(RA_RENEWAL_PRICE_CENTS)',
+    );
+    expect(readFileSync('lib/marketing-faq.ts', 'utf8')).not.toContain('formatRaRenewalPrice');
   });
 });

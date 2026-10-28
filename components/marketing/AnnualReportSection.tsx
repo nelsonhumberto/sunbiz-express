@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, CheckCircle2, X, AlertTriangle, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { localizedHref } from '@/lib/locale-paths';
 import {
@@ -15,7 +15,7 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 
-const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $80
+const OUR_FEE = ANNUAL_REPORT_SERVICE_FEE_CENTS; // $99
 
 const COMPETITOR_FEES = [
   { key: 'typical' as const, fee: 9_900, us: false },
@@ -167,7 +167,7 @@ export function AnnualReportSection({ state = FLORIDA }: AnnualReportSectionProp
               {
                 icon: <CheckCircle2 className="h-5 w-5 text-primary" />,
                 title: t('raTitle'),
-                body: t('raBody'),
+                body: t('raBody', { price: formatCurrency(RA_RENEWAL_PRICE_CENTS) }),
               },
             ].map((item) => (
               <div key={item.title} className="flex gap-4 p-4 rounded-xl border border-border bg-white">

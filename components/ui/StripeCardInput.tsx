@@ -31,6 +31,8 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import { localeFromPublicPath } from '@/lib/locale-paths';
+import { paymentIntentErrorMessage } from '@/lib/payment-intent-errors';
 import { stripePromise } from '@/lib/stripe-client';
 import { getAnalyticsDistinctId } from '@/lib/analytics';
 
@@ -50,19 +52,37 @@ export interface ConfirmOptions {
    * Which catalog price to charge. The server ignores amountCents.
    * Formation is the default when a filingId is set.
    */
-  purpose?: 'formation' | 'annual_report' | 'ein' | 'ra_renewal';
+  purpose?: 'formation' | 'annual_report' | 'ein' | 'ra_renewal' | 'guest_annual_report';
   /** Validated server-side. A client discount amount is not accepted. */
   couponCode?: string;
   raServiceId?: string;
   useOurRa?: boolean;
+  /** Guest annual report entity. The server prices from this, not amountCents. */
+  entityType?: 'LLC' | 'CORP';
+  /** Stable id so a repeat click reuses the same guest PaymentIntent. */
+  guestAttemptId?: string;
+  /** Open or succeeded guest PaymentIntent to reuse instead of creating another. */
+  paymentIntentId?: string;
+  /** Called once the server has a PaymentIntent, before the card is confirmed. */
+  onPaymentIntent?: (paymentIntentId: string) => void;
+  /** Dashboard annual report row. The server prices the late fee from this year. */
+  annualReportId?: string;
+  /** Draft validated on the server before a PaymentIntent is created. */
+  annualReport?: unknown;
   /** Extra metadata fields forwarded to the PaymentIntent. */
   metadata?: Record<string, string>;
   /** If provided, the CardElement is skipped and this PM is re-used. */
   savedPaymentMethodId?: string;
+  /** Guest checkout mailbox. The server stores it before creating the PaymentIntent. */
+  email?: string;
 }
 
+export type CardConfirmResult =
+  | { paymentIntentId: string }
+  | { error: string; code?: string; paymentIntentId?: string };
+
 export interface StripeCardHandle {
-  confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }>;
+  confirm(opts: ConfirmOptions): Promise<CardConfirmResult>;
 }
 
 // ── Inner component (has access to useStripe / useElements) ────────────────
@@ -75,7 +95,7 @@ const InnerCard = forwardRef(function InnerCard(
   const elements = useElements();
 
   useImperativeHandle(ref, () => ({
-    async confirm(opts: ConfirmOptions): Promise<{ paymentIntentId: string } | { error: string }> {
+    async confirm(opts: ConfirmOptions): Promise<CardConfirmResult> {
       const {
         amountCents,
         cardholderName,
@@ -86,11 +106,22 @@ const InnerCard = forwardRef(function InnerCard(
         couponCode,
         raServiceId,
         useOurRa,
+        email,
+        annualReportId,
+        annualReport,
+        entityType,
+        guestAttemptId,
+        paymentIntentId,
       } = opts;
       if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
 
+      const guestAnnualReport = purpose === 'guest_annual_report';
       // 1. Create PaymentIntent server-side
-      const res = await fetch('/api/stripe/payment-intent', {
+      const res = await fetch(
+        guestAnnualReport
+          ? '/api/stripe/payment-intent?purpose=guest_annual_report'
+          : '/api/stripe/payment-intent',
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,13 +132,34 @@ const InnerCard = forwardRef(function InnerCard(
           ...(couponCode ? { couponCode } : {}),
           ...(raServiceId ? { raServiceId } : {}),
           ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
+          ...(email ? { email } : {}),
+          ...(entityType ? { entityType } : {}),
+          ...(opts.metadata?.documentNumber ? { documentNumber: opts.metadata.documentNumber } : {}),
+          ...(guestAttemptId ? { guestAttemptId } : {}),
+          ...(paymentIntentId ? { paymentIntentId } : {}),
+          ...(annualReportId ? { annualReportId } : {}),
+          ...(annualReport ? { annualReport } : {}),
           ...(opts.metadata ? { metadata: opts.metadata } : {}),
           posthogDistinctId: getAnalyticsDistinctId(),
         }),
       });
       const json = await res.json();
+      if (json.paymentIntentId) opts.onPaymentIntent?.(json.paymentIntentId);
+      if (json.alreadySucceeded && json.paymentIntentId) {
+        return { paymentIntentId: json.paymentIntentId };
+      }
       if (json.error || !json.clientSecret) {
-        return { error: json.error ?? 'Could not create payment.' };
+        const code = typeof json.code === 'string' ? json.code : undefined;
+        const locale =
+          typeof window !== 'undefined' ? localeFromPublicPath(window.location.pathname) : 'en';
+        return {
+          error:
+            paymentIntentErrorMessage(code, locale) ??
+            (typeof json.error === 'string' ? json.error : paymentIntentErrorMessage('create_failed', locale)) ??
+            'Could not create payment.',
+          ...(code ? { code } : {}),
+          ...(json.paymentIntentId ? { paymentIntentId: json.paymentIntentId } : {}),
+        };
       }
 
       // 2. Confirm the PaymentIntent on the client
@@ -131,7 +183,10 @@ const InnerCard = forwardRef(function InnerCard(
       }
 
       if (result.error) {
-        return { error: result.error.message ?? 'Payment failed.' };
+        return {
+          error: result.error.message ?? 'Payment failed.',
+          ...(json.paymentIntentId ? { paymentIntentId: json.paymentIntentId } : {}),
+        };
       }
 
       return { paymentIntentId: result.paymentIntent!.id };

@@ -20,6 +20,7 @@
 
 import {
   FORMATION_STATES,
+  annualComplianceFor,
   certificateOfStatusFeeCents,
   certifiedCopyFeeCents,
   defaultProcessingOption,
@@ -27,6 +28,7 @@ import {
   stateFilingFeeCents,
   type StateCode,
 } from './formation-states';
+import { RA_RENEWAL_PRICE_CENTS } from './ra-renewal-price';
 
 export type TierSlug = 'BASIC' | 'STANDARD' | 'PREMIUM';
 export type EntityType = 'LLC' | 'CORP';
@@ -54,8 +56,9 @@ export interface TierDef {
   /**
    * LaunchForma's portion of the package price (the labor / service charge).
    * Customer-facing total = serviceMarginCents + bundled government fees for
-   * the chosen state and entity type. Calibrated so Florida LLC pricing
-   * matches our historical headline tier prices ($155 / $299 / $499).
+   * the chosen state and entity type. Approved Oct 25, 2026 Florida LLC
+   * all-in totals (state fees included): Essential $199, Popular $349,
+   * Premium $549.
    */
   serviceMarginCents: number;
   /**
@@ -76,11 +79,9 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     bestFor: 'I only need the legal filing',
     description:
       'The legal filing, prepared and submitted by LaunchForma specialists.',
-    // May 2026 repricing (audit-driven). Round headline prices and
-    // sharper anchoring against $0 competitors who bundle nothing.
-    // FL LLC reference: $24 service + $125 FL filing = $149.
-    // FL CORP: $24 + $70 = $94. WY: $24 + $100 = $124. DE: $24 + $110 = $134.
-    serviceMarginCents: 2_400,
+    // Oct 25, 2026. FL LLC all-in $199 = $74 service + $125 FL filing.
+    // FL CORP: $74 + $70 = $144. WY: $74 + $100 = $174. DE: $74 + $110 = $184.
+    serviceMarginCents: 7_400,
     features: [
       { label: 'State filing fee included', included: true, highlight: true },
       {
@@ -90,7 +91,6 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
       { label: 'Filing within 1 business day', included: true },
       { label: 'Free Year-1 Registered Agent', included: true, highlight: true },
       { label: 'Email support', included: true },
-      { label: 'Free .com domain', included: false },
     ],
   },
   {
@@ -98,22 +98,19 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     name: 'Popular',
     bestFor: 'Best for opening a bank account',
     description: 'The formation documents banks ask for at account opening.',
-    // May 2026 repricing (audit-driven).
-    // FL LLC reference: $119 service + $125 + $5 + $30 = $279.
-    // FL CORP: $119 + $70 + $8.75 + $8.75 = $206.50.
-    // WY LLC/CORP: $119 + $100 + $25 + $30 = $274.
-    // DE LLC: $119 + $110 + $50 + $50 = $329. DE CORP: $119 + $109 + $50 + $50 = $328.
-    serviceMarginCents: 11_900,
+    // Oct 25, 2026. FL LLC all-in $349 = $189 service + $125 + $5 + $30.
+    // FL CORP: $189 + $70 + $8.75 + $8.75 = $276.50.
+    // WY LLC/CORP: $189 + $100 + $25 + $30 = $344.
+    // DE LLC: $189 + $110 + $50 + $50 = $399. DE CORP: $189 + $109 + $50 + $50 = $398.
+    serviceMarginCents: 18_900,
     recommended: true,
-    ribbon: 'Most Popular',
+    ribbon: 'Recommended',
     features: [
       { label: 'Everything in Filing Only', included: true },
       { label: 'Operating Agreement (custom)', included: true, highlight: true },
       { label: 'Certificate of Status (state-issued)', included: true },
       { label: 'Certified Copy of Articles', included: true },
       { label: 'Priority email support', included: true },
-      { label: 'Free .com domain', included: false },
-      { label: 'Annual Compliance Service', included: false },
     ],
   },
   {
@@ -121,8 +118,8 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     name: 'Premium',
     bestFor: 'Best for hands-off setup',
     description: 'Popular plus year-round compliance, banking, and branding.',
-    // May 2026 repricing (audit-driven). $289 + $125 + $5 + $30 = $449 FL LLC.
-    serviceMarginCents: 28_900,
+    // Oct 25, 2026. FL LLC all-in $549 = $389 service + $125 + $5 + $30.
+    serviceMarginCents: 38_900,
     // Top tier carries a "Premium" badge - the audit moved the "Best Value"
     // anchor to the middle (STANDARD) tier so the recommended-tier
     // psychology lines up with the margin-maximising package.
@@ -207,27 +204,122 @@ export const LINK_EXISTING_ENTITY_FEE_CENTS = 0;
 
 /**
  * Our service fee for filing an annual report (EXCLUDING the state fee).
- *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state-specific fee
- *   FL LLC  total: $80 + $138.75 = $218.75
- *   FL Corp total: $80 + $150.00 = $230.00
- *   WY LLC/Corp total: $80 + $60.00 minimum = $140.00 minimum
- *   DE LLC total: $80 + $300.00 = $380.00 (annual tax, no report)
- *   DE Corp total: $80 + $225.00 minimum (franchise tax min) = $305.00 minimum
+ *   Customer pays: ANNUAL_REPORT_SERVICE_FEE_CENTS + state fees
+ *   FL LLC  on time: $99 + $138.75 = $237.75
+ *   FL LLC  after May 1: $99 + $138.75 + $400 late fee = $637.75
+ *   FL Corp on time: $99 + $150.00 = $249.00
+ *   FL Corp after May 1: $99 + $150.00 + $400 late fee = $649.00
+ *   The $400 is a Florida state fee, not part of the $99 service fee.
+ *   WY LLC/Corp total: $99 + $60.00 minimum = $159.00 minimum
+ *   DE LLC total: $99 + $300.00 = $399.00 (annual tax, no report)
+ *   DE Corp total: $99 + $225.00 minimum (franchise tax min) = $324.00 minimum
  */
-export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 8_000; // $80.00
-
-/** Optional Registered Agent service upsell added to annual report checkout. */
-export const RA_ANNUAL_SERVICE_FEE_CENTS = 15_000; // $150.00
+export const ANNUAL_REPORT_SERVICE_FEE_CENTS = 9_900; // $99.00
 
 /**
- * Canonical Registered Agent renewal price - the single source of truth for
- * what we charge to keep RA service active for another year. Every quote,
- * email, and charge derives from this. The price a customer actually pays is
- * snapshotted onto {@link RegisteredAgentService.renewalPriceCents} at signup
- * so a later change to this constant never silently re-prices existing
- * customers (grandfathering is intentional).
+ * Nelson approved charging Florida's $400 annual-report late fee after May 1.
+ * Set this to false to stop adding the fee. The $99 service fee never includes it.
  */
-export const RA_RENEWAL_PRICE_CENTS = 15_000; // $150.00
+export const FL_AR_LATE_FEE_ENABLED = true;
+
+const FLORIDA_TIME_ZONE = 'America/New_York';
+
+export interface FloridaAnnualReportStateFees {
+  /** On-time Sunbiz fee. $138.75 for an LLC, $150 for a for-profit corporation. */
+  filingFeeCents: number;
+  /** Separate state late fee. $400 after May 1 Eastern, otherwise 0. */
+  lateFeeCents: number;
+  /** filingFeeCents + lateFeeCents. This is what we remit to Florida. */
+  totalCents: number;
+}
+
+export interface FloridaAnnualReportStateFeeOptions {
+  /** Defaults to LLC ($138.75). Corporations use the $150 Sunbiz fee. */
+  entityType?: EntityType;
+  /** Defaults to {@link FL_AR_LATE_FEE_ENABLED} when omitted. */
+  enabled?: boolean;
+}
+
+/**
+ * Calendar year, month, and day in America/New_York. Month is 1-12.
+ * Sunbiz's "received after May 1" rule follows Florida's clock, not UTC.
+ */
+function floridaCalendarDate(now: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: FLORIDA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const read = (type: Intl.DateTimeFormatPartTypes) => {
+    const value = parts.find((part) => part.type === type)?.value;
+    if (!value) {
+      throw new Error(`Missing ${type} in Florida calendar date`);
+    }
+    return Number(value);
+  };
+  return { year: read('year'), month: read('month'), day: read('day') };
+}
+
+/** Calendar year in America/New_York. */
+export function floridaEasternYear(now: Date = new Date()): number {
+  return floridaCalendarDate(now).year;
+}
+
+/**
+ * True when Sunbiz would assess the late fee for this report year.
+ * The deadline is May 1, 11:59:59 PM Eastern of `reportYear`.
+ * May 1 itself is on time. May 2 of that year is late.
+ * A later calendar year is also late. A future report year is not.
+ *
+ * Source: https://dos.fl.gov/sunbiz/forms/fees/
+ * LLC annual report $138.75, or $538.75 if received after May 1.
+ * Profit corporation annual report $150.00, or $550.00 if received after May 1.
+ */
+function isFloridaAnnualReportLate(now: Date, reportYear: number): boolean {
+  const today = floridaCalendarDate(now);
+  if (today.year > reportYear) return true;
+  if (today.year < reportYear) return false;
+  if (today.month > 5) return true;
+  if (today.month < 5) return false;
+  return today.day > 1;
+}
+
+/**
+ * Florida annual-report state fees for `reportYear`, received at `now`.
+ * Adds a separate $400 late-fee line only when `now` in America/New_York
+ * is after May 1 of that report year and {@link FL_AR_LATE_FEE_ENABLED}
+ * is true. The late fee is a state fee. It is not part of our service fee.
+ */
+export function getFloridaAnnualReportStateFees(
+  reportYear: number,
+  now: Date = new Date(),
+  options?: FloridaAnnualReportStateFeeOptions,
+): FloridaAnnualReportStateFees {
+  const entityType = options?.entityType ?? 'LLC';
+  const enabled = options?.enabled ?? FL_AR_LATE_FEE_ENABLED;
+  const compliance = annualComplianceFor(FORMATION_STATES.FL, entityType);
+  const filingFeeCents = compliance.baseFeeCents;
+  const lateFeeCents =
+    enabled && isFloridaAnnualReportLate(now, reportYear) ? compliance.lateFeeCents : 0;
+  return {
+    filingFeeCents,
+    lateFeeCents,
+    totalCents: filingFeeCents + lateFeeCents,
+  };
+}
+
+/**
+ * Florida Registered Agent renewal, re-exported from the leaf module so
+ * existing imports keep working. Wyoming and Delaware keep their own
+ * renewalCents on the formation-state record. The price a customer actually
+ * pays is snapshotted onto RegisteredAgentService.renewalPriceCents at
+ * signup, so a later change here never re-prices an existing row.
+ */
+export { RA_RENEWAL_PRICE_CENTS };
+
+/** Optional Registered Agent service upsell added to annual report checkout. */
+export const RA_ANNUAL_SERVICE_FEE_CENTS = RA_RENEWAL_PRICE_CENTS;
 /** Checkout add-on starts off. The customer opts in; the price does not change. */
 export const RA_AUTORENEW_CHECKED_BY_DEFAULT = false;
 

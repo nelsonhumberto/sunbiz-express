@@ -88,7 +88,7 @@ const TEMPLATES: Record<
     subject: `Your Registered Agent for ${businessName ?? 'your business'} renews in 60 days`,
     body: html`
       <h1>Heads up - RA renewal in 60 days</h1>
-      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is ${formatRaRenewalPrice(renewalPriceCents)}/year - well below LegalZoom's $249/year - and keeps your home address off the public Florida record.</p>
+      <p>Your free Year-1 Registered Agent service for <strong>${businessName ?? 'your business'}</strong> is approaching its first anniversary. Renewal is ${formatRaRenewalPrice(renewalPriceCents)}/year. That keeps your home address off the public Florida record.</p>
       <a class="cta" href="https://launchforma.com/dashboard">Manage Registered Agent</a>
     `,
   }),
@@ -110,14 +110,14 @@ const TEMPLATES: Record<
     subject: `Payment confirmed for ${businessName ?? 'your business'}`,
     body: html`
       <h1>Payment received</h1>
-      <p>We charged your card ${totalCents != null ? formatCurrency(totalCents) : ''}. Your filing is being submitted to the Florida Department of State now.</p>
+      <p>We received your order and are preparing your filing. We charged your card ${totalCents != null ? formatCurrency(totalCents) : ''}.</p>
     `,
   }),
   FILING_SUBMITTED: ({ businessName, trackingNumber, pin }) => ({
-    subject: `${businessName ?? 'Your business'} has been filed with the State of Florida`,
+    subject: `We received your order for ${businessName ?? 'your business'}`,
     body: html`
-      <h1>Filing submitted</h1>
-      <p>The state typically processes filings in 1-2 business days. We'll email you the moment your formation is approved.</p>
+      <h1>We received your order</h1>
+      <p>We received your order and are preparing your filing.</p>
       <table>
         <tr><td>Tracking #</td><td><code>${trackingNumber ?? '-'}</code></td></tr>
         <tr><td>PIN</td><td><code>${pin ?? '-'}</code></td></tr>

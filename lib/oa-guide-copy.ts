@@ -4,6 +4,11 @@
  * getTranslations. FAQ strings are the visible text and the FAQPage JSON-LD.
  */
 
+import { tierPackagePriceCents } from './pricing';
+import { formatCurrency } from './utils';
+
+const POPULAR_FL_LLC = formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', 'FL'));
+
 export const OA_GUIDE_PATH = '/guides/florida-llc-operating-agreement';
 export const OA_GUIDE_PUBLISHED = '2026-05-27';
 /** Rewrite date. Article dateModified and sitemap lastmod use this day. */
@@ -120,7 +125,7 @@ export const OA_GUIDE_EN: OaGuideCopy = {
   downloadLead: 'You can also download a free sample template below.',
   ctaHeading: 'Want an operating agreement prepared with your LLC?',
   ctaBody:
-    'LaunchForma\'s Popular package ($279 all-in, Florida state fees included) lists an "Operating Agreement (custom)" along with a Certificate of Status and a Certified Copy of Articles. Our 24/7 AI assistant guides your order, and our team files with the State of Florida.',
+    `LaunchForma's Popular package (${POPULAR_FL_LLC} all-in, Florida state fees included) lists an "Operating Agreement (custom)" along with a Certificate of Status and a Certified Copy of Articles. Our 24/7 AI assistant guides your order, and our team files with the State of Florida.`,
   ctaStart: 'Start your Florida LLC',
   ctaPricing: 'See what each package includes',
   disclaimer:

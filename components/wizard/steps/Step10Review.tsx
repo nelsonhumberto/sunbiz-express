@@ -56,6 +56,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
     state: string;
     zip: string;
     useOurService?: boolean;
+    phone?: string;
   } | null>(filing.registeredAgent, null);
   const correspondence = safeParseJson<{ email?: string; phone?: string } | null>(
     filing.correspondenceContact,
@@ -173,6 +174,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         />
         <Row label={t('nameLabel')} value={ra?.name ?? '-'} />
         <Row label={t('addressLabel')} value={fmtAddr(ra ?? null)} />
+        {ra?.phone?.trim() ? <Row label={t('phone')} value={ra.phone} /> : null}
       </ReviewSection>
 
       <ReviewSection
@@ -286,15 +288,15 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
               const fee = proc.feeCents > 0 ? ` · $${(proc.feeCents / 100).toFixed(2)}` : '';
               return (
                 <Row
-                  label="Processing speed"
+                  label={t('reviewProcessingSpeed')}
                   value={`${proc.label} (${proc.estimate})${fee}`}
                 />
               );
             })()}
             {opt.foreignRegistrationInterest && (
               <Row
-                label="Foreign-state operations"
-                value="Customer indicated interest in foreign qualification"
+                label={t('reviewForeignOps')}
+                value={t('reviewForeignOpsValue')}
               />
             )}
           </ReviewSection>
@@ -305,7 +307,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         <div>
           <h3 className="font-semibold text-ink mb-1">{t('signElectronically')}</h3>
           <p className="text-sm text-ink-muted">
-            Type your full name as the authorized representative. Your typed name has the same legal effect as a handwritten signature on this filing.
+            {t('signatureLegalEffect')}
           </p>
         </div>
         <div className="space-y-1.5">

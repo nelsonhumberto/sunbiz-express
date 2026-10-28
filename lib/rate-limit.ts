@@ -53,12 +53,24 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { ok: true, remaining: limit - bucket.count, retryAfterSeconds: 0 };
 }
 
-/** Best-effort client IP from the proxy headers Vercel sets. */
+function firstHop(value: string | null): string {
+  if (!value) return '';
+  return value.split(',')[0]?.trim() ?? '';
+}
+
+/**
+ * Best-effort client IP.
+ * x-vercel-forwarded-for is the client address Vercel observed.
+ * x-forwarded-for is last because a caller can put any address first.
+ */
 export function clientIp(): string {
   const h = headers();
-  const fwd = h.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0]!.trim();
-  return h.get('x-real-ip')?.trim() || 'unknown';
+  return (
+    firstHop(h.get('x-vercel-forwarded-for')) ||
+    h.get('x-real-ip')?.trim() ||
+    firstHop(h.get('x-forwarded-for')) ||
+    'unknown'
+  );
 }
 
 /**

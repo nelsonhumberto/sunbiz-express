@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -8,63 +9,86 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
-import { ANNUAL_REPORT_SERVICE_FEE_CENTS, RA_ANNUAL_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { ANNUAL_REPORT_SERVICE_FEE_CENTS } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import {
-  ACTIVE_FORMATION_STATES,
-  annualComplianceFor,
-  getFormationState,
+  DOCUMENT_NUMBER_REQUIRED,
+  GUEST_LOOKUP_FAILED,
+  annualReportYearsOf,
+  guestAnnualReportOffer,
+  guestDocumentNumberRequiredMessage,
+  isMissingDocumentNumberIssue,
+  pricedFloridaEntityType,
+  type GuestAnnualReportOffer,
+} from '@/lib/guest-annual-report-offer';
+import { findSunbizArCandidate } from '@/lib/sunbiz-ar-candidate';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { resolveRequestLocale } from '@/lib/request-locale';
+import {
+  formationStateUnavailableMessage,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
+  floridaLookupUsedScraper,
   searchSunbiz,
-  SunbizError,
   type FloridaEntityDetail,
 } from '@/lib/sunbiz';
+import { logGuestAnnualReportDecision } from '@/lib/guest-annual-report-decision-log';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
+import { INQUIRY_NOTIFY_EMAIL } from '@/lib/constants';
+import { sendEmail } from '@/lib/email';
+import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
+import {
+  AnnualReportDraftFields,
+  annualReportSaveRetry,
+  refineAnnualReportDraft,
+} from '@/lib/annual-report-draft';
 
-const AddressSchema = z.object({
-  street1: z.string().min(1),
-  street2: z.string().optional(),
-  city: z.string().min(1),
-  state: z.string().min(2).max(2),
-  zip: z.string().min(5),
-});
-
-const OfficerSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1),
-  title: z.string().min(1),
-});
-
-const SubmitSchema = z.object({
+const SubmitFields = AnnualReportDraftFields.extend({
   filingId: z.string().min(1),
   annualReportId: z.string().min(1),
-
-  ein: z.string().optional(),
-  registeredAgentName: z.string().min(1),
-  registeredAgentAddress: AddressSchema,
-  useOurRa: z.boolean(),
-
-  principalAddress: AddressSchema,
-  mailingAddress: AddressSchema,
-
-  officers: z.array(OfficerSchema).min(1),
-  signingOfficerName: z.string().min(1),
-
-  // Real Stripe PaymentIntent confirmed on the client
   paymentIntentId: z.string().min(1),
 });
 
+const SubmitSchema = SubmitFields.superRefine(refineAnnualReportDraft);
+
 // Guest schema - no auth required
-const GuestSubmitSchema = SubmitSchema.omit({ filingId: true, annualReportId: true }).extend({
-  documentNumber: z.string().min(1),
-  guestEmail: z.string().email(),
-  companyName: z.string().min(1),
-  entityType: z.enum(['LLC', 'CORP']),
-  reportYear: z.number().int(),
-});
+const GuestSubmitSchema = SubmitFields.omit({ filingId: true, annualReportId: true })
+  .extend({
+    documentNumber: z
+      .string({
+        required_error: DOCUMENT_NUMBER_REQUIRED,
+        invalid_type_error: DOCUMENT_NUMBER_REQUIRED,
+      })
+      .trim()
+      .min(1),
+    guestEmail: z.string().email(),
+    companyName: z.string().min(1),
+    entityType: z.enum(['LLC', 'CORP']),
+  })
+  .superRefine(refineAnnualReportDraft);
+
+function guestActionLocale(): 'en' | 'es' {
+  try {
+    const headerStore = headers();
+    return (
+      resolveRequestLocale({
+        referer: headerStore.get('referer'),
+        nextUrl: headerStore.get('next-url'),
+        publicPath: headerStore.get(PUBLIC_PATH_HEADER),
+        localeHeader: headerStore.get(LOCALE_HEADER),
+        allowedHost: headerStore.get('host'),
+        serverAction: true,
+      }) ?? 'en'
+    );
+  } catch {
+    return 'en';
+  }
+}
 
 /** Resolve the real DB user record - tries by id first, then falls back to email. */
 async function resolveUserId(
@@ -81,8 +105,56 @@ async function resolveUserId(
   return byEmail?.id ?? null;
 }
 
-export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
-  const data = SubmitSchema.parse(input);
+const RETRY_AFTER_CHARGE =
+  'Your card was charged, but we could not finish saving the filing. Submit again on this page. You will not be charged twice.';
+
+async function alertUnsavedAnnualReport(detail: string, filingId?: string) {
+  logger.error('Annual report charged but not saved', {
+    area: 'annual-report',
+    tag: 'unsaved-charge',
+    entityId: filingId,
+    detail,
+  });
+  try {
+    await sendEmail({
+      type: 'ANNUAL_REPORT_UNSAVED',
+      to: INQUIRY_NOTIFY_EMAIL,
+      filingId,
+      context: { unsavedChargeDetail: detail },
+    });
+  } catch (err) {
+    logger.error('Admin alert for unsaved annual report failed', { area: 'annual-report' }, err);
+  }
+}
+
+function paymentIntentIdFrom(input: unknown): string | null {
+  if (!input || typeof input !== 'object' || !('paymentIntentId' in input)) return null;
+  const value = (input as { paymentIntentId?: unknown }).paymentIntentId;
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+export async function submitAnnualReport(input: unknown) {
+  const parsed = SubmitSchema.safeParse(input);
+  if (!parsed.success) {
+    const piId = paymentIntentIdFrom(input);
+    if (piId) {
+      try {
+        const pi = await getStripe().paymentIntents.retrieve(piId);
+        if (pi.status === 'succeeded') {
+          await alertUnsavedAnnualReport(
+            `Validation failed after charge ${piId}: ${parsed.error.issues[0]?.message ?? 'invalid form'}`,
+          );
+        }
+      } catch {
+        // No succeeded charge to reconcile.
+      }
+    }
+    return {
+      ok: false as const,
+      error: parsed.error.issues[0]?.message ?? 'Check the form and try again.',
+    };
+  }
+  const data = parsed.data;
   const session = await auth();
   if (!session?.user?.id) {
     return { ok: false as const, error: 'Sign in to continue.' };
@@ -95,16 +167,15 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
 
   const filing = await prisma.filing.findUnique({
     where: { id: data.filingId },
-    select: { id: true, userId: true, entityType: true, businessName: true, state: true },
+    select: { id: true, userId: true, entityType: true, businessName: true, state: true, locale: true },
   });
   if (!filing || filing.userId !== userId) {
     return { ok: false as const, error: 'Filing not found.' };
   }
-  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    filing.state.toUpperCase() as StateCode,
-  )
-    ? (filing.state.toUpperCase() as StateCode)
-    : 'FL';
+  if (!isActiveFormationState(filing.state)) {
+    return { ok: false as const, error: formationStateUnavailableMessage(filing.locale) };
+  }
+  const filingStateCode = filing.state.toUpperCase() as StateCode;
 
   const annualReport = await prisma.annualReport.findUnique({
     where: { id: data.annualReportId },
@@ -113,7 +184,16 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   if (!annualReport || annualReport.filingId !== data.filingId) {
     return { ok: false as const, error: 'Annual report not found.' };
   }
-  if (annualReport.status === 'FILED') {
+  const existingPayment = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: data.paymentIntentId },
+    select: { id: true },
+  });
+  const retry = annualReportSaveRetry({
+    paymentExists: !!existingPayment,
+    reportFiled: annualReport.status === 'FILED',
+  });
+  if (retry === 'done') return { ok: true as const };
+  if (retry === 'blocked') {
     return { ok: false as const, error: 'This annual report has already been filed.' };
   }
 
@@ -138,15 +218,23 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // State-aware annual compliance fee. FL annual report = $138.75 LLC /
-  // $150 Corp; WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225
-  // minimum franchise tax. The wizard-side `AnnualReport.filingFeeCents`
-  // already mirrors this number; we recompute here for safety.
-  const stateRule = getFormationState(filingStateCode);
-  const compliance = annualComplianceFor(stateRule, filing.entityType as 'LLC' | 'CORP');
-  const stateFee = compliance.baseFeeCents;
-  const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
+  // Recomputed on the server so the client cannot drop the Florida late fee.
+  // FL LLC = $138.75, FL corp = $150, plus $400 after May 1 Eastern.
+  // WY = $60 minimum; DE LLC = $300 annual tax; DE Corp = $225 minimum.
+  const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
+  const quote = quoteAnnualReport(
+    filingStateCode,
+    entityType,
+    data.useOurRa,
+    annualReport.reportYear,
+  );
+  if (Math.abs(pi.amount - quote.totalCents) > 1) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. Server quote is ${quote.totalCents} cents. No refund was issued.`,
+      data.filingId,
+    );
+    return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -203,55 +291,126 @@ export async function submitAnnualReport(input: z.infer<typeof SubmitSchema>) {
         data: {
           status: 'FILED',
           filedDate: new Date(),
-          filingFeeCents: stateFee,
-          totalCostCents: totalCents,
+          filingFeeCents: quote.filingFeeCents,
+          lateFeeCents: quote.lateFeeCents,
+          totalCostCents: quote.totalCents,
           notes: `Signed by: ${data.signingOfficerName}${data.useOurRa ? ' | RA service added' : ''}`,
         },
       });
 
-      await tx.payment.create({
-        data: {
-          filingId: data.filingId,
-          userId,
-          stripePaymentIntentId: pi.id,
-          stripePaymentMethodId: pmId,
-          amountCents: pi.amount,
-          status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
-          stateFilingFeeCents: stateFee,
-          formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
-          registeredAgentY1Cents: raFee,
-          operatingAgreementCents: 0,
-          einCents: 0,
-          domainCents: 0,
-          certificatesCopiesCents: 0,
-          otherServicesCents: 0,
-          cardLast4,
-          cardBrand,
-          cardholderName: pmCardholderName,
-          completedAt: new Date(),
-        },
-      });
+      // A previous attempt already stored this PaymentIntent. Finish the
+      // report on that row instead of inserting a second payment.
+      if (retry !== 'finish') {
+        await tx.payment.create({
+          data: {
+            filingId: data.filingId,
+            userId,
+            stripePaymentIntentId: pi.id,
+            stripePaymentMethodId: pmId,
+            amountCents: pi.amount,
+            status: 'SUCCEEDED',
+            isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+            stateFilingFeeCents: quote.stateFilingFeeCents,
+            formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
+            registeredAgentY1Cents: quote.raFee,
+            operatingAgreementCents: 0,
+            einCents: 0,
+            domainCents: 0,
+            certificatesCopiesCents: 0,
+            otherServicesCents: 0,
+            cardLast4,
+            cardBrand,
+            cardholderName: pmCardholderName,
+            completedAt: new Date(),
+          },
+        });
+      }
     });
 
     revalidatePath(`/dashboard/filings/${data.filingId}`);
     revalidatePath('/dashboard');
     return { ok: true as const };
-  } catch {
-    return { ok: false as const, error: 'Something went wrong. Please try again.' };
+  } catch (err) {
+    const saved = await prisma.payment.findUnique({
+      where: { stripePaymentIntentId: pi.id },
+      select: { id: true },
+    });
+    const report = await prisma.annualReport.findUnique({
+      where: { id: data.annualReportId },
+      select: { status: true },
+    });
+    if (saved && report?.status === 'FILED') return { ok: true as const };
+    if (saved && report && report.status !== 'FILED') {
+      try {
+        await prisma.annualReport.update({
+          where: { id: data.annualReportId },
+          data: {
+            status: 'FILED',
+            filedDate: new Date(),
+            filingFeeCents: quote.filingFeeCents,
+            lateFeeCents: quote.lateFeeCents,
+            totalCostCents: quote.totalCents,
+          },
+        });
+        return { ok: true as const };
+      } catch (retryErr) {
+        logger.error('Annual report retry after charge failed', { area: 'annual-report' }, retryErr);
+      }
+    }
+    await alertUnsavedAnnualReport(
+      `filing ${data.filingId} report ${data.annualReportId} payment ${pi.id}`,
+      data.filingId,
+    );
+    logger.error('Annual report save failed after charge', { area: 'annual-report' }, err);
+    return { ok: false as const, error: RETRY_AFTER_CHARGE };
   }
 }
 
 /** Public (no-auth) Sunbiz entity lookup for the guest annual report form. */
 export async function lookupEntityPublic(
   documentNumber: string,
-): Promise<{ ok: true; detail: FloridaEntityDetail } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; detail: FloridaEntityDetail; offer: GuestAnnualReportOffer }
+  | { ok: false; error: typeof GUEST_LOOKUP_FAILED }
+> {
   try {
     const detail = await fetchFloridaEntityDetailByDocumentNumber(documentNumber.trim());
-    return { ok: true, detail };
-  } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Could not load that entity. Please try again.' };
+    const candidate = await findSunbizArCandidate(documentNumber);
+    const filedYears = annualReportYearsOf(detail);
+    let offer = guestAnnualReportOffer({
+      lookupOk: true,
+      status: detail.status,
+      filedYears,
+      eventFiledYears: detail.event_filed_years,
+      fileDate: detail.file_date,
+      candidate,
+    });
+    if (offer.kind === 'sell' && !pricedFloridaEntityType(documentNumber, detail)) {
+      offer = { kind: 'unconfirmed' };
+    }
+    logGuestAnnualReportDecision({
+      documentNumber,
+      offer,
+      candidatePresent: candidate != null,
+      sunbizDailyStatus: detail.status,
+      scraperUsed: floridaLookupUsedScraper(detail),
+      lookupOk: true,
+      filedYears,
+      eventFiledYears: detail.event_filed_years,
+      fileDate: detail.file_date,
+    });
+    return { ok: true, detail, offer };
+  } catch {
+    const candidate = await findSunbizArCandidate(documentNumber);
+    logGuestAnnualReportDecision({
+      documentNumber,
+      offer: { kind: 'unconfirmed' },
+      candidatePresent: candidate != null,
+      sunbizDailyStatus: null,
+      scraperUsed: false,
+      lookupOk: false,
+    });
+    return { ok: false, error: GUEST_LOOKUP_FAILED };
   }
 }
 
@@ -268,6 +427,7 @@ export interface EntitySearchHit {
  */
 export async function searchEntitiesByName(
   query: string,
+  options?: { includeInactive?: boolean },
 ): Promise<{ ok: true; results: EntitySearchHit[] } | { ok: false; error: string }> {
   if (!query.trim() || query.trim().length < 2) {
     return { ok: false, error: 'Enter at least 2 characters.' };
@@ -278,24 +438,34 @@ export async function searchEntitiesByName(
   if (limited) return { ok: false, error: limited };
   try {
     const { entities } = await searchSunbiz(query.trim(), { limit: 50 });
-    const active = entities
-      .filter((e) => e.status === 'Active' || e.status?.toUpperCase() === 'ACTIVE')
-      .slice(0, 10)
-      .map<EntitySearchHit>((e) => ({
-        name: e.name,
-        documentNumber: e.documentNumber,
-        status: e.status,
-      }));
-    return { ok: true, results: active };
-  } catch (err) {
-    if (err instanceof SunbizError) return { ok: false, error: err.message };
-    return { ok: false, error: 'Search failed. Please try again.' };
+    const rows = options?.includeInactive
+      ? entities
+      : entities.filter((e) => e.status === 'Active' || e.status?.toUpperCase() === 'ACTIVE');
+    const results = rows.slice(0, 10).map<EntitySearchHit>((e) => ({
+      name: e.name,
+      documentNumber: e.documentNumber,
+      status: e.status,
+    }));
+    return { ok: true, results };
+  } catch {
+    return { ok: false, error: GUEST_LOOKUP_FAILED };
   }
 }
 
 /** Guest (unauthenticated) annual report filing. Creates or reuses a guest user. */
 export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitSchema>) {
-  const data = GuestSubmitSchema.parse(input);
+  const locale = guestActionLocale();
+  const parsed = GuestSubmitSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      ok: false as const,
+      error: isMissingDocumentNumberIssue(issue)
+        ? guestDocumentNumberRequiredMessage(locale)
+        : issue?.message ?? 'Check the form and try again.',
+    };
+  }
+  const data = parsed.data;
 
   // Verify the Stripe PaymentIntent before touching the DB
   let pi;
@@ -318,20 +488,42 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
   const pmCardholderName = pm?.billing_details?.name ?? null;
   const pmId = typeof pm === 'string' ? pm : pm?.id ?? null;
 
-  // The guest annual report flow is FL-only (Sunbiz lookup) - non-FL guests
-  // can't reach this code path because there is no equivalent state lookup.
-  // Use the FL formation registry entry so the math always matches the
-  // authenticated path.
-  const stateRule = getFormationState('FL');
-  const compliance = annualComplianceFor(stateRule, data.entityType);
-  const stateFee = compliance.baseFeeCents;
-  const raFee = data.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
-  const totalCents = ANNUAL_REPORT_SERVICE_FEE_CENTS + stateFee + raFee;
+  // Guest annual reports are Florida-only. The year is the Eastern calendar
+  // year on the server. A client reportYear, late fee, or amount is ignored.
+  // The lookup is repeated here so a dissolved or already-filed company is not saved.
+  const now = new Date();
+  const decision = await resolveGuestAnnualReportCharge({
+    documentNumber: data.documentNumber,
+    entityType: data.entityType,
+    useOurRa: data.useOurRa,
+    now,
+    locale,
+  });
+  if (!decision.ok) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. ${decision.error} No refund was issued.`,
+    );
+    return { ok: false as const, error: decision.error };
+  }
+  const reportYear = decision.reportYear;
+  const quote = decision.quote;
   const email = data.guestEmail.toLowerCase().trim();
 
-  // Verify Stripe amount matches our expected total (±1 cent for rounding)
-  if (Math.abs(pi.amount - totalCents) > 1) {
+  // Verify Stripe amount matches our expected total (±1 cent for rounding).
+  // A mismatch after a successful charge is reported. The card is not refunded.
+  if (Math.abs(pi.amount - quote.totalCents) > 1) {
+    await alertUnsavedAnnualReport(
+      `Payment ${pi.id} charged ${pi.amount} cents. Server quote is ${quote.totalCents} cents. No refund was issued.`,
+    );
     return { ok: false as const, error: 'Payment amount mismatch. Please contact support.' };
+  }
+
+  const existingPayment = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: pi.id },
+    select: { filingId: true },
+  });
+  if (existingPayment) {
+    return { ok: true as const, filingId: existingPayment.filingId };
   }
 
   try {
@@ -369,7 +561,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       const filing = await tx.filing.create({
         data: {
           userId: user!.id,
-          entityType: data.entityType,
+          entityType: decision.entityType,
           state: 'FL',
           businessName: data.companyName,
           filingSource: 'LINKED',
@@ -402,12 +594,13 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       const ar = await tx.annualReport.create({
         data: {
           filingId: filing.id,
-          reportYear: data.reportYear,
-          dueDate: new Date(`${data.reportYear}-05-01T23:59:00`),
+          reportYear,
+          dueDate: new Date(`${reportYear}-05-01T23:59:00`),
           status: 'FILED',
           filedDate: new Date(),
-          filingFeeCents: stateFee,
-          totalCostCents: totalCents,
+          filingFeeCents: quote.filingFeeCents,
+          lateFeeCents: quote.lateFeeCents,
+          totalCostCents: quote.totalCents,
           notes: `Guest filing | Signed by: ${data.signingOfficerName}${data.useOurRa ? ' | RA added' : ''}`,
         },
       });
@@ -421,9 +614,9 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           amountCents: pi.amount,
           status: 'SUCCEEDED',
           isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
-          stateFilingFeeCents: stateFee,
+          stateFilingFeeCents: quote.stateFilingFeeCents,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
-          registeredAgentY1Cents: raFee,
+          registeredAgentY1Cents: quote.raFee,
           operatingAgreementCents: 0,
           einCents: 0,
           domainCents: 0,
@@ -438,6 +631,12 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
 
       return { filingId: filing.id, arId: ar.id };
     });
+
+    try {
+      await notifyAdminOfPaidOrder(filingId.filingId);
+    } catch (err) {
+      logger.error('Paid annual report alert failed', { area: 'annual-report' }, err);
+    }
 
     return { ok: true as const, filingId: filingId.filingId };
   } catch (e) {

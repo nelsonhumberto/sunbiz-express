@@ -8,41 +8,34 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, Sparkles, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
-import { getFormationState, type StateCode } from '@/lib/formation-states';
+import { getFormationState, isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { tierPackagePriceCents } from '@/lib/pricing';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { trackCtaClicked, trackEvent } from '@/lib/analytics';
 import { localizedHref } from '@/lib/locale-paths';
 import { nameCheckSubmittedEvent, startHrefForNameCheck } from '@/lib/name-check';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
 
 interface HeroProps {
-  /**
-   * Resolved marketing state. Defaults to Florida. Active states (FL/WY/DE)
-   * render the full hero with a state badge; coming-soon states are routed
-   * to `ComingSoonLanding` upstream.
-   */
+  /** Resolved marketing state. Defaults to Florida. */
   state?: MarketingState;
 }
 
 export function Hero({ state = FLORIDA }: HeroProps = {}) {
   const t = useTranslations('hero');
-  const tTiming = useTranslations('stateTiming');
   const locale = useLocale();
-  const stateLabel = locale === 'es' ? state.nameEs : state.name;
-  const alsoStates =
-    state.code === 'WY' ? t('alsoWy') : state.code === 'DE' ? t('alsoDe') : t('alsoFl');
-  // Funnel everyone through /start so the chosen formation state and the
-  // guest-friendly entry experience travel with the visitor. /start writes
-  // the selected state into a cookie and creates a draft for guests, then
-  // jumps into the wizard.
-  const startFilingHref = localizedHref(`/start?state=${state.code}`, locale);
+  const bookable: StateCode = isActiveFormationState(state.code) ? (state.code as StateCode) : 'FL';
+  const startFilingHref = localizedHref(
+    bookable === 'FL' ? '/start' : `/start?state=${bookable}`,
+    locale,
+  );
 
   return (
     <section
-      data-marketing-state={state.code}
-      className="relative pt-12 pb-24 md:pt-20 md:pb-32 overflow-hidden"
+      data-marketing-state={bookable}
+      className="relative isolate pt-4 pb-24 sm:pt-12 md:pt-20 md:pb-32 overflow-hidden"
     >
       <div className="absolute inset-0 mesh-bg" />
       <div className="aurora" />
@@ -60,34 +53,34 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
         >
           <Link
             href={localizedHref('/about', locale)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 sm:mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {state.code === 'FL' ? t('badge') : t('badgeState', { state: stateLabel })}
+            {t('badge')}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.05] tracking-tight text-balance">
-            {state.code === 'FL' ? t('headlineLine1') : t('headlineState', { state: stateLabel })}{' '}
+            {t('headlineLine1')}{' '}
             <br className="hidden md:block" />
             <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
-          <p className="mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
-            {state.code === 'FL' ? t('subhead') : t('subheadState', { state: stateLabel })}
+          <p className="mt-4 sm:mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+            {t('subhead')}
           </p>
 
-          <p className="mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+          <p className="mt-3 sm:mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
             {t('formaLine')}
           </p>
 
-          <HeroNameCheck stateCode={state.code} />
+          <HeroNameCheck stateCode={bookable} />
 
           <div className="mt-3 flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Button asChild size="lg" className="group">
               <Link
                 href={startFilingHref}
-                onClick={() => trackCtaClicked('hero_start', { state: state.code })}
+                onClick={() => trackCtaClicked('hero_start', { state: bookable })}
               >
                 {t('startFiling')}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -105,7 +98,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              {state.code === 'FL' ? t('filedIn1Day') : tTiming(state.code)}
+              {t('filedIn1Day')}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5 text-accent" />
@@ -113,19 +106,6 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
             </span>
           </div>
 
-          {/* Multi-state callout - replaces the old geo-redirect.
-              Lets non-FL visitors immediately discover WY/DE without
-              hunting through the state switcher. */}
-          <p className="mt-5 text-xs text-ink-subtle">
-            {t('filingIn')}{' '}
-            <span className="font-medium text-ink">{stateLabel}</span> ·{' '}
-            <Link
-              href={localizedHref('/states', locale)}
-              className="text-primary hover:underline font-medium"
-            >
-              {t('alsoServe', { states: alsoStates })} →
-            </Link>
-          </p>
         </motion.div>
 
         <motion.div
@@ -134,12 +114,21 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mt-20 max-w-5xl mx-auto"
         >
-          <HeroPreview state={state} />
+          <HeroPreview stateCode={bookable} />
         </motion.div>
       </div>
     </section>
   );
 }
+
+/**
+ * Shared by the homepage hero name field and its submit button so they
+ * stay the same height. Mobile is 56px (at least 52px). From the `sm`
+ * breakpoint up, including desktop, the control is 60px. Width stays on
+ * the existing layout classes. min-height matches that size so a stacked
+ * flex row cannot collapse the field.
+ */
+const HERO_NAME_CONTROL_HEIGHT = 'h-14 min-h-14 sm:h-[60px] sm:min-h-[60px]';
 
 function HeroNameCheck({ stateCode }: { stateCode: string }) {
   const t = useTranslations('hero');
@@ -161,11 +150,11 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 mx-auto w-full max-w-xl text-left">
-      <label htmlFor="hero-business-name" className="sr-only">
+    <form onSubmit={onSubmit} className="mt-4 sm:mt-8 mx-auto w-full max-w-xl text-left">
+      <Label htmlFor="hero-business-name" className="mb-2 block">
         {t('nameCheckLabel')}
-      </label>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      </Label>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           id="hero-business-name"
           type="text"
@@ -182,9 +171,18 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
             setValue(e.target.value.slice(0, 100));
             if (missing) setMissing(false);
           }}
-          className="h-12 w-full min-w-0 flex-1 rounded-md border border-input bg-card px-4 text-base text-ink"
+          className={cn(
+            HERO_NAME_CONTROL_HEIGHT,
+            'w-full min-w-0 appearance-none sm:flex-1 rounded-lg border border-input bg-card px-5 text-lg text-ink shadow-sm',
+            'placeholder:text-ink-subtle',
+            'focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          )}
         />
-        <Button type="submit" size="lg" className="w-full shrink-0 sm:w-auto">
+        <Button
+          type="submit"
+          size="lg"
+          className={cn(HERO_NAME_CONTROL_HEIGHT, 'w-full shrink-0 sm:w-auto')}
+        >
           {t('checkName')}
         </Button>
       </div>
@@ -197,16 +195,12 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
   );
 }
 
-function HeroPreview({ state = FLORIDA }: { state?: MarketingState }) {
+function HeroPreview({ stateCode = 'FL' }: { stateCode?: StateCode }) {
   const t = useTranslations('hero');
-  const formationState = getFormationState(state.code);
-  const stateCode = (state.code as StateCode) || 'FL';
+  const formationState = getFormationState(stateCode);
   const previewPrice = tierPackagePriceCents('STANDARD', 'LLC', stateCode);
   const previewPriceFormatted = formatCurrency(previewPrice);
-  const searchUrl =
-    state.code === 'FL'
-      ? 'launchforma.com/wizard/your-llc/2'
-      : `launchforma.com/wizard/your-${formationState.slug}-llc/2`;
+  const searchUrl = 'launchforma.com/wizard/your-llc/2';
 
   return (
     <div className="relative">

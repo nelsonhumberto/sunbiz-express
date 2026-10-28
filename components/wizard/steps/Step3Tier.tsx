@@ -19,6 +19,7 @@ import type { WizardFiling } from '../types';
 
 export function Step3Tier({ filing }: { filing: WizardFiling }) {
   const t = useTranslations('pricing');
+  const tWizard = useTranslations('wizard');
   const { setTierPreview } = useWizardCostPreview();
   const [tier, setTier] = useState<TierSlug>(filing.serviceTier as TierSlug);
   const { pending, error, run } = useWizardSubmit();
@@ -61,7 +62,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
       <div
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
         role="radiogroup"
-        aria-label="Choose your package"
+        aria-label={tWizard('choosePackageAria')}
       >
         {TIERS.map((tierDef) => {
           const isSelected = tier === tierDef.slug;
@@ -89,7 +90,7 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
               )}
             >
               {tierDef.recommended && (
-                <span className="absolute -top-3 left-5 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1">
+                <span className="absolute -top-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] items-center gap-1 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white sm:left-5 sm:px-2.5 sm:tracking-wider">
                   <Sparkles className="h-2.5 w-2.5" />
                   {t('ribbon_recommended')}
                 </span>

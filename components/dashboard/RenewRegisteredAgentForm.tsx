@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { CreditCard, ShieldCheck, CalendarClock, Loader2 } from 'lucide-react';
@@ -33,7 +33,7 @@ export type RenewRegisteredAgentFormProps = {
 
 export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
   const t = useTranslations('dashboard');
-  const router = useRouter();
+  const router = useLocalizedRouter();
   const renewalPriceCents = raRenewalChargeCents(props.renewalPriceCents);
 
   const hasSaved = !!props.savedCard;

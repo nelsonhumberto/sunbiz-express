@@ -574,6 +574,14 @@ model ChecklistSignup {
   confirmTokenExpiresAt DateTime?
   isTest                Boolean   @default(false)
   checklistSentAt       DateTime?
+  // Where the opt-in was submitted, plus the lf_utm cookie at that moment.
+  source                String?
+  utmSource             String?
+  utmMedium             String?
+  utmCampaign           String?
+  utmContent            String?
+  utmTerm               String?
+  gclid                 String?
   createdAt             DateTime  @default(now())
 
   @@index([createdAt])
@@ -593,8 +601,9 @@ model MarketingOptOut {
   updatedAt DateTime @updatedAt
 }
 
-// Approved weekly issues 001 and 002. English text from the copy files.
-// Sending uses lib/newsletter.ts so Spanish does not need a database read.
+// Approved weekly issues 001 through 004. Each row stores the English
+// subject, preview, and body. Spanish for every issue lives in
+// lib/newsletter.ts, same as 001 and 002. Sending does not read this table.
 model NewsletterIssue {
   id        String   @id
   subject   String
@@ -661,7 +670,7 @@ model ServiceInquiry {
   // Optional: the public form collects phone/WhatsApp, not email.
   email       String?
   phone       String
-  service     String   // registered_agent | operating_agreement | compliance_alerts | other
+  service     String   // registered_agent | operating_agreement | compliance_alerts | llc_reinstatement | late_annual_report | other
   message     String?
   locale      String   @default("en")
   utmSource   String?
@@ -820,5 +829,27 @@ model AssistantMessage {
   createdAt      DateTime              @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+// One America/New_York calendar day of assistant model spend.
+// costMicroUsd is millionths of a US dollar. Additive ledger only.
+model AssistantSpendDay {
+  day          DateTime @id @db.Date
+  costMicroUsd BigInt   @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+// Florida cordata candidates for a late annual report.
+// One row per document number that was active, formed before the target
+// year, and did not list that year. The loader deletes a row when a later
+// file shows the company is no longer a candidate. Primary key only.
+model SunbizArCandidate {
+  documentNumber String   @id
+  entityType     String
+  status         String
+  formationDate  DateTime @db.Date
+  arYears        Int[]
+  sourceFileDate DateTime @db.Date
+  updatedAt      DateTime @updatedAt
 }
 

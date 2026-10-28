@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { CheckCircle2, Mail } from 'lucide-react';
 import { captureChecklistSignup } from '@/actions/checklist-signup';
 import { Button } from '@/components/ui/button';
+import { checklistFormSource } from '@/lib/checklist-form-source';
 import { checklistCopy, type DripLocale } from '@/lib/drip-copy';
 import { localizedHref } from '@/lib/locale-paths';
 
 export function ChecklistSignupForm() {
   const locale = useLocale();
+  const pathname = usePathname() ?? '';
   const lang: DripLocale = locale === 'en' ? 'en' : 'es';
   const copy = checklistCopy(lang);
   const privacyHref = localizedHref('/privacy', lang);
@@ -42,6 +45,7 @@ export function ChecklistSignupForm() {
         consent: true,
         locale: lang,
         website,
+        source: checklistFormSource(pathname),
       });
       if (result.ok) {
         setSubmitted(true);

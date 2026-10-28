@@ -1,11 +1,17 @@
-import { RA_RENEWAL_PRICE_CENTS } from './pricing';
 import { formatCurrency } from './utils';
 
 /**
- * Cents for this customer's next Registered Agent renewal.
- * Matches the dashboard renewal charge (`RegisteredAgentService.renewalPriceCents`).
- * A missing snapshot falls back to the current default. It does not change the stored price.
+ * Florida Registered Agent renewal.
+ *
+ * The cents constant does not import lib/pricing.ts, so formation-states can
+ * read it while pricing.ts is still loading. Wyoming and Delaware keep their
+ * own renewalCents. Helpers format a customer's stored
+ * RegisteredAgentService.renewalPriceCents and fall back to this default when
+ * there is no row. They do not change the stored price or the catalog.
  */
+export const RA_RENEWAL_PRICE_CENTS = 15_000;
+
+/** Cents charged for this customer's next Registered Agent renewal. */
 export function raRenewalChargeCents(renewalPriceCents: number | null | undefined): number {
   return renewalPriceCents ?? RA_RENEWAL_PRICE_CENTS;
 }

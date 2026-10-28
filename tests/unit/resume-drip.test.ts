@@ -1,10 +1,12 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { allDripCopyText, checklistCopy, emailShellCopy, resumeStepCopy } from '@/lib/drip-copy';
 import { buildResumeEmail } from '@/lib/drip-email';
 import { renderTemplate } from '@/lib/email';
 import { buildResumeEmailSentCapture, posthogServerEventProperties } from '@/lib/posthog-server';
-import { decorateResumeEmailHtml, withResumeUtms } from '@/lib/resume-utm';
+import { decorateResumeEmailHtml, resumeUtmParams, withResumeUtms } from '@/lib/resume-utm';
+import { tierPackagePriceCents, tierPriceParts } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 import {
   guestResumeUrl,
   isRecoverySkipAddress,
@@ -15,6 +17,7 @@ import {
   resumeDraftListArgs,
   resumeDripMailbox,
   resumeLinkPlan,
+  resumeSendHoldReason,
   shouldSkipDraftRecovery,
   wholeDaysUntil,
   wizardPathForDraft,
@@ -27,6 +30,7 @@ import {
   isUniqueConflict,
   planResumeClaim,
   resumeDeliveryCountsAsSent,
+  resumeSendBlocksAnotherAttempt,
   type ResumeClaimRow,
 } from '@/lib/resume-drip-claim';
 import { isResumeDripEnabled, isSignupCaptureEnabled, resumeEmailReplyTo } from '@/lib/feature-flags';
@@ -135,6 +139,7 @@ describe('resume drip stop conditions', () => {
     expect(planResumeDrip({ ...ready, status: 'SUBMITTED' }).reason).toBe('stopped');
     expect(planResumeDrip({ ...ready, status: 'APPROVED' }).reason).toBe('stopped');
     expect(planResumeDrip({ ...ready, paid: true }).reason).toBe('stopped');
+    expect(planResumeDrip({ ...ready, ageHours: 0.5, paid: true }).reason).toBe('stopped');
     expect(planResumeDrip({ ...ready, unsubscribed: true }).reason).toBe('stopped');
     expect(planResumeDrip({ ...ready, deleted: true }).reason).toBe('stopped');
   });
@@ -279,6 +284,37 @@ describe('qa and e2e skip', () => {
         JSON.stringify({ typedGuestEmail: 'Ada@Example.com' }),
       ),
     ).toBe('ada@example.com');
+    expect(
+      resumeDripMailbox(
+        'guest.abc@guest.launchforma.invalid',
+        JSON.stringify({ pendingAccountEmail: 'Pat@Example.com' }),
+      ),
+    ).toBe('pat@example.com');
+    expect(shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email: 'buyer@example.com', isTester: true } })).toBe(
+      true,
+    );
+    expect(resumeSendHoldReason({ paid: true, status: 'DRAFT' })).toBe('paid');
+    expect(resumeSendHoldReason({ paid: true, status: 'APPROVED' })).toBe('paid');
+    expect(resumeSendHoldReason({ paid: false, status: 'SUBMITTED' })).toBe('not-draft');
+    expect(resumeSendHoldReason({ paid: false, status: 'DRAFT' })).toBeNull();
+    expect(resumeSendHoldReason({ paid: false, status: '' })).toBe('not-draft');
+    const job = readFileSync('lib/draft-recovery.ts', 'utf8');
+    expect(job).toContain('resumeSendHoldReason');
+    expect(job).toContain('listUnsubscribeUrl');
+    expect(JSON.stringify(resumeDraftListArgs(Date.parse('2026-10-24T12:00:00.000Z')).where)).toContain(
+      '"isTester":false',
+    );
+    expect(
+      resumeSendBlocksAnotherAttempt(
+        {
+          status: 'SKIPPED',
+          attemptCount: 1,
+          claimedAt: new Date(),
+          createdAt: new Date(),
+        },
+        Date.now(),
+      ),
+    ).toBe(true);
     expect(isRecoverySkipAddress('user@bar.invalid')).toBe(true);
     expect(isRecoverySkipAddress('guest.abc@guest.launchforma.invalid')).toBe(true);
   });
@@ -339,14 +375,14 @@ describe('resume copy and reply-to', () => {
       resumeUrl: 'https://launchforma.com/resume?f=1&t=2',
       unsubscribeUrl: 'https://launchforma.com/unsubscribe?token=abc',
     });
-    expect(spanish.subject).toBe('Tu pedido de LaunchForma está guardado');
+    expect(spanish.subject).toBe('Tu borrador de LLC en Florida sigue abierto');
     expect(spanish.inner).not.toContain('—');
     const omitted = buildResumeEmail({
       step: 'RESUME_1H',
       firstName: 'Ana',
       resumeUrl: 'https://launchforma.com/resume?f=1&t=2',
     });
-    expect(omitted.subject).toBe('Your LaunchForma order is saved');
+    expect(omitted.subject).toBe('Your Florida LLC draft is still open');
     const shell = emailShellCopy('es');
     const spanishHtml = renderTemplate('RESUME_1H', {
       locale: 'es',
@@ -369,14 +405,14 @@ describe('resume copy and reply-to', () => {
   it('adds the resume campaign to every link in the email', () => {
     const steps = ['RESUME_1H', 'RESUME_1D', 'RESUME_3D'] as const;
     for (const step of steps) {
-      const campaign = step.toLowerCase();
+      const params = resumeUtmParams(step);
       const resume = withResumeUtms('https://launchforma.com/resume?f=1&t=2', step);
       const parsed = new URL(resume);
       expect(parsed.searchParams.get('f')).toBe('1');
       expect(parsed.searchParams.get('t')).toBe('2');
-      expect(parsed.searchParams.get('utm_source')).toBe('resume_email');
-      expect(parsed.searchParams.get('utm_medium')).toBe('email');
-      expect(parsed.searchParams.get('utm_campaign')).toBe(campaign);
+      expect(parsed.searchParams.get('utm_source')).toBe(params.utm_source);
+      expect(parsed.searchParams.get('utm_medium')).toBe(params.utm_medium);
+      expect(parsed.searchParams.get('utm_campaign')).toBe(params.utm_campaign);
 
       const built = buildResumeEmail({
         step,
@@ -396,15 +432,69 @@ describe('resume copy and reply-to', () => {
       expect(web.length).toBeGreaterThan(0);
       for (const href of web) {
         const url = new URL(href);
-        expect(url.searchParams.get('utm_source')).toBe('resume_email');
-        expect(url.searchParams.get('utm_medium')).toBe('email');
-        expect(url.searchParams.get('utm_campaign')).toBe(campaign);
+        expect(url.searchParams.get('utm_source')).toBe(params.utm_source);
+        expect(url.searchParams.get('utm_medium')).toBe(params.utm_medium);
+        expect(url.searchParams.get('utm_campaign')).toBe(params.utm_campaign);
       }
       expect(hrefs).toContain('mailto:help@launchforma.com');
     }
     expect(withResumeUtms('mailto:help@launchforma.com', 'RESUME_1H')).toBe(
       'mailto:help@launchforma.com',
     );
+    expect(resumeUtmParams('RESUME_1H')).toEqual({
+      utm_source: 'email',
+      utm_medium: 'reminder',
+      utm_campaign: 'abandoned-cart',
+    });
+    expect(resumeUtmParams('RESUME_1D').utm_campaign).toBe('resume_1d');
+    expect(resumeUtmParams('RESUME_3D').utm_campaign).toBe('resume_3d');
+  });
+
+  it('sends the approved abandoned-cart copy with a live price and two CTAs', () => {
+    const total = formatCurrency(tierPriceParts('BASIC', 'LLC', 'FL').totalCents);
+    expect(tierPriceParts('BASIC', 'LLC', 'FL').totalCents).toBe(
+      tierPackagePriceCents('BASIC', 'LLC', 'FL'),
+    );
+    expect(readFileSync('lib/drip-copy.ts', 'utf8')).not.toContain('$199');
+    const english = renderTemplate('RESUME_1H', {
+      locale: 'en',
+      firstName: 'Ana',
+      resumeUrl: 'https://launchforma.com/resume?f=filing1&t=tok',
+      unsubscribeUrl: 'https://launchforma.com/unsubscribe?token=abc',
+    });
+    const spanish = renderTemplate('RESUME_1H', {
+      locale: 'es',
+      resumeUrl: 'https://launchforma.com/es/resume?f=filing1&t=tok',
+      unsubscribeUrl: 'https://launchforma.com/es/unsubscribe?token=abc',
+    });
+    expect(english.subject).toBe('Your Florida LLC draft is still open');
+    expect(english.html).toContain(`Essential is ${total} all-in`);
+    expect(english.html).toContain('Florida state filing fee');
+    expect(english.html.match(/Finish my LLC/g)).toHaveLength(2);
+    expect(spanish.subject).toBe('Tu borrador de LLC en Florida sigue abierto');
+    expect(spanish.html).toContain(`Esencial cuesta ${total} todo incluido`);
+    expect(spanish.html.match(/Terminar mi LLC/g)).toHaveLength(2);
+    expect(english.html).toContain('14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016');
+    expect(spanish.html).toContain('14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016');
+    expect(english.html).toContain('Unsubscribe');
+    expect(spanish.html).toContain('Cancelar suscripción');
+    expect(english.html).toContain('utm_source=email');
+    expect(english.html).toContain('utm_medium=reminder');
+    expect(english.html).toContain('utm_campaign=abandoned-cart');
+    expect(english.html.indexOf('Finish my LLC')).toBeLessThan(
+      english.html.indexOf('You started a Florida LLC'),
+    );
+    expect(english.html.lastIndexOf('Finish my LLC')).toBeGreaterThan(
+      english.html.indexOf('private filing service'),
+    );
+    const later = resumeStepCopy('RESUME_1D', 'en');
+    expect(later.subject).toBe('Still thinking it over?');
+    expect(later.cta).toBe('Finish my order');
+    if (existsSync('/opt/cursor/artifacts')) {
+      mkdirSync('/opt/cursor/artifacts/emails', { recursive: true });
+      writeFileSync('/opt/cursor/artifacts/emails/abandoned-cart-en.html', english.html);
+      writeFileSync('/opt/cursor/artifacts/emails/abandoned-cart-es.html', spanish.html);
+    }
   });
 
   it('builds a resume_email_sent capture and skips an empty filing', () => {
@@ -466,6 +556,15 @@ describe('recovery schedule', () => {
     expect(route).not.toContain('minute 37');
     expect(route).not.toContain('recovery-cron');
     expect(claim).not.toContain('minute 37');
+    const hours = cron.crons
+      .filter((entry) => entry.path === '/api/cron/recovery')
+      .map((entry) => Number(entry.schedule.split(' ')[1]));
+    const sorted = [...hours].sort((a, b) => a - b);
+    const gaps = sorted.map((hour, index) => {
+      const next = sorted[(index + 1) % sorted.length] ?? hour;
+      return (next - hour + 24) % 24;
+    });
+    expect(Math.max(...gaps)).toBe(11);
   });
 });
 
@@ -475,6 +574,8 @@ describe('checklist signup gate', () => {
     expect(isSignupCaptureEnabled(testEnv({ SIGNUP_CAPTURE_ENABLED: 'yes' }))).toBe(true);
     const form = readFileSync('components/marketing/ChecklistSignupForm.tsx', 'utf8');
     expect(form).toContain('type="checkbox"');
+    expect(form).toContain('checklistFormSource');
+    expect(readFileSync('lib/checklist-form-source.ts', 'utf8')).toContain("return 'lp-florida-llc-bottom'");
     expect(form).not.toContain('defaultChecked');
     expect(form).not.toContain('checked={true}');
     const section = readFileSync('components/marketing/ChecklistSignupSection.tsx', 'utf8');

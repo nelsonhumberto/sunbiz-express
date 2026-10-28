@@ -9,7 +9,6 @@ import {
   computeCost,
   filingHasOperatingAgreement,
   tierBundledAddOns,
-  RA_RENEWAL_PRICE_CENTS,
   type AddOnSlug,
   type TierSlug,
 } from '@/lib/pricing';
@@ -29,14 +28,16 @@ import {
   safeParseJson,
 } from '@/lib/utils';
 import {
-  ACTIVE_FORMATION_STATES,
   annualComplianceFor,
   defaultProcessingOption,
+  formationStateUnavailableMessage,
   getFormationState,
+  isActiveFormationState,
   resolveProcessingOption,
   type StateCode,
 } from '@/lib/formation-states';
 import { computeNextAnnualCompliance } from '@/lib/formation-validation';
+import { resolveDripLocale } from '@/lib/draft-recovery';
 import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
@@ -51,12 +52,12 @@ export async function createFiling(input?: {
   const session = await auth();
   if (!session?.user?.id) return await redirectLocalized('/sign-in');
 
-  const requestedState = (input?.state ?? 'FL').toUpperCase();
-  const stateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    requestedState as StateCode,
-  )
-    ? (requestedState as StateCode)
-    : 'FL';
+  const requestedState = (input?.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
+    const locale = await storedLocale();
+    return { ok: false as const, error: formationStateUnavailableMessage(locale) };
+  }
+  const stateCode = requestedState as StateCode;
 
   const locale = await storedLocale();
   const entryPath = storedEntryPath();
@@ -78,6 +79,9 @@ export async function createFiling(input?: {
     to: session.user.email!,
     userId: session.user.id,
     filingId: filing.id,
+    context: {
+      locale: resolveDripLocale(filing.locale, null, filing.entryPath),
+    },
   });
 
   return await redirectLocalized(`/wizard/${filing.id}/1`, locale);
@@ -127,9 +131,14 @@ export async function submitFilingToState(
       managersMembers: true,
       payments: true,
       filingAdditionalServices: { include: { service: true } },
+      user: { select: { locale: true } },
     },
   });
   if (!filing || filing.userId !== actorId) throw new Error('Not found');
+  if (!isActiveFormationState(filing.state)) {
+    return { ok: false as const, error: formationStateUnavailableMessage(filing.locale) };
+  }
+  const filingStateCode = filing.state.toUpperCase() as StateCode;
 
   const trackingNumber = generateTrackingNumber();
   const pin = generatePin();
@@ -190,11 +199,6 @@ export async function submitFilingToState(
   // (filing package + add-ons), not the internal state-vs-margin split. We
   // reconstruct the lines directly from `computeCost` so the receipt always
   // matches what the wizard cost sidebar showed.
-  const filingStateCode: StateCode = ACTIVE_FORMATION_STATES.includes(
-    filing.state.toUpperCase() as StateCode,
-  )
-    ? (filing.state.toUpperCase() as StateCode)
-    : 'FL';
   const stateRule = getFormationState(filingStateCode);
   const optionalForCost = safeParseJson<Record<string, unknown> | null>(
     filing.optionalDetails,
@@ -454,7 +458,7 @@ export async function submitFilingToState(
         serviceProvider: 'INTERNAL',
         agentName: ra.name,
         agentEmail: ra.email,
-        agentPhone: ra.phone,
+        agentPhone: ra.phone?.trim() || null,
         street1: ra.street1,
         street2: ra.street2,
         city: ra.city,
@@ -465,7 +469,7 @@ export async function submitFilingToState(
         status: 'ACTIVE',
         // Snapshot the price the customer is quoted today so a future price
         // change never re-prices them.
-        renewalPriceCents: RA_RENEWAL_PRICE_CENTS,
+        renewalPriceCents: stateRule.registeredAgent.renewalCents,
         autoRenew: autoRenewConsent,
         autoRenewConsentAt,
       },
@@ -517,6 +521,7 @@ export async function submitFilingToState(
       businessName: filing.businessName ?? '',
       trackingNumber,
       pin,
+      locale: resolveDripLocale(filing.locale, filing.user?.locale, filing.entryPath),
     },
   });
 

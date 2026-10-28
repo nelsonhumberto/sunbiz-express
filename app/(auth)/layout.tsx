@@ -1,6 +1,7 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
+import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { COPYRIGHT_YEAR, PREFERRED_STATE_COOKIE } from '@/lib/constants';
@@ -35,8 +36,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             {children}
           </div>
         </main>
-        <footer className="container py-6 text-xs text-ink-subtle flex justify-between">
+        <footer className="container py-6 text-xs text-ink-subtle flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span>© {COPYRIGHT_YEAR} LaunchForma</span>
+          <DoNotSellLink className="underline hover:text-ink-muted" />
           <Link href="/" className="hover:text-ink-muted">
             {t('backToHome')}
           </Link>

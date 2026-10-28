@@ -36,9 +36,12 @@ describe('li_fat_id landing URL', () => {
     const layout = readFileSync('app/layout.tsx', 'utf8');
     const early = layout.indexOf('id="strip-li-fat-id"');
     expect(early).toBeGreaterThan(-1);
-    expect(early).toBeLessThan(layout.indexOf('id="openai-ads-pixel"'));
     expect(early).toBeLessThan(layout.indexOf('<PostHogProvider>'));
-    expect(early).toBeLessThan(layout.indexOf('<GoogleAnalytics'));
+    expect(early).toBeLessThan(layout.indexOf('<AdMeasurementGate'));
     expect(layout).toContain('strategy="beforeInteractive"');
+    // gtag and the OpenAI pixel are not in the root document. The gate injects
+    // them only after the server and client opt-out checks.
+    expect(layout).not.toContain('id="openai-ads-pixel"');
+    expect(layout).not.toContain('<GoogleAnalytics');
   });
 });

@@ -72,11 +72,14 @@ describe('Florida fictitious name guide', () => {
   it('matches Florida LLC package prices from lib/pricing.ts', () => {
     expect(TIER_BY_SLUG.BASIC.name).toBe('Essential');
     expect(TIER_BY_SLUG.STANDARD.name).toBe('Popular');
-    expect(formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'))).toBe('$149');
-    expect(formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', 'FL'))).toBe('$279');
-    expect(page).toContain(
-      'LaunchForma is an online formation service for Florida businesses, run by a husband and wife team and helping business owners since 2015. Florida LLC packages start at $149 with the state filing fee included, and the Popular package ($279) includes a custom Operating Agreement.',
-    );
+    const essential = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    const popular = formatCurrency(tierPackagePriceCents('STANDARD', 'LLC', 'FL'));
+    expect(page).toContain("tierPackagePriceCents('BASIC', 'LLC', 'FL')");
+    expect(page).toContain("tierPackagePriceCents('STANDARD', 'LLC', 'FL')");
+    expect(page).toContain(`Florida LLC packages start at \${ESSENTIAL_FL_LLC}`);
+    expect(page).toContain(`Popular package (\${POPULAR_FL_LLC})`);
+    expect(page).not.toMatch(/\$149|\$279|\$449/);
+    expect(essential).not.toBe(popular);
   });
 
   it('links only to routes that exist', () => {

@@ -4,19 +4,23 @@
  * calls are safe no-ops so the app never breaks without analytics configured.
  */
 
-import { definedAttributionProps } from '@/lib/utm';
+import posthog from 'posthog-js';
 
-let posthog: typeof import('posthog-js').default | null = null;
+import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import {
+  adsDebugActive,
+  adsSendTo,
+  beginConversionStorageKey,
+  beginFilingPayload,
+  purchaseConversionStorageKey,
+  purchasePayload,
+  shouldSuppressAdsConversion,
+  type AdsSuppressionInput,
+} from '@/lib/ads-conversions';
+import { definedAttributionProps } from '@/lib/utm';
 
 function ph() {
   if (typeof window === 'undefined') return null;
-  if (!posthog) {
-    try {
-      posthog = require('posthog-js').default;
-    } catch {
-      return null;
-    }
-  }
   if (!posthog?.__loaded) return null;
   return posthog;
 }
@@ -26,19 +30,33 @@ function attributionProps(): Record<string, string> {
   return definedAttributionProps(window.location.search, document.cookie);
 }
 
+export type TrackEventOptions = {
+  /** Skip the batch queue and send this event on its own. */
+  sendInstantly?: boolean;
+  /** `sendBeacon` can finish while the document is unloading. */
+  transport?: 'sendBeacon';
+};
+
+/** Options passed through to `posthog.capture`. Empty options stay omitted. */
+export function posthogCaptureOptions(
+  options?: TrackEventOptions,
+): { send_instantly?: true; transport?: 'sendBeacon' } | undefined {
+  if (!options?.sendInstantly && !options?.transport) return undefined;
+  const capture: { send_instantly?: true; transport?: 'sendBeacon' } = {};
+  if (options.sendInstantly) capture.send_instantly = true;
+  if (options.transport) capture.transport = options.transport;
+  return capture;
+}
+
 export function trackEvent(
   event: string,
   properties?: Record<string, unknown>,
-  options?: { sendInstantly?: boolean },
+  options?: TrackEventOptions,
 ) {
   const explicit = properties
     ? Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined))
     : undefined;
-  ph()?.capture(
-    event,
-    { ...attributionProps(), ...explicit },
-    options?.sendInstantly ? { send_instantly: true } : undefined,
-  );
+  ph()?.capture(event, { ...attributionProps(), ...explicit }, posthogCaptureOptions(options));
 }
 
 /** Current PostHog distinct id, when the browser SDK has loaded. */
@@ -59,6 +77,26 @@ export function identifyUser(userId: string, traits?: Record<string, unknown>) {
  * events. `identify` and `setPersonProperties` set the person property so
  * the account can be filtered out.
  */
+/**
+ * Tester accounts are filtered with the same PostHog flags as internal traffic.
+ * `register` stamps later events. Person properties cover the account filter.
+ */
+export function markTesterTraffic(userId?: string | null) {
+  const apply = () => {
+    const client = ph();
+    if (!client) return;
+    client.register({ is_test: true, is_internal: true });
+    client.setPersonProperties?.({ is_test: true, is_internal: true });
+    if (!userId?.trim()) return;
+    client.identify(userId, { is_test: true, is_internal: true });
+  };
+  if (ph()) {
+    apply();
+    return;
+  }
+  whenReady(() => Boolean(ph()), apply);
+}
+
 export function markInternalTraffic(userId?: string | null, email?: string | null) {
   const apply = () => {
     const client = ph();
@@ -128,22 +166,378 @@ export function trackPurchaseCompleted(extra?: Record<string, unknown>) {
   trackEvent('purchase_completed', extra);
 }
 
+const CHECKOUT_SUCCESS_VIEW_PREFIX = 'lf_checkout_success_viewed:';
+
+/** localStorage key so /checkout/success fires once per filing in this browser. */
+export function checkoutSuccessViewStorageKey(filingId: string): string {
+  return `${CHECKOUT_SUCCESS_VIEW_PREFIX}${filingId}`;
+}
+
+export function checkoutSuccessAlreadyViewed(filingId: string): boolean {
+  if (typeof window === 'undefined' || !filingId) return false;
+  try {
+    return window.localStorage.getItem(checkoutSuccessViewStorageKey(filingId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markCheckoutSuccessViewed(filingId: string): void {
+  if (typeof window === 'undefined' || !filingId) return;
+  try {
+    window.localStorage.setItem(checkoutSuccessViewStorageKey(filingId), '1');
+  } catch {
+    /* private mode: the component ref still blocks a second fire in this mount */
+  }
+}
+
+const CHECKOUT_PAID_PREFIX = 'lf_checkout_paid:';
+const PURCHASE_COMPLETED_PREFIX = 'lf_purchase_completed:';
+
+export function checkoutPaidStorageKey(filingId: string): string {
+  return `${CHECKOUT_PAID_PREFIX}${filingId}`;
+}
+
+export function purchaseCompletedStorageKey(filingId: string): string {
+  return `${PURCHASE_COMPLETED_PREFIX}${filingId}`;
+}
+
+function filingEventAlreadySent(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markFilingEventSent(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, '1');
+  } catch {
+    /* private mode: a later full reload may send again */
+  }
+}
+
+export function checkoutPaidAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(checkoutPaidStorageKey(filingId));
+}
+
+export function markCheckoutPaidSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(checkoutPaidStorageKey(filingId));
+}
+
+export function purchaseCompletedAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(purchaseCompletedStorageKey(filingId));
+}
+
+export function markPurchaseCompletedSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(purchaseCompletedStorageKey(filingId));
+}
+
+/** Filing id from `/wizard/:id` or `/es/wizard/:id`. */
+export function filingIdFromWizardPath(href: string | null | undefined): string | null {
+  if (!href) return null;
+  const path = href.startsWith('http')
+    ? (() => {
+        try {
+          return new URL(href).pathname;
+        } catch {
+          return href;
+        }
+      })()
+    : href.split('?')[0] ?? href;
+  const match = path.match(/\/wizard\/([^/?#]+)/);
+  const id = match?.[1]?.trim() ?? '';
+  return id || null;
+}
+
+/**
+ * Checkout and start events. Only these keys are sent. No email, no name.
+ * `amount` is the server total in dollars. `is_test` is omitted when unknown.
+ * Callers go through `trackEvent`, which no-ops until PostHog is loaded.
+ */
+export function checkoutFunnelEventProperties(input: {
+  filingId?: string | null;
+  plan?: string | null;
+  amountCents?: number | null;
+  locale?: string | null;
+  isTest?: boolean | null;
+}): Record<string, string | number | boolean> {
+  const properties: Record<string, string | number | boolean> = {};
+  if (input.filingId) properties.filing_id = input.filingId;
+  if (input.plan) properties.plan = input.plan;
+  if (typeof input.amountCents === 'number' && Number.isFinite(input.amountCents)) {
+    properties.amount = input.amountCents / 100;
+  }
+  if (input.locale === 'en' || input.locale === 'es') properties.locale = input.locale;
+  if (typeof input.isTest === 'boolean') properties.is_test = input.isTest;
+  return properties;
+}
+
+export function startNameSubmittedProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+}): Record<string, string> {
+  const properties: Record<string, string> = {};
+  if (input.filingId) properties.filing_id = input.filingId;
+  if (input.locale === 'en' || input.locale === 'es') properties.locale = input.locale;
+  return properties;
+}
+
+/** Step 1 continue. Same allowlist as the name submit: filing id and locale. */
+export function wizardStep1ContinueProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+}): Record<string, string> {
+  return startNameSubmittedProperties(input);
+}
+
+/**
+ * Formation type only. A business name, email, or any other string is dropped.
+ * `entity` is the one key past the checkout allowlist, and only on this event.
+ */
+export function wizardEntitySelectedProperties(input: {
+  filingId?: string | null;
+  locale?: string | null;
+  entity?: string | null;
+}): Record<string, string> {
+  const properties = startNameSubmittedProperties(input);
+  if (input.entity === 'LLC' || input.entity === 'CORP' || input.entity === 'SCORP') {
+    properties.entity = input.entity;
+  }
+  return properties;
+}
+
+export type StartNavigationEvent = {
+  event: 'wizard_entity_selected' | 'wizard_step1_continue_clicked' | 'start_name_submitted';
+  properties: Record<string, string>;
+};
+
+/**
+ * Successful /start redirect, English and Spanish.
+ * The page is one name form. LLC is preselected unless the visitor switched
+ * to a corporation or opened a URL that already chose the type.
+ * `wizard_step1_continue_clicked` is the step 1 completion event.
+ */
+export function startNavigationEvents(input: {
+  filingId?: string | null;
+  locale?: string | null;
+  entity?: string | null;
+}): StartNavigationEvent[] {
+  return [
+    {
+      event: 'wizard_entity_selected',
+      properties: wizardEntitySelectedProperties(input),
+    },
+    {
+      event: 'start_name_submitted',
+      properties: startNameSubmittedProperties(input),
+    },
+    {
+      event: 'wizard_step1_continue_clicked',
+      properties: wizardStep1ContinueProperties(input),
+    },
+  ];
+}
+
+/** Longest pause before a full-page navigation while analytics leaves the browser. */
+export const NAVIGATION_FLUSH_MAX_MS = 300;
+
+/** Capture options for an event that is followed by `location.assign`. */
+export const BEFORE_NAVIGATION_CAPTURE: TrackEventOptions = {
+  sendInstantly: true,
+  transport: 'sendBeacon',
+};
+
+export function navigationFlushBudget(requested?: number): number {
+  if (typeof requested !== 'number' || !Number.isFinite(requested)) return NAVIGATION_FLUSH_MAX_MS;
+  if (requested <= 0) return 0;
+  return Math.min(NAVIGATION_FLUSH_MAX_MS, requested);
+}
+
+type CaptureRequest = {
+  callback?: (response: unknown) => void;
+};
+
+type AnalyticsClient = {
+  capture: (
+    event: string,
+    properties?: Record<string, unknown>,
+    options?: { send_instantly?: boolean; transport?: 'sendBeacon' },
+  ) => void;
+  config?: { api_transport?: string };
+  _requestQueue?: { unload?: () => void };
+  _retryQueue?: { unload?: () => void };
+  _send_retriable_request?: (options: CaptureRequest) => void;
+  _send_request?: (options: CaptureRequest) => void;
+};
+
+function analyticsClient(): AnalyticsClient | null {
+  const client = ph();
+  return client ? (client as unknown as AnalyticsClient) : null;
+}
+
+function canUseSendBeacon(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function';
+}
+
+/**
+ * `posthog.capture` accepts `transport` but does not copy it onto the request.
+ * The request uses `config.api_transport`, which defaults to fetch, and a
+ * fetch is cancelled by the next full-page load. For these calls only, point
+ * that setting at sendBeacon so the immediate send can finish on unload.
+ */
+function withNavigationTransport(run: () => void): boolean {
+  const client = analyticsClient();
+  if (!client?.config || !canUseSendBeacon()) {
+    run();
+    return false;
+  }
+  const previous = client.config.api_transport;
+  client.config.api_transport = 'sendBeacon';
+  try {
+    run();
+    return true;
+  } finally {
+    client.config.api_transport = previous;
+  }
+}
+
+function beaconQueuedEvents(client: AnalyticsClient): void {
+  try {
+    client._requestQueue?.unload?.();
+  } catch {
+    /* a queue beacon must not block the redirect */
+  }
+  try {
+    client._retryQueue?.unload?.();
+  } catch {
+    /* a retry beacon must not block the redirect */
+  }
+}
+
+/**
+ * Watch the request callback posthog-js runs after a capture is sent.
+ * posthog-js 1.373.2 has no flush(), and sendBeacon never calls this callback.
+ * Returns null when the client has no send method to wrap.
+ */
+function listenForCaptureSend(client: AnalyticsClient): { sent: Promise<void>; restore: () => void } | null {
+  const key =
+    typeof client._send_retriable_request === 'function'
+      ? '_send_retriable_request'
+      : typeof client._send_request === 'function'
+        ? '_send_request'
+        : null;
+  if (!key) return null;
+  const original = client[key];
+  if (typeof original !== 'function') return null;
+  let pending = 0;
+  let settled = false;
+  let resolveSent: () => void = () => undefined;
+  const sent = new Promise<void>((resolve) => {
+    resolveSent = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+  });
+  const wrapped = (options?: CaptureRequest) => {
+    pending += 1;
+    const next: CaptureRequest = { ...(options ?? {}) };
+    const previous = next.callback;
+    next.callback = (response: unknown) => {
+      try {
+        previous?.(response);
+      } finally {
+        pending -= 1;
+        if (pending <= 0) resolveSent();
+      }
+    };
+    return original.call(client, next);
+  };
+  client[key] = wrapped;
+  return {
+    sent,
+    restore: () => {
+      if (client[key] === wrapped) client[key] = original;
+    },
+  };
+}
+
+/**
+ * Wait until every capture callback has fired, or until the budget elapses.
+ * posthog-js 1.373.2 has no flush(), so a missing callback is not an instant
+ * return. PostHog missing does not wait. The budget never exceeds
+ * {@link NAVIGATION_FLUSH_MAX_MS}.
+ */
+export async function flushAnalyticsBeforeNavigation(
+  maxWaitMs?: number,
+  sent?: Promise<void>,
+): Promise<void> {
+  const client = analyticsClient();
+  if (!client) return;
+  const waitMs = navigationFlushBudget(maxWaitMs);
+  if (waitMs <= 0) return;
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      sent ?? new Promise<void>(() => undefined),
+      new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, waitMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Capture, then navigate. PostHog missing is a no-op and does not delay
+ * navigation. A sendBeacon send does not wait, because the beacon is already
+ * queued. Otherwise navigation waits for the capture callback, and still runs
+ * once {@link NAVIGATION_FLUSH_MAX_MS} elapses if that callback never fires.
+ */
+export async function captureThenNavigate(input: {
+  events: ReadonlyArray<{ event: string; properties?: Record<string, unknown> }>;
+  navigate: () => void;
+  maxWaitMs?: number;
+}): Promise<void> {
+  const client = analyticsClient();
+  const listener = client ? listenForCaptureSend(client) : null;
+  let sentWithBeacon = false;
+  try {
+    sentWithBeacon = withNavigationTransport(() => {
+      for (const item of input.events) {
+        try {
+          trackEvent(item.event, item.properties, BEFORE_NAVIGATION_CAPTURE);
+        } catch {
+          /* one failed capture must not drop the redirect or the other events */
+        }
+      }
+    });
+    if (client) beaconQueuedEvents(client);
+    if (!sentWithBeacon) {
+      await flushAnalyticsBeforeNavigation(input.maxWaitMs, listener?.sent);
+    }
+  } finally {
+    listener?.restore();
+    input.navigate();
+  }
+}
+
 // ── Google Analytics / Ads (gtag) ────────────────────────────────────────
 //
 // These fire on top of PostHog so Google Ads can attribute conversions. All
 // calls are safe no-ops when gtag isn't loaded (env vars unset).
 
-function gtag(): ((...args: unknown[]) => void) | null {
-  if (typeof window === 'undefined') return null;
-  const fn = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-  return typeof fn === 'function' ? fn : null;
-}
-
-/**
- * Report a purchase to GA4 and (when configured) fire the Google Ads
- * conversion. `send_to` targets the Ads conversion action so Ads counts it
- * even though the GA4 `purchase` event is also recorded.
- */
+/** Poll until gtag.js has loaded. A slow tag still counts. */
 function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
   if (typeof window === 'undefined') return;
   const start = Date.now();
@@ -158,44 +552,152 @@ function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
   tick();
 }
 
+function browserSearch(): string {
+  try {
+    return window.location?.search ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function readConversionFlag(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeConversionFlag(key: string): void {
+  try {
+    window.localStorage.setItem(key, '1');
+  } catch {
+    /* private mode: Ads transaction_id still dedupes a later hit */
+  }
+}
+
+function logAdsDebug(kind: string, payload: unknown): void {
+  console.info(`[lf_ads_debug] ${kind}`, payload);
+}
+
+function suppressionInput(
+  input: AdsSuppressionInput & { email?: string | null },
+): AdsSuppressionInput {
+  const emails = [...(input.emails ?? [])];
+  if (input.email) emails.push(input.email);
+  return { isTester: input.isTester, isTest: input.isTest, emails };
+}
+
+/**
+ * GA4 `purchase` plus the Filing Purchase Ads conversion.
+ * One hit per transaction id in this browser. Refreshing the receipt does not
+ * send again. `transaction_id` is also sent for Ads-side dedup.
+ * Test users are skipped. On a preview deploy, `?lf_ads_debug=1` logs the
+ * payload instead of sending that skipped hit.
+ */
 export function trackGooglePurchase(input: {
   transactionId: string;
   valueCents: number;
   currency?: string;
+  isTester?: boolean | null;
+  isTest?: boolean | null;
+  email?: string | null;
 }) {
-  const g = gtag();
-  if (!g) return;
+  if (typeof window === 'undefined') return;
+  const payload = purchasePayload(input);
+  if (!payload) return;
+  const storageKey = purchaseConversionStorageKey(payload.transaction_id);
+  if (readConversionFlag(storageKey)) return;
 
-  const value = input.valueCents / 100;
-  const currency = input.currency ?? 'USD';
+  const suppressed = shouldSuppressAdsConversion(suppressionInput(input));
+  const debug = adsDebugActive(browserSearch());
+  const sendTo = adsSendTo(
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL,
+  );
+  const conversion = sendTo ? { send_to: sendTo, ...payload } : null;
 
-  // GA4 ecommerce purchase event.
-  g('event', 'purchase', {
-    transaction_id: input.transactionId,
-    value,
-    currency,
-  });
-
-  // Google Ads conversion (only when both Ads ID + label are configured).
-  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-  const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL;
-  if (adsId && label) {
-    g('event', 'conversion', {
-      send_to: `${adsId}/${label}`,
-      transaction_id: input.transactionId,
-      value,
-      currency,
-    });
+  if (suppressed) {
+    if (debug) logAdsDebug('purchase suppressed', { purchase: payload, conversion });
+    return;
   }
+  if (isClientAdMeasurementOptedOut()) return;
+
+  whenReady(
+    () => typeof window.gtag === 'function',
+    () => {
+      if (readConversionFlag(storageKey)) return;
+      if (isClientAdMeasurementOptedOut()) return;
+      if (shouldSuppressAdsConversion(suppressionInput(input))) return;
+      window.gtag('event', 'purchase', payload);
+      if (conversion) window.gtag('event', 'conversion', conversion);
+      if (debug) logAdsDebug('purchase', { purchase: payload, conversion });
+      writeConversionFlag(storageKey);
+    },
+    10000,
+  );
+}
+
+/**
+ * Begin Filing Ads conversion. Once per filing id, on the /lp CTA and on
+ * step 1 submit. The same id from the landing CTA into step 1 does not send
+ * again. Value is 1 USD. Sends only when the Begin Filing label env is set.
+ * Test users are skipped and do not consume the dedupe key.
+ */
+export function trackGoogleBeginFiling(input?: {
+  filingId?: string | null;
+  isTester?: boolean | null;
+  isTest?: boolean | null;
+  email?: string | null;
+  emails?: Array<string | null | undefined>;
+}) {
+  if (typeof window === 'undefined') return;
+  const base = beginFilingPayload(input?.filingId);
+  if (!base) return;
+  const storageKey = beginConversionStorageKey(base.transaction_id);
+  if (readConversionFlag(storageKey)) return;
+
+  const sendTo = adsSendTo(
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING,
+  );
+  const payload = sendTo ? { send_to: sendTo, ...base } : null;
+  const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
+  const debug = adsDebugActive(browserSearch());
+
+  if (suppressed) {
+    if (debug) logAdsDebug('begin_filing suppressed', payload ?? { missingLabel: true });
+    return;
+  }
+  if (isClientAdMeasurementOptedOut()) return;
+  if (!payload) {
+    if (debug) logAdsDebug('begin_filing missing label', { missingLabel: true });
+    return;
+  }
+
+  whenReady(
+    () => typeof window.gtag === 'function',
+    () => {
+      if (readConversionFlag(storageKey)) return;
+      if (isClientAdMeasurementOptedOut()) return;
+      if (shouldSuppressAdsConversion(suppressionInput(input ?? {}))) return;
+      window.gtag('event', 'conversion', payload);
+      if (debug) logAdsDebug('begin_filing', payload);
+      writeConversionFlag(storageKey);
+    },
+    10000,
+  );
 }
 
 /** GA4 generate_lead, plus a Google Ads conversion when a lead label is set. */
 export function trackGoogleLead(input?: { service?: string }) {
+  if (isClientAdMeasurementOptedOut()) return;
   const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
   const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_LEAD;
   whenReady(
     () => typeof window.gtag === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.gtag('event', 'generate_lead', input?.service ? { service: input.service } : {});
       if (adsId && label) {
         window.gtag('event', 'conversion', {
@@ -208,9 +710,11 @@ export function trackGoogleLead(input?: { service?: string }) {
 
 /** OpenAI Ads `lead_created` on the business-services thank-you page. */
 export function trackOpenAiLead() {
+  if (isClientAdMeasurementOptedOut()) return;
   whenReady(
     () => typeof window.oaiq === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.oaiq?.('measure', 'lead_created', { type: 'customer_action' });
     },
     10000,
@@ -219,10 +723,12 @@ export function trackOpenAiLead() {
 
 /** SPA page view after the pixel's init call, which already measures the first view. */
 export function trackOpenAiPageView(path: string) {
+  if (isClientAdMeasurementOptedOut()) return;
   const id = path.slice(0, 128) || 'page';
   whenReady(
     () => typeof window.oaiq === 'function',
     () => {
+      if (isClientAdMeasurementOptedOut()) return;
       window.oaiq?.('measure', 'page_viewed', {
         type: 'contents',
         contents: [{ id, name: id, content_type: 'page' }],

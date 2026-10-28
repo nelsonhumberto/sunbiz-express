@@ -8,6 +8,7 @@ import {
   resolveMarketingState,
   type MarketingState,
 } from '@/lib/marketing-states';
+import { isInactiveFormationRequest } from '@/lib/formation-states';
 import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
 
 /**
@@ -29,10 +30,14 @@ export function useCurrentMarketingState(): MarketingState {
 
   return useMemo(() => {
     const queryState = searchParams?.get('state');
-    if (queryState) return resolveMarketingState(queryState);
+    if (queryState) {
+      if (isInactiveFormationRequest(queryState)) return FLORIDA;
+      return resolveMarketingState(queryState);
+    }
 
     if (pathname.startsWith('/states/')) {
       const slug = pathname.split('/')[2] ?? '';
+      if (isInactiveFormationRequest(slug)) return FLORIDA;
       const fromSlug = resolveMarketingState(slug);
       if (fromSlug.slug === slug.toLowerCase()) return fromSlug;
     }

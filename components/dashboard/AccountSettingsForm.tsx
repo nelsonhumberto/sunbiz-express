@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { updateProfile, type UpdateProfileResult } from '@/actions/account-settings';
@@ -20,10 +21,11 @@ interface AccountSettingsFormProps {
 }
 
 export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps) {
+  const t = useTranslations('dashboard');
   const [state, formAction] = useFormState(updateProfile, initial);
 
   useEffect(() => {
-    if (state.ok) toast.success('Saved.');
+    if (state.ok) toast.success(t('profileSaved'));
     if (state.error && !state.fieldErrors) toast.error(state.error);
   }, [state]);
 
@@ -31,7 +33,7 @@ export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps)
     <form action={formAction} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="firstName">First name</Label>
+          <Label htmlFor="firstName">{t('profileFirstName')}</Label>
           <Input
             id="firstName"
             name="firstName"
@@ -48,7 +50,7 @@ export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps)
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="lastName">Last name</Label>
+          <Label htmlFor="lastName">{t('profileLastName')}</Label>
           <Input
             id="lastName"
             name="lastName"
@@ -66,7 +68,7 @@ export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps)
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="phone">Phone (optional)</Label>
+        <Label htmlFor="phone">{t('profilePhone')}</Label>
         <Input
           id="phone"
           name="phone"
@@ -88,7 +90,7 @@ export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps)
       {state.ok && (
         <p className="text-xs text-success inline-flex items-center gap-1.5">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Profile updated.
+          {t('profileUpdated')}
         </p>
       )}
       {state.error && (
@@ -104,16 +106,18 @@ export function AccountSettingsForm({ defaultValues }: AccountSettingsFormProps)
 }
 
 function SaveButton() {
+  const t = useTranslations('dashboard');
+  const tCommon = useTranslations('common');
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Saving…
+          {tCommon('saving')}
         </>
       ) : (
-        'Save changes'
+        t('saveChanges')
       )}
     </Button>
   );

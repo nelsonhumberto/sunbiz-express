@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
@@ -165,7 +166,7 @@ export default async function FloridaAnnualReportGuide() {
           </li>
         </ol>
         <p>
-          See <a href="/pricing">formation pricing</a> or <a href="/start">start a filing</a>{' '}
+          See <Link href="/pricing">formation pricing</Link> or <Link href="/start">start a filing</Link>{' '}
           if you still need to form the company. The steps to form a Florida LLC are in{' '}
           <a href="/guides/how-to-form-an-llc-in-florida">how to form an LLC in Florida</a>.
         </p>

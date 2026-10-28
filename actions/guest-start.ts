@@ -3,10 +3,10 @@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { hrefForLocale } from '@/lib/app-href';
+import { hrefForLocale, localizedRedirectHref } from '@/lib/app-href';
 import { englishPathname } from '@/lib/locale-paths';
 import { redirectLocalized } from '@/lib/locale-redirect';
-import { pickLocale } from '@/lib/pick-locale';
+import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
@@ -16,7 +16,7 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { isRedirectError, withActionTimeout } from '@/lib/action-timeout';
 import {
-  ACTIVE_FORMATION_STATES,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { PREFERRED_STATE_COOKIE } from '@/lib/constants';
@@ -28,9 +28,12 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
+import { stampQaLaunchformaGuest } from '@/lib/qa-guest';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
-import { decideDraftNameResume } from '@/lib/start-draft';
+import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
+import { isDeliverableEmail } from '@/lib/email-address';
+import { sendGuestDraftResumeLink, storeGuestEmailOnDraft } from '@/actions/guest-email';
 import {
   isPlaceholderGuestEmail,
   placeholderGuestEmail,
@@ -42,7 +45,7 @@ const StartSchema = z.object({
   firstName: z.string().min(1).max(60),
   lastName: z.string().min(1).max(60),
   email: z.string().email(),
-  state: z.enum(['FL', 'WY', 'DE']).optional(),
+  state: z.string().trim().max(16).optional(),
   // SCORP is a customer-facing label for Corporation + S-Corp tax election.
   entityType: z.enum(['LLC', 'CORP', 'SCORP']).optional(),
   // Preselected package from a pricing CTA. Defaults to STANDARD when absent
@@ -53,6 +56,22 @@ const StartSchema = z.object({
   draftIntent: z.enum(['resume', 'new']).optional(),
   draftId: z.string().optional(),
 });
+
+async function alignFilingLocale(
+  filingId: string,
+  userId: string | null | undefined,
+  pathLocale: 'en' | 'es' | null,
+  current: string | null | undefined,
+): Promise<'en' | 'es'> {
+  const chosen = localeFromPathOrFiling(pathLocale, current);
+  if (pathLocale && current !== pathLocale) {
+    await prisma.filing.update({ where: { id: filingId }, data: { locale: pathLocale } });
+    if (userId) {
+      await prisma.user.update({ where: { id: userId }, data: { locale: pathLocale } });
+    }
+  }
+  return chosen;
+}
 
 function resolveEntityChoice(choice: 'LLC' | 'CORP' | 'SCORP' | undefined): {
   entityType: 'LLC' | 'CORP';
@@ -75,6 +94,11 @@ export interface StartGuestResult {
   error?: string;
   /** Existing draft uses a different name. The form asks which one to keep. */
   choice?: DraftNameChoice;
+  /**
+   * Localized wizard path, including /es when the filing locale is Spanish.
+   * Set only when the caller asked for the URL instead of a redirect.
+   */
+  redirectTo?: string;
 }
 
 /**
@@ -109,15 +133,19 @@ export async function startGuestFiling(
   const { entityType, taxElection } = resolveEntityChoice(parsed.data.entityType);
   const serviceTier = parsed.data.tier ?? 'STANDARD';
   const seededName = normalizeNameCheckQuery(parsed.data.businessName) || null;
+  if (!startNameIsAcceptable(seededName)) {
+    return { error: t('companyNameInvalid') };
+  }
   const email = parsed.data.email.toLowerCase().trim();
   const locale = await storedLocale();
   const localeData = locale ? { locale } : {};
   const entryPath = storedEntryPath();
   const entryData = entryPath ? { entryPath } : {};
-  const stateCode: StateCode = (parsed.data.state ?? 'FL') as StateCode;
-  if (!ACTIVE_FORMATION_STATES.includes(stateCode)) {
+  const requestedState = (parsed.data.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
     return { error: t('errorStateUnavailable') };
   }
+  const stateCode = requestedState as StateCode;
 
   // Authed users skip guest entirely - go straight to filing creation.
   const session = await auth();
@@ -138,6 +166,11 @@ export async function startGuestFiling(
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    await stampQaLaunchformaGuest({
+      userId: session.user.id,
+      filingId: filing.id,
+      emails: [session.user.email],
+    });
     return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
 
@@ -200,29 +233,65 @@ export async function startGuestFiling(
     },
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+  await stampQaLaunchformaGuest({
+    userId: guestUser.id,
+    filingId: filing.id,
+    emails: [email, guestUser.email],
+  });
 
   return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
 }
 
+async function rememberStartEmail(
+  guest: { id: string; email: string },
+  filing: { id: string; optionalDetails: string | null; locale: string | null },
+  rawEmail: string,
+) {
+  if (!rawEmail) return;
+  try {
+    const saved = await withActionTimeout(storeGuestEmailOnDraft(guest, filing, rawEmail), 4_000);
+    if (!saved.ok && !saved.needsSignIn) return;
+    await withActionTimeout(sendGuestDraftResumeLink(filing.id), 4_000);
+  } catch (err) {
+    if (isRedirectError(err)) throw err;
+    logger.error(
+      'start resume link failed',
+      { area: 'guest', entityId: filing.id, tag: 'start-email' },
+      err,
+    );
+  }
+}
+
 /**
- * Open the wizard for a logged-out visitor without asking for a name or email.
- * A guest row and draft are created on the first call. The email is collected
- * on the entity step or the name check, then written to User.email.
- * A later visit with the guest cookie resumes the same draft.
+ * Open the wizard after /start. The company name is required. An optional
+ * email is stored on the guest user (or the filing, when that mailbox is
+ * taken) and the existing filing-started resume email is sent. A later visit
+ * with the guest cookie resumes the same draft.
  */
 export async function openGuestDraft(input: {
   state?: string;
   entityType?: string;
   tier?: string;
   businessName?: string;
+  /** Optional. Empty does not block the draft. */
+  email?: string;
   draftIntent?: 'resume' | 'new';
   draftId?: string;
+  /** `window.location.pathname`. The address bar wins over the rewrite. */
+  browserPath?: string;
+  /**
+   * /start sets this so the browser can record analytics, then navigate.
+   * Leave it unset for every other caller. Those still redirect, including
+   * a form action or a no-JS submit.
+   */
+  returnRedirect?: boolean;
 }): Promise<StartGuestResult> {
   const t = await getTranslations('start');
-  const requestedState = (input.state ?? 'FL').toUpperCase();
-  const stateCode = (
-    ACTIVE_FORMATION_STATES.includes(requestedState as StateCode) ? requestedState : 'FL'
-  ) as StateCode;
+  const requestedState = (input.state ?? 'FL').trim().toUpperCase();
+  if (!isActiveFormationState(requestedState)) {
+    return { error: t('errorStateUnavailable') };
+  }
+  const stateCode = requestedState as StateCode;
   const entityChoice = (['LLC', 'CORP', 'SCORP'].includes((input.entityType ?? '').toUpperCase())
     ? (input.entityType ?? 'LLC').toUpperCase()
     : 'LLC') as 'LLC' | 'CORP' | 'SCORP';
@@ -233,13 +302,26 @@ export async function openGuestDraft(input: {
     | 'STANDARD'
     | 'PREMIUM';
   const seededName = normalizeNameCheckQuery(input.businessName) || null;
-  const locale = await storedLocale();
+  const optionalEmail = (input.email ?? '').trim();
+  if (input.draftIntent !== 'resume' && !startNameIsAcceptable(seededName)) {
+    return { error: t('companyNameInvalid') };
+  }
+  if (seededName && !startNameIsAcceptable(seededName)) {
+    return { error: t('companyNameInvalid') };
+  }
+  if (optionalEmail && !isDeliverableEmail(optionalEmail)) {
+    return { error: t('emailOptionalInvalid') };
+  }
+  const locale = await storedLocale(input.browserPath);
   const localeData = locale ? { locale } : {};
   const entryPath = storedEntryPath();
   const entryData = entryPath ? { entryPath } : {};
 
   const session = await auth();
   if (session?.user?.id) {
+    if (!startNameIsAcceptable(seededName)) {
+      return { error: t('companyNameInvalid') };
+    }
     const filing = await prisma.filing.create({
       data: {
         userId: session.user.id,
@@ -248,16 +330,20 @@ export async function openGuestDraft(input: {
         state: stateCode,
         serviceTier,
         businessName: seededName,
-        currentStep: seededName ? 2 : 1,
-        completedSteps: JSON.stringify(seededName ? [1] : []),
+        currentStep: 2,
+        completedSteps: JSON.stringify([1]),
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
-    const step = seededName ? 2 : 1;
-    return await redirectLocalized(`/wizard/${filing.id}/${step}`, locale);
+    await stampQaLaunchformaGuest({
+      userId: session.user.id,
+      filingId: filing.id,
+      emails: [session.user.email, optionalEmail],
+    });
+    return await finishGuestDraft(`/wizard/${filing.id}/2`, locale, input.returnRedirect);
   }
 
   const guest = await getGuestUser();
@@ -265,7 +351,14 @@ export async function openGuestDraft(input: {
     const draft = await prisma.filing.findFirst({
       where: { userId: guest.id, status: 'DRAFT' },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, currentStep: true, businessName: true, locale: true },
+      select: {
+        id: true,
+        currentStep: true,
+        businessName: true,
+        locale: true,
+        userId: true,
+        optionalDetails: true,
+      },
     });
     if (draft && (!input.draftId || input.draftId === draft.id)) {
       const decision = decideDraftNameResume({
@@ -273,47 +366,85 @@ export async function openGuestDraft(input: {
         proposedName: input.draftIntent === 'resume' ? null : seededName,
         currentStep: draft.currentStep,
       });
+      const chosenLocale = await alignFilingLocale(draft.id, draft.userId, locale, draft.locale);
+      const guestRecord = { id: guest.id, email: guest.email };
+      const filingRecord = {
+        id: draft.id,
+        optionalDetails: draft.optionalDetails,
+        locale: chosenLocale,
+      };
       if (decision.action === 'apply' && seededName) {
         await prisma.filing.update({
           where: { id: draft.id },
-          data: { businessName: seededName, nameAvailable: null, nameCheckedAt: null },
+          data: {
+            businessName: seededName,
+            nameAvailable: null,
+            nameCheckedAt: null,
+            currentStep: Math.max(draft.currentStep ?? 1, 2),
+          },
         });
-        return await redirectLocalized(`/wizard/${draft.id}/2`, pickLocale(locale, draft.locale));
+        await rememberStartEmail(guestRecord, filingRecord, optionalEmail);
+        return await finishGuestDraft(`/wizard/${draft.id}/2`, chosenLocale, input.returnRedirect);
       }
       if (decision.action === 'choose' && seededName) {
-        const step = draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2;
+        const step = guestWizardStep({
+          businessName: draft.businessName,
+          currentStep: draft.currentStep,
+        });
         return {
           choice: {
             draftId: draft.id,
             existingName: draft.businessName?.trim() || '',
             proposedName: seededName,
-            resumeHref: hrefForLocale(
-              `/wizard/${draft.id}/${step}`,
-              pickLocale(locale, draft.locale),
-            ),
+            resumeHref: hrefForLocale(`/wizard/${draft.id}/${step}`, chosenLocale),
           },
         };
       }
-      const step = decision.action === 'resume' ? decision.step : 2;
-      return await redirectLocalized(`/wizard/${draft.id}/${step}`, pickLocale(locale, draft.locale));
+      const step = guestWizardStep({
+        businessName: draft.businessName,
+        currentStep: decision.action === 'resume' ? decision.step : 2,
+      });
+      if (step >= 2 && (draft.currentStep ?? 1) < 2 && !startNameIsAcceptable(draft.businessName)) {
+        await prisma.filing.update({
+          where: { id: draft.id },
+          data: { currentStep: step },
+        });
+      }
+      await rememberStartEmail(guestRecord, filingRecord, optionalEmail);
+      return await finishGuestDraft(
+        `/wizard/${draft.id}/${step}`,
+        chosenLocale,
+        input.returnRedirect,
+      );
     }
   }
 
+  if (!startNameIsAcceptable(seededName)) {
+    return { error: t('companyNameInvalid') };
+  }
+
   if (!guest) {
+    // Per visitor IP (x-forwarded-for, else x-real-ip). One address at 30 new
+    // drafts an hour does not consume the bucket for anyone else. A guest who
+    // already has the cookie is not counted.
     const limited = checkActionRateLimit('guest-open', 30, 60 * 60 * 1000);
     if (limited) return { error: limited };
   }
 
-  const initialStep = seededName ? 2 : 1;
+  const initialStep = 2;
   let filingId = '';
+  let guestRecord: { id: string; email: string } | null = guest
+    ? { id: guest.id, email: guest.email }
+    : null;
   try {
     let userId = guest?.id ?? null;
     if (!userId) {
       const token = newGuestToken();
       const placeholderPassword = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+      const placeholderEmail = placeholderGuestEmail(token);
       const created = await prisma.user.create({
         data: {
-          email: placeholderGuestEmail(token),
+          email: placeholderEmail,
           firstName: '',
           lastName: '',
           passwordHash: placeholderPassword,
@@ -324,6 +455,7 @@ export async function openGuestDraft(input: {
         },
       });
       userId = created.id;
+      guestRecord = { id: created.id, email: placeholderEmail };
       setGuestCookie(token);
     } else {
       await ensureUserFirstTouchUtm(userId);
@@ -344,7 +476,7 @@ export async function openGuestDraft(input: {
         serviceTier,
         businessName: seededName,
         currentStep: initialStep,
-        completedSteps: JSON.stringify(seededName ? [1] : []),
+        completedSteps: JSON.stringify([1]),
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
@@ -352,13 +484,46 @@ export async function openGuestDraft(input: {
     });
     filingId = filing.id;
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    await stampQaLaunchformaGuest({
+      userId,
+      filingId: filing.id,
+      emails: [optionalEmail, guestRecord?.email],
+    });
+    if (guestRecord) {
+      await rememberStartEmail(
+        guestRecord,
+        { id: filing.id, optionalDetails: null, locale: locale ?? null },
+        optionalEmail,
+      );
+    }
   } catch (err) {
     if (isRedirectError(err)) throw err;
     logger.error('guest draft open failed', { area: 'guest', tag: 'open-draft' }, err);
     return { error: t('errorStart') };
   }
 
-  return await redirectLocalized(`/wizard/${filingId}/${initialStep}`, locale);
+  return await finishGuestDraft(
+    `/wizard/${filingId}/${initialStep}`,
+    locale,
+    input.returnRedirect,
+  );
+}
+
+/**
+ * /start gets the localized path back. Every other caller still redirects.
+ * The locale is the one just stored on the filing (browser path wins), so
+ * a Spanish /start stays under /es.
+ */
+async function finishGuestDraft(
+  href: string,
+  filingLocale: string | null | undefined,
+  returnRedirect: boolean | undefined,
+): Promise<StartGuestResult> {
+  if (!returnRedirect) {
+    return await redirectLocalized(href, filingLocale);
+  }
+  const locale = filingLocale === 'es' ? 'es' : 'en';
+  return { redirectTo: localizedRedirectHref(href, locale) };
 }
 
 // ─── Claim Account (popup → real account) ────────────────────────────────
@@ -554,7 +719,10 @@ async function draftResumeHref(
     if (owned) {
       const step =
         visibleStep ?? (owned.currentStep && owned.currentStep >= 1 ? owned.currentStep : 2);
-      return hrefForLocale(`/wizard/${owned.id}/${step}`, pickLocale(await storedLocale(), owned.locale));
+      return hrefForLocale(
+        `/wizard/${owned.id}/${step}`,
+        localeFromPathOrFiling(await storedLocale(), owned.locale),
+      );
     }
   }
   const draft = await prisma.filing.findFirst({
@@ -563,9 +731,12 @@ async function draftResumeHref(
     select: { id: true, currentStep: true, locale: true },
   });
   if (!draft) {
-    return hrefForLocale('/dashboard', pickLocale(await storedLocale(), null));
+    return hrefForLocale('/dashboard', localeFromPathOrFiling(await storedLocale(), null));
   }
   const step =
     visibleStep ?? (draft.currentStep && draft.currentStep >= 1 ? draft.currentStep : 2);
-  return hrefForLocale(`/wizard/${draft.id}/${step}`, pickLocale(await storedLocale(), draft.locale));
+  return hrefForLocale(
+    `/wizard/${draft.id}/${step}`,
+    localeFromPathOrFiling(await storedLocale(), draft.locale),
+  );
 }

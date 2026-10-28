@@ -147,6 +147,7 @@ if (typeof window !== 'undefined' && POSTHOG_KEY && POSTHOG_ENV === 'production'
       person_profiles: 'identified_only',
       capture_pageview: 'history_change',
       capture_pageleave: true,
+      capture_exceptions: true,
       disable_session_recording: replayStoppedByRoute,
       session_recording: {
         maskAllInputs: sessionRecordingPrivacy.maskAllInputs,

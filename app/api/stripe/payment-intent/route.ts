@@ -1,29 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getGuestUser } from '@/lib/guest';
 import { CHECKOUT_ACCOUNT_REQUIRED } from '@/lib/guest-identity';
+import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
+import {
+  authorizeGuestFormationPayment,
+  filingCheckoutEmailDetails,
+} from '@/lib/guest-checkout';
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
-  ANNUAL_REPORT_SERVICE_FEE_CENTS,
-  computeCost,
-  RA_ANNUAL_SERVICE_FEE_CENTS,
   tierBundledStateFeeCents,
-  type AddOnSlug,
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { quoteAnnualReport } from '@/lib/annual-report-quote';
+import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
+import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
+import {
+  DOCUMENT_NUMBER_REQUIRED,
+  guestAnnualReportPaymentIntentMatches,
+  guestDocumentNumberRequiredMessage,
+  isMissingDocumentNumberIssue,
+} from '@/lib/guest-annual-report-offer';
 import {
   CERTIFICATE_ORDER_PURPOSE,
   certificateOffer,
   certificateOrderQuote,
   filingEntityType,
-  filingFormationState,
   isCertificateAddOnSlug,
 } from '@/lib/certificate-addons';
 import {
@@ -31,9 +40,8 @@ import {
   checkoutBelowStateFee,
 } from '@/lib/checkout-guard';
 import {
-  ACTIVE_FORMATION_STATES,
-  annualComplianceFor,
   getFormationState,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -49,13 +57,79 @@ import {
   planCheckoutPaymentIntent,
   checkoutPaymentIntentIdempotencyKey,
 } from '@/lib/checkout-payment-intent';
+import { LOCALE_HEADER, PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import {
+  paymentIntentErrorMessage,
+  type PaymentIntentErrorCode,
+} from '@/lib/payment-intent-errors';
+import { resolveRequestLocale } from '@/lib/request-locale';
+import { AnnualReportDraftSchema } from '@/lib/annual-report-draft';
+import { z } from 'zod';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
 
-function asStateCode(input: string | null | undefined): StateCode {
-  const upper = (input ?? 'FL').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(upper as StateCode) ? (upper as StateCode) : 'FL';
+function checkoutRequestLocale(): 'en' | 'es' {
+  try {
+    const headerStore = headers();
+    // The API path has no locale. The wizard address bar is the Referer.
+    // Cookie and Accept-Language are not read.
+    return (
+      resolveRequestLocale({
+        referer: headerStore.get('referer'),
+        nextUrl: headerStore.get('next-url'),
+        publicPath: headerStore.get(PUBLIC_PATH_HEADER),
+        localeHeader: headerStore.get(LOCALE_HEADER),
+        allowedHost: headerStore.get('host'),
+        serverAction: true,
+      }) ?? 'en'
+    );
+  } catch {
+    return 'en';
+  }
+}
+
+function paymentError(code: PaymentIntentErrorCode, status: number) {
+  const locale = checkoutRequestLocale();
+  const error =
+    code === 'account_required' && locale !== 'es'
+      ? CHECKOUT_ACCOUNT_REQUIRED
+      : code === 'below_state_fee' && locale !== 'es'
+        ? CHECKOUT_BELOW_STATE_FEE_ERROR
+        : paymentIntentErrorMessage(code, locale);
+  return NextResponse.json({ error, code }, { status });
+}
+
+function refuseInactiveFormationState(state: string | null | undefined): NextResponse | null {
+  if (isActiveFormationState(state)) return null;
+  return paymentError('state_unavailable', 400);
+}
+
+const GuestAnnualReportChargeSchema = z.object({
+  entityType: z.enum(['LLC', 'CORP'], {
+    errorMap: () => ({ message: 'Choose LLC or corporation.' }),
+  }),
+  useOurRa: z.boolean({
+    errorMap: () => ({ message: 'Choose whether to add registered agent service.' }),
+  }),
+  documentNumber: z
+    .string({
+      required_error: DOCUMENT_NUMBER_REQUIRED,
+      invalid_type_error: DOCUMENT_NUMBER_REQUIRED,
+    })
+    .trim()
+    .min(5)
+    .max(24),
+  paymentIntentId: z.string().trim().min(1).optional(),
+  guestAttemptId: z.string().trim().min(8).max(80).optional(),
+});
+
+/**
+ * Guest annual report checkout is flagged on the URL so a logged-out formation
+ * request still returns 401 before the body is read.
+ */
+function isGuestAnnualReportCheckout(request: NextRequest): boolean {
+  return request.nextUrl?.searchParams?.get('purpose') === 'guest_annual_report';
 }
 
 interface PaymentBody {
@@ -66,32 +140,45 @@ interface PaymentBody {
   couponCode?: string;
   raServiceId?: string;
   useOurRa?: boolean;
+  /** Real mailbox a guest types on the payment step. Ignored for signed-in users. */
+  email?: string;
+  annualReportId?: string;
+  annualReport?: unknown;
 }
 
 /**
  * POST /api/stripe/payment-intent
  *
- * Auth is decided before the body is read. No session is 401. A guest cookie
- * with no account is 403. The signed-in user must own the filing. The amount
- * is computed here and the client amount is ignored.
+ * No session and no guest cookie is 401 before the body is read. A guest
+ * cookie can pay only for a draft that cookie owns, and only after a real
+ * email is stored on that guest. An email that already belongs to a
+ * non-guest account is refused. The signed-in user must own the filing.
+ * The amount is computed here and the client amount is ignored.
  */
 export async function POST(request: NextRequest) {
   const limit = rateLimit(`payment-intent:${clientIp()}`, 10, 60 * 1000);
   if (!limit.ok) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Please wait a moment.' },
-      { status: 429 },
-    );
+    return paymentError('rate_limited', 429);
   }
 
   const session = await auth();
   const userId = session?.user?.id;
+
+  if (isGuestAnnualReportCheckout(request)) {
+    return createGuestAnnualReportPaymentIntent(request, userId);
+  }
+
   if (!userId) {
     const guest = await getGuestUser();
-    if (guest) {
-      return NextResponse.json({ error: CHECKOUT_ACCOUNT_REQUIRED }, { status: 403 });
+    if (!guest) {
+      return paymentError('start_filing_first', 401);
     }
-    return NextResponse.json({ error: 'Please start a filing first.' }, { status: 401 });
+    try {
+      return await createGuestFormationPaymentIntent(request, guest);
+    } catch (err) {
+      logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
+      return paymentError('create_failed', 500);
+    }
   }
 
   try {
@@ -115,6 +202,8 @@ export async function POST(request: NextRequest) {
       couponCode,
       raServiceId,
       useOurRa: body.useOurRa === true,
+      annualReportId: body.annualReportId,
+      annualReport: body.annualReport,
     });
     if (priced instanceof NextResponse) return priced;
 
@@ -154,8 +243,311 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
-    return NextResponse.json({ error: 'Could not create payment.' }, { status: 500 });
+    return paymentError('create_failed', 500);
   }
+}
+
+/**
+ * Formation checkout for the guest who owns the draft.
+ * Certificates, EIN, annual reports, and renewals stay account-only.
+ * The real email is written on the user and the filing before Stripe runs.
+ */
+async function createGuestFormationPaymentIntent(
+  request: NextRequest,
+  guest: { id: string; email: string; firstName: string; lastName: string },
+) {
+  let body: PaymentBody;
+  try {
+    body = (await request.json()) as PaymentBody;
+  } catch {
+    return paymentError('filing_not_found', 400);
+  }
+
+  if (
+    isCertificateAddOnSlug(body.certificateSlug) ||
+    body.purpose === 'ein' ||
+    body.purpose === 'annual_report' ||
+    body.purpose === 'ra_renewal' ||
+    Boolean(body.raServiceId)
+  ) {
+    return paymentError('account_required', 403);
+  }
+
+  if (!body.filingId) {
+    return paymentError('filing_not_found', 404);
+  }
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: body.filingId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      state: true,
+      optionalDetails: true,
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
+  });
+
+  const normalized = normalizeEmail(body.email ?? '');
+  const emailOwner =
+    isDeliverableEmail(normalized) && !normalized.endsWith('.invalid')
+      ? await prisma.user.findUnique({
+          where: { email: normalized },
+          select: { id: true, accountStatus: true },
+        })
+      : null;
+
+  const decision = authorizeGuestFormationPayment({
+    guestUserId: guest.id,
+    filingUserId: filing?.userId ?? null,
+    filingStatus: filing?.status ?? null,
+    alreadyPaid: (filing?.payments.length ?? 0) > 0,
+    email: body.email ?? '',
+    emailOwner,
+  });
+
+  if (!decision.ok) {
+    if (decision.reason === 'existing_account') {
+      if (filing && filing.userId === guest.id) {
+        await rememberCheckoutEmail(filing.id, filing.optionalDetails, normalized, true);
+      }
+      return paymentError('existing_account', 403);
+    }
+    if (decision.reason === 'email_held') {
+      return paymentError('email_unavailable', 409);
+    }
+    if (decision.reason === 'not_owner' || !filing) {
+      return paymentError('filing_not_found', 404);
+    }
+    if (decision.reason === 'already_paid' || decision.reason === 'not_draft') {
+      return paymentError('already_paid', 409);
+    }
+    return paymentError('invalid_email', 400);
+  }
+
+  if (!filing) {
+    return paymentError('filing_not_found', 404);
+  }
+  if (!isActiveFormationState(filing.state)) {
+    return paymentError('state_unavailable', 400);
+  }
+
+  if (normalizeEmail(guest.email) !== decision.email) {
+    try {
+      await prisma.user.update({
+        where: { id: guest.id },
+        data: { email: decision.email },
+      });
+    } catch (err) {
+      if (!isUniqueConflict(err)) throw err;
+      const winner = await prisma.user.findUnique({
+        where: { email: decision.email },
+        select: { id: true, accountStatus: true },
+      });
+      if (winner && winner.id !== guest.id && winner.accountStatus !== 'GUEST') {
+        return paymentError('existing_account', 403);
+      }
+      return paymentError('email_unavailable', 409);
+    }
+  }
+
+  await rememberCheckoutEmail(filing!.id, filing!.optionalDetails, decision.email, false);
+
+  const priced = await priceOwnedCharge({
+    userId: guest.id,
+    filingId: body.filingId,
+    purpose: body.purpose,
+    couponCode: body.couponCode,
+    raServiceId: body.raServiceId,
+    useOurRa: body.useOurRa === true,
+  });
+  if (priced instanceof NextResponse) return priced;
+
+  const stripe = getStripe();
+  const customerId = await ensureStripeCustomer(stripe, guest.id);
+  if (customerId) {
+    try {
+      await stripe.customers.update(customerId, {
+        email: decision.email,
+        metadata: { userId: guest.id },
+      });
+    } catch (err) {
+      logger.warn('guest stripe customer email update failed', {
+        area: 'stripe',
+        tag: 'guest-customer-email',
+        entityId: guest.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const attribution = readPaymentAttribution(body.posthogDistinctId);
+  const paymentIntent = await resolveCheckoutPaymentIntent({
+    stripe,
+    filingId: priced.reuseFilingCheckout ? priced.filingId : undefined,
+    storedPaymentIntentId: priced.storedPaymentIntentId,
+    amountCents: priced.amountCents,
+    intentParams: {
+      amount: priced.amountCents,
+      currency: 'usd',
+      receipt_email: decision.email,
+      ...(customerId
+        ? { customer: customerId, setup_future_usage: 'off_session' as const }
+        : {}),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        ...(priced.filingId ? { filingId: priced.filingId } : {}),
+        ...(priced.purpose ? { purpose: priced.purpose } : {}),
+        userId: guest.id,
+        ...checkoutAttributionMetadata({
+          cookie: attribution.cookieUtm,
+          filing: priced.attributionFiling,
+          posthogDistinctId: attribution.distinctId,
+        }),
+      },
+    },
+  });
+
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
+/**
+ * Public Florida annual report PaymentIntent. The amount is quoted again here
+ * from the company lookup and the Eastern year. Client amount, late fee, and
+ * year are ignored. A dissolved or already-filed company is not charged.
+ * An open or succeeded guest PaymentIntent is reused. The card is not refunded here.
+ */
+async function createGuestAnnualReportPaymentIntent(
+  request: NextRequest,
+  userId: string | undefined,
+) {
+  const guestLimit = rateLimit(`guest-annual-report:${clientIp()}`, 10, 60 * 1000);
+  if (!guestLimit.ok) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait a moment.' },
+      { status: 429 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Check the form and try again.' }, { status: 400 });
+  }
+
+  const parsed = GuestAnnualReportChargeSchema.safeParse(body);
+  if (!parsed.success) {
+    const locale = checkoutRequestLocale();
+    if (isMissingDocumentNumberIssue(parsed.error.issues[0])) {
+      return NextResponse.json(
+        {
+          error: guestDocumentNumberRequiredMessage(locale),
+          code: 'document_number_required',
+        },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' },
+      { status: 400 },
+    );
+  }
+
+  const now = new Date();
+  const decision = await resolveGuestAnnualReportCharge({
+    documentNumber: parsed.data.documentNumber,
+    entityType: parsed.data.entityType,
+    useOurRa: parsed.data.useOurRa,
+    now,
+    locale: checkoutRequestLocale(),
+  });
+  if (!decision.ok) {
+    return NextResponse.json({ error: decision.error, code: decision.code }, { status: 400 });
+  }
+  const quote = decision.quote;
+  const reportYear = decision.reportYear;
+  const stripe = getStripe();
+  const metadata: Stripe.MetadataParam = {
+    purpose: 'guest_annual_report',
+    entityType: decision.entityType,
+    useOurRa: parsed.data.useOurRa ? 'true' : 'false',
+    reportYear: String(reportYear),
+    documentNumber: parsed.data.documentNumber,
+    ...(userId ? { userId } : {}),
+  };
+
+  if (parsed.data.paymentIntentId) {
+    try {
+      const existing = await stripe.paymentIntents.retrieve(parsed.data.paymentIntentId);
+      if (guestAnnualReportPaymentIntentMatches(existing.metadata, parsed.data.documentNumber)) {
+        if (existing.status === 'succeeded') {
+          return NextResponse.json({
+            clientSecret: existing.client_secret,
+            paymentIntentId: existing.id,
+            alreadySucceeded: true,
+          });
+        }
+        if (isReusablePaymentIntentStatus(existing.status)) {
+          const paymentIntent =
+            existing.amount === quote.totalCents
+              ? existing
+              : await stripe.paymentIntents.update(existing.id, {
+                  amount: quote.totalCents,
+                  metadata,
+                });
+          return NextResponse.json({
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+          });
+        }
+      }
+    } catch {
+      return NextResponse.json({ error: 'Could not reuse that payment.' }, { status: 400 });
+    }
+  }
+
+  const attemptId = parsed.data.guestAttemptId?.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  const idempotencyKey = attemptId
+    ? `guest_ar_${attemptId}_amt_${quote.totalCents}`.slice(0, 255)
+    : undefined;
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: quote.totalCents,
+      currency: 'usd',
+      automatic_payment_methods: { enabled: true },
+      metadata,
+    },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
+async function rememberCheckoutEmail(
+  filingId: string,
+  existing: string | null,
+  email: string,
+  pendingAccount: boolean,
+) {
+  const prev = safeParseJson<Record<string, unknown>>(existing, {}) ?? {};
+  const next = pendingAccount
+    ? { ...prev, pendingAccountEmail: email, typedGuestEmail: email }
+    : filingCheckoutEmailDetails(prev, email);
+  await prisma.filing.update({
+    where: { id: filingId },
+    data: { optionalDetails: JSON.stringify(next) },
+  });
+}
+
+function isUniqueConflict(err: unknown): boolean {
+  return Boolean(err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002');
 }
 
 interface PricedCharge {
@@ -180,10 +572,12 @@ async function priceOwnedCharge(input: {
   couponCode?: string;
   raServiceId?: string;
   useOurRa: boolean;
+  annualReportId?: string;
+  annualReport?: unknown;
 }): Promise<PricedCharge | NextResponse> {
   if (input.purpose === 'ra_renewal') {
     if (!input.raServiceId) {
-      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+      return paymentError('filing_not_found', 404);
     }
     const service = await prisma.registeredAgentService.findUnique({
       where: { id: input.raServiceId },
@@ -192,6 +586,7 @@ async function priceOwnedCharge(input: {
           select: {
             id: true,
             userId: true,
+            state: true,
             utmSource: true,
             utmMedium: true,
             utmCampaign: true,
@@ -202,8 +597,10 @@ async function priceOwnedCharge(input: {
       },
     });
     if (!service || service.filing.userId !== input.userId) {
-      return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+      return paymentError('filing_not_found', 404);
     }
+    const inactiveRa = refuseInactiveFormationState(service.filing.state);
+    if (inactiveRa) return inactiveRa;
     return {
       amountCents: service.renewalPriceCents,
       purpose: 'ra_renewal',
@@ -214,7 +611,7 @@ async function priceOwnedCharge(input: {
   }
 
   if (!input.filingId) {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    return paymentError('filing_not_found', 404);
   }
 
   const filing = await prisma.filing.findUnique({
@@ -225,8 +622,10 @@ async function priceOwnedCharge(input: {
     },
   });
   if (!filing || filing.userId !== input.userId) {
-    return NextResponse.json({ error: 'Filing not found.' }, { status: 404 });
+    return paymentError('filing_not_found', 404);
   }
+  const inactiveFiling = refuseInactiveFormationState(filing.state);
+  if (inactiveFiling) return inactiveFiling;
 
     if (input.purpose === 'ein') {
     return {
@@ -239,13 +638,42 @@ async function priceOwnedCharge(input: {
   }
 
   if (input.purpose === 'annual_report') {
-    const compliance = annualComplianceFor(
-      getFormationState(filing.state),
-      filing.entityType === 'CORP' ? 'CORP' : 'LLC',
+    // Reject an incomplete form before Stripe creates a PaymentIntent.
+    const draft = AnnualReportDraftSchema.safeParse(input.annualReport);
+    if (!draft.success) {
+      return NextResponse.json(
+        { error: draft.error.issues[0]?.message ?? 'Check the form and try again.' },
+        { status: 400 },
+      );
+    }
+    if (!input.annualReportId) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    const report = await prisma.annualReport.findUnique({
+      where: { id: input.annualReportId },
+      select: { id: true, filingId: true, status: true, reportYear: true },
+    });
+    if (!report || report.filingId !== filing.id) {
+      return NextResponse.json({ error: 'Annual report not found.' }, { status: 404 });
+    }
+    if (report.status === 'FILED') {
+      return NextResponse.json(
+        { error: 'This annual report has already been filed.' },
+        { status: 409 },
+      );
+    }
+    const entityType = filing.entityType === 'CORP' ? 'CORP' : 'LLC';
+    const rule = getFormationState(filing.state);
+    // The report year comes from the database. A client year cannot skip the fee.
+    const quote = quoteAnnualReport(
+      rule.code,
+      entityType,
+      draft.data.useOurRa,
+      report.reportYear,
+      new Date(),
     );
-    const raFee = input.useOurRa ? RA_ANNUAL_SERVICE_FEE_CENTS : 0;
     return {
-      amountCents: ANNUAL_REPORT_SERVICE_FEE_CENTS + compliance.baseFeeCents + raFee,
+      amountCents: quote.totalCents,
       filingId: filing.id,
       purpose: 'annual_report',
       storedPaymentIntentId: null,
@@ -255,33 +683,38 @@ async function priceOwnedCharge(input: {
   }
 
   if (filing.status !== 'DRAFT' || filing.payments.length > 0) {
-    return NextResponse.json({ error: 'This filing has already been paid.' }, { status: 409 });
+    return paymentError('already_paid', 409);
   }
 
-  const optionalDetails = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
-  const processingOptionId =
-    optionalDetails && typeof optionalDetails.processingOption === 'string'
-      ? optionalDetails.processingOption
-      : undefined;
-  const breakdown = computeCost({
-    entityType: filing.entityType as 'LLC' | 'CORP',
-    tier: filing.serviceTier as TierSlug,
-    addOnSlugs: filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
-    state: asStateCode(filing.state),
-    processingOptionId,
-  });
-  const discount = await formationCouponDiscount(input.couponCode, breakdown.totalCents);
-  if (!discount.ok) {
-    return NextResponse.json({ error: 'This coupon code is invalid.' }, { status: 400 });
+  // Catalog price plus selected add-ons. Stored totals and the client body are ignored.
+  const totals = quoteDraftFiling(filing);
+  if (filingTotalsChanged(filing, totals)) {
+    try {
+      await prisma.filing.update({
+        where: { id: filing.id },
+        data: totals,
+      });
+    } catch (err) {
+      logger.warn('draft total refresh failed', {
+        area: 'stripe',
+        tag: 'draft-total-refresh',
+        entityId: filing.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
-  const amountCents = Math.max(0, breakdown.totalCents - discount.discountCents);
+  const discount = await formationCouponDiscount(input.couponCode, totals.totalCents);
+  if (!discount.ok) {
+    return paymentError('invalid_coupon', 400);
+  }
+  const amountCents = Math.max(0, totals.totalCents - discount.discountCents);
   const stateFeeMinimum = tierBundledStateFeeCents(
     filing.serviceTier as TierSlug,
     filing.entityType as EntityType,
-    asStateCode(filing.state),
+    filing.state as StateCode,
   );
   if (checkoutBelowStateFee({ totalCents: amountCents, stateFeeCents: stateFeeMinimum })) {
-    return NextResponse.json({ error: CHECKOUT_BELOW_STATE_FEE_ERROR }, { status: 400 });
+    return paymentError('below_state_fee', 400);
   }
   return {
     amountCents,
@@ -428,7 +861,7 @@ async function createCertificatePaymentIntent(input: {
 }) {
   const { stripe, actorId, filingId, slug } = input;
   if (!filingId) {
-    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+    return paymentError('company_not_found', 404);
   }
 
   const filing = await prisma.filing.findUnique({
@@ -439,7 +872,7 @@ async function createCertificatePaymentIntent(input: {
     },
   });
   if (!filing || filing.userId !== actorId) {
-    return NextResponse.json({ error: 'Company not found.' }, { status: 404 });
+    return paymentError('company_not_found', 404);
   }
 
   const offer = certificateOffer({
@@ -451,19 +884,14 @@ async function createCertificatePaymentIntent(input: {
     documents: filing.documents,
   });
   if (offer.kind !== 'orderable') {
-    return NextResponse.json(
-      {
-        error:
-          offer.kind === 'included'
-            ? 'This document is already included.'
-            : 'This document can be ordered once your company is filed.',
-      },
-      { status: 400 },
-    );
+    return paymentError(offer.kind === 'included' ? 'document_included' : 'document_not_ready', 400);
   }
 
+  const inactiveCertificate = refuseInactiveFormationState(filing.state);
+  if (inactiveCertificate) return inactiveCertificate;
+
   const entityType = filingEntityType(filing.entityType);
-  const state = filingFormationState(filing.state);
+  const state = filing.state as StateCode;
   const quote = certificateOrderQuote(slug, entityType, state);
   const attribution = readPaymentAttribution(input.posthogDistinctId);
   const customerId = await ensureStripeCustomer(stripe, actorId);

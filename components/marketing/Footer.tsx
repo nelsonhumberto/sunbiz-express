@@ -31,6 +31,7 @@ export function Footer() {
       { label: tFooter('privacy'), href: href('/privacy') },
       { label: tFooter('disclaimer'), href: href('/disclaimer') },
       { label: tFooter('refundPolicy'), href: href('/refund-policy') },
+      { label: tFooter('doNotSell'), href: href('/privacy-choices') },
     ],
     resources: [
       { label: tFooter('howToFormFloridaLlc'), href: href('/guides/how-to-form-an-llc-in-florida') },

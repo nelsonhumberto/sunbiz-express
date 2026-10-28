@@ -6,7 +6,13 @@
 // (Georgia, Texas, etc.) get a state-specific waitlist FAQ that does not
 // promise filing dates or fees we cannot back up yet.
 
+import { FORMATION_STATES } from './formation-states';
 import { localizedStateName, type MarketingState } from './marketing-states';
+import { formatCurrency } from './utils';
+
+const FL_RA_PRICE = formatCurrency(FORMATION_STATES.FL.registeredAgent.renewalCents);
+const WY_RA_PRICE = formatCurrency(FORMATION_STATES.WY.registeredAgent.renewalCents);
+const DE_RA_PRICE = formatCurrency(FORMATION_STATES.DE.registeredAgent.renewalCents);
 
 export interface MarketingFaqItem {
   /**
@@ -17,6 +23,11 @@ export interface MarketingFaqItem {
   id?: string;
   q: string;
   a: string;
+  /**
+   * When `a` ends with `label`, the FAQ renders that suffix as a link.
+   * The plain `a` string stays the schema and llms.txt answer.
+   */
+  link?: { href: string; label: string };
 }
 
 const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
@@ -35,8 +46,17 @@ const FAQ_FLORIDA_EN: MarketingFaqItem[] = [
     a: "Every package includes the required Florida Department of State filing fee ($125 for LLC, $70 for Corporation), our preparation and submission within 1 business day, your Year-1 Registered Agent, and digital delivery of your filed documents. We forward the state fee to Florida on your behalf - there are no separate state fees added at checkout.",
   },
   {
+    id: 'florida-llc-cost',
+    q: 'How much does it cost to start an LLC in Florida?',
+    a: 'The state of Florida charges $125 to form a new LLC: a $100 filing fee plus a $25 registered agent designation fee, paid when you file the Articles of Organization. After that, every Florida LLC files an annual report each year for $138.75, due between January 1 and May 1. https://launchforma.com/guides/florida-llc-cost',
+    link: {
+      href: '/guides/florida-llc-cost',
+      label: 'https://launchforma.com/guides/florida-llc-cost',
+    },
+  },
+  {
     q: 'Do I really get a free Registered Agent for a year?',
-    a: 'Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is $150/year - well below typical online filers that charge $199–$249/year. You can cancel any time and switch to your own agent.',
+    a: `Yes. Year-1 Registered Agent service is included in every package, including Essential. Renewal is ${FL_RA_PRICE}/year, well below typical online filers that charge $199 to $249/year. You can cancel any time and switch to your own agent.`,
   },
   {
     q: "What's a Registered Agent and do I need one?",
@@ -88,7 +108,7 @@ const FAQ_FLORIDA_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿De verdad obtengo Agente Registrado gratis por un año?',
-    a: 'Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es $150/año - muy por debajo de los $199–$249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.',
+    a: `Sí. El servicio de Agente Registrado del primer año está incluido en cada plan, incluyendo el plan Esencial. La renovación es ${FL_RA_PRICE}/año, muy por debajo de los $199 a $249/año típicos de otros servicios en línea. Puedes cancelar cuando quieras y cambiarte a tu propio agente.`,
   },
   {
     q: '¿Qué es un Agente Registrado y lo necesito?',
@@ -149,7 +169,7 @@ const FAQ_WYOMING_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Wyoming registered agent?',
-    a: 'Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is $150/year.',
+    a: `Yes. Wyoming law requires every LLC and Corporation to designate a registered agent with a Wyoming physical street address (no P.O. Boxes). LaunchForma includes a Year-1 Wyoming registered agent free in every package; renewal is ${WY_RA_PRICE}/year.`,
   },
   {
     q: 'When is the Wyoming annual report due?',
@@ -211,7 +231,7 @@ const FAQ_WYOMING_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Wyoming?',
-    a: 'Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es $150/año.',
+    a: `Sí. La ley de Wyoming requiere que cada LLC y Corporación designe un Agente Registrado con dirección física en Wyoming (no Apartados Postales). LaunchForma incluye Agente Registrado del primer año gratis en cada plan; la renovación es ${WY_RA_PRICE}/año.`,
   },
   {
     q: '¿Cuándo se debe presentar el reporte anual de Wyoming?',
@@ -275,7 +295,7 @@ const FAQ_DELAWARE_EN: MarketingFaqItem[] = [
   },
   {
     q: 'Do I need a Delaware registered agent?',
-    a: 'Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is $150/year.',
+    a: `Yes. Delaware law requires every LLC and Corporation to designate a registered agent with a Delaware physical street address. LaunchForma includes a Year-1 Delaware registered agent free in every package; renewal is ${DE_RA_PRICE}/year.`,
   },
   {
     q: 'When are Delaware annual taxes due?',
@@ -341,7 +361,7 @@ const FAQ_DELAWARE_ES: MarketingFaqItem[] = [
   },
   {
     q: '¿Necesito un Agente Registrado en Delaware?',
-    a: 'Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es $150/año.',
+    a: `Sí. Cada LLC y Corporación de Delaware debe designar un Agente Registrado con dirección física en Delaware. LaunchForma incluye Agente Registrado del primer año gratis; la renovación es ${DE_RA_PRICE}/año.`,
   },
   {
     q: '¿Cuándo se deben pagar los impuestos anuales de Delaware?',
@@ -440,6 +460,9 @@ export function getMarketingFaq(
   state: MarketingState,
   locale: string,
 ): MarketingFaqItem[] {
+  if (state.availability === 'inactive') {
+    return locale === 'es' ? FAQ_FLORIDA_ES : FAQ_FLORIDA_EN;
+  }
   if (state.availability === 'active') {
     if (state.code === 'WY') return locale === 'es' ? FAQ_WYOMING_ES : FAQ_WYOMING_EN;
     if (state.code === 'DE') return locale === 'es' ? FAQ_DELAWARE_ES : FAQ_DELAWARE_EN;

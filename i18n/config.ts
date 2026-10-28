@@ -86,12 +86,26 @@ export function messagesForPath(
         privacy: pickString(footer, 'privacy'),
         refundPolicy: pickString(footer, 'refundPolicy'),
         disclaimer: pickString(footer, 'disclaimer'),
+        doNotSell: pickString(footer, 'doNotSell'),
       },
+      cookieNotice: messages.cookieNotice ?? {},
     };
   }
   // x-lf-pathname is the unprefixed route, so /es/contacto is `/contact` here.
   if (pathname === '/contact') return pick(messages, CONTACT_CLIENT_NAMESPACES);
-  return omitPrivateNamespaces(messages);
+  return omitNicheClientMessages(omitPrivateNamespaces(messages));
+}
+
+/**
+ * The stylists page is a server component, so its copy does not need to ship
+ * in the client catalog. That also keeps the flag-gated Launch Bundle strings
+ * off every other public page. getTranslations still reads the full catalog.
+ */
+export function omitNicheClientMessages(messages: AbstractIntlMessages): AbstractIntlMessages {
+  if (!Object.prototype.hasOwnProperty.call(messages, 'nicheStylists')) return messages;
+  const next: AbstractIntlMessages = { ...messages };
+  delete next.nicheStylists;
+  return next;
 }
 
 /**
@@ -105,6 +119,7 @@ const CONTACT_CLIENT_NAMESPACES = [
   'assistant',
   'businessServices',
   'common',
+  'cookieNotice',
   'disclosure',
   'footer',
   'nav',

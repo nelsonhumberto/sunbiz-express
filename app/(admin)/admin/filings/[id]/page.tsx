@@ -24,6 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatAdminFilingPaidTotal, formatPaymentAmountLabel } from '@/lib/payment-test';
+import { earliestSucceededPaidAt, filingOverdueBadge, paidAnnualReportDocumentNumber } from '@/lib/paid-order-alert';
+import { LIVE_SUNBIZ_FILING_WARNING, sunbizDocumentSearchUrl } from '@/lib/email';
 import { formatCurrency, formatDate, formatDateLong, safeParseJson } from '@/lib/utils';
 import {
   defaultProcessingOption,
@@ -109,12 +111,18 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
     state: string;
     zip: string;
     useOurService?: boolean;
+    phone?: string;
     signature?: string;
   } | null>(filing.registeredAgent, null);
 
   // Detail view shows what was actually charged, including test payments.
   // Overview, analytics, and the filings list still exclude isTest revenue.
   const paidTotal = formatAdminFilingPaidTotal(filing.payments);
+  const overdue = filingOverdueBadge({
+    sunbizFilingNumber: filing.sunbizFilingNumber,
+    paidAt: earliestSucceededPaidAt(filing.payments),
+    now: new Date(),
+  });
 
   const pendingDocs = filing.documents.filter((d) => d.pendingState);
   const issuedTypes = new Set(
@@ -136,6 +144,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   });
   const sunbizCover = filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE');
   const sunbizCoverReady = Boolean(sunbizCover?.base64);
+  const annualReportDocumentNumber = paidAnnualReportDocumentNumber(filing);
 
   // COVER_LETTER is an internal draft helper - not shown for download here.
   // SUNBIZ_COVER_PAGE is listed separately as Missing / Available.
@@ -156,6 +165,22 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
         {t('filingsTitle')}
       </Link>
 
+      {annualReportDocumentNumber !== null && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-4 text-amber-950">
+          <p className="text-base font-semibold leading-snug">{LIVE_SUNBIZ_FILING_WARNING}</p>
+          {annualReportDocumentNumber ? (
+            <a
+              href={sunbizDocumentSearchUrl(annualReportDocumentNumber)}
+              className="mt-2 inline-block text-sm font-semibold text-primary underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Search {annualReportDocumentNumber} on Sunbiz
+            </a>
+          ) : null}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-start gap-4">
@@ -171,6 +196,8 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
             </h1>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge status={filing.status} />
+              {overdue === 'overdue' && <Badge variant="danger">Overdue</Badge>}
+              {overdue === 'overdue_soon' && <Badge variant="warn">Overdue soon</Badge>}
               <Badge variant="outline">
                 <User className="h-3 w-3" />
                 {filing.user.firstName} {filing.user.lastName}
@@ -598,6 +625,7 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
                     <br />
                     {ra.city}, {ra.state} {ra.zip}
                   </p>
+                  {ra.phone?.trim() ? <p className="text-ink-muted">{ra.phone}</p> : null}
                   {ra.useOurService ? (
                     <Badge variant="success" size="sm" className="mt-2">
                       {t('internalRA')}

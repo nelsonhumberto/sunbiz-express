@@ -6,7 +6,8 @@ import { prisma } from '@/lib/db';
 import { computeCost, type AddOnSlug, type EntityType, type TierSlug } from '@/lib/pricing';
 import {
   ACTIVE_FORMATION_STATES,
-  getFormationState,
+  floridaOnlyNote,
+  isActiveFormationState,
   type StateCode,
 } from '@/lib/formation-states';
 import { checkNameAvailability as sunbizCheckName, SunbizError } from '@/lib/sunbiz';
@@ -39,9 +40,12 @@ export interface AssistantToolContext {
   onWrite: () => void;
 }
 
-function asState(input: string | undefined, fallback: StateCode): StateCode {
-  const up = (input ?? '').toUpperCase();
-  return ACTIVE_FORMATION_STATES.includes(up as StateCode) ? (up as StateCode) : fallback;
+const ACTIVE_STATE_ENUM = ACTIVE_FORMATION_STATES as unknown as [StateCode, ...StateCode[]];
+
+function asState(input: string | undefined, fallback: StateCode): StateCode | null {
+  if (!input?.trim()) return isActiveFormationState(fallback) ? fallback : null;
+  const up = input.trim().toUpperCase();
+  return isActiveFormationState(up) ? (up as StateCode) : null;
 }
 
 function dollars(cents: number): string {
@@ -70,13 +74,16 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
         'Get the exact all-in price and line items for a package. Always use this for any price question; never quote fees from memory.',
       inputSchema: z.object({
         entityType: z.enum(['LLC', 'CORP']).optional(),
-        state: z.enum(['FL', 'WY', 'DE']).optional(),
+        state: z.enum(ACTIVE_STATE_ENUM).optional(),
         tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
         addOnSlugs: z.array(z.string()).optional(),
       }),
       execute: async (args) => {
         const entityType = (args.entityType ?? ctx.entityType) as EntityType;
         const state = asState(args.state, ctx.stateCode);
+        if (!state) {
+          return { ok: false as const, message: floridaOnlyNote(ctx.locale) };
+        }
         const tier = (args.tier ?? 'STANDARD') as TierSlug;
         const breakdown = computeCost({
           entityType,
@@ -151,12 +158,20 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
         'Start a new filing for the user. For a signed-in/guest actor this creates a draft and returns a wizard link; otherwise it returns a /start link. Offer it when the user is ready.',
       inputSchema: z.object({
         entityType: z.enum(['LLC', 'CORP']),
-        state: z.enum(['FL', 'WY', 'DE']),
+        state: z.enum(ACTIVE_STATE_ENUM),
         tier: z.enum(['BASIC', 'STANDARD', 'PREMIUM']).optional(),
         businessName: z.string().max(100).optional(),
       }),
       execute: async (args) => {
         const tier = (args.tier ?? 'STANDARD') as TierSlug;
+        if (!isActiveFormationState(args.state)) {
+          return {
+            ok: false as const,
+            error: floridaOnlyNote(ctx.locale),
+            url: '/start',
+            created: false,
+          };
+        }
         if (ctx.actor) {
           const filing = await prisma.filing.create({
             data: {
@@ -201,12 +216,20 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
       description: 'Set the entity type (LLC/CORP) and optionally the state on the active filing.',
       inputSchema: z.object({
         entityType: z.enum(['LLC', 'CORP']),
-        state: z.enum(['FL', 'WY', 'DE']).optional(),
+        state: z.enum(ACTIVE_STATE_ENUM).optional(),
       }),
       execute: async (args) => {
         const guard = requireFiling();
         if (guard) return guard;
-        await saveStep1({ filingId: ctx.filingId!, entityType: args.entityType, state: args.state });
+        if (args.state && !isActiveFormationState(args.state)) {
+          return { ok: false as const, error: floridaOnlyNote(ctx.locale) };
+        }
+        const saved = await saveStep1({
+          filingId: ctx.filingId!,
+          entityType: args.entityType,
+          state: args.state,
+        });
+        if (saved && saved.ok === false) return { ok: false as const, error: saved.error };
         ctx.onWrite();
         return { ok: true as const, updated: 'entity/state', value: `${args.entityType}${args.state ? ` / ${args.state}` : ''}` };
       },

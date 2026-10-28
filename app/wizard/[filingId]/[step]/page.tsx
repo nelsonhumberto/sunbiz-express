@@ -37,13 +37,16 @@ const Step11AddOns = nextDynamic(() =>
 const Step12Payment = nextDynamic(() =>
   import('@/components/wizard/steps/Step12Payment').then((m) => m.Step12Payment),
 );
-import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import { type AddOnSlug, type TierSlug } from '@/lib/pricing';
+import { quoteDraftFiling } from '@/lib/filing-totals';
+import { guestWizardStep } from '@/lib/start-draft';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
-import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
+import { isPlaceholderGuestEmail, showPendingAccountBanner } from '@/lib/guest-identity';
+import { submittedFilingHref } from '@/lib/guest-checkout';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,9 +72,19 @@ export default async function WizardStepPage({ params }: PageProps) {
 
   const filing = await getWizardFiling(params.filingId);
   if (filing.status !== 'DRAFT') {
-    // Submitted filings always go to the dashboard. Guests get sent through
-    // sign-in first since the dashboard is account-only.
-    return await redirectLocalized(`/dashboard/filings/${filing.id}`, filing.locale);
+    // Paying leaves the draft, and this page re-renders as part of checkout.
+    // That redirect used to replace /checkout/success?setPassword=1 with the
+    // filing dashboard, so the guest never saw the set-password prompt.
+    // Guests with that prompt stay on the success page. Everyone else still
+    // goes to the filing dashboard.
+    const submittedDetails = safeParseJson<Record<string, unknown> | null>(
+      filing.optionalDetails,
+      null,
+    );
+    return await redirectLocalized(
+      submittedFilingHref(filing.id, submittedDetails),
+      filing.locale,
+    );
   }
 
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's
@@ -112,7 +125,9 @@ export default async function WizardStepPage({ params }: PageProps) {
     entityType: filing.entityType as 'LLC' | 'CORP',
     tier: filing.serviceTier as TierSlug,
     addOnSlugs,
-    state: (isActiveFormationState(filing.state) ? filing.state : 'FL') as StateCode,
+    state: ((filing.state === 'FL' || filing.state === 'WY' || filing.state === 'DE')
+      ? filing.state
+      : 'FL') as StateCode,
     processingOptionId,
   };
 
@@ -125,33 +140,72 @@ export default async function WizardStepPage({ params }: PageProps) {
   // Compute the actor's display name once (Step 7 first-member prefill).
   let actorDisplayName: string | undefined;
   let isTester = false;
+  let signedInEmail: string | null = actor?.kind === 'user' ? (actor.email ?? null) : null;
   if (actor?.kind === 'user') {
     const u = await prisma.user.findUnique({
       where: { id: actor.id },
-      select: { isTester: true, firstName: true, lastName: true },
+      select: { isTester: true, firstName: true, lastName: true, email: true },
     });
     isTester = u?.isTester ?? false;
+    signedInEmail = u?.email ?? signedInEmail;
     if (u?.firstName || u?.lastName) {
       actorDisplayName = [u?.firstName, u?.lastName].filter(Boolean).join(' ');
     }
   } else if (actor?.kind === 'guest') {
     actorDisplayName = [actor.firstName, actor.lastName].filter(Boolean).join(' ');
   }
-  const actorEmail = actor?.email ?? undefined;
+  const actorEmail =
+    actor?.kind === 'guest' ? (actor.email ?? undefined) : (signedInEmail ?? undefined);
   const realGuestEmail =
     actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
-  const needsGuestEmail = actor?.kind === 'guest' && !realGuestEmail;
-  const pendingAccountEmail =
+  const storedPendingAccountEmail =
     optional && typeof optional.pendingAccountEmail === 'string'
       ? optional.pendingAccountEmail
       : '';
+  const pendingAccountEmail = showPendingAccountBanner({
+    pendingAccountEmail: storedPendingAccountEmail,
+    actorKind: actor?.kind ?? null,
+    actorEmail,
+  })
+    ? storedPendingAccountEmail
+    : '';
   const typedGuestEmail =
     optional && typeof optional.typedGuestEmail === 'string' ? optional.typedGuestEmail : '';
-  const guestEmailPrefill = pendingAccountEmail || typedGuestEmail;
+  // /start already stores a reachable address on User.email, or aside on the
+  // filing when that mailbox is taken. Do not ask for it again. Guests who
+  // skipped it still see the field here and on the name step.
+  const needsGuestEmail =
+    actor?.kind === 'guest' && !realGuestEmail && !typedGuestEmail && !storedPendingAccountEmail;
+  const guestEmailPrefill = storedPendingAccountEmail || typedGuestEmail;
   const testMode = isCheckoutTestMode({
     vercelEnv: process.env.VERCEL_ENV,
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   });
+  const serverTotalCents = isActiveFormationState(filing.state)
+    ? quoteDraftFiling({
+        entityType: filing.entityType,
+        serviceTier: filing.serviceTier,
+        state: filing.state,
+        optionalDetails: filing.optionalDetails,
+        filingAdditionalServices: filing.filingAdditionalServices,
+      }).totalCents
+    : filing.totalCents;
+
+  if (isGuest && stepNum === 1) {
+    const landing = guestWizardStep({
+      businessName: filing.businessName,
+      currentStep: 1,
+    });
+    if (landing !== 1) {
+      if ((filing.currentStep ?? 1) < 2) {
+        await prisma.filing.update({
+          where: { id: filing.id },
+          data: { currentStep: landing },
+        });
+      }
+      return await redirectLocalized(`/wizard/${filing.id}/${landing}`, filing.locale);
+    }
+  }
 
   return (
     <>
@@ -168,6 +222,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             needsGuestEmail={needsGuestEmail}
             initialGuestEmail={guestEmailPrefill}
             pendingAccountEmail={pendingAccountEmail}
+            isTester={isTester}
           />
         )}
         {stepNum === 2 && (
@@ -200,6 +255,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             isGuest={isGuest}
             guestEmail={realGuestEmail ?? ''}
             pendingAccountEmail={pendingAccountEmail || undefined}
+            serverTotalCents={serverTotalCents}
           />
         )}
       </WizardShell>

@@ -20,6 +20,11 @@ import { buildKnowledge } from '@/lib/assistant/knowledge';
 import { buildSystemPrompt } from '@/lib/assistant/system-prompt';
 import { summarizeFiling } from '@/lib/assistant/redact';
 import { buildAssistantTools, type AssistantActor } from '@/lib/assistant/tools';
+import { assistantMaxOutputTokens } from '@/lib/assistant/limits';
+import { prepareAssistantTurn } from '@/lib/assistant/conversation-cap';
+import { attachAssistantSession } from '@/lib/assistant/chat-cookie';
+import { stripAssistantDashPart, stripAssistantDashes } from '@/lib/assistant/dashes';
+import { assistantDailyRestResponse, recordAssistantUsage } from '@/lib/assistant/spend-day';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,8 +57,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Per-IP throttle - keeps cost + abuse bounded.
-  const limit = rateLimit(`assistant:${clientIp()}`, 30, 60 * 1000);
+  // Fast per-IP throttle. In-memory, per instance. A database count of recent
+  // user messages is the cross-instance backstop inside prepareAssistantTurn.
+  const ip = clientIp();
+  const limit = rateLimit(`assistant:${ip}`, 30, 60 * 1000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: 'You are sending messages too quickly. Please wait a moment.' },
@@ -77,6 +84,38 @@ export async function POST(request: Request) {
   const actor: AssistantActor | null = resolved
     ? { kind: resolved.kind, id: resolved.id, email: resolved.email }
     : null;
+
+  const locale = body.locale === 'es' ? 'es' : 'en';
+
+  // Daily cap is checked before a turn is stored. A resting day does not
+  // open a conversation or call the model. Unset ASSISTANT_DAILY_CAP_USD
+  // means there is no cap.
+  try {
+    const resting = await assistantDailyRestResponse(locale);
+    if (resting) return resting;
+  } catch (err) {
+    logger.error('assistant daily cap lookup failed', { area: 'assistant', tag: 'cap' }, err);
+    return NextResponse.json(
+      { error: 'The assistant had a problem. Please try again.' },
+      { status: 500 },
+    );
+  }
+
+  const recent = body.messages.slice(-20);
+  const lastUserText = messageText([...recent].reverse().find((m) => m.role === 'user'));
+
+  // The server assigns the conversation id. A missing id, an unknown id, and
+  // an id this caller does not own never select someone else's row. The user
+  // turn is stored before the model runs.
+  const prepared = await prepareAssistantTurn({
+    requestedId: body.conversationId,
+    actor,
+    locale,
+    ip,
+    userText: lastUserText,
+  });
+  if (prepared.kind === 'deny') return prepared.response;
+  const conversationId = prepared.conversationId;
 
   // Resolve + verify the active filing (ownership) so tools can read/write it.
   let filingId: string | null = null;
@@ -106,7 +145,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const locale = body.locale === 'es' ? 'es' : 'en';
   const knowledge = buildKnowledge({ stateCode, entityType, locale });
   const system = buildSystemPrompt({
     knowledge,
@@ -125,48 +163,51 @@ export async function POST(request: Request) {
     onWrite: () => {},
   });
 
-  // Keep cost bounded: only the most recent turns.
-  const recent = body.messages.slice(-20);
-  const lastUserText = messageText([...recent].reverse().find((m) => m.role === 'user'));
-  const modelMessages = await convertToModelMessages(recent);
-
   try {
+    const modelMessages = await convertToModelMessages(recent);
     const result = streamText({
       model: assistantModel,
       system,
       messages: modelMessages,
       tools,
+      abortSignal: request.signal,
+      experimental_transform: () =>
+        new TransformStream({
+          transform(part, controller) {
+            controller.enqueue(stripAssistantDashPart(part));
+          },
+        }),
+      maxOutputTokens: assistantMaxOutputTokens(),
       stopWhen: stepCountIs(6),
-      onFinish: async ({ text }) => {
-        // Best-effort transcript persistence for handoff context + KB tuning.
-        if (!body.conversationId) return;
-        try {
-          await prisma.assistantConversation.upsert({
-            where: { id: body.conversationId },
-            create: {
-              id: body.conversationId,
-              actorId: actor?.id ?? null,
-              actorKind: actor?.kind ?? null,
-              filingId,
-              locale,
-            },
-            update: { updatedAt: new Date(), filingId },
-          });
-          const rows = [
-            ...(lastUserText ? [{ role: 'user', content: lastUserText }] : []),
-            ...(text?.trim() ? [{ role: 'assistant', content: text.trim() }] : []),
-          ];
-          if (rows.length) {
-            await prisma.assistantMessage.createMany({
-              data: rows.map((r) => ({ conversationId: body.conversationId!, ...r })),
+      onFinish: async ({ text, finishReason, steps, totalUsage }) => {
+        if (finishReason === 'length' || steps.some((step) => step.finishReason === 'length')) {
+          logger.warn('assistant output length', { area: 'assistant', tag: 'length' });
+        }
+        const assistantText = stripAssistantDashes(text ?? '').trim();
+        if (assistantText) {
+          try {
+            await prisma.assistantConversation.update({
+              where: { id: conversationId },
+              data: { updatedAt: new Date(), filingId },
             });
+            await prisma.assistantMessage.create({
+              data: { conversationId, role: 'assistant', content: assistantText },
+            });
+          } catch (err) {
+            logger.error('assistant transcript persist failed', { area: 'assistant', tag: 'persist' }, err);
           }
+        }
+        try {
+          await recordAssistantUsage(totalUsage);
         } catch (err) {
-          logger.error('assistant transcript persist failed', { area: 'assistant', tag: 'persist' }, err);
+          logger.error('assistant usage record failed', { area: 'assistant', tag: 'usage' }, err);
         }
       },
     });
-    return result.toUIMessageStreamResponse();
+    return attachAssistantSession(
+      result.toUIMessageStreamResponse({ sendReasoning: false }),
+      conversationId,
+    );
   } catch (err) {
     logger.error('assistant stream failed', { area: 'assistant', tag: 'stream' }, err);
     return NextResponse.json({ error: 'The assistant had a problem. Please try again.' }, { status: 500 });

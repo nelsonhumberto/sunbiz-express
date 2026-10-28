@@ -10,13 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { setPreferredStateAction } from '@/actions/preferred-state';
+import { ACTIVE_FORMATION_STATES, FORMATION_STATES } from '@/lib/formation-states';
 import { cn } from '@/lib/utils';
 
-const STATES = [
-  { code: 'FL', name: 'Florida' },
-  { code: 'DE', name: 'Delaware' },
-  { code: 'WY', name: 'Wyoming' },
-] as const;
+const STATES = ACTIVE_FORMATION_STATES.map((code) => ({
+  code,
+  name: FORMATION_STATES[code].name,
+}));
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -30,6 +30,7 @@ function readCookie(name: string): string | undefined {
 export function DashboardStateSwitcher() {
   const router = useRouter();
   const [pending, start] = useTransition();
+  if (STATES.length < 2) return null;
   const current = readCookie('preferred_state')?.toUpperCase() || 'FL';
   const currentState = STATES.find((s) => s.code === current) ?? STATES[0];
 

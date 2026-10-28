@@ -729,12 +729,40 @@ describe('approved copy', () => {
       locale: 'es',
       unsubscribeUrl: unsub,
     });
-    expect(issue3es.subject).toBe(issue3.subject);
-    expect(issue3es.html).toContain('Hi there,');
-    expect(issue3es.html).toContain('lang="en"');
-    expect(newsletterDeliveryLocale('003', 'es')).toBe('en');
+    expect(issue3es.subject).toBe('Obtén tu EIN de la forma correcta');
+    expect(issue3es.html).toContain('Hola,');
+    expect(issue3es.html).toContain('lang="es"');
+    expect(issue3es.html).toContain('El EIN lo emite el IRS.');
+    expect(issue3es.html).toContain('15 de enero de 2027');
+    expect(issue3es.html).toContain('Cancelar suscripción');
+    expect(issue3es.html).toContain('Preferencias de correo');
+    expect(issue3es.html).toContain('Forma tu empresa con claridad');
+    expect(issue3es.html).toContain('No es un despacho de abogados');
+    expect(issue3es.html).toContain('14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016');
+    expect(issue3es.html).toContain(`${SITE}/es"`);
+    expect(issue3es.html).toContain(
+      'https://www.irs.gov/es/businesses/small-businesses-self-employed/get-an-employer-identification-number',
+    );
+    expect(issue3es.html).toContain('https://www.irs.gov/es/faqs/estimated-tax');
+    expect(issue3es.html).toContain(unsub);
+    expect(issue3es.html).not.toContain('Hi there,');
+    expect(issue3es.html).not.toContain('January 15, 2027');
+    expect(issue3es.html).not.toContain('/launch-bundle');
+    expect(issue3es.html).not.toMatch(/\$\d/);
+    expect(issue3es.html).not.toMatch(/\bgratis\b/i);
+    expect(newsletterDeliveryLocale('003', 'es')).toBe('es');
+    expect(newsletterDeliveryLocale('003', 'en')).toBe('en');
     expect(newsletterDeliveryLocale('001', 'es')).toBe('es');
-    expect(newsletterIssueCopy('003', 'es').intro).toBe(newsletterIssueCopy('003', 'en').intro);
+    expect(newsletterIssueCopy('003', 'es').intro).toBe(
+      'Aquí van dos cosas rápidas de esta semana, y luego puedes volver a construir tu negocio.',
+    );
+    const issue3other = renderTemplate('WEEKLY_NEWSLETTER', {
+      newsletterIssue: '003',
+      locale: 'fr',
+      unsubscribeUrl: unsub,
+    });
+    expect(issue3other.subject).toBe(issue3.subject);
+    expect(issue3other.html).toContain('lang="en"');
 
     const issue4 = renderTemplate('WEEKLY_NEWSLETTER', {
       newsletterIssue: '004',
@@ -755,9 +783,27 @@ describe('approved copy', () => {
       locale: 'es',
       unsubscribeUrl: unsub,
     });
-    expect(issue4es.subject).toBe(issue4.subject);
-    expect(newsletterDeliveryLocale('004', 'es')).toBe('en');
-    expect(newsletterIssueCopy('004', 'es').subject).toBe(newsletterIssueCopy('004', 'en').subject);
+    expect(issue4es.subject).toBe('Dale al dinero de tu negocio su propio carril');
+    expect(issue4es.html).toContain('lang="es"');
+    expect(issue4es.html).toContain('1 de febrero de 2027');
+    expect(issue4es.html).toContain('el 31 de enero cae domingo');
+    expect(issue4es.html).toContain(`${SITE}/es/checklist`);
+    expect(issue4es.html).toContain('https://www.irs.gov/es/forms-pubs/about-form-1099-nec');
+    expect(issue4es.html).toContain('Cancelar suscripción');
+    expect(issue4es.html).toContain('Preferencias de correo');
+    expect(issue4es.html).toContain('Miami Lakes, FL 33016');
+    expect(issue4es.html).toContain(unsub);
+    expect(issue4es.html).not.toContain('February 1, 2027');
+    expect(issue4es.html).not.toContain('/launch-bundle');
+    expect(issue4es.html).not.toMatch(/\$\d/);
+    expect(newsletterDeliveryLocale('004', 'es')).toBe('es');
+    expect(newsletterDeliveryLocale('004', 'en')).toBe('en');
+    expect(newsletterIssueCopy('004', 'es').subject).toBe('Dale al dinero de tu negocio su propio carril');
+    const jobSource = readFileSync('lib/newsletter-job.ts', 'utf8');
+    const dueAt = jobSource.indexOf('const issue = newsletterDueIssue');
+    const localeAt = jobSource.indexOf('newsletterDeliveryLocale(issue');
+    expect(dueAt).toBeGreaterThan(0);
+    expect(localeAt).toBeGreaterThan(dueAt);
 
     const text = `${allNewsletterCopyText()}\n${allPostFormationCopyText()}`;
     expect(text).not.toContain('—');
@@ -770,6 +816,9 @@ describe('approved copy', () => {
       'prisma/migrations/20261028040000_newsletter_issues_003_004/migration.sql',
       'utf8',
     );
+    expect(issueSql).not.toContain('Obtén tu EIN de la forma correcta');
+    expect(readFileSync('lib/newsletter.ts', 'utf8')).toContain('Obtén tu EIN de la forma correcta');
+    expect(readFileSync('lib/newsletter.ts', 'utf8')).toContain('Dale al dinero de tu negocio su propio carril');
     const storedSql = `${sql}\n${issueSql}`;
     for (const issue of STORED_NEWSLETTER_ISSUES) {
       expect(storedSql).toContain(issue.subject);

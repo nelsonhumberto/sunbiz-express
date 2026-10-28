@@ -62,7 +62,10 @@ vi.mock('next-intl/server', () => ({
   },
 }));
 
-import CostoPage, { generateMetadata as costoMeta } from '@/app/(marketing)/guides/costo-llc-florida/page';
+import CostoPage, {
+  generateMetadata as costoMeta,
+  renderFloridaLlcCostMeta,
+} from '@/app/(marketing)/guides/costo-llc-florida/page';
 import SsnPage, {
   generateMetadata as ssnMeta,
 } from '@/app/(marketing)/guides/llc-florida-sin-seguro-social/page';
@@ -181,8 +184,22 @@ describe('Spanish buyer-intent guides', () => {
       const meta = await page.meta();
       expect(meta.robots).toEqual({ index: true, follow: true });
       expect(meta.description).toBeTruthy();
+      expect(String(meta.description).length).toBeLessThanOrEqual(160);
       expect(meta.alternates?.canonical).toBe(page.path);
       expect(meta.alternates?.languages?.es).toBe(page.path);
+      if (page.path === '/es/guides/costo-llc-florida') {
+        const rendered = renderFloridaLlcCostMeta(es.guideLlcCosto.metaDescription);
+        expect(meta.description).toBe(rendered);
+        expect(rendered).toBe(
+          'Abrir una LLC en Florida cuesta $125 en tarifas del estado. Con LaunchForma pagas $199 todo incluido. El reporte anual es $138.75, del 1 de enero al 1 de mayo.',
+        );
+        expect(rendered.length).toBe(159);
+        const long = renderFloridaLlcCostMeta(
+          'Abrir una LLC en Florida cuesta {stateFee} en tarifas del estado. Con LaunchForma pagas {total} todo incluido. El reporte anual es {annual}, del 1 de enero al 1 de mayo, con texto de mas para pasar el limite de la meta.',
+        );
+        expect(long.endsWith('todo incluido.')).toBe(true);
+        expect(long).not.toContain('reporte anual');
+      }
     }
   });
 

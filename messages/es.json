@@ -1976,7 +1976,7 @@
   },
   "guideLlcCosto": {
     "metaTitle": "LLC Florida precio: cuánto cuesta abrirla",
-    "metaDescription": "Cuánto cuesta abrir una LLC en Florida: $125 en tarifas del estado y $138.75 de reporte anual, del 1 de enero al 1 de mayo. Información general.",
+    "metaDescription": "Abrir una LLC en Florida cuesta {stateFee} en tarifas del estado. Con LaunchForma pagas {total} todo incluido. El reporte anual es {annual}, del 1 de enero al 1 de mayo.",
     "ogTitle": "LLC Florida precio: cuánto cuesta abrirla",
     "ogDescription": "Cuánto cuesta abrir una LLC en Florida: $125 en tarifas del estado y $138.75 de reporte anual, del 1 de enero al 1 de mayo.",
     "title": "Precio de una LLC en Florida",

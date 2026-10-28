@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { marketingTagsAllowed, readAdsConsent } from '@/lib/ad-consent';
+import { marketingTagsAllowed, readAdsConsent, shouldShowCookieNotice } from '@/lib/ad-consent';
 import { newlyReachedScrollDepths } from '@/lib/scroll-depth';
 import { readFileSync } from 'node:fs';
 
@@ -24,6 +24,23 @@ describe('landing tracking and consent', () => {
     expect(marketingTagsAllowed({ consent: 'essential', optedOut: false })).toBe(false);
     expect(marketingTagsAllowed({ consent: 'all', optedOut: false })).toBe(true);
     expect(marketingTagsAllowed({ consent: 'all', optedOut: true })).toBe(false);
+    expect(shouldShowCookieNotice({ consent: null, optedOut: false })).toBe(true);
+    expect(shouldShowCookieNotice({ consent: 'all', optedOut: false })).toBe(false);
+    expect(shouldShowCookieNotice({ consent: 'essential', optedOut: false })).toBe(false);
+    expect(shouldShowCookieNotice({ consent: null, optedOut: true })).toBe(false);
+    const bar = readFileSync('components/analytics/CookieConsentBar.tsx', 'utf8');
+    expect(bar).toContain('role="region"');
+    expect(bar).not.toContain('role="dialog"');
+    expect(bar).not.toContain('fixed inset-0');
+    expect(bar).toContain('min-h-11');
+    expect(bar).toContain('requestIdleCallback');
+    expect(bar).not.toContain('overflow-hidden');
+    expect(bar).toContain('--lf-cookie-h');
+    expect(readFileSync('components/marketing/FloridaLlcLanding.tsx', 'utf8')).toContain(
+      "bottom: 'var(--lf-cookie-h, 0px)'",
+    );
+    expect(readFileSync('messages/en.json', 'utf8')).toContain('We use cookies to improve your visit.');
+    expect(readFileSync('messages/es.json', 'utf8')).toContain('Usamos cookies para mejorar tu visita.');
   });
 
   it('wires lead capture, scroll depth, and checkout events', () => {

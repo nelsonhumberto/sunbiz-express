@@ -28,6 +28,12 @@ export function marketingTagsAllowed(input: { consent: string | null; optedOut: 
   return input.consent === ADS_CONSENT_ALL;
 }
 
+/** The bar is shown once, until the visitor chooses or an opt-out is already set. */
+export function shouldShowCookieNotice(input: { consent: string | null; optedOut: boolean }): boolean {
+  if (input.optedOut) return false;
+  return input.consent !== ADS_CONSENT_ALL && input.consent !== ADS_CONSENT_ESSENTIAL;
+}
+
 export function serializeAdsConsentCookie(value: typeof ADS_CONSENT_ALL | typeof ADS_CONSENT_ESSENTIAL): string {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
   return `${ADS_CONSENT_COOKIE}=${value}; Path=/; Max-Age=${ADS_CONSENT_MAX_AGE}; SameSite=Lax${secure}`;

@@ -1671,8 +1671,9 @@
     "readyBody": "You take care of your clients. We take care of the filing. It only takes a few minutes."
   },
   "cookieNotice": {
-    "label": "Cookie choice",
-    "body": "Google Analytics and Google Ads, including remarketing, load only after you accept. Essential cookies keep the site working either way.",
+    "label": "Cookies",
+    "body": "We use cookies to improve your visit.",
+    "privacy": "Privacy",
     "accept": "Accept",
     "essential": "Essential only"
   },

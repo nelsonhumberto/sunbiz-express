@@ -458,7 +458,11 @@ export function FloridaLlcLanding({
       </section>
 
       {showSticky ? (
-        <div className="fixed inset-x-0 bottom-[4.75rem] z-30 px-3 md:hidden">
+        <div
+          data-testid="lp-sticky"
+          className="fixed inset-x-0 z-40 px-3 pb-1 md:hidden"
+          style={{ bottom: 'var(--lf-cookie-h, 0px)' }}
+        >
           <button
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"

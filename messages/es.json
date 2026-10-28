@@ -2161,10 +2161,11 @@
     "readyBody": "Tú atiendes a tu clientela. Nosotros nos encargamos de presentar tu LLC. Solo toma unos minutos."
   },
   "cookieNotice": {
-    "label": "Elección de cookies",
-    "body": "Google Analytics y Google Ads, incluido el remarketing, se cargan solo si aceptas. Las cookies esenciales mantienen el sitio funcionando de cualquier forma.",
+    "label": "Cookies",
+    "body": "Usamos cookies para mejorar tu visita.",
+    "privacy": "Privacidad",
     "accept": "Aceptar",
-    "essential": "Solo lo esencial"
+    "essential": "Solo esenciales"
   },
   "lpFlorida": {
     "needTitle": "Qué necesitas",

@@ -22,7 +22,7 @@ import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME } from './constants';
 import { buildChecklistConfirmEmail, buildChecklistEmail, buildResumeEmail } from './drip-email';
 import { buildNewsletterEmail } from './newsletter-email';
 import { buildPostFormationEmail } from './post-formation-email';
-import type { NewsletterIssueNumber } from './newsletter';
+import { newsletterDeliveryLocale, normalizeNewsletterIssue } from './newsletter';
 import type { PostFormationStepId } from './post-formation';
 import { emailShellCopy, type DripLocale, type ResumeStepId } from './drip-copy';
 import { decorateResumeEmailHtml } from './resume-utm';
@@ -113,7 +113,7 @@ interface EmailContext {
   /** Signed confirm link for the checklist double opt-in. */
   checklistConfirmUrl?: string;
   /** Weekly issue. Defaults to 001 when missing. */
-  newsletterIssue?: NewsletterIssueNumber;
+  newsletterIssue?: string;
   /** Filing id used in post-formation certificate links. */
   linkFilingId?: string;
   // ── Manual draft re-engagement ──
@@ -458,8 +458,8 @@ const TEMPLATES: Record<
   POST_FORMATION_DAY_14: (ctx) => postFormationTemplate('DAY_14', ctx),
   POST_FORMATION_DAY_30: (ctx) => postFormationTemplate('DAY_30', ctx),
   WEEKLY_NEWSLETTER: (ctx) => {
-    const issue: NewsletterIssueNumber = ctx.newsletterIssue === '002' ? '002' : '001';
-    const locale = dripShellLocale(ctx.locale);
+    const issue = normalizeNewsletterIssue(ctx.newsletterIssue);
+    const locale = newsletterDeliveryLocale(issue, dripShellLocale(ctx.locale));
     const built = buildNewsletterEmail({
       issue,
       locale,

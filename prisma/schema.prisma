@@ -593,7 +593,8 @@ model MarketingOptOut {
   updatedAt DateTime @updatedAt
 }
 
-// Approved weekly issues 001 and 002. English text from the copy files.
+// Approved weekly issues 001 through 004. English text from the copy files.
+// 003 and 004 have no Spanish copy, so those sends stay in English.
 // Sending uses lib/newsletter.ts so Spanish does not need a database read.
 model NewsletterIssue {
   id        String   @id

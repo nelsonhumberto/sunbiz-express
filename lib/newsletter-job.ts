@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { normalizeEmail } from '@/lib/email-address';
 import { sendEmail, waitBetweenMarketingSends } from '@/lib/email';
 import { isRecordedEmailStatus } from '@/lib/email-status';
-import { isWeeklyNewsletterEnabled } from '@/lib/feature-flags';
+import { isWeeklyNewsletterEnabled, resumeEmailReplyTo } from '@/lib/feature-flags';
 import { logger } from '@/lib/logger';
 import {
   claimStatusAfterSend,
@@ -14,6 +14,7 @@ import {
 import {
   isEtWeekdayMorning,
   isNewsletterRecipient,
+  newsletterDeliveryLocale,
   newsletterDueIssue,
   newsletterMayStart,
   type NewsletterIssueNumber,
@@ -134,7 +135,7 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
   const prior = emails.length
     ? await prisma.newsletterSend.findMany({
         where: { email: { in: emails } },
-        select: { email: true, issueNumber: true, status: true },
+        select: { email: true, issueNumber: true, status: true, sentAt: true },
       })
     : [];
 
@@ -165,24 +166,34 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
       skipped += 1;
       continue;
     }
-    const sent001 = prior.some(
-      (item) => item.email === email && item.issueNumber === '001' && isRecordedEmailStatus(item.status),
-    );
-    const sent002 = prior.some(
-      (item) => item.email === email && item.issueNumber === '002' && isRecordedEmailStatus(item.status),
-    );
+    const recorded = (issueNumber: NewsletterIssueNumber) =>
+      prior.find(
+        (item) =>
+          item.email === email &&
+          item.issueNumber === issueNumber &&
+          isRecordedEmailStatus(item.status),
+      );
+    const sent001 = recorded('001');
+    const sent002 = recorded('002');
+    const sent003 = recorded('003');
+    const sent004 = recorded('004');
     const issue = newsletterDueIssue({
       now,
       confirmedAt: row.confirmedAt,
-      sent001,
-      sent002,
+      sent001: Boolean(sent001),
+      sent002: Boolean(sent002),
+      sent003: Boolean(sent003),
+      sent004: Boolean(sent004),
+      sent002At: sent002?.sentAt ?? null,
+      sent003At: sent003?.sentAt ?? null,
     });
     if (!issue) {
       skipped += 1;
       continue;
     }
 
-    const locale = row.locale === 'en' ? 'en' : 'es';
+    const subscriberLocale = row.locale === 'en' ? 'en' : 'es';
+    const locale = newsletterDeliveryLocale(issue, subscriberLocale);
     if (suppressed.has(email)) {
       await prisma.newsletterSend.updateMany({
         where: {
@@ -208,6 +219,7 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
         type: 'WEEKLY_NEWSLETTER',
         to: email,
         step: issue,
+        replyTo: resumeEmailReplyTo(),
         listUnsubscribeUrl: unsubscribeUrl,
         context: { locale, unsubscribeUrl, newsletterIssue: issue },
       });

@@ -192,7 +192,7 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
       continue;
     }
 
-    const subscriberLocale = row.locale === 'en' ? 'en' : 'es';
+    const subscriberLocale = row.locale === 'es' ? 'es' : 'en';
     const locale = newsletterDeliveryLocale(issue, subscriberLocale);
     if (suppressed.has(email)) {
       await prisma.newsletterSend.updateMany({

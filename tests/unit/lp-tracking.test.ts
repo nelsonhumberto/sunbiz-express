@@ -41,6 +41,12 @@ describe('landing tracking and consent', () => {
     );
     expect(readFileSync('messages/en.json', 'utf8')).toContain('We use cookies to improve your visit.');
     expect(readFileSync('messages/es.json', 'utf8')).toContain('Usamos cookies para mejorar tu visita.');
+    const privacy = readFileSync('components/legal/PrivacyChoicesPanel.tsx', 'utf8');
+    expect(privacy).toContain('writeClientAdOptOut(false)');
+    expect(privacy).not.toContain('serializeAdsConsentCookie');
+    expect(privacy).not.toContain("ADS_CONSENT_ALL");
+    expect(readFileSync('actions/guest-start.ts', 'utf8')).toContain('stampQaLaunchformaGuest');
+    expect(readFileSync('actions/guest-email.ts', 'utf8')).toContain('stampQaLaunchformaGuest');
   });
 
   it('wires lead capture, scroll depth, and checkout events', () => {
@@ -55,6 +61,10 @@ describe('landing tracking and consent', () => {
     expect(landing).toContain("trackCtaClicked('lp_continue'");
     expect(landing).toContain('email: leadEmail.trim() || undefined');
     expect(payment).toContain("trackEvent('checkout_started'");
+    expect(payment.match(/trackEvent\('checkout_started'/g)).toHaveLength(1);
+    expect(readFileSync('components/wizard/WizardShell.tsx', 'utf8')).not.toContain(
+      "trackEvent('checkout_started'",
+    );
     expect(success).toContain("trackEvent('checkout_paid'");
     expect(gate).toContain('marketingTagsAllowed');
     expect(readFileSync('actions/checklist-signup.ts', 'utf8')).toContain('getServerUtmAttribution');

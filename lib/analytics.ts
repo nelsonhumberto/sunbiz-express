@@ -10,10 +10,10 @@ import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import {
   adsDebugActive,
   adsSendTo,
-  BEGIN_FILING_LABEL_ENV,
+  beginConversionStorageKey,
+  beginFilingPayload,
   purchaseConversionStorageKey,
   purchasePayload,
-  PURCHASE_LABEL_ENV,
   shouldSuppressAdsConversion,
   type AdsSuppressionInput,
 } from '@/lib/ads-conversions';
@@ -169,6 +169,55 @@ export function markCheckoutSuccessViewed(filingId: string): void {
   } catch {
     /* private mode: the component ref still blocks a second fire in this mount */
   }
+}
+
+const CHECKOUT_PAID_PREFIX = 'lf_checkout_paid:';
+const PURCHASE_COMPLETED_PREFIX = 'lf_purchase_completed:';
+
+export function checkoutPaidStorageKey(filingId: string): string {
+  return `${CHECKOUT_PAID_PREFIX}${filingId}`;
+}
+
+export function purchaseCompletedStorageKey(filingId: string): string {
+  return `${PURCHASE_COMPLETED_PREFIX}${filingId}`;
+}
+
+function filingEventAlreadySent(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markFilingEventSent(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, '1');
+  } catch {
+    /* private mode: a later full reload may send again */
+  }
+}
+
+export function checkoutPaidAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(checkoutPaidStorageKey(filingId));
+}
+
+export function markCheckoutPaidSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(checkoutPaidStorageKey(filingId));
+}
+
+export function purchaseCompletedAlreadySent(filingId: string): boolean {
+  if (!filingId) return false;
+  return filingEventAlreadySent(purchaseCompletedStorageKey(filingId));
+}
+
+export function markPurchaseCompletedSent(filingId: string): void {
+  if (!filingId) return;
+  markFilingEventSent(purchaseCompletedStorageKey(filingId));
 }
 
 /** Filing id from `/wizard/:id` or `/es/wizard/:id`. */
@@ -542,7 +591,10 @@ export function trackGooglePurchase(input: {
 
   const suppressed = shouldSuppressAdsConversion(suppressionInput(input));
   const debug = adsDebugActive(browserSearch());
-  const sendTo = adsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, process.env[PURCHASE_LABEL_ENV]);
+  const sendTo = adsSendTo(
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL,
+  );
   const conversion = sendTo ? { send_to: sendTo, ...payload } : null;
 
   if (suppressed) {
@@ -567,41 +619,51 @@ export function trackGooglePurchase(input: {
 }
 
 /**
- * Begin Filing Ads conversion. One call per successful step-1 submit.
- * Sends only when NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING is set.
+ * Begin Filing Ads conversion. Once per filing id, on the /lp CTA and on
+ * step 1 submit. The same id from the landing CTA into step 1 does not send
+ * again. Value is 1 USD. Sends only when the Begin Filing label env is set.
+ * Test users are skipped and do not consume the dedupe key.
  */
 export function trackGoogleBeginFiling(input?: {
+  filingId?: string | null;
   isTester?: boolean | null;
   isTest?: boolean | null;
   email?: string | null;
   emails?: Array<string | null | undefined>;
 }) {
   if (typeof window === 'undefined') return;
+  const base = beginFilingPayload(input?.filingId);
+  if (!base) return;
+  const storageKey = beginConversionStorageKey(base.transaction_id);
+  if (readConversionFlag(storageKey)) return;
+
   const sendTo = adsSendTo(
     process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
-    process.env[BEGIN_FILING_LABEL_ENV],
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING,
   );
-  const payload = sendTo ? { send_to: sendTo } : null;
+  const payload = sendTo ? { send_to: sendTo, ...base } : null;
   const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
   const debug = adsDebugActive(browserSearch());
 
   if (suppressed) {
-    if (debug) logAdsDebug('begin_filing suppressed', payload ?? { missingLabel: BEGIN_FILING_LABEL_ENV });
+    if (debug) logAdsDebug('begin_filing suppressed', payload ?? { missingLabel: true });
     return;
   }
   if (isClientAdMeasurementOptedOut()) return;
   if (!payload) {
-    if (debug) logAdsDebug('begin_filing missing label', { env: BEGIN_FILING_LABEL_ENV });
+    if (debug) logAdsDebug('begin_filing missing label', { missingLabel: true });
     return;
   }
 
   whenReady(
     () => typeof window.gtag === 'function',
     () => {
+      if (readConversionFlag(storageKey)) return;
       if (isClientAdMeasurementOptedOut()) return;
       if (shouldSuppressAdsConversion(suppressionInput(input ?? {}))) return;
       window.gtag('event', 'conversion', payload);
       if (debug) logAdsDebug('begin_filing', payload);
+      writeConversionFlag(storageKey);
     },
     10000,
   );

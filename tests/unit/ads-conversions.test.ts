@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   adsDebugActive,
   adsSendTo,
+  beginConversionStorageKey,
   isLaunchformaQaEmail,
   purchaseConversionStorageKey,
   purchasePayload,
@@ -110,17 +111,27 @@ describe('gtag conversion firing', () => {
     expect(store.get(purchaseConversionStorageKey('filing_1'))).toBe('1');
   });
 
-  it('fires Begin Filing once per submit with its own send_to', () => {
+  it('fires Begin Filing once per filing with value 1 USD', () => {
     const { gtag } = install();
-    trackGoogleBeginFiling({ emails: ['ada@example.com'] });
+    trackGoogleBeginFiling({ filingId: 'filing_1', emails: ['ada@example.com'] });
+    trackGoogleBeginFiling({ filingId: 'filing_1', emails: ['ada@example.com'] });
     expect(gtag).toHaveBeenCalledTimes(1);
-    expect(gtag).toHaveBeenCalledWith('event', 'conversion', { send_to: 'AW-123/beginLabel' });
+    expect(gtag).toHaveBeenCalledWith('event', 'conversion', {
+      send_to: 'AW-123/beginLabel',
+      transaction_id: 'filing_1',
+      value: 1,
+      currency: 'USD',
+    });
+    expect(store.get(beginConversionStorageKey('filing_1'))).toBe('1');
+    trackGoogleBeginFiling({ filingId: 'filing_2' });
+    expect(gtag).toHaveBeenCalledTimes(2);
   });
 
-  it('does not send when the Begin Filing label is missing', () => {
+  it('does not send Begin Filing without a filing id or when the label is missing', () => {
     const { gtag } = install();
+    trackGoogleBeginFiling({ emails: ['ada@example.com'] });
     delete process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING;
-    trackGoogleBeginFiling();
+    trackGoogleBeginFiling({ filingId: 'filing_1' });
     expect(gtag).not.toHaveBeenCalled();
   });
 
@@ -133,10 +144,15 @@ describe('gtag conversion firing', () => {
       isTester: true,
       email: 'qa+buyer@launchforma.com',
     });
-    trackGoogleBeginFiling({ isTest: true, email: 'qa+buyer@launchforma.com' });
+    trackGoogleBeginFiling({
+      filingId: 'filing_qa',
+      isTest: true,
+      email: 'qa+buyer@launchforma.com',
+    });
     expect(gtag).not.toHaveBeenCalled();
     expect(info).toHaveBeenCalled();
     expect(store.has(purchaseConversionStorageKey('filing_qa'))).toBe(false);
+    expect(store.has(beginConversionStorageKey('filing_qa'))).toBe(false);
   });
 
   it('suppresses a qa mailbox with no debug log outside preview', () => {

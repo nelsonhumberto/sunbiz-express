@@ -116,6 +116,7 @@ export function GuestStartLaunch({
         // the PostHog requests can finish. If the path is unchanged after
         // 4 seconds, load it directly.
         trackGoogleBeginFiling({
+          filingId,
           isTester,
           emails: [accountEmail, showOptionalEmail ? email.trim() : null],
         });
@@ -145,6 +146,7 @@ export function GuestStartLaunch({
         const href = hrefWithAttribution(rawHref, window.location.search);
         const filingId = filingIdFromWizardPath(href);
         trackGoogleBeginFiling({
+          filingId,
           isTester,
           emails: [accountEmail, showOptionalEmail ? email.trim() : null],
         });

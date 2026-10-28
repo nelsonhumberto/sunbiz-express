@@ -14,9 +14,6 @@ const DISALLOW = [
   '/es/guides/florida-llc-operating-agreement/download',
   // Sample files live under /oa/<unguessable>/. Disallow the prefix, not the secret directory.
   '/oa/',
-  // Ad landing pages. noindex in metadata as well. Not for organic search.
-  '/lp/',
-  '/es/lp/',
 ];
 
 // AI / LLM crawlers we explicitly welcome for Generative Engine Optimization

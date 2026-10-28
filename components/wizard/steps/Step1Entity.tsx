@@ -5,6 +5,7 @@ import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   trackEvent,
+  trackGoogleBeginFiling,
   wizardEntitySelectedProperties,
   wizardStep1ContinueProperties,
 } from '@/lib/analytics';
@@ -29,11 +30,13 @@ export function Step1Entity({
   needsGuestEmail = false,
   initialGuestEmail = '',
   pendingAccountEmail = '',
+  isTester = false,
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
   initialGuestEmail?: string;
   pendingAccountEmail?: string;
+  isTester?: boolean;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -112,6 +115,12 @@ export function Step1Entity({
         setEmailError(res.error ?? null);
         return res;
       }
+      trackGoogleBeginFiling({
+        filingId: filing.id,
+        isTester,
+        isTest: filing.isTest,
+        emails: [guestEmail, initialGuestEmail, pendingAccountEmail],
+      });
       router.push(`/wizard/${filing.id}/2`);
     });
   };

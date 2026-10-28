@@ -27,12 +27,18 @@ export type ChecklistSignupResult =
 export async function captureChecklistSignup(
   input: z.input<typeof Input>,
 ): Promise<ChecklistSignupResult> {
-  if (!isSignupCaptureEnabled()) return { ok: false, error: 'disabled' };
+  if (!isSignupCaptureEnabled()) {
+    console.error('[checklist-signup] refused', { reason: 'disabled' });
+    return { ok: false, error: 'disabled' };
+  }
 
   if (isSignupHoneypot(input.website)) return { ok: true };
 
   const limited = checkActionRateLimit('checklist-signup', 8, 10 * 60 * 1000);
-  if (limited) return { ok: false, error: 'generic' };
+  if (limited) {
+    console.error('[checklist-signup] refused', { reason: 'rate-limit' });
+    return { ok: false, error: 'generic' };
+  }
 
   const parsed = Input.safeParse(input);
   if (!parsed.success) {
@@ -57,7 +63,10 @@ export async function captureChecklistSignup(
       utm: getServerUtmAttribution(),
     });
   } catch (err) {
-    logger.error('captureChecklistSignup failed', { area: 'marketing', tag: 'checklist-signup' }, err);
+    const code =
+      err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code) : 'unknown';
+    console.error('[checklist-signup] refused', { reason: 'save-failed', code });
+    logger.error('captureChecklistSignup failed', { area: 'marketing', tag: 'checklist-signup', code });
     return { ok: false, error: 'generic' };
   }
 

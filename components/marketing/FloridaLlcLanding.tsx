@@ -153,7 +153,11 @@ export function FloridaLlcLanding({
         setPending(false);
         return;
       }
-      trackGoogleBeginFiling({ isTester, emails: [accountEmail, leadEmail] });
+      trackGoogleBeginFiling({
+        filingId: filingIdFromWizardPath(redirectTo),
+        isTester,
+        emails: [accountEmail, leadEmail],
+      });
       const nextHref = hrefWithAttribution(redirectTo, window.location.search || attributionSearch);
       await captureThenNavigate({
         events: startNavigationEvents({
@@ -176,7 +180,11 @@ export function FloridaLlcLanding({
     } catch (err) {
       const href = redirectHrefFromError(err);
       if (href) {
-        trackGoogleBeginFiling({ isTester, emails: [accountEmail, leadEmail] });
+        trackGoogleBeginFiling({
+          filingId: filingIdFromWizardPath(href),
+          isTester,
+          emails: [accountEmail, leadEmail],
+        });
         const nextHref = hrefWithAttribution(href, window.location.search);
         await captureThenNavigate({
           events: startNavigationEvents({

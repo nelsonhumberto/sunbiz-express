@@ -36,7 +36,8 @@ describe('Florida LLC ad landing', () => {
     for (const rule of list) {
       const disallow = rule.disallow;
       const paths = Array.isArray(disallow) ? disallow : [disallow];
-      expect(paths).toEqual(expect.arrayContaining(['/lp/', '/es/lp/']));
+      expect(paths).not.toContain('/lp/');
+      expect(paths).not.toContain('/es/lp/');
     }
   });
 

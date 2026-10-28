@@ -5,9 +5,9 @@
  * NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL (already set in production).
  *
  * Begin Filing uses NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING.
- * That variable is not in the repo or in the Vercel project. The conversion
- * is not sent until the label from the Begin Filing action is placed there.
- * Do not invent a label.
+ * Production sets that variable. The hit is once per filing
+ * (localStorage lf_ads_begin:{id}), value 1 USD. The label stays in env.
+ * Do not hardcode it.
  *
  * Preview verification: on a Vercel preview deployment, add `?lf_ads_debug=1`.
  * A suppressed test hit is logged and not sent. A real hit is sent and logged.
@@ -19,6 +19,7 @@ export const PURCHASE_LABEL_ENV = 'NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL';
 export const ADS_ID_ENV = 'NEXT_PUBLIC_GOOGLE_ADS_ID';
 export const ADS_DEBUG_PARAM = 'lf_ads_debug';
 export const PURCHASE_CONVERSION_PREFIX = 'lf_ads_purchase:';
+export const BEGIN_CONVERSION_PREFIX = 'lf_ads_begin:';
 
 const QA_LAUNCHFORMA = /^qa\+.*@launchforma\.com$/i;
 
@@ -41,6 +42,17 @@ export function shouldSuppressAdsConversion(input: AdsSuppressionInput): boolean
 
 export function purchaseConversionStorageKey(transactionId: string): string {
   return `${PURCHASE_CONVERSION_PREFIX}${transactionId}`;
+}
+
+export function beginConversionStorageKey(filingId: string): string {
+  return `${BEGIN_CONVERSION_PREFIX}${filingId}`;
+}
+
+/** Begin Filing is 1 USD. An empty filing id cannot be deduped, so it is not sent. */
+export function beginFilingPayload(filingId: string | null | undefined): GtagPurchasePayload | null {
+  const transactionId = filingId?.trim() ?? '';
+  if (!transactionId) return null;
+  return { transaction_id: transactionId, value: 1, currency: 'USD' };
 }
 
 /** `?lf_ads_debug=1` logs the gtag payload. Preview deployments only. */

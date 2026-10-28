@@ -28,6 +28,7 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
+import { stampQaLaunchformaGuest } from '@/lib/qa-guest';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
@@ -165,6 +166,11 @@ export async function startGuestFiling(
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    await stampQaLaunchformaGuest({
+      userId: session.user.id,
+      filingId: filing.id,
+      emails: [session.user.email],
+    });
     return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
 
@@ -227,6 +233,11 @@ export async function startGuestFiling(
     },
   });
   await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+  await stampQaLaunchformaGuest({
+    userId: guestUser.id,
+    filingId: filing.id,
+    emails: [email, guestUser.email],
+  });
 
   return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
 }
@@ -327,6 +338,11 @@ export async function openGuestDraft(input: {
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    await stampQaLaunchformaGuest({
+      userId: session.user.id,
+      filingId: filing.id,
+      emails: [session.user.email, optionalEmail],
+    });
     return await finishGuestDraft(`/wizard/${filing.id}/2`, locale, input.returnRedirect);
   }
 
@@ -468,6 +484,11 @@ export async function openGuestDraft(input: {
     });
     filingId = filing.id;
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
+    await stampQaLaunchformaGuest({
+      userId,
+      filingId: filing.id,
+      emails: [optionalEmail, guestRecord?.email],
+    });
     if (guestRecord) {
       await rememberStartEmail(
         guestRecord,

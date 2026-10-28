@@ -3,9 +3,13 @@
 import { useEffect, useRef } from 'react';
 import {
   checkoutFunnelEventProperties,
+  checkoutPaidAlreadySent,
   checkoutSuccessAlreadyViewed,
   identifyUser,
+  markCheckoutPaidSent,
   markCheckoutSuccessViewed,
+  markPurchaseCompletedSent,
+  purchaseCompletedAlreadySent,
   purchaseCompletedEventProperties,
   trackEvent,
   trackPurchaseCompleted,
@@ -90,7 +94,7 @@ export function CheckoutConversionTracker({
         }),
       );
     }
-    trackEvent('checkout_paid', {
+    const paidProps = {
       ...purchaseCompletedEventProperties({
         filingId,
         amountCents,
@@ -100,18 +104,15 @@ export function CheckoutConversionTracker({
         tier,
       }),
       ...utmProps,
-    });
-    trackPurchaseCompleted({
-      ...purchaseCompletedEventProperties({
-        filingId,
-        amountCents,
-        currency,
-        state,
-        entityType,
-        tier,
-      }),
-      ...utmProps,
-    });
+    };
+    if (filingId && !checkoutPaidAlreadySent(filingId)) {
+      trackEvent('checkout_paid', paidProps);
+      markCheckoutPaidSent(filingId);
+    }
+    if (filingId && !purchaseCompletedAlreadySent(filingId)) {
+      trackPurchaseCompleted(paidProps);
+      markPurchaseCompletedSent(filingId);
+    }
 
     // GA4 + Google Ads conversion (no-op when gtag/env not configured).
     if (filingId && typeof amountCents === 'number') {

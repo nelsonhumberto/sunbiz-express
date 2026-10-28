@@ -10,7 +10,7 @@ import {
   serializeAdsConsentCookie,
   shouldShowCookieNotice,
 } from '@/lib/ad-consent';
-import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import { AD_OPT_OUT_EVENT, isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import { localizedHref } from '@/lib/locale-paths';
 
 const COOKIE_BAR_VAR = '--lf-cookie-h';
@@ -23,26 +23,42 @@ export function CookieConsentBar() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const show = shouldShowCookieNotice({
-      consent: readAdsConsent(document.cookie),
-      optedOut: isClientAdMeasurementOptedOut(),
-    });
-    if (!show) return;
     let cancelled = false;
-    const reveal = () => {
-      if (!cancelled) setOpen(true);
+    let idle = 0;
+    let fallback = 0;
+    const evaluate = (immediate: boolean) => {
+      const show = shouldShowCookieNotice({
+        consent: readAdsConsent(document.cookie),
+        optedOut: isClientAdMeasurementOptedOut(),
+      });
+      if (!show) {
+        setOpen(false);
+        return;
+      }
+      if (immediate) {
+        setOpen(true);
+        return;
+      }
+      const reveal = () => {
+        if (!cancelled) setOpen(true);
+      };
+      const handle = window.requestIdleCallback?.(reveal, { timeout: 600 });
+      idle = handle ?? 0;
+      fallback =
+        handle == null
+          ? window.setTimeout(reveal, 0)
+          : window.setTimeout(() => {
+              /* idle callback covers the reveal */
+            }, 0);
     };
-    const idle = window.requestIdleCallback?.(reveal, { timeout: 600 });
-    const fallback =
-      idle == null
-        ? window.setTimeout(reveal, 0)
-        : window.setTimeout(() => {
-            /* idle callback covers the reveal */
-          }, 0);
+    evaluate(false);
+    const onOptOut = () => evaluate(true);
+    window.addEventListener(AD_OPT_OUT_EVENT, onOptOut);
     return () => {
       cancelled = true;
-      if (idle != null) window.cancelIdleCallback?.(idle);
+      if (idle) window.cancelIdleCallback?.(idle);
       window.clearTimeout(fallback);
+      window.removeEventListener(AD_OPT_OUT_EVENT, onOptOut);
     };
   }, []);
 
@@ -78,10 +94,10 @@ export function CookieConsentBar() {
       data-testid="cookie-consent"
       role="region"
       aria-label={t('label')}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-3 py-1.5"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-2 py-1"
     >
-      <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="min-w-0 flex-1 basis-[12rem] text-[13px] leading-snug text-ink">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-2 gap-y-0.5">
+        <p className="min-w-0 flex-1 basis-full text-[12px] leading-tight text-ink sm:basis-auto">
           {t('body')}{' '}
           <a
             href={localizedHref('/privacy', locale)}

@@ -304,6 +304,16 @@ describe('tearDownAdMeasurement', () => {
 
     expect(removed).toEqual([gtm, gaInline, pixel]);
   });
+
+  it('does not create a gtag stub or dataLayer when Essential only never loaded tags', () => {
+    for (const key of envKeys) previous[key] = process.env[key];
+    const win = {} as Window & Record<string, unknown>;
+    vi.stubGlobal('window', win);
+    vi.stubGlobal('document', { querySelectorAll: () => [] });
+    tearDownAdMeasurement();
+    expect(win.gtag).toBeUndefined();
+    expect(win.dataLayer).toBeUndefined();
+  });
 });
 
 describe('privacy policy text', () => {

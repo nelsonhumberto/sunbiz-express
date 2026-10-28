@@ -56,6 +56,11 @@ describe('internal PostHog traffic', () => {
     expect(analytics).toContain('client.identify(userId, traits)');
     expect(analytics).toContain('is_internal: true');
     expect(analytics).toContain('client.setPersonProperties?.({ is_internal: true })');
+    expect(analytics).toContain('client.register({ is_test: true, is_internal: true })');
+    expect(analytics).toContain('client.setPersonProperties?.({ is_test: true, is_internal: true })');
+    const testerFlag = readFileSync('components/analytics/TesterTrafficFlag.tsx', 'utf8');
+    expect(testerFlag).toContain('markTesterTraffic');
+    expect(readFileSync('app/layout.tsx', 'utf8')).toContain('<TesterTrafficFlag');
 
     const browser = readFileSync('lib/posthog-browser.ts', 'utf8');
     expect(browser).toContain("POSTHOG_ENV === 'production'");

@@ -189,6 +189,8 @@ function disableOpenAiPixel(): void {
 }
 
 function neutralizeGtag(): void {
+  // Essential-only never loaded a tag. Do not invent a stub or a dataLayer.
+  if (typeof window.gtag !== 'function') return;
   window.gtag = function () {};
 }
 

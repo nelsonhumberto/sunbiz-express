@@ -71,7 +71,15 @@ export async function consumeLoginLink(token: string) {
     where: { tokenHash },
     select: {
       user: {
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, accountStatus: true },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          accountStatus: true,
+          isTester: true,
+        },
       },
     },
   });

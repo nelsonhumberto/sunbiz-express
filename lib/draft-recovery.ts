@@ -629,13 +629,31 @@ async function runResumeDrip(now: number) {
   return { scanned, sent, skipped, failed };
 }
 
+/** Why a claimed resume send must not go out. Paid wins over a status change. */
+export function resumeSendHoldReason(input: {
+  paid: boolean;
+  status: string;
+}): 'paid' | 'not-draft' | null {
+  if (input.paid) return 'paid';
+  if (input.status !== 'DRAFT') return 'not-draft';
+  return null;
+}
+
 /** Re-checked immediately before the provider call, after the send is claimed. */
-async function resumeDraftHasSucceededPayment(filingId: string): Promise<boolean> {
-  const payment = await prisma.payment.findFirst({
-    where: { filingId, status: 'SUCCEEDED' },
-    select: { id: true },
+async function resumeSendBlocked(filingId: string): Promise<boolean> {
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: {
+      status: true,
+      payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+    },
   });
-  return payment != null;
+  return (
+    resumeSendHoldReason({
+      paid: (filing?.payments.length ?? 0) > 0,
+      status: filing?.status ?? '',
+    }) != null
+  );
 }
 
 async function attemptResumeDraft(
@@ -731,7 +749,7 @@ async function attemptResumeDraft(
       });
       if (!claim.ok) return 'skipped';
 
-      if (await resumeDraftHasSucceededPayment(draft.id)) {
+      if (await resumeSendBlocked(draft.id)) {
         await prisma.emailNotification.update({
           where: { id: claim.id },
           data: { status: 'SKIPPED', errorMessage: 'Paid before send.' },

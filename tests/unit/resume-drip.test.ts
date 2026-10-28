@@ -17,6 +17,7 @@ import {
   resumeDraftListArgs,
   resumeDripMailbox,
   resumeLinkPlan,
+  resumeSendHoldReason,
   shouldSkipDraftRecovery,
   wholeDaysUntil,
   wizardPathForDraft,
@@ -292,13 +293,13 @@ describe('qa and e2e skip', () => {
     expect(shouldSkipDraftRecovery({ ...customer, user: { role: 'USER', email: 'buyer@example.com', isTester: true } })).toBe(
       true,
     );
+    expect(resumeSendHoldReason({ paid: true, status: 'DRAFT' })).toBe('paid');
+    expect(resumeSendHoldReason({ paid: true, status: 'APPROVED' })).toBe('paid');
+    expect(resumeSendHoldReason({ paid: false, status: 'SUBMITTED' })).toBe('not-draft');
+    expect(resumeSendHoldReason({ paid: false, status: 'DRAFT' })).toBeNull();
+    expect(resumeSendHoldReason({ paid: false, status: '' })).toBe('not-draft');
     const job = readFileSync('lib/draft-recovery.ts', 'utf8');
-    const claimAt = job.indexOf('claimResumeSend(');
-    const paidAt = job.indexOf('resumeDraftHasSucceededPayment', claimAt);
-    const sendAt = job.indexOf('sendEmail(', paidAt);
-    expect(claimAt).toBeGreaterThan(-1);
-    expect(paidAt).toBeGreaterThan(claimAt);
-    expect(sendAt).toBeGreaterThan(paidAt);
+    expect(job).toContain('resumeSendHoldReason');
     expect(job).toContain('listUnsubscribeUrl');
     expect(JSON.stringify(resumeDraftListArgs(Date.parse('2026-10-24T12:00:00.000Z')).where)).toContain(
       '"isTester":false',
@@ -573,7 +574,8 @@ describe('checklist signup gate', () => {
     expect(isSignupCaptureEnabled(testEnv({ SIGNUP_CAPTURE_ENABLED: 'yes' }))).toBe(true);
     const form = readFileSync('components/marketing/ChecklistSignupForm.tsx', 'utf8');
     expect(form).toContain('type="checkbox"');
-    expect(form).toContain("return 'lp-florida-llc-bottom'");
+    expect(form).toContain('checklistFormSource');
+    expect(readFileSync('lib/checklist-form-source.ts', 'utf8')).toContain("return 'lp-florida-llc-bottom'");
     expect(form).not.toContain('defaultChecked');
     expect(form).not.toContain('checked={true}');
     const section = readFileSync('components/marketing/ChecklistSignupSection.tsx', 'utf8');

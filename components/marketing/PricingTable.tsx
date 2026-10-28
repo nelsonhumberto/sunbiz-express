@@ -167,6 +167,7 @@ export function PricingTable({
                         trackCtaClicked('pricing_choose', {
                           tier: tier.slug,
                           state: bookableCode,
+                          location: 'pricing',
                         })
                       }
                     >

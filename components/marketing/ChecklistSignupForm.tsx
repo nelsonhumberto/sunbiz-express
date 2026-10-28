@@ -6,15 +6,9 @@ import { useLocale } from 'next-intl';
 import { CheckCircle2, Mail } from 'lucide-react';
 import { captureChecklistSignup } from '@/actions/checklist-signup';
 import { Button } from '@/components/ui/button';
+import { checklistFormSource } from '@/lib/checklist-form-source';
 import { checklistCopy, type DripLocale } from '@/lib/drip-copy';
 import { localizedHref } from '@/lib/locale-paths';
-
-/** The sitewide form sits under the ad landing page. Tag that submit apart from the hero form. */
-export function checklistFormSource(pathname: string): string | undefined {
-  const path = pathname.split('?')[0] ?? pathname;
-  if (path === '/lp/florida-llc' || path === '/es/lp/llc-florida') return 'lp-florida-llc-bottom';
-  return undefined;
-}
 
 export function ChecklistSignupForm() {
   const locale = useLocale();

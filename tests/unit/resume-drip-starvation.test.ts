@@ -4,6 +4,7 @@ const filingFindMany = vi.hoisted(() => vi.fn());
 const noteFindMany = vi.hoisted(() => vi.fn());
 const noteCreate = vi.hoisted(() => vi.fn());
 const optOutFind = vi.hoisted(() => vi.fn());
+const paymentFindFirst = vi.hoisted(() => vi.fn());
 const sendEmail = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/db', () => ({
@@ -17,6 +18,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: vi.fn(),
     },
     marketingOptOut: { findUnique: optOutFind },
+    payment: { findFirst: paymentFindFirst },
   },
 }));
 
@@ -98,6 +100,7 @@ describe('resume drip starvation', () => {
       id: `ntf-${data.filingId}`,
     }));
     optOutFind.mockResolvedValue(null);
+    paymentFindFirst.mockResolvedValue(null);
     sendEmail.mockResolvedValue({ status: 'SENT' });
 
     const result = await runScheduledDraftRecovery(NOW);

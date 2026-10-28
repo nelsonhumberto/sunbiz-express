@@ -1,8 +1,8 @@
-# Abandoned-cart reminder (DRAFT, do not send)
+# Abandoned-cart reminder
 
-This copy is a draft only. It is not wired to any email job. The live resume sequence stays on the existing templates.
+This is the RESUME_1H email in the existing recovery cron. The sentences below are the approved copy. The live email reads the Essential total from `lib/pricing.ts` instead of a hardcoded price.
 
-No new prices, no countdown, no scarcity. The $199 figure below is the current Essential Florida LLC total and must be read from `lib/pricing.ts` before anyone sends this.
+No new prices, no countdown, no scarcity. The $199 figure below is the current Essential Florida LLC total.
 
 ## English
 

@@ -51,10 +51,12 @@ export function buildResumeEmail(args: {
   const paragraphs = copy.paragraphs
     .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
     .join('');
+  const ctaLink = `<a class="cta" href="${escapeHtml(resumeUrl)}">${escapeHtml(copy.cta)}</a>`;
+  const message =
+    args.step === 'RESUME_1H' ? `${ctaLink}\n${paragraphs}\n${ctaLink}` : `${paragraphs}\n${ctaLink}`;
   const inner = `${preheader(copy.preview)}
 <p>${escapeHtml(frame.greeting(args.firstName))}</p>
-${paragraphs}
-<a class="cta" href="${escapeHtml(resumeUrl)}">${escapeHtml(copy.cta)}</a>
+${message}
 <p>${escapeHtml(frame.thanks)}<br/>${escapeHtml(frame.team)}</p>
 ${footerBlock({
   reason: frame.reason,

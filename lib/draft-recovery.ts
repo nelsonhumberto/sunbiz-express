@@ -7,7 +7,7 @@
 import { prisma } from './db';
 import { renderTemplate, sendEmail, type NotificationType } from './email';
 import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
-import { readTypedGuestEmail } from './guest-identity';
+import { readGuestAsideEmails } from './guest-identity';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
 import { hrefForLocale } from './app-href';
 import { isSpanishPublicPath } from './locale-paths';
@@ -40,7 +40,7 @@ export interface RecoveryDraft {
   isTest: boolean;
   adminArchivedAt: Date | null;
   userArchivedAt: Date | null;
-  user: { role: string; email: string };
+  user: { role: string; email: string; isTester?: boolean };
 }
 
 /** Exact mailboxes the recovery jobs never mail. Compared after trim, lowercasing, and plus-tag removal. */
@@ -101,8 +101,9 @@ export function resumeDripMailbox(
 ): string | null {
   const direct = (userEmail ?? '').trim().toLowerCase();
   if (direct && isDeliverableEmail(direct)) return direct;
-  const typed = readTypedGuestEmail(optionalDetails);
-  if (typed && isDeliverableEmail(typed)) return typed;
+  for (const aside of readGuestAsideEmails(optionalDetails)) {
+    if (isDeliverableEmail(aside)) return aside;
+  }
   return null;
 }
 
@@ -193,6 +194,7 @@ function resumeRecipientFilter() {
 
 export function shouldSkipDraftRecovery(draft: RecoveryDraft): boolean {
   if (draft.isTest) return true;
+  if (draft.user.isTester) return true;
   if (draft.adminArchivedAt || draft.userArchivedAt) return true;
   if (draft.user.role === 'ADMIN') return true;
   const email = draft.user.email.trim().toLowerCase();
@@ -324,6 +326,10 @@ export const RESUME_DRIP_MAX_AGE_HOURS = 96;
 
 /**
  * About 1 hour, 1 day, and 3 days after a draft goes idle.
+ * RESUME_1H is the abandoned-cart note. The cron is not hourly, so the
+ * send is the next of the four daily runs after the draft has been idle
+ * at least 1 hour. The longest gap is 02:00 to 13:00 UTC, so the real
+ * wait is about 1 hour to about 12 hours.
  * RESUME_1H is 1 to 24 hours and RESUME_1D is 24 to 72 hours.
  * RESUME_3D stays open from 72 to 96 hours so the four daily crons can send it.
  * An older backlog matches no step, so it cannot receive the 1 hour email.
@@ -556,6 +562,7 @@ export function resumeDraftListArgs(now: number) {
       payments: { none: { status: 'SUCCEEDED' as const } },
       user: {
         role: { not: 'ADMIN' as const },
+        isTester: false,
         accountStatus: { not: 'DELETED' as const },
         AND: [
           ...recoverySkipFilters({ placeholderDomain: false }),
@@ -622,6 +629,15 @@ async function runResumeDrip(now: number) {
   return { scanned, sent, skipped, failed };
 }
 
+/** Re-checked immediately before the provider call, after the send is claimed. */
+async function resumeDraftHasSucceededPayment(filingId: string): Promise<boolean> {
+  const payment = await prisma.payment.findFirst({
+    where: { filingId, status: 'SUCCEEDED' },
+    select: { id: true },
+  });
+  return payment != null;
+}
+
 async function attemptResumeDraft(
   draft: {
     id: string;
@@ -644,6 +660,7 @@ async function attemptResumeDraft(
       accountStatus: string;
       guestToken: string | null;
       locale: string | null;
+      isTester?: boolean;
     };
   },
   now: number,
@@ -713,6 +730,14 @@ async function attemptResumeDraft(
         nowMs: now,
       });
       if (!claim.ok) return 'skipped';
+
+      if (await resumeDraftHasSucceededPayment(draft.id)) {
+        await prisma.emailNotification.update({
+          where: { id: claim.id },
+          data: { status: 'SKIPPED', errorMessage: 'Paid before send.' },
+        });
+        return 'skipped';
+      }
 
       const delivery = await sendEmail({
         type: decision.send,

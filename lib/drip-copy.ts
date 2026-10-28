@@ -5,8 +5,12 @@
  * No em dashes.
  */
 
+import { tierPriceParts } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
+
 export type DripLocale = 'es' | 'en';
 export type ResumeStepId = 'RESUME_1H' | 'RESUME_1D' | 'RESUME_3D';
+type LaterResumeStepId = Exclude<ResumeStepId, 'RESUME_1H'>;
 
 export const DRIP_MAILING_ADDRESS =
   '14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016';
@@ -27,16 +31,40 @@ export interface ResumeFrameCopy {
   address: string;
 }
 
-const RESUME_EN: Record<ResumeStepId, ResumeStepCopy> = {
-  RESUME_1H: {
-    subject: 'Your LaunchForma order is saved',
-    preview: 'Your details are saved, so you can finish whenever you are ready.',
+function essentialTotalLabel(): string {
+  return formatCurrency(tierPriceParts('BASIC', 'LLC', 'FL').totalCents);
+}
+
+/** Approved abandoned-cart copy. The dollar amount is the live Essential total. */
+function abandonedCartCopy(locale: DripLocale): ResumeStepCopy {
+  const total = essentialTotalLabel();
+  if (locale === 'es') {
+    return {
+      subject: 'Tu borrador de LLC en Florida sigue abierto',
+      preview: 'El nombre que escribiste está guardado. Puedes terminarlo cuando quieras.',
+      paragraphs: [
+        'Empezaste una LLC en Florida con LaunchForma y guardamos el borrador.',
+        `Esencial cuesta ${total} todo incluido, y ese total incluye la tarifa estatal de Florida. Presentamos ante el estado en 1 día hábil después del pago. El tiempo de aprobación lo decide el estado.`,
+        'Cuando quieras seguir, abre el borrador desde el enlace de este correo. Puedes cambiar el nombre de la empresa antes de que hagamos el registro.',
+        'LaunchForma es un servicio privado de presentación, no una agencia del gobierno.',
+      ],
+      cta: 'Terminar mi LLC',
+    };
+  }
+  return {
+    subject: 'Your Florida LLC draft is still open',
+    preview: 'The name you entered is saved. You can finish when you are ready.',
     paragraphs: [
-      'You started setting up your business with LaunchForma, and we saved your progress. Nothing is lost.',
-      'When you have a few minutes, you can jump back in and finish from the same step.',
+      'You started a Florida LLC with LaunchForma and we saved the draft.',
+      `Essential is ${total} all-in, and that total includes the Florida state filing fee. We file with the state within 1 business day of checkout. Approval timing is up to the state.`,
+      'When you want to continue, open the draft from the link in this email. You can change the company name before we file.',
+      'LaunchForma is a private filing service, not a government agency.',
     ],
-    cta: 'Resume my order',
-  },
+    cta: 'Finish my LLC',
+  };
+}
+
+const RESUME_EN: Record<LaterResumeStepId, ResumeStepCopy> = {
   RESUME_1D: {
     subject: 'Still thinking it over?',
     preview: 'Have a question before you finish? Just reply to this email.',
@@ -57,16 +85,7 @@ const RESUME_EN: Record<ResumeStepId, ResumeStepCopy> = {
   },
 };
 
-const RESUME_ES: Record<ResumeStepId, ResumeStepCopy> = {
-  RESUME_1H: {
-    subject: 'Tu pedido de LaunchForma está guardado',
-    preview: 'Tus datos están guardados, así que puedes terminar cuando quieras.',
-    paragraphs: [
-      'Empezaste a configurar tu negocio con LaunchForma y guardamos tu progreso. No se ha perdido nada.',
-      'Cuando tengas unos minutos, puedes volver y terminar desde el mismo paso.',
-    ],
-    cta: 'Reanudar mi pedido',
-  },
+const RESUME_ES: Record<LaterResumeStepId, ResumeStepCopy> = {
   RESUME_1D: {
     subject: '¿Sigues pensándolo?',
     preview: '¿Tienes alguna pregunta antes de terminar? Solo responde a este correo.',
@@ -108,6 +127,7 @@ const FRAME_ES: ResumeFrameCopy = {
 };
 
 export function resumeStepCopy(step: ResumeStepId, locale: DripLocale): ResumeStepCopy {
+  if (step === 'RESUME_1H') return abandonedCartCopy(locale);
   return locale === 'en' ? RESUME_EN[step] : RESUME_ES[step];
 }
 

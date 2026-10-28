@@ -95,27 +95,77 @@ export function firstWeekdayMorningEt(after: Date): Date {
   throw new Error('No weekday morning within two weeks');
 }
 
-export function newsletterIssueSchedule(confirmedAt: Date): { issue001: Date; issue002: Date } {
+export function newsletterIssueSchedule(confirmedAt: Date): {
+  issue001: Date;
+  issue002: Date;
+  issue003: Date;
+  issue004: Date;
+} {
   const issue001 = firstWeekdayMorningEt(confirmedAt);
-  return { issue001, issue002: addEtDays(issue001, 7) };
+  const issue002 = addEtDays(issue001, 7);
+  const issue003 = addEtDays(issue002, 7);
+  const issue004 = addEtDays(issue003, 7);
+  return { issue001, issue002, issue003, issue004 };
 }
 
-export type NewsletterIssueNumber = '001' | '002';
+/** Whole America/New_York calendar days from earlier to later. The same day is 0. */
+export function etCalendarDaysBetween(earlier: Date, later: Date): number {
+  const start = etParts(earlier);
+  const end = etParts(later);
+  const startUtc = Date.UTC(start.year, start.month - 1, start.day);
+  const endUtc = Date.UTC(end.year, end.month - 1, end.day);
+  return Math.round((endUtc - startUtc) / 86_400_000);
+}
+
+export type NewsletterIssueNumber = '001' | '002' | '003' | '004';
+
+export function normalizeNewsletterIssue(value: string | null | undefined): NewsletterIssueNumber {
+  if (value === '002' || value === '003' || value === '004') return value;
+  return '001';
+}
 
 /**
  * 001 on the first weekday morning after confirm. 002 one week after that
  * slot. If 001 has not gone out, 002 waits even when its date has passed.
+ *
+ * 003 is due on a weekday morning once 7 Eastern calendar days have passed
+ * since that subscriber's own 002 send. 004 uses the same gap after their
+ * 003 send. The confirm-date slots are not used for 003 or 004, so a deploy
+ * cannot hand someone who is already past 002 both new issues at once.
  */
 export function newsletterDueIssue(input: {
   now: Date;
   confirmedAt: Date;
   sent001: boolean;
   sent002: boolean;
+  sent003?: boolean;
+  sent004?: boolean;
+  sent002At?: Date | null;
+  sent003At?: Date | null;
 }): NewsletterIssueNumber | null {
   if (!isEtWeekdayMorning(input.now)) return null;
   const { issue001, issue002 } = newsletterIssueSchedule(input.confirmedAt);
   if (!input.sent001 && input.now.getTime() >= issue001.getTime()) return '001';
   if (input.sent001 && !input.sent002 && input.now.getTime() >= issue002.getTime()) return '002';
+  if (
+    input.sent001 &&
+    input.sent002 &&
+    !input.sent003 &&
+    input.sent002At &&
+    etCalendarDaysBetween(input.sent002At, input.now) >= 7
+  ) {
+    return '003';
+  }
+  if (
+    input.sent001 &&
+    input.sent002 &&
+    input.sent003 &&
+    !input.sent004 &&
+    input.sent003At &&
+    etCalendarDaysBetween(input.sent003At, input.now) >= 7
+  ) {
+    return '004';
+  }
   return null;
 }
 
@@ -140,6 +190,8 @@ export interface NewsletterSection {
   bulletLead?: string;
   bullets?: readonly string[];
   after?: string;
+  /** Paragraphs after the bullets. Used when a section has a link under the list. */
+  closing?: readonly string[];
 }
 
 export interface NewsletterIssueCopy {
@@ -254,6 +306,96 @@ const ISSUE_002_EN: NewsletterIssueCopy = {
   address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
 };
 
+const ISSUE_003_EN: NewsletterIssueCopy = {
+  number: '003',
+  subject: 'Get your EIN the right way',
+  preview:
+    'How to get the EIN issued by the IRS for your company, plus a federal tax date to put on your calendar.',
+  greeting: 'Hi there,',
+  intro: 'Here are two quick things for this week, and then you can get back to building.',
+  sections: [
+    {
+      title: "This week's tip: get your EIN straight from the IRS",
+      paragraphs: [
+        'An EIN (Employer Identification Number) is like a tax ID for your company. Banks, payment apps, and payroll services usually ask for it, even if you have no employees.',
+      ],
+      bulletLead: 'A few easy habits:',
+      bullets: [
+        'Apply on the official IRS website, irs.gov. Your EIN is issued by the IRS.',
+        "Have your company's legal name and formation date handy before you start.",
+        'Save the confirmation letter as a PDF in the same folder as your formation documents.',
+      ],
+      after:
+        'Watch out for look-alike sites that are not irs.gov. Always check the web address before you enter your details.',
+    },
+    {
+      title: 'Deadline reminder: federal estimated taxes',
+      paragraphs: [
+        'If you pay quarterly estimated taxes, the last payment for 2026 is due January 15, 2027. Add it to your calendar with a reminder a week or two ahead.',
+        'Ask your accountant whether you need to make estimated payments and how much.',
+      ],
+    },
+  ],
+  closerTitle: 'Need a hand?',
+  closerBody: 'Still planning your company? We handle the state filing for you, fully online.',
+  cta: 'Start your company with LaunchForma',
+  ctaPath: '/',
+  signoff: 'Talk soon,',
+  team: 'The LaunchForma Team',
+  disclaimer: 'This email is general information, not legal or tax advice.',
+  reason: 'You are receiving this because you signed up for LaunchForma updates.',
+  unsubscribe: 'Unsubscribe',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
+};
+
+const ISSUE_004_EN: NewsletterIssueCopy = {
+  number: '004',
+  subject: 'Keep your business money in its own lane',
+  preview:
+    'Why a separate business bank account helps, plus the 1099 form to know about if you pay contractors.',
+  greeting: 'Hi there,',
+  intro: 'Here are two quick things for this week, and then you can get back to building.',
+  sections: [
+    {
+      title: "This week's tip: keep business and personal money apart",
+      paragraphs: [
+        "Once your company is formed, open a bank account in the company's name and run all business money through it. Many banks ask for your formation documents and your EIN, so have those ready.",
+      ],
+      bulletLead: 'A few easy habits:',
+      bullets: [
+        'Pay business bills from the business account or a business card only.',
+        'When you pay yourself, move the money as a clear, labeled transfer.',
+        'Skip using the business card for personal buys, even small ones.',
+      ],
+    },
+    {
+      title: 'Why it helps:',
+      paragraphs: [],
+      bullets: [
+        'Your records stay clean, so tax time is simpler.',
+        'You can see at a glance how the business is really doing.',
+      ],
+      after: 'Ask your accountant how they want you to pay yourself from the company.',
+    },
+    {
+      title: 'Deadline reminder: 1099 forms for contractors',
+      paragraphs: [
+        'Did your company pay a freelancer or contractor this year? You may need to send them a Form 1099-NEC. For 2026 payments, it is due to both the contractor and the IRS by February 1, 2027 (January 31 falls on a Sunday). Check irs.gov for the rules, and start collecting each contractor\'s W-9 now so it is easy.',
+      ],
+    },
+  ],
+  closerTitle: 'Still planning your company?',
+  closerBody: 'Grab our free LLC checklist. It walks you through the main steps of forming an LLC.',
+  cta: 'Get the free checklist',
+  ctaPath: '/checklist',
+  signoff: 'Talk soon,',
+  team: 'The LaunchForma Team',
+  disclaimer: 'This email is general information, not legal or tax advice.',
+  reason: 'You are receiving this because you signed up for LaunchForma updates.',
+  unsubscribe: 'Unsubscribe',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
+};
+
 const ISSUE_001_ES: NewsletterIssueCopy = {
   number: '001',
   subject: 'Un hábito pequeño que mantiene limpia tu empresa nueva',
@@ -346,13 +488,125 @@ const ISSUE_002_ES: NewsletterIssueCopy = {
   address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
 };
 
-const BY_LOCALE: Record<DripLocale, Record<NewsletterIssueNumber, NewsletterIssueCopy>> = {
-  en: { '001': ISSUE_001_EN, '002': ISSUE_002_EN },
-  es: { '001': ISSUE_001_ES, '002': ISSUE_002_ES },
+const ISSUE_003_ES: NewsletterIssueCopy = {
+  number: '003',
+  subject: 'Obtén tu EIN de la forma correcta',
+  preview:
+    'Cómo obtener el EIN que emite el IRS para tu empresa, y una fecha de impuestos federales para anotar en tu calendario.',
+  greeting: 'Hola,',
+  intro: 'Aquí van dos cosas rápidas de esta semana, y luego puedes volver a construir tu negocio.',
+  sections: [
+    {
+      title: 'El consejo de esta semana: obtén tu EIN directamente con el IRS',
+      paragraphs: [
+        'El EIN (Número de Identificación del Empleador) es como un número de identificación fiscal para tu empresa. Los bancos, las apps de pagos y los servicios de nómina suelen pedirlo, aunque no tengas empleados.',
+      ],
+      bulletLead: 'Algunos hábitos sencillos:',
+      bullets: [
+        'Haz la solicitud en el sitio oficial del IRS, irs.gov. El EIN lo emite el IRS.',
+        'Ten a la mano el nombre legal de tu empresa y su fecha de formación antes de empezar.',
+        'Guarda la carta de confirmación en PDF, en la misma carpeta que tus documentos de formación.',
+      ],
+      after:
+        'Cuidado con los sitios que se parecen al del IRS pero no son irs.gov. Revisa siempre la dirección web antes de escribir tus datos.',
+      closing: [
+        'Más información en el IRS: [Obtener un número de identificación del empleador (EIN)](https://www.irs.gov/es/businesses/small-businesses-self-employed/get-an-employer-identification-number)',
+      ],
+    },
+    {
+      title: 'Recordatorio de fecha límite: impuestos estimados federales',
+      paragraphs: [
+        'Si pagas impuestos estimados cada trimestre, el último pago de 2026 vence el 15 de enero de 2027. Anótalo en tu calendario con un recordatorio una o dos semanas antes.',
+        'Consulta con quien lleva tu contabilidad si necesitas hacer pagos estimados y de cuánto. Más detalles en el IRS: [Preguntas frecuentes sobre el impuesto estimado](https://www.irs.gov/es/faqs/estimated-tax)',
+      ],
+    },
+  ],
+  closerTitle: '¿Necesitas una mano?',
+  closerBody: '¿Todavía estás planeando tu empresa? Nos encargamos del trámite estatal por ti, todo en línea.',
+  cta: 'Forma tu empresa con LaunchForma',
+  ctaPath: '/es',
+  signoff: 'Hasta pronto,',
+  team: 'El equipo de LaunchForma',
+  disclaimer: 'Este correo es información general, no asesoría legal ni fiscal.',
+  reason: 'Recibes este correo porque te suscribiste a las novedades de LaunchForma.',
+  unsubscribe: 'Cancelar suscripción',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
 };
 
+const ISSUE_004_ES: NewsletterIssueCopy = {
+  number: '004',
+  subject: 'Dale al dinero de tu negocio su propio carril',
+  preview:
+    'Por qué ayuda tener una cuenta bancaria separada para tu negocio, y el formulario 1099 que debes conocer si le pagas a personas que contratas por servicios.',
+  greeting: 'Hola,',
+  intro: 'Aquí van dos cosas rápidas de esta semana, y luego puedes volver a construir tu negocio.',
+  sections: [
+    {
+      title: 'El consejo de esta semana: separa el dinero del negocio y el personal',
+      paragraphs: [
+        'Cuando tu empresa esté formada, abre una cuenta bancaria a nombre de la empresa y pasa por ella todo el dinero del negocio. Muchos bancos piden tus documentos de formación y tu EIN, así que tenlos listos.',
+      ],
+      bulletLead: 'Algunos hábitos sencillos:',
+      bullets: [
+        'Paga las cuentas del negocio solo desde la cuenta o una tarjeta del negocio.',
+        'Cuando te pagues a ti, hazlo con una transferencia clara y con su descripción.',
+        'No uses la tarjeta del negocio para compras personales, aunque sean pequeñas.',
+      ],
+    },
+    {
+      title: 'Por qué ayuda:',
+      paragraphs: [],
+      bullets: [
+        'Tus registros se mantienen en orden, y la temporada de impuestos es más sencilla.',
+        'Ves de un vistazo cómo le está yendo de verdad al negocio.',
+      ],
+      after: 'Consulta con quien lleva tu contabilidad cómo prefiere que te pagues desde la empresa.',
+    },
+    {
+      title: 'Recordatorio de fecha límite: formularios 1099 por pagos a quienes contratas',
+      paragraphs: [
+        '¿Tu empresa le pagó a alguien que trabaja por su cuenta o por contrato este año? Es posible que tengas que enviarle un Formulario 1099-NEC. Para los pagos de 2026, vence el 1 de febrero de 2027 tanto para entregarlo a quien contrataste como para presentarlo al IRS (el 31 de enero cae domingo). Revisa las reglas en el IRS: [Acerca del Formulario 1099-NEC](https://www.irs.gov/es/forms-pubs/about-form-1099-nec). Y empieza ya a pedirle el W-9 a cada persona que contrates para que todo sea más fácil.',
+      ],
+    },
+  ],
+  closerTitle: '¿Todavía estás planeando tu empresa?',
+  closerBody:
+    'Descarga nuestra lista de verificación para tu LLC, sin costo. Te guía por los pasos principales para formar una LLC.',
+  cta: 'Obtén la lista de verificación',
+  ctaPath: '/es/checklist',
+  signoff: 'Hasta pronto,',
+  team: 'El equipo de LaunchForma',
+  disclaimer: 'Este correo es información general, no asesoría legal ni fiscal.',
+  reason: 'Recibes este correo porque te suscribiste a las novedades de LaunchForma.',
+  unsubscribe: 'Cancelar suscripción',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
+};
+
+const EN_ISSUES: Record<NewsletterIssueNumber, NewsletterIssueCopy> = {
+  '001': ISSUE_001_EN,
+  '002': ISSUE_002_EN,
+  '003': ISSUE_003_EN,
+  '004': ISSUE_004_EN,
+};
+
+const ES_ISSUES: Record<NewsletterIssueNumber, NewsletterIssueCopy> = {
+  '001': ISSUE_001_ES,
+  '002': ISSUE_002_ES,
+  '003': ISSUE_003_ES,
+  '004': ISSUE_004_ES,
+};
+
+/** es subscribers get the Spanish issue. Every other locale gets English. */
+export function newsletterDeliveryLocale(
+  number: NewsletterIssueNumber,
+  locale: DripLocale,
+): DripLocale {
+  return locale === 'es' && ES_ISSUES[number] ? 'es' : 'en';
+}
+
 export function newsletterIssueCopy(number: NewsletterIssueNumber, locale: DripLocale): NewsletterIssueCopy {
-  return BY_LOCALE[locale][number];
+  if (locale === 'es') return ES_ISSUES[number];
+  return EN_ISSUES[number];
 }
 
 /** Chosen subjects stored with the issues. Option 1 from each file. */
@@ -367,12 +621,22 @@ export const STORED_NEWSLETTER_ISSUES = [
     subject: ISSUE_002_EN.subject,
     preview: ISSUE_002_EN.preview,
   },
+  {
+    id: '003',
+    subject: ISSUE_003_EN.subject,
+    preview: ISSUE_003_EN.preview,
+  },
+  {
+    id: '004',
+    subject: ISSUE_004_EN.subject,
+    preview: ISSUE_004_EN.preview,
+  },
 ] as const;
 
 export function allNewsletterCopyText(): string {
   const chunks: string[] = [];
-  for (const locale of ['en', 'es'] as const) {
-    for (const number of ['001', '002'] as const) {
+  for (const number of ['001', '002', '003', '004'] as const) {
+    for (const locale of ['en', 'es'] as const) {
       const copy = newsletterIssueCopy(number, locale);
       chunks.push(
         copy.subject,
@@ -394,6 +658,7 @@ export function allNewsletterCopyText(): string {
         if (section.bulletLead) chunks.push(section.bulletLead);
         if (section.bullets) chunks.push(...section.bullets);
         if (section.after) chunks.push(section.after);
+        if (section.closing) chunks.push(...section.closing);
       }
     }
   }

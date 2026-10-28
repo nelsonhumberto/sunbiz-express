@@ -18,15 +18,33 @@ function preheader(text: string): string {
   return `<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(text)}</div>`;
 }
 
+/** Plain text, plus [label](https://...) links from the approved copy. */
+function inlineHtml(value: string): string {
+  const pattern = /\[([^\]\n]+)\]\((https:\/\/[^)\s]+)\)/g;
+  let html = '';
+  let last = 0;
+  for (const match of value.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    html += escapeHtml(value.slice(last, index));
+    const label = match[1] ?? '';
+    const href = match[2] ?? '';
+    html += `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`;
+    last = index + match[0].length;
+  }
+  html += escapeHtml(value.slice(last));
+  return html;
+}
+
 function sectionHtml(section: NewsletterSection): string {
-  const paragraphs = section.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join('');
-  const lead = section.bulletLead ? `<p>${escapeHtml(section.bulletLead)}</p>` : '';
+  const paragraphs = section.paragraphs.map((paragraph) => `<p>${inlineHtml(paragraph)}</p>`).join('');
+  const lead = section.bulletLead ? `<p>${inlineHtml(section.bulletLead)}</p>` : '';
   const bullets = section.bullets?.length
-    ? `<ul>${section.bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+    ? `<ul>${section.bullets.map((item) => `<li>${inlineHtml(item)}</li>`).join('')}</ul>`
     : '';
-  const after = section.after ? `<p>${escapeHtml(section.after)}</p>` : '';
+  const after = section.after ? `<p>${inlineHtml(section.after)}</p>` : '';
+  const closing = section.closing?.map((paragraph) => `<p>${inlineHtml(paragraph)}</p>`).join('') ?? '';
   const title = section.title ? `<h2>${escapeHtml(section.title)}</h2>` : '';
-  return `${title}${paragraphs}${lead}${bullets}${after}`;
+  return `${title}${paragraphs}${lead}${bullets}${after}${closing}`;
 }
 
 export function newsletterCtaUrl(path: string, siteUrl: string): string {

@@ -41,7 +41,8 @@ import { logger } from '@/lib/logger';
 //
 // When POST_FORMATION_SERIES_ENABLED is on, the same runs send the day 3,
 // day 14, and day 30 notes. When WEEKLY_NEWSLETTER_ENABLED is on, the
-// 13:00 UTC run (morning Eastern) sends issue 001 and 002. Both flags
+// 13:00 UTC run (morning Eastern) sends the next due weekly issue,
+// 001 through 004. Both flags
 // default off. The other three daily runs are outside the morning window,
 // so the newsletter job records a skip and does not send.
 // Their sent, skipped, and failed counts are added to the CronRun row.

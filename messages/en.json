@@ -263,6 +263,8 @@
     "allIn": "all-in",
     "filingFeeIncluded": "State filing fee included",
     "feeSplit": "Service fee {service} + {state} state fee {stateFee}",
+    "feeDetails": "Service and state fees",
+    "feeDetailsHide": "Hide service and state fees",
     "feeSplitCorp": "Corporation: Service fee {service} + {state} state fee {stateFee} ({total})",
     "corpGuide": "How to form a Florida corporation",
     "whatsIncluded": "What's included",

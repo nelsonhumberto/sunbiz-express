@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Check, Minus, ShieldCheck, Sparkles } from 'lucide-react';
@@ -14,6 +14,7 @@ import {
 } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
+import { hrefWithAttribution } from '@/lib/preserve-attribution';
 import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState, isActiveFormationState } from '@/lib/formation-states';
@@ -28,6 +29,8 @@ interface PricingTableProps {
   feeNote?: string;
   /** Optional link under the fee note. Used on /pricing for the state-fee guide. */
   feeNoteLink?: { href: string; label: string };
+  /** Current page query, so plan links keep utm and gclid on the first paint. */
+  attributionSearch?: string;
 }
 
 const FEATURE_KEYS: Record<string, string> = {
@@ -65,8 +68,14 @@ export function PricingTable({
   state = FLORIDA,
   feeNote,
   feeNoteLink,
+  attributionSearch: attributionFromServer = '',
 }: PricingTableProps) {
   const t = useTranslations('pricing');
+  const [attributionSearch, setAttributionSearch] = useState(attributionFromServer);
+  useEffect(() => {
+    if (attributionFromServer) return;
+    setAttributionSearch(window.location.search);
+  }, [attributionFromServer]);
   const oaGuideHref = '/guides/florida-llc-operating-agreement';
   const bookableCode = isActiveFormationState(state.code) ? state.code : 'FL';
   const formationState = getFormationState(bookableCode);
@@ -99,22 +108,18 @@ export function PricingTable({
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {TIERS.map((tier, i) => {
+          {TIERS.map((tier) => {
             const tierName = t(`tier_${tier.slug}` as never);
             const tierDesc = t(`tier_${tier.slug}_desc` as never);
             const prices = tierPrice(tier.slug);
             return (
-              <motion.div
+              <div
                 key={tier.slug}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
                 className={cn(
                   'relative rounded-2xl bg-white border transition-all duration-300',
                   tier.recommended
                     ? 'border-primary shadow-glow lg:scale-[1.03] lg:-mt-2'
-                    : 'border-border shadow-soft hover:shadow-card hover:-translate-y-1'
+                    : 'border-border shadow-soft [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1'
                 )}
               >
                 {tier.ribbon && (
@@ -137,54 +142,27 @@ export function PricingTable({
                   </div>
                 )}
 
-                <div className="p-8">
+                <div className="p-5 sm:p-8">
                   <h3 className="font-display text-2xl font-medium">{tierName}</h3>
                   <p className="mt-1.5 text-sm text-ink-muted leading-snug min-h-[40px]">{tierDesc}</p>
-                  <div className="mt-6 flex items-baseline gap-1.5">
-                    <span className="font-display text-5xl font-medium">
-                      {formatCurrency(prices.llc)}
-                    </span>
-                    <span className="text-ink-subtle text-sm">{t('allIn')}</span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium leading-snug text-ink">
-                    {feeSplitLabel(t, prices.llcParts, formationState.name, tier.slug)}
-                  </p>
-                  {prices.corpDiffers && (
-                    <p className="mt-1 text-xs leading-snug text-ink-muted">
-                      {t(
-                        tierIncludesCertificateFees(tier.slug)
-                          ? 'feeSplitCorpWithCertificates'
-                          : 'feeSplitCorp',
-                        {
-                        service: formatCurrency(prices.corpParts.serviceCents),
-                        state: formationState.name,
-                        stateFee: formatCurrency(prices.corpParts.stateFeeCents),
-                        total: formatCurrency(prices.corp),
-                      })}
-                    </p>
-                  )}
-                  {formationState.code === 'FL' && tier.slug === 'BASIC' && prices.corpDiffers && (
-                    <p className="mt-1 text-xs leading-snug">
-                      <Link
-                        href="/guides/how-to-form-a-florida-corporation"
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {t('corpGuide')}
-                      </Link>
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-xs text-ink-subtle">
-                    {t(`bestFor_${tier.slug}` as never)}
-                  </p>
+                  <PlanFeeDetails
+                    tierSlug={tier.slug}
+                    prices={prices}
+                    stateName={formationState.name}
+                    showCorpGuide={formationState.code === 'FL' && tier.slug === 'BASIC' && prices.corpDiffers}
+                  />
 
                   <Button
                     asChild
                     size="lg"
                     variant={tier.recommended ? 'default' : 'outline'}
-                    className="mt-6 w-full"
+                    className="mt-4 w-full touch-manipulation active:scale-100"
                   >
                     <Link
-                      href={`/start?tier=${tier.slug}${bookableCode !== 'FL' ? `&state=${bookableCode}` : ''}`}
+                      href={hrefWithAttribution(
+                        `/start?tier=${tier.slug}${bookableCode !== 'FL' ? `&state=${bookableCode}` : ''}`,
+                        attributionSearch,
+                      )}
                       onClick={() =>
                         trackCtaClicked('pricing_choose', {
                           tier: tier.slug,
@@ -240,7 +218,7 @@ export function PricingTable({
                     })}
                   </ul>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
@@ -265,5 +243,69 @@ export function PricingTable({
         </div>
       </div>
     </section>
+  );
+}
+
+function PlanFeeDetails({
+  tierSlug,
+  prices,
+  stateName,
+  showCorpGuide,
+}: {
+  tierSlug: TierSlug;
+  prices: {
+    llc: number;
+    corp: number;
+    corpDiffers: boolean;
+    llcParts: { serviceCents: number; stateFeeCents: number };
+    corpParts: { serviceCents: number; stateFeeCents: number };
+  };
+  stateName: string;
+  showCorpGuide: boolean;
+}) {
+  const t = useTranslations('pricing');
+  const [open, setOpen] = useState(false);
+  const detailsId = `fee-details-${tierSlug}`;
+  return (
+    <>
+      <div className="mt-4 flex items-baseline gap-1.5">
+        <span className="font-display text-5xl font-medium tracking-tight">
+          {formatCurrency(prices.llc)}
+        </span>
+        <span className="text-sm text-ink-subtle">{t('allIn')}</span>
+      </div>
+      <p className="mt-1.5 text-xs text-ink-subtle">{t(`bestFor_${tierSlug}` as never)}</p>
+      <button
+        type="button"
+        className="mt-2 inline-flex min-h-11 items-center text-left text-sm font-medium text-primary underline-offset-2 hover:underline"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? t('feeDetailsHide') : t('feeDetails')}
+      </button>
+      <div id={detailsId} hidden={!open} className="mt-2 space-y-1">
+        <p className="text-sm font-medium leading-snug text-ink">
+          {feeSplitLabel(t, prices.llcParts, stateName, tierSlug)}
+        </p>
+        {prices.corpDiffers && (
+          <p className="text-xs leading-snug text-ink-muted">
+            {t(tierIncludesCertificateFees(tierSlug) ? 'feeSplitCorpWithCertificates' : 'feeSplitCorp', {
+              service: formatCurrency(prices.corpParts.serviceCents),
+              state: stateName,
+              stateFee: formatCurrency(prices.corpParts.stateFeeCents),
+              total: formatCurrency(prices.corp),
+            })}
+          </p>
+        )}
+        {showCorpGuide && (
+          <p className="text-xs leading-snug">
+            <Link href="/guides/how-to-form-a-florida-corporation" className="font-medium text-primary hover:underline">
+              {t('corpGuide')}
+            </Link>
+          </p>
+        )}
+      </div>
+    </>
   );
 }

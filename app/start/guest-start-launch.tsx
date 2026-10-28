@@ -16,7 +16,10 @@ import {
   withActionTimeout,
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
-import { captureThenNavigate, filingIdFromWizardPath, startNavigationEvents } from '@/lib/analytics';
+import { captureThenNavigate, filingIdFromWizardPath, startNavigationEvents, trackGoogleBeginFiling } from '@/lib/analytics';
+import { tierPackagePriceCents } from '@/lib/pricing';
+import { hrefWithAttribution } from '@/lib/preserve-attribution';
+import { formatCurrency } from '@/lib/utils';
 import { isDeliverableEmail } from '@/lib/email-address';
 import { startNameIsAcceptable } from '@/lib/start-draft';
 
@@ -42,6 +45,8 @@ export function GuestStartLaunch({
   defaultBusinessName,
   stateName,
   showOptionalEmail,
+  accountEmail,
+  isTester,
 }: {
   defaultState: 'FL' | 'WY' | 'DE';
   defaultEntity: EntityChoice;
@@ -49,8 +54,12 @@ export function GuestStartLaunch({
   defaultBusinessName?: string;
   stateName: string;
   showOptionalEmail: boolean;
+  accountEmail?: string | null;
+  isTester?: boolean;
 }) {
   const t = useTranslations('start');
+  const tPricing = useTranslations('pricing');
+  const tHero = useTranslations('hero');
   const router = useRouter();
   const locale = useLocale() === 'es' ? 'es' : 'en';
   const [pending, setPending] = useState(false);
@@ -100,12 +109,16 @@ export function GuestStartLaunch({
         return;
       }
       if (result?.redirectTo) {
-        const redirectTo = result.redirectTo;
+        const redirectTo = hrefWithAttribution(result.redirectTo, window.location.search);
         const filingId = filingIdFromWizardPath(redirectTo);
         // The action response already stored the guest cookie. Pushing the
         // localized path keeps that cookie and does not unload the page, so
         // the PostHog requests can finish. If the path is unchanged after
         // 4 seconds, load it directly.
+        trackGoogleBeginFiling({
+          isTester,
+          emails: [accountEmail, showOptionalEmail ? email.trim() : null],
+        });
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
@@ -127,9 +140,14 @@ export function GuestStartLaunch({
         setPending(false);
       }
     } catch (err) {
-      const href = redirectHrefFromError(err);
-      if (href) {
+      const rawHref = redirectHrefFromError(err);
+      if (rawHref) {
+        const href = hrefWithAttribution(rawHref, window.location.search);
         const filingId = filingIdFromWizardPath(href);
+        trackGoogleBeginFiling({
+          isTester,
+          emails: [accountEmail, showOptionalEmail ? email.trim() : null],
+        });
         await captureThenNavigate({
           events: startNavigationEvents({ filingId, locale, entity }),
           navigate: () => {
@@ -173,10 +191,12 @@ export function GuestStartLaunch({
     void run({ businessName: trimmed });
   }
 
+  const essentialPrice = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+
   return (
-    <div className="space-y-4 sm:space-y-8">
+    <div className="space-y-3 sm:space-y-8">
       <div className="space-y-1 text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">{t('kicker')}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary sm:text-xs">{t('kicker')}</p>
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight">
           {t('headline', { state: stateName, entity: entityLabel })}
         </h1>
@@ -185,6 +205,15 @@ export function GuestStartLaunch({
 
       <Card>
         <CardContent className="p-4 sm:p-6 md:p-8">
+          <p data-testid="start-value" className="mb-3 text-center text-xs leading-snug text-ink">
+            {essentialPrice} {tPricing('allIn')}
+            {' · '}
+            {tHero('previewBankReadyDetail')}
+            {' · '}
+            {tPricing('feat_sameDay')}
+            {' · '}
+            {tPricing('serviceGuarantee')}
+          </p>
           {choice ? (
             <div role="status" className="space-y-3 text-sm">
               <p className="font-medium">{t('existingDraftTitle')}</p>
@@ -220,7 +249,7 @@ export function GuestStartLaunch({
               </div>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-3" noValidate>
+            <form onSubmit={onSubmit} className="space-y-2" noValidate>
               <div className="space-y-1.5 text-left">
                 <Label htmlFor="businessName">{nameLabel}</Label>
                 <Input
@@ -257,6 +286,33 @@ export function GuestStartLaunch({
                 {entity === 'LLC' ? t('switchToCorp') : t('switchToLlc')}
               </button>
 
+              {(formError || nameError) && (
+                <p
+                  id="start-name-error"
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                >
+                  {formError || nameError}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full h-12 text-base"
+                disabled={pending}
+                aria-disabled={pending}
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('starting')}
+                  </>
+                ) : (
+                  t('continue')
+                )}
+              </Button>
+
               {showOptionalEmail && (
                 <div className="space-y-1.5 text-left">
                   <Label htmlFor="start-email">{t('emailOptional')}</Label>
@@ -287,33 +343,6 @@ export function GuestStartLaunch({
                   )}
                 </div>
               )}
-
-              {(formError || nameError) && (
-                <p
-                  id="start-name-error"
-                  role="alert"
-                  className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-                >
-                  {formError || nameError}
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full h-12 text-base"
-                disabled={pending}
-                aria-disabled={pending}
-              >
-                {pending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('starting')}
-                  </>
-                ) : (
-                  t('continue')
-                )}
-              </Button>
             </form>
           )}
         </CardContent>

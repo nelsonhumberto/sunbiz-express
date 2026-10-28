@@ -7,6 +7,7 @@ import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { COPYRIGHT_YEAR } from '@/lib/constants';
+import { adsActorForUser } from '@/lib/ads-actor';
 import { GuestStartLaunch } from './guest-start-launch';
 import { ACTIVE_MARKETING_STATES, localizedStateName } from '@/lib/marketing-states';
 import {
@@ -83,23 +84,20 @@ export default async function StartPage({ searchParams }: StartPageProps) {
   const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
   const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
   const session = await auth();
+  const actor = await adsActorForUser(session?.user?.id, session?.user?.email);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      <header className="container py-3 sm:py-6 flex items-center justify-between">
+      <header className="container py-2 sm:py-6 flex items-center justify-between">
         <Logo />
         <Link href="/sign-in" className="text-sm text-ink-muted hover:text-primary">
           {t('signInLink')}
         </Link>
       </header>
 
-      <div className="container max-w-lg">
-        <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
-      </div>
-
-      <main className="flex-1 container max-w-lg py-4 sm:py-10">
+      <main className="flex-1 container max-w-lg py-2 sm:py-10">
         {stateNote ? (
-          <p role="status" className="mb-4 text-sm text-ink-muted text-center">
+          <p role="status" className="mb-2 text-sm text-ink-muted text-center">
             {stateNote}
           </p>
         ) : null}
@@ -110,9 +108,15 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           defaultBusinessName={normalizeNameCheckQuery(searchParams?.name) || undefined}
           stateName={stateName}
           showOptionalEmail={!session?.user?.id}
+          accountEmail={actor.email}
+          isTester={actor.isTester}
         />
 
-        <p className="text-xs text-ink-subtle text-center mt-6 max-w-md mx-auto leading-relaxed">
+        <div className="mt-4">
+          <GovDisclosure variant="prominent" text={tDisc('notAffiliated')} />
+        </div>
+
+        <p className="text-xs text-ink-subtle text-center mt-4 max-w-md mx-auto leading-relaxed">
           {t('termsPrefix')}{' '}
           <Link href="/terms" className="underline hover:text-ink-muted">
             {t('terms')}

@@ -203,7 +203,7 @@ describe('openGuestDraft navigation', () => {
     expect(filingCreate).not.toHaveBeenCalled();
   });
 
-  it('is only called from the /start client', () => {
+  it('is only called from the start form and the Florida LLC ad landing', () => {
     const files: string[] = [];
     for (const dir of ['app', 'components', 'actions', 'lib']) {
       walk(dir, files);
@@ -214,6 +214,7 @@ describe('openGuestDraft navigation', () => {
     expect(callers.sort()).toEqual([
       'actions/guest-start.ts',
       'app/start/guest-start-launch.tsx',
+      'components/marketing/FloridaLlcLanding.tsx',
     ]);
     const launch = readFileSync('app/start/guest-start-launch.tsx', 'utf8');
     expect(launch).toContain('returnRedirect: true');

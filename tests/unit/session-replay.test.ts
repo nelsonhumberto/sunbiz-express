@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SESSION_REPLAY_BLOCKED_EXACT,
   SESSION_REPLAY_BLOCKED_MEDIA,
+  SESSION_REPLAY_BLOCKED_NESTED,
   SESSION_REPLAY_BLOCKED_PREFIXES,
   canonicalReplayPath,
   isSessionReplayBlockedPath,
@@ -36,11 +37,9 @@ const blocked = [
   '/admin/users',
   '/es/admin',
   '/es/admin/drafts',
-  '/start',
-  '/start/',
-  '/start?state=FL&name=Acme',
-  '/es/start',
-  '/es/start?state=FL',
+  '/start/extra',
+  '/start/guest',
+  '/es/start/extra',
   '/wizard/filing_1/1',
   '/wizard/filing_1/11',
   '/wizard/filing_1/11?addon=ein',
@@ -83,6 +82,15 @@ const allowed = [
   '/pricing',
   '/pricing?utm_source=google#tiers',
   '/es/pricing',
+  '/start',
+  '/start/',
+  '/start?state=FL&name=Acme',
+  '/es/start',
+  '/es/start?state=FL',
+  '/lp/florida-llc',
+  '/lp/florida-llc?utm_source=google&gclid=abc',
+  '/es/lp/llc-florida',
+  '/es/lp/llc-florida?gclid=abc',
   '/business-services',
   '/business-services/thank-you',
   '/es/business-services/thank-you',
@@ -137,8 +145,13 @@ describe('session replay routes', () => {
       '/admin',
       '/wizard',
       '/checkout',
-      '/start',
     ]);
+    expect(SESSION_REPLAY_BLOCKED_NESTED).toEqual(['/start']);
+    expect(isSessionReplayBlockedPath('/start')).toBe(false);
+    expect(isSessionReplayBlockedPath('/es/start')).toBe(false);
+    expect(isSessionReplayBlockedPath('/start/anything')).toBe(true);
+    expect(isSessionReplayBlockedPath('/lp/florida-llc')).toBe(false);
+    expect(isSessionReplayBlockedPath('/es/lp/llc-florida')).toBe(false);
     expect(SESSION_REPLAY_BLOCKED_EXACT).toEqual([
       '/sign-in',
       '/sign-up',
@@ -246,6 +259,15 @@ describe('syncSessionReplay', () => {
     expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(2);
     at('/');
     expect(posthog.startSessionRecording).toHaveBeenCalledTimes(2);
+
+    at('/start');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(2);
+    at('/wizard/filing_1/1');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(3);
+    at('/es/start');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(3);
+    at('/pricing');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(3);
   });
 
   it('remembers a blocked landing and resumes only after leaving it', async () => {
@@ -283,5 +305,46 @@ describe('syncSessionReplay', () => {
     history.pushState({}, '', '/faq');
     expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
     expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
+  });
+
+  it('records a /start landing and stops when the wizard opens', async () => {
+    const location = { pathname: '/start', search: '', protocol: 'https:' };
+    const history = { pushState: vi.fn(), replaceState: vi.fn() };
+    vi.stubGlobal('window', {
+      location,
+      navigator: { userAgent: 'Mozilla/5.0' },
+      localStorage: { getItem: () => null, setItem: () => undefined },
+      history,
+      addEventListener: vi.fn(),
+    });
+    vi.stubGlobal('document', { cookie: '' });
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_test';
+    process.env.NEXT_PUBLIC_VERCEL_ENV = 'production';
+    posthog.__loaded = false;
+    posthog.init.mockImplementation(() => {
+      posthog.__loaded = true;
+    });
+
+    const { syncSessionReplay } = await import('@/lib/posthog-browser');
+    expect(posthog.init).toHaveBeenCalledWith(
+      'phc_test',
+      expect.objectContaining({
+        disable_session_recording: false,
+        capture_exceptions: true,
+      }),
+    );
+
+    location.pathname = '/wizard/filing_1/2';
+    syncSessionReplay('/wizard/filing_1/2');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+
+    location.pathname = '/es/start';
+    syncSessionReplay('/es/start');
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+
+    location.pathname = '/lp/florida-llc';
+    syncSessionReplay('/lp/florida-llc');
+    expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+    expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
   });
 });

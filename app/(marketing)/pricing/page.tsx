@@ -12,11 +12,12 @@ import { floridaOnlyNote, type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withLocaleMeta } from '@/lib/locale-seo';
 import { formatCurrency } from '@/lib/utils';
+import { searchParamsToQueryString } from '@/lib/utm';
 
 const FL_LLC_FROM = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
 interface PricingPageProps {
-  searchParams?: { state?: string | string[] };
+  searchParams?: Record<string, string | string[] | undefined>;
 }
 
 function pickFirst(value: string | string[] | undefined): string | undefined {
@@ -95,17 +96,17 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
         })}
       />
       <JsonLd data={faqPageJsonLd(faqItems)} />
-      <section className="relative overflow-hidden pt-16 pb-8">
+      <section className="relative overflow-hidden pt-4 pb-1 md:pt-16 md:pb-8">
         <div className="container max-w-3xl text-center">
           <span className="text-xs font-semibold uppercase tracking-wider text-primary">
             {t('kicker')}
           </span>
-          <h1 className="mt-3 font-display text-5xl md:text-6xl font-medium tracking-tight">
+          <h1 className="mt-1 font-display text-3xl leading-tight md:mt-3 md:text-6xl font-medium tracking-tight">
             {state.availability === 'active'
               ? t('pageHeadline', { state: stateName })
               : t('headline')}
           </h1>
-          <p className="mt-6 text-lg text-ink-muted leading-relaxed">{t('subhead')}</p>
+          <p className="mt-2 text-sm leading-snug text-ink-muted md:mt-6 md:text-lg md:leading-relaxed">{t('subhead')}</p>
           {stateNote ? (
             <p role="status" className="mt-4 text-sm text-ink-muted">
               {stateNote}
@@ -115,6 +116,8 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       </section>
       <PricingTable
         showHeader={false}
+        className="py-4 md:py-28"
+        attributionSearch={searchParamsToQueryString(searchParams)}
         state={state}
         feeNote={state.code === 'FL' ? t('floridaBundledStateFees') : undefined}
         feeNoteLink={

@@ -263,6 +263,8 @@
     "allIn": "todo incluido",
     "filingFeeIncluded": "Tarifa estatal incluida",
     "feeSplit": "Tarifa de servicio {service} + tarifa estatal de {state} {stateFee}",
+    "feeDetails": "Tarifas de servicio y del estado",
+    "feeDetailsHide": "Ocultar tarifas de servicio y del estado",
     "feeSplitCorp": "Corporación: tarifa de servicio {service} + tarifa estatal de {state} {stateFee} ({total})",
     "corpGuide": "Cómo formar una corporación en Florida",
     "whatsIncluded": "Qué incluye",

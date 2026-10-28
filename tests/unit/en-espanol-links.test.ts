@@ -6,6 +6,7 @@ import {
   EN_GUIDES_INDEX_SPANISH_LINKS,
   SPANISH_GUIDE_BROWARD,
   SPANISH_GUIDE_LLC_APP,
+  SPANISH_GUIDE_LLC_EXTRANJEROS,
   SPANISH_GUIDE_LLC_SIN_SSN,
   SPANISH_GUIDE_LLC_VS_SOLE,
   SPANISH_GUIDE_MIAMI,
@@ -15,6 +16,7 @@ import es from '../../messages/es.json';
 describe('En español links', () => {
   it('points only at real Spanish guide titles', () => {
     expect(SPANISH_GUIDE_LLC_SIN_SSN.label).toBe(es.guideLlcSinSsn.title);
+    expect(SPANISH_GUIDE_LLC_EXTRANJEROS.label).toBe(es.guideLlcExtranjeros.title);
     expect(SPANISH_GUIDE_MIAMI.label).toBe(es.guideMiamiBtr.title);
     expect(SPANISH_GUIDE_BROWARD.label).toBe(es.guideBrowardBtr.title);
     expect(SPANISH_GUIDE_LLC_VS_SOLE.label).toBe(es.guideLlcVsSole.title);
@@ -25,7 +27,7 @@ describe('En español links', () => {
       expect(existsSync(`app/(marketing)/guides/${slug}/page.tsx`), link.href).toBe(true);
       expect(link.href.startsWith('/es/guides/')).toBe(true);
     }
-    expect(EN_GUIDES_INDEX_SPANISH_LINKS).toHaveLength(5);
+    expect(EN_GUIDES_INDEX_SPANISH_LINKS).toHaveLength(6);
   });
 
   it('adds blocks only on the English pages that match a Spanish guide', () => {

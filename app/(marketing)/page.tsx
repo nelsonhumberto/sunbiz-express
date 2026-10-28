@@ -8,6 +8,7 @@ import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { SpanishSsnGuideLink } from '@/components/marketing/SpanishSsnGuideLink';
 import { AnnualReportSection } from '@/components/marketing/AnnualReportSection';
 import { ComingSoonLanding } from '@/components/marketing/ComingSoonLanding';
 import {
@@ -127,6 +128,7 @@ export default async function HomePage({
       <ComparisonTable />
       <AnnualReportSection state={state} />
       <FAQSection state={state} suppressJsonLd />
+      <SpanishSsnGuideLink />
       <CTABanner state={state} />
     </>
   );

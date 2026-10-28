@@ -112,6 +112,12 @@ export default async function GuidesHubPage() {
           readingMinutes: 7,
         },
         {
+          slug: 'costo-llc-florida',
+          title: t('costTitle'),
+          description: t('costDescription'),
+          readingMinutes: 6,
+        },
+        {
           slug: 'how-to-form-a-florida-corporation',
           title: t('corpTitle'),
           description: t('corpDescription'),
@@ -139,7 +145,13 @@ export default async function GuidesHubPage() {
           slug: 'llc-florida-sin-seguro-social',
           title: t('ssnTitle'),
           description: t('ssnDescription'),
-          readingMinutes: 8,
+          readingMinutes: 6,
+        },
+        {
+          slug: 'llc-florida-para-extranjeros',
+          title: t('foreignTitle'),
+          description: t('foreignDescription'),
+          readingMinutes: 7,
         },
         {
           slug: 'licencia-negocio-miami-dade',

@@ -19,6 +19,20 @@ for (const value of Object.values(routing.pathnames ?? {})) {
   ES_TO_EN_PATH[esPath] = enPath;
 }
 
+/**
+ * English guide -> Spanish slug (no `/es` prefix) when the slugs differ.
+ * This is not a rewrite alias: `/es/guides/costo-llc-florida` still renders
+ * `app/(marketing)/guides/costo-llc-florida`, and the English cost guide
+ * only links back through hreflang and the language switcher.
+ */
+const GUIDE_TWIN_SLUGS: Record<string, string> = {
+  '/guides/florida-llc-cost': '/guides/costo-llc-florida',
+};
+
+const GUIDE_TWIN_EN_BY_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(GUIDE_TWIN_SLUGS).map(([englishPath, spanishSlug]) => [spanishSlug, englishPath]),
+);
+
 function withoutTrailingSlash(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1);
   return pathname || '/';
@@ -45,7 +59,8 @@ export function localeQueryRedirect(
   const next = new URLSearchParams(searchParams.toString());
   next.delete('lang');
   const search = next.toString();
-  const path = lang === 'es' ? toSpanishUrl(pathname) : englishPathname(pathname);
+  const bare = englishPathname(pathname);
+  const path = lang === 'es' ? toSpanishUrl(pathname) : (GUIDE_TWIN_EN_BY_SLUG[bare] ?? bare);
   return { pathname: path, search };
 }
 
@@ -99,7 +114,7 @@ export function toSpanishUrl(englishPath: string): string {
   const query = queryAt === -1 ? '' : withoutHash.slice(queryAt);
   const rawPath = queryAt === -1 ? withoutHash : withoutHash.slice(0, queryAt);
   const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-  const localized = path === '/' ? '/' : (EN_TO_ES_SLUG[path] ?? path);
+  const localized = path === '/' ? '/' : (GUIDE_TWIN_SLUGS[path] ?? EN_TO_ES_SLUG[path] ?? path);
   const prefixed = localized === '/' ? '/es' : `/es${localized}`;
   return `${prefixed}${query}${hash}`;
 }
@@ -113,7 +128,8 @@ export function pathForLocale(pathname: string, locale: Locale): string {
   const query = queryAt === -1 ? '' : withoutHash.slice(queryAt);
   const path = queryAt === -1 ? withoutHash : withoutHash.slice(0, queryAt);
   const english = englishPathname(path || '/');
-  const next = locale === 'es' ? toSpanishUrl(english) : english;
+  const twinEnglish = locale === 'en' ? GUIDE_TWIN_EN_BY_SLUG[english] : undefined;
+  const next = twinEnglish ?? (locale === 'es' ? toSpanishUrl(english) : english);
   return `${next}${query}${hash}`;
 }
 

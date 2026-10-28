@@ -34,7 +34,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 const NAVIGATION_FALLBACK_MS = 4000;
 const VALID_TIERS = new Set<TierSlug>(['BASIC', 'STANDARD', 'PREMIUM']);
-/** Exact sentence from the Florida LLC cost guide. No Spanish twin exists in the repo. */
+/** Exact sentence from the English Florida LLC cost guide. The Spanish twin is /es/guides/costo-llc-florida. */
 export const MIAMI_LAKES_EN =
   'LaunchForma files Florida LLCs online from our Miami Lakes office.';
 

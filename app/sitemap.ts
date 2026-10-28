@@ -56,7 +56,7 @@ const STATIC_PAGES: PageDef[] = [
     file: 'app/(marketing)/guides/florida-llc-cost/page.tsx',
     changeFrequency: 'monthly',
     priority: 0.7,
-    englishOnly: true,
+    hreflang: true,
   },
   {
     path: '/guides/how-to-form-a-florida-corporation',
@@ -94,6 +94,13 @@ const STATIC_PAGES: PageDef[] = [
   {
     path: '/guides/llc-florida-sin-seguro-social',
     file: 'app/(marketing)/guides/llc-florida-sin-seguro-social/page.tsx',
+    changeFrequency: 'monthly',
+    priority: 0.7,
+    spanishOnly: true,
+  },
+  {
+    path: '/guides/llc-florida-para-extranjeros',
+    file: 'app/(marketing)/guides/llc-florida-para-extranjeros/page.tsx',
     changeFrequency: 'monthly',
     priority: 0.7,
     spanishOnly: true,

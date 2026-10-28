@@ -3,11 +3,19 @@ import { headers } from 'next/headers';
 import { permanentRedirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
+import { GuideValueBlock } from '@/components/marketing/GuideValueBlock';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { isSpanishPublicPath, PUBLIC_PATH_HEADER, toSpanishUrl } from '@/lib/locale-paths';
-import { spanishOnlyAlternates } from '@/lib/locale-seo';
+import { guideTwinAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
+
+type SpanishGuideMetaOptions = {
+  /** English article with a different slug. hreflang points there instead of omitting `en`. */
+  twinEnglishPath?: string;
+  /** Explicit index, follow. Spanish guides are indexable either way. */
+  indexable?: boolean;
+};
 
 /**
  * Spanish-only guide. The English path 308-redirects here so the sitemap
@@ -24,14 +32,19 @@ function redirectUnlessSpanish(englishPath: string) {
 export async function spanishGuideMetadata(
   englishPath: string,
   namespace: string,
+  options?: SpanishGuideMetaOptions,
 ): Promise<Metadata> {
   redirectUnlessSpanish(englishPath);
   const t = await getTranslations(namespace);
   const esPath = toSpanishUrl(englishPath);
+  const alternates = options?.twinEnglishPath
+    ? guideTwinAlternates(options.twinEnglishPath, esPath)
+    : spanishOnlyAlternates(esPath);
   return {
     title: pageTitle(t('metaTitle')),
     description: t('metaDescription'),
-    alternates: spanishOnlyAlternates(esPath),
+    alternates,
+    ...(options?.indexable ? { robots: { index: true, follow: true } } : {}),
     openGraph: {
       title: t('ogTitle'),
       description: t('ogDescription'),
@@ -47,11 +60,17 @@ export async function SpanishGuide({
   namespace,
   slug,
   readingMinutes,
+  showValue = false,
+  trackSource,
 }: {
   path: string;
   namespace: string;
   slug: string;
   readingMinutes: number;
+  /** Essential Florida LLC price, read from the pricing catalog. */
+  showValue?: boolean;
+  /** Public /es path for cta_clicked and scroll_depth. */
+  trackSource?: string;
 }) {
   redirectUnlessSpanish(path);
   const t = await getTranslations(namespace);
@@ -72,13 +91,18 @@ export async function SpanishGuide({
         topCta={{
           href: '/start',
           label: t('ctaLabel'),
+          location: 'hero',
+          source: trackSource,
         }}
         cta={{
           headline: t('ctaHeadline'),
           subhead: t('ctaSubhead'),
           href: '/start',
           label: t('ctaLabel'),
+          location: 'repeat',
+          source: trackSource,
         }}
+        afterLead={showValue ? <GuideValueBlock /> : null}
       >
         <MarkdownBody markdown={t('body')} locale="es" />
         <p className="not-prose text-xs text-ink-subtle mt-8">{t('disclaimer')}</p>

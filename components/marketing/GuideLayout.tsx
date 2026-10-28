@@ -2,8 +2,16 @@ import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRight, BookOpen, CalendarDays } from 'lucide-react';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { GuideScrollDepth, GuideTrackedCta } from '@/components/marketing/GuideTracking';
 import { JsonLd, articleJsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import { localizedHref } from '@/lib/locale-paths';
+
+type GuideCtaTrack = {
+  /** `hero` on the first button, `repeat` on the closing button. */
+  location?: 'hero' | 'repeat';
+  /** Public page path sent with `cta_clicked` and `scroll_depth`. */
+  source?: string;
+};
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
@@ -17,10 +25,12 @@ interface GuideLayoutProps {
   /** Reading-time estimate shown in the byline strip. */
   readingMinutes: number;
   children: React.ReactNode;
+  /** Rendered after the opening paragraph and before the top CTA. */
+  afterLead?: React.ReactNode;
   /** Optional CTA card text at the foot of the guide. */
-  cta?: { headline: string; subhead: string; href: string; label: string };
+  cta?: { headline: string; subhead: string; href: string; label: string } & GuideCtaTrack;
   /** Compact CTA rendered under the title, before the body. */
-  topCta?: { href: string; label: string };
+  topCta?: { href: string; label: string } & GuideCtaTrack;
   /** BCP 47 language for Article JSON-LD. Omitted on guides that do not set it. */
   inLanguage?: string;
 }
@@ -38,6 +48,7 @@ export async function GuideLayout({
   dateModified,
   readingMinutes,
   children,
+  afterLead,
   cta,
   topCta,
   inLanguage,
@@ -45,11 +56,17 @@ export async function GuideLayout({
   const locale = await getLocale();
   const t = await getTranslations('guidesChrome');
   const prefix = locale === 'es' ? '/es' : '';
+  const trackSource = topCta?.source || cta?.source;
+  const topClass =
+    'inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover';
+  const bottomClass =
+    'inline-flex items-center gap-2 mt-4 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors';
   const url = `${BASE_URL}${prefix}/guides/${slug}`;
   const homeUrl = locale === 'es' ? `${BASE_URL}/es` : BASE_URL;
   const guidesUrl = `${BASE_URL}${prefix}/guides`;
   return (
     <>
+      {trackSource ? <GuideScrollDepth source={trackSource} /> : null}
       <JsonLd
         data={articleJsonLd({
           headline: title,
@@ -88,31 +105,52 @@ export async function GuideLayout({
           <span>· {t('minRead', { minutes: readingMinutes })}</span>
         </p>
         <h1>{title}</h1>
+        <p className="lead text-lg text-ink-muted">{description}</p>
+        {afterLead}
         {topCta ? (
           <p className="not-prose mt-4 mb-2">
-            <Link
-              href={localizedHref(topCta.href, locale)}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
-            >
-              {topCta.label}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {topCta.source ? (
+              <GuideTrackedCta
+                href={localizedHref(topCta.href, locale)}
+                label={topCta.label}
+                className={topClass}
+                location={topCta.location ?? 'hero'}
+                source={topCta.source}
+              />
+            ) : (
+              <Link
+                href={localizedHref(topCta.href, locale)}
+                className={topClass}
+              >
+                {topCta.label}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </p>
         ) : null}
-        <p className="lead text-lg text-ink-muted">{description}</p>
         {children}
 
         {cta && (
           <div className="not-prose mt-12 rounded-2xl border border-primary/20 bg-primary/5 p-6">
             <h3 className="font-display text-xl font-medium">{cta.headline}</h3>
             <p className="mt-1 text-sm text-ink-muted">{cta.subhead}</p>
-            <Link
-              href={localizedHref(cta.href, locale)}
-              className="inline-flex items-center gap-2 mt-4 bg-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-primary-hover transition-colors"
-            >
-              {cta.label}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {cta.source ? (
+              <GuideTrackedCta
+                href={localizedHref(cta.href, locale)}
+                label={cta.label}
+                className={bottomClass}
+                location={cta.location ?? 'repeat'}
+                source={cta.source}
+              />
+            ) : (
+              <Link
+                href={localizedHref(cta.href, locale)}
+                className={bottomClass}
+              >
+                {cta.label}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         )}
       </article>

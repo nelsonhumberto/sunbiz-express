@@ -14,7 +14,9 @@ export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
 export const INDEXNOW_HOST = 'launchforma.com';
 
 export const INDEXNOW_URLS = [
+  'https://launchforma.com/es/guides/costo-llc-florida',
   'https://launchforma.com/es/guides/llc-florida-sin-seguro-social',
+  'https://launchforma.com/es/guides/llc-florida-para-extranjeros',
   'https://launchforma.com/es/guides/licencia-negocio-miami-dade',
   'https://launchforma.com/es/guides/licencia-negocio-broward',
   'https://launchforma.com/es/guides/llc-o-negocio-individual-florida',

@@ -16,7 +16,7 @@ describe('IndexNow', () => {
     expect(pkg.scripts.indexnow).toBe('node scripts/indexnow.mjs');
   });
 
-  it('POSTs the five Spanish guide URLs to api.indexnow.org', async () => {
+  it('POSTs the Spanish guide URLs to api.indexnow.org', async () => {
     const calls: Array<{ url: string; body: string }> = [];
     const fetchImpl: typeof fetch = async (url, init) => {
       const raw = init?.body;
@@ -28,7 +28,7 @@ describe('IndexNow', () => {
     };
     const result = await notifyIndexNow(INDEXNOW_URLS, fetchImpl);
     expect(result.status).toBe(202);
-    expect(result.count).toBe(5);
+    expect(result.count).toBe(7);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe(INDEXNOW_ENDPOINT);
     const body = JSON.parse(calls[0]?.body ?? '{}') as {
@@ -40,7 +40,9 @@ describe('IndexNow', () => {
     expect(body.host).toBe('launchforma.com');
     expect(body.keyLocation).toBe(`https://launchforma.com/${body.key}.txt`);
     expect(body.urlList).toEqual([
+      'https://launchforma.com/es/guides/costo-llc-florida',
       'https://launchforma.com/es/guides/llc-florida-sin-seguro-social',
+      'https://launchforma.com/es/guides/llc-florida-para-extranjeros',
       'https://launchforma.com/es/guides/licencia-negocio-miami-dade',
       'https://launchforma.com/es/guides/licencia-negocio-broward',
       'https://launchforma.com/es/guides/llc-o-negocio-individual-florida',

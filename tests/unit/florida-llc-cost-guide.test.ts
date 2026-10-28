@@ -60,10 +60,11 @@ describe('Florida LLC cost guide', () => {
     expect(page).toContain('dateModified={DATE_MODIFIED}');
     expect(page).toContain("const DATE_MODIFIED = '2026-10-26'");
     expect(page).toContain('faqPageJsonLd(FAQ)');
-    expect(page).toContain('englishOnlyAlternates(PATH)');
+    expect(page).toContain('buildLocaleAlternates(PATH)');
+    expect(page).toContain('permanentRedirect(toSpanishUrl(PATH))');
+    expect(page).not.toContain('englishOnlyAlternates');
     expect(page).toContain('title: { absolute: TITLE }');
     expect(page).not.toContain('withLocaleMeta');
-    expect(page).toContain("if (locale === 'es') permanentRedirect(PATH)");
     expect(page).toContain('General information only, not legal or tax advice.');
     expect(page).toContain('inLanguage="en"');
   });
@@ -155,13 +156,21 @@ describe('Florida LLC cost guide', () => {
     expect(readFileSync('components/marketing/FAQSection.tsx', 'utf8')).toContain('href={link.href}');
   });
 
-  it('lists the English URL in the sitemap and llms.txt, with no Spanish alternate', () => {
+  it('lists the English URL and the Spanish cost twin in the sitemap and llms.txt', () => {
     const entry = sitemap().find((item) => item.url === URL);
+    const spanishUrl = 'https://launchforma.com/es/guides/costo-llc-florida';
     expect(entry?.lastModified).toEqual(contentLastModified(PAGE));
-    expect(entry?.alternates).toBeUndefined();
+    expect(entry?.alternates?.languages).toEqual({
+      en: URL,
+      es: spanishUrl,
+      'x-default': URL,
+    });
     const urls = sitemap().map((item) => item.url);
     expect(urls).toContain(URL);
+    expect(urls).toContain(spanishUrl);
     expect(urls).not.toContain('https://launchforma.com/es/guides/florida-llc-cost');
+    const spanish = sitemap().find((item) => item.url === spanishUrl);
+    expect(spanish?.alternates?.languages).toEqual(entry?.alternates?.languages);
 
     const text = buildLlmsTxt();
     expect(text).toContain(

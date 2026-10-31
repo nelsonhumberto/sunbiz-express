@@ -22,6 +22,9 @@ describe('isTestPayment', () => {
       isTestPayment({ stripePaymentIntentId: 'pi_3Qabc', livemode: true }),
     ).toBe(false);
     expect(isTestPayment({ stripePaymentIntentId: 'pi_3Qabc' })).toBe(false);
+    expect(isTestPayment({ stripePaymentIntentId: 'pi_3Qabc', livemode: true, metadata: { isTest: 'true' } })).toBe(
+      true,
+    );
   });
 });
 

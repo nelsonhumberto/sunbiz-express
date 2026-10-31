@@ -14,6 +14,8 @@ import { checkNameAvailability as sunbizCheckName, SunbizError } from '@/lib/sun
 import { deliverEmailDirect } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { filingTestCreateFields } from '@/lib/qa-marker';
 import { summarizeFiling } from './redact';
 import {
   saveStep1,
@@ -173,6 +175,11 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
           };
         }
         if (ctx.actor) {
+          const qaMarked = qaMarkedFromRequest();
+          const owner = await prisma.user.findUnique({
+            where: { id: ctx.actor.id },
+            select: { isTester: true },
+          });
           const filing = await prisma.filing.create({
             data: {
               userId: ctx.actor.id,
@@ -183,7 +190,14 @@ export function buildAssistantTools(ctx: AssistantToolContext) {
               currentStep: args.businessName ? 3 : 2,
               completedSteps: JSON.stringify(args.businessName ? [1, 2] : [1]),
               ...filingUtmCreateFields(),
+              ...filingTestCreateFields({ qaMarked, isTester: owner?.isTester }),
             },
+          });
+          await stampQaLaunchformaGuest({
+            userId: ctx.actor.id,
+            filingId: filing.id,
+            emails: [ctx.actor.email],
+            qaMarked,
           });
           ctx.onWrite();
           return {

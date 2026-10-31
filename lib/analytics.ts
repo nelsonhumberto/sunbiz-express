@@ -708,11 +708,13 @@ export function trackGoogleLead(input?: { service?: string }) {
   if (isClientAdMeasurementOptedOut()) return;
   const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
   const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_LEAD;
+  const suppressConversion = shouldSuppressAdsConversion(suppressionInput({}));
   whenReady(
     () => typeof window.gtag === 'function',
     () => {
       if (isClientAdMeasurementOptedOut()) return;
       window.gtag('event', 'generate_lead', input?.service ? { service: input.service } : {});
+      if (suppressConversion || shouldSuppressAdsConversion(suppressionInput({}))) return;
       if (adsId && label) {
         window.gtag('event', 'conversion', {
           send_to: `${adsId}/${label}`,

@@ -9,7 +9,10 @@ import { formatCurrency } from '@/lib/utils';
 export function isTestPayment(input: {
   stripePaymentIntentId?: string | null;
   livemode?: boolean | null;
+  /** Stripe PaymentIntent metadata. `isTest=true` marks a QA charge. */
+  metadata?: { isTest?: string | null } | null;
 }): boolean {
+  if (input.metadata?.isTest === 'true') return true;
   const id = input.stripePaymentIntentId ?? '';
   if (id.startsWith('pi_mock_') || id.startsWith('TESTER_')) return true;
   return input.livemode === false;

@@ -143,7 +143,11 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
         stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
         amountCents,
         status: 'SUCCEEDED',
-        isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+        isTest: isTestPayment({
+          stripePaymentIntentId: pi.id,
+          livemode: pi.livemode,
+          metadata: pi.metadata,
+        }),
         stateFilingFeeCents: filing.stateFeeCents,
         formationServiceFeeCents: filing.serviceFeeCents,
         otherServicesCents: filing.addOnsTotalCents,

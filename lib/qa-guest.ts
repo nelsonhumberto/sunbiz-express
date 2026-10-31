@@ -7,7 +7,11 @@ import { QA_COOKIE, qaGuestStampPlan } from '@/lib/qa-marker';
 
 /** The browser asked for QA. Readable by server actions after the cookie is set. */
 export function qaMarkedFromRequest(): boolean {
-  return cookies().get(QA_COOKIE)?.value === '1';
+  try {
+    return cookies().get(QA_COOKIE)?.value === '1';
+  } catch {
+    return false;
+  }
 }
 
 /**

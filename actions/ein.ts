@@ -384,7 +384,11 @@ export async function purchaseEinAddOn(
           stripePaymentMethodId: pm?.id ?? null,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+          isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+          }),
           einCents: priceCents,
           cardLast4: pm?.card?.last4 ?? null,
           cardBrand: pm?.card?.brand

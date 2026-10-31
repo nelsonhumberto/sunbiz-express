@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { filingTestCreateFields } from '@/lib/qa-marker';
 import { prisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { checkActionRateLimit } from '@/lib/rate-limit';
@@ -309,7 +311,11 @@ export async function submitAnnualReport(input: unknown) {
             stripePaymentMethodId: pmId,
             amountCents: pi.amount,
             status: 'SUCCEEDED',
-            isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+            isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+          }),
             stateFilingFeeCents: quote.stateFilingFeeCents,
             formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
             registeredAgentY1Cents: quote.raFee,
@@ -557,10 +563,12 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       });
     }
 
+    const qaMarked = qaMarkedFromRequest();
     const filingId = await prisma.$transaction(async (tx) => {
       const filing = await tx.filing.create({
         data: {
           userId: user!.id,
+          ...filingTestCreateFields({ qaMarked, isTester: user!.isTester }),
           entityType: decision.entityType,
           state: 'FL',
           businessName: data.companyName,
@@ -613,7 +621,11 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
           stripePaymentMethodId: pmId,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+          isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+          }),
           stateFilingFeeCents: quote.stateFilingFeeCents,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
           registeredAgentY1Cents: quote.raFee,
@@ -630,6 +642,13 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
       });
 
       return { filingId: filing.id, arId: ar.id };
+    });
+
+    await stampQaLaunchformaGuest({
+      userId: user!.id,
+      filingId: filingId.filingId,
+      emails: [email],
+      qaMarked,
     });
 
     try {

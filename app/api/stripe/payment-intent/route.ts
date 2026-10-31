@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { cookies, headers } from 'next/headers';
+import { qaMarkedFromRequest } from '@/lib/qa-guest';
+import { paymentIntentIsTest, stripeIsTestMetadata } from '@/lib/qa-marker';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
@@ -226,6 +228,7 @@ export async function POST(request: NextRequest) {
           filing: priced.attributionFiling,
           posthogDistinctId: attribution.distinctId,
         }),
+        ...stripeIsTestMetadata(priced.isTest),
       },
     };
 
@@ -405,6 +408,7 @@ async function createGuestFormationPaymentIntent(
           filing: priced.attributionFiling,
           posthogDistinctId: attribution.distinctId,
         }),
+        ...stripeIsTestMetadata(priced.isTest),
       },
     },
   });
@@ -479,6 +483,7 @@ async function createGuestAnnualReportPaymentIntent(
     reportYear: String(reportYear),
     documentNumber: parsed.data.documentNumber,
     ...(userId ? { userId } : {}),
+    ...stripeIsTestMetadata(await actorChargeIsTest(userId)),
   };
 
   if (parsed.data.paymentIntentId) {
@@ -550,10 +555,28 @@ function isUniqueConflict(err: unknown): boolean {
   return Boolean(err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002');
 }
 
+function chargeIsTest(input: { filingIsTest?: boolean | null; isTester?: boolean | null }): boolean {
+  return paymentIntentIsTest({
+    qaMarked: qaMarkedFromRequest(),
+    filingIsTest: input.filingIsTest,
+    isTester: input.isTester,
+  });
+}
+
+async function actorChargeIsTest(userId?: string | null): Promise<boolean> {
+  if (!userId) return chargeIsTest({});
+  const owner = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isTester: true },
+  });
+  return chargeIsTest({ isTester: owner?.isTester });
+}
+
 interface PricedCharge {
   amountCents: number;
   filingId?: string;
   purpose?: string;
+  isTest: boolean;
   storedPaymentIntentId: string | null;
   reuseFilingCheckout: boolean;
   attributionFiling: {
@@ -592,6 +615,8 @@ async function priceOwnedCharge(input: {
             utmCampaign: true,
             utmContent: true,
             utmTerm: true,
+            isTest: true,
+            user: { select: { isTester: true } },
           },
         },
       },
@@ -604,6 +629,10 @@ async function priceOwnedCharge(input: {
     return {
       amountCents: service.renewalPriceCents,
       purpose: 'ra_renewal',
+      isTest: chargeIsTest({
+        filingIsTest: service.filing.isTest,
+        isTester: service.filing.user.isTester,
+      }),
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
       attributionFiling: service.filing,
@@ -619,6 +648,7 @@ async function priceOwnedCharge(input: {
     include: {
       filingAdditionalServices: { include: { service: true } },
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
+      user: { select: { isTester: true } },
     },
   });
   if (!filing || filing.userId !== input.userId) {
@@ -626,11 +656,16 @@ async function priceOwnedCharge(input: {
   }
   const inactiveFiling = refuseInactiveFormationState(filing.state);
   if (inactiveFiling) return inactiveFiling;
+  const isTest = chargeIsTest({
+    filingIsTest: filing.isTest,
+    isTester: filing.user?.isTester === true,
+  });
 
     if (input.purpose === 'ein') {
     return {
       amountCents: ADD_ON_BY_SLUG.ein.serviceMarginCents,
       purpose: 'ein',
+      isTest,
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
       attributionFiling: filing,
@@ -676,6 +711,7 @@ async function priceOwnedCharge(input: {
       amountCents: quote.totalCents,
       filingId: filing.id,
       purpose: 'annual_report',
+      isTest,
       storedPaymentIntentId: null,
       reuseFilingCheckout: false,
       attributionFiling: filing,
@@ -719,6 +755,7 @@ async function priceOwnedCharge(input: {
   return {
     amountCents,
     filingId: filing.id,
+    isTest,
     storedPaymentIntentId: filing.checkoutPaymentIntentId,
     reuseFilingCheckout: true,
     attributionFiling: filing,
@@ -806,8 +843,13 @@ async function resolveCheckoutPaymentIntent(input: {
         storedAmount: existing.amount,
       });
       if (plan.action === 'reuse') {
-        if (!plan.updateAmount) return existing;
-        return await stripe.paymentIntents.update(existing.id, { amount: amountCents });
+        const metadata = intentParams.metadata;
+        const needsTestFlag = metadata?.isTest === 'true' && existing.metadata?.isTest !== 'true';
+        if (!plan.updateAmount && !needsTestFlag) return existing;
+        return await stripe.paymentIntents.update(existing.id, {
+          ...(plan.updateAmount ? { amount: amountCents } : {}),
+          ...(needsTestFlag && metadata ? { metadata } : {}),
+        });
       }
     } catch {
       logger.warn('checkout payment intent reuse failed', {
@@ -911,6 +953,7 @@ async function createCertificatePaymentIntent(input: {
         purpose: CERTIFICATE_ORDER_PURPOSE,
         serviceCents: String(quote.serviceCents),
         stateFeeCents: String(quote.stateFeeCents),
+        ...stripeIsTestMetadata(filing.isTest || (await actorChargeIsTest(actorId))),
         ...checkoutAttributionMetadata({
           cookie: attribution.cookieUtm,
           filing,

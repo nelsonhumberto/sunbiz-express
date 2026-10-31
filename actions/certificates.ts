@@ -178,7 +178,11 @@ export async function purchaseCertificateAddOn(
           stripePaymentMethodId: pm?.id ?? null,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+          isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+          }),
           stateFilingFeeCents: quote.stateFeeCents,
           certificatesCopiesCents: quote.serviceCents,
           cardLast4: pm?.card?.last4 ?? null,

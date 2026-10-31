@@ -403,7 +403,11 @@ export async function processCheckout(input: {
         stripePaymentMethodId: pmId,
         amountCents: expectedTotal,
         status: 'SUCCEEDED',
-        isTest: isTestPayment({ stripePaymentIntentId: stripeIntentId, livemode }),
+        isTest: isTestPayment({
+          stripePaymentIntentId: stripeIntentId,
+          livemode,
+          metadata: paidIntent.metadata,
+        }),
         stateFilingFeeCents: breakdown.governmentRemittanceCents,
         formationServiceFeeCents: breakdown.packageMarginCents,
         otherServicesCents: breakdown.addOnsCents,

@@ -5,7 +5,10 @@ const PATH = '/guides/llc-florida-sin-seguro-social';
 const NS = 'guideLlcSinSsn';
 
 export function generateMetadata(): Promise<Metadata> {
-  return spanishGuideMetadata(PATH, NS);
+  return spanishGuideMetadata(PATH, NS, {
+    indexable: true,
+    twinEnglishPath: '/guides/florida-llc-without-ssn',
+  });
 }
 
 export default function LlcFloridaSinSeguroSocialPage() {
@@ -14,7 +17,9 @@ export default function LlcFloridaSinSeguroSocialPage() {
       path={PATH}
       namespace={NS}
       slug="llc-florida-sin-seguro-social"
-      readingMinutes={8}
+      readingMinutes={6}
+      showValue
+      trackSource="/es/guides/llc-florida-sin-seguro-social"
     />
   );
 }

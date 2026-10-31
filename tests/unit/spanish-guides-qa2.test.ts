@@ -112,9 +112,12 @@ describe('Spanish guides QA round 2', () => {
     expect(miami).toContain('$250');
 
     const ssn = messages.guideLlcSinSsn.body ?? '';
-    expect(ssn).toContain('línea 7b');
-    expect(ssn).toContain('"foreign" o "N/A"');
-    expect(ssn).toContain('https://www.irs.gov/instructions/iss4');
+    expect(ssn).toContain(
+      'El EIN lo emite el IRS; si no tienes SSN ni ITIN, se solicita con el [formulario SS-4](https://www.irs.gov/instructions/iss4).',
+    );
+    expect(ssn.split('formulario SS-4').length - 1).toBe(1);
+    expect(ssn).not.toContain('línea 7b');
+    expect(ssn.toLowerCase()).not.toContain('gratis');
 
     const app = messages.guideLlcApp.body ?? '';
     expect(app).toContain('hasta 5 días hábiles');

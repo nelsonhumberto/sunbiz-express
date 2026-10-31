@@ -6,7 +6,8 @@ import { ArrowRight } from 'lucide-react';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
-import { englishOnlyAlternates } from '@/lib/locale-seo';
+import { toSpanishUrl } from '@/lib/locale-paths';
+import { buildLocaleAlternates } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-10-26';
 const DATE_MODIFIED = '2026-10-26';
@@ -155,13 +156,13 @@ function FaqList({ items }: { items: { q: string; a: string }[] }) {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  // No Spanish article yet. /es rewrites onto this page, so send it back
-  // to the English URL instead of publishing an es hreflang.
-  if (locale === 'es') permanentRedirect(PATH);
+  // Spanish twin lives at /es/guides/costo-llc-florida (different slug).
+  // /es/guides/florida-llc-cost rewrites onto this page, so send it there.
+  if (locale === 'es') permanentRedirect(toSpanishUrl(PATH));
   return {
     title: { absolute: TITLE },
     description: DESCRIPTION,
-    alternates: englishOnlyAlternates(PATH),
+    alternates: buildLocaleAlternates(PATH),
     openGraph: {
       title: TITLE,
       description: DESCRIPTION,
@@ -175,7 +176,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function FloridaLlcCostGuide() {
   const locale = await getLocale();
-  if (locale === 'es') permanentRedirect(PATH);
+  if (locale === 'es') permanentRedirect(toSpanishUrl(PATH));
   return (
     <>
       <JsonLd data={faqPageJsonLd(FAQ)} />

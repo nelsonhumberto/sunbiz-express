@@ -6,9 +6,19 @@ export type SpanishGuideLink = {
   label: string;
 };
 
+export const SPANISH_GUIDE_LLC_COSTO: SpanishGuideLink = {
+  href: '/es/guides/costo-llc-florida',
+  label: 'Precio de una LLC en Florida',
+};
+
 export const SPANISH_GUIDE_LLC_SIN_SSN: SpanishGuideLink = {
   href: '/es/guides/llc-florida-sin-seguro-social',
-  label: 'LLC en Florida sin número de Seguro Social: cómo funciona',
+  label: 'Abrir una LLC en Florida sin SSN',
+};
+
+export const SPANISH_GUIDE_LLC_EXTRANJEROS: SpanishGuideLink = {
+  href: '/es/guides/llc-florida-para-extranjeros',
+  label: 'Abrir una LLC en Florida siendo extranjero no residente',
 };
 
 export const SPANISH_GUIDE_MIAMI: SpanishGuideLink = {
@@ -43,9 +53,10 @@ export const EN_FLORIDA_LICENSE_SPANISH_LINKS: readonly SpanishGuideLink[] = [
   SPANISH_GUIDE_BROWARD,
 ];
 
-/** All five Spanish-only guides, in sitemap order. */
+/** Spanish-only guides, in sitemap order. The cost guide is an hreflang twin, not listed here. */
 export const EN_GUIDES_INDEX_SPANISH_LINKS: readonly SpanishGuideLink[] = [
   SPANISH_GUIDE_LLC_SIN_SSN,
+  SPANISH_GUIDE_LLC_EXTRANJEROS,
   SPANISH_GUIDE_MIAMI,
   SPANISH_GUIDE_BROWARD,
   SPANISH_GUIDE_LLC_VS_SOLE,

@@ -5,6 +5,7 @@ import { PricingTable } from '@/components/marketing/PricingTable';
 import { ComparisonTable } from '@/components/marketing/ComparisonTable';
 import { FAQSection } from '@/components/marketing/FAQSection';
 import { CTABanner } from '@/components/marketing/CTABanner';
+import { SpanishSsnGuideLink } from '@/components/marketing/SpanishSsnGuideLink';
 import { localizedStateName, marketingStateForVisitor } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
@@ -126,6 +127,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
             : undefined
         }
       />
+      <SpanishSsnGuideLink />
       <ComparisonTable />
       <FAQSection state={state} suppressJsonLd />
       <CTABanner state={state} />

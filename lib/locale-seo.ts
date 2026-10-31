@@ -34,6 +34,26 @@ export function localeAlternates(
  * hreflang for a Spanish-only URL. There is no English article, and the
  * unprefixed path 308-redirects to /es, so `en` is omitted on purpose.
  */
+/**
+ * hreflang for an English guide and a Spanish guide whose slug differs.
+ * `x-default` stays on the English URL. Canonical is chosen by the caller
+ * via which path it passes as the page it is rendering: this helper is the
+ * Spanish page's set, so the canonical is the Spanish URL.
+ */
+export function guideTwinAlternates(
+  englishPath: string,
+  esPath: string,
+): NonNullable<Metadata['alternates']> {
+  return {
+    canonical: esPath,
+    languages: {
+      en: englishPath,
+      es: esPath,
+      'x-default': englishPath,
+    },
+  };
+}
+
 export function spanishOnlyAlternates(esPath: string): NonNullable<Metadata['alternates']> {
   return {
     canonical: esPath,

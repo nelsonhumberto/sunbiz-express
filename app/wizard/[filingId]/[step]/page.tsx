@@ -39,7 +39,8 @@ const Step12Payment = nextDynamic(() =>
 );
 import { type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { quoteDraftFiling } from '@/lib/filing-totals';
-import { guestWizardStep } from '@/lib/start-draft';
+import { guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
+import { readFloridaLlcPreselected } from '@/lib/florida-llc-preselect';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
@@ -53,9 +54,10 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: { filingId: string; step: string };
+  searchParams?: { change?: string };
 }
 
-export default async function WizardStepPage({ params }: PageProps) {
+export default async function WizardStepPage({ params, searchParams }: PageProps) {
   const stepNum = parseInt(params.step, 10);
   const filingLocale = (
     await prisma.filing.findUnique({
@@ -193,7 +195,18 @@ export default async function WizardStepPage({ params }: PageProps) {
       }).totalCents
     : filing.totalCents;
 
-  if (isGuest && stepNum === 1) {
+  const preselected = readFloridaLlcPreselected(filing.optionalDetails);
+  const choosingEntity = searchParams?.change === '1';
+  // A draft opened without a name stays on the name step until one is saved.
+  // Review and every later step require that name.
+  if (stepNum > 2 && !startNameIsAcceptable(filing.businessName)) {
+    return await redirectLocalized(`/wizard/${filing.id}/2`, filing.locale);
+  }
+  if (stepNum === 1 && preselected && !choosingEntity) {
+    return await redirectLocalized(`/wizard/${filing.id}/2`, filing.locale);
+  }
+
+  if (isGuest && stepNum === 1 && !choosingEntity) {
     const landing = guestWizardStep({
       businessName: filing.businessName,
       currentStep: 1,
@@ -217,6 +230,7 @@ export default async function WizardStepPage({ params }: PageProps) {
         costData={cost}
         isGuest={isGuest}
         guestEmail={actor?.kind === 'guest' ? actor.email : undefined}
+        preselected={preselected}
       >
         {stepNum === 1 && (
           <Step1Entity
@@ -233,6 +247,7 @@ export default async function WizardStepPage({ params }: PageProps) {
             needsGuestEmail={needsGuestEmail}
             initialGuestEmail={guestEmailPrefill}
             pendingAccountEmail={pendingAccountEmail}
+            preselected={preselected}
           />
         )}
         {stepNum === 3 && <Step3Tier filing={filing} />}

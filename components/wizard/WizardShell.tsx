@@ -20,7 +20,7 @@ import { CostSidebar } from './CostSidebar';
 import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
 import { GuestSaveExitDialog } from './GuestSaveExitDialog';
 import { cn } from '@/lib/utils';
-import { trackEvent } from '@/lib/analytics';
+import { preselectedEventProps, trackEvent } from '@/lib/analytics';
 import { WizardStepAnalyticsProvider } from './WizardStepAnalytics';
 import type { TierSlug } from '@/lib/pricing';
 import type { StateCode } from '@/lib/formation-states';
@@ -41,6 +41,8 @@ interface WizardShellProps {
   /** Guest context - drives the low-friction "Save & exit" account offer. */
   isGuest?: boolean;
   guestEmail?: string;
+  /** Florida + LLC was chosen for landing-page or Google ad traffic. */
+  preselected?: boolean;
 }
 
 export function WizardShell({
@@ -51,13 +53,18 @@ export function WizardShell({
   saved,
   isGuest,
   guestEmail,
+  preselected,
 }: WizardShellProps) {
   const t = useTranslations('wizard');
   const tDisc = useTranslations('disclosure');
 
   useEffect(() => {
-    trackEvent('wizard_step_viewed', { step, filing_id: filingId });
-  }, [step, filingId]);
+    trackEvent('wizard_step_viewed', {
+      step,
+      filing_id: filingId,
+      ...preselectedEventProps(preselected),
+    });
+  }, [step, filingId, preselected]);
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
   const subKey = `step${step}Subtitle` as keyof IntlMessages;
@@ -152,7 +159,7 @@ export function WizardShell({
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.25 }}
               >
-                <WizardStepAnalyticsProvider filingId={filingId} step={step}>
+                <WizardStepAnalyticsProvider filingId={filingId} step={step} preselected={preselected}>
                   {children}
                 </WizardStepAnalyticsProvider>
               </motion.div>

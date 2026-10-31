@@ -465,6 +465,7 @@
     "nameYourCorp": "Ponle nombre a tu corporación",
     "nameYourSCorp": "Ponle nombre a tu S-Corp",
     "nameHelper": "Puedes cambiarlo antes de que hagamos el registro.",
+    "nameLater": "Lo nombro después",
     "switchToCorp": "¿Prefieres una corporación?",
     "switchToLlc": "¿Prefieres una LLC?",
     "emailOptional": "Correo (opcional)",
@@ -823,6 +824,7 @@
     "step1Subtitle": "Nosotros nos encargamos del papeleo - tú eliges la estructura.",
     "step2Title": "¿Cuál es el nombre de tu empresa?",
     "step2Subtitle": "Haremos una búsqueda preliminar del nombre en el registro estatal. No garantiza la aprobación.",
+    "changeEntity": "Cambiar",
     "step3Title": "Elige tu plan",
     "step3Subtitle": "Un solo precio todo incluido - la tarifa estatal ya está incluida.",
     "step4Title": "Domicilio principal de la empresa",
@@ -2226,6 +2228,7 @@
     "trustTitle": "Por qué usan LaunchForma",
     "emailTitle": "Envíame la lista y el desglose del costo",
     "emailButton": "Envíame la lista y el desglose del costo",
+    "startButton": "Empezar",
     "stickyCta": "Empieza con el nombre de tu empresa",
     "repeatCta": "Empieza tu LLC en Florida"
   },

@@ -8,7 +8,7 @@ import { englishPathname } from '@/lib/locale-paths';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { localeFromPathOrFiling } from '@/lib/request-locale';
 import { TOTAL_STEPS } from '@/lib/wizard-constants';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { auth, signIn } from '@/lib/auth';
 import { newGuestToken, setGuestCookie, clearGuestCookie, getGuestUser } from '@/lib/guest';
@@ -34,6 +34,11 @@ import { filingTestCreateFields, guestTesterCreateFields } from '@/lib/qa-marker
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
+import {
+  optionalDetailsWithPreselect,
+  shouldPreselectFloridaLlc,
+} from '@/lib/florida-llc-preselect';
+import { getServerUtmAttribution } from '@/lib/utm-server';
 import { isDeliverableEmail } from '@/lib/email-address';
 import { sendGuestDraftResumeLink, storeGuestEmailOnDraft } from '@/actions/guest-email';
 import {
@@ -274,17 +279,36 @@ async function rememberStartEmail(
   }
 }
 
+function draftPreselectsFloridaLlc(browserPath?: string): boolean {
+  let referer: string | null = null;
+  let utmSource: string | null = null;
+  try {
+    referer = headers().get('referer');
+  } catch {
+    referer = null;
+  }
+  try {
+    utmSource = getServerUtmAttribution()?.utm_source ?? null;
+  } catch {
+    utmSource = null;
+  }
+  return shouldPreselectFloridaLlc({ path: browserPath, referer, utmSource });
+}
+
 /**
- * Open the wizard after /start. The company name is required. An optional
- * email is stored on the guest user (or the filing, when that mailbox is
- * taken) and the existing filing-started resume email is sent. A later visit
- * with the guest cookie resumes the same draft.
+ * Open the wizard after /start. A company name is required unless the visitor
+ * chose "I'll name it later". An optional email is stored on the guest user
+ * (or the filing, when that mailbox is taken) and the existing filing-started
+ * resume email is sent. A later visit with the guest cookie resumes the same draft.
+ * Florida LLC landing pages and utm_source=google preselect Florida + LLC.
  */
 export async function openGuestDraft(input: {
   state?: string;
   entityType?: string;
   tier?: string;
   businessName?: string;
+  /** Continue without a company name. The wizard asks for it before review. */
+  nameLater?: boolean;
   /** Optional. Empty does not block the draft. */
   email?: string;
   draftIntent?: 'resume' | 'new';
@@ -299,13 +323,15 @@ export async function openGuestDraft(input: {
   returnRedirect?: boolean;
 }): Promise<StartGuestResult> {
   const t = await getTranslations('start');
-  const requestedState = (input.state ?? 'FL').trim().toUpperCase();
+  const preselect = draftPreselectsFloridaLlc(input.browserPath);
+  const requestedState = (preselect ? 'FL' : (input.state ?? 'FL')).trim().toUpperCase();
   if (!isActiveFormationState(requestedState)) {
     return { error: t('errorStateUnavailable') };
   }
   const stateCode = requestedState as StateCode;
-  const entityChoice = (['LLC', 'CORP', 'SCORP'].includes((input.entityType ?? '').toUpperCase())
-    ? (input.entityType ?? 'LLC').toUpperCase()
+  const requestedEntity = preselect ? 'LLC' : (input.entityType ?? 'LLC');
+  const entityChoice = (['LLC', 'CORP', 'SCORP'].includes(requestedEntity.toUpperCase())
+    ? requestedEntity.toUpperCase()
     : 'LLC') as 'LLC' | 'CORP' | 'SCORP';
   const { entityType, taxElection } = resolveEntityChoice(entityChoice);
   const tierRaw = (input.tier ?? 'STANDARD').toUpperCase();
@@ -313,14 +339,17 @@ export async function openGuestDraft(input: {
     | 'BASIC'
     | 'STANDARD'
     | 'PREMIUM';
-  const seededName = normalizeNameCheckQuery(input.businessName) || null;
+  const normalizedName = normalizeNameCheckQuery(input.businessName) || null;
+  const nameOk = startNameIsAcceptable(normalizedName);
+  const deferName = input.nameLater === true && !nameOk;
+  const seededName = nameOk ? normalizedName : null;
   const optionalEmail = (input.email ?? '').trim();
   const qaMarked = qaMarkedFromRequest();
   const emailHit = isLaunchformaQaEmail(optionalEmail);
-  if (input.draftIntent !== 'resume' && !startNameIsAcceptable(seededName)) {
+  if (input.draftIntent !== 'resume' && !nameOk && !deferName) {
     return { error: t('companyNameInvalid') };
   }
-  if (seededName && !startNameIsAcceptable(seededName)) {
+  if (normalizedName && !nameOk && !deferName) {
     return { error: t('companyNameInvalid') };
   }
   if (optionalEmail && !isDeliverableEmail(optionalEmail)) {
@@ -333,7 +362,7 @@ export async function openGuestDraft(input: {
 
   const session = await auth();
   if (session?.user?.id) {
-    if (!startNameIsAcceptable(seededName)) {
+    if (!nameOk && !deferName) {
       return { error: t('companyNameInvalid') };
     }
     const filing = await prisma.filing.create({
@@ -346,6 +375,7 @@ export async function openGuestDraft(input: {
         businessName: seededName,
         currentStep: 2,
         completedSteps: JSON.stringify([1]),
+        ...(preselect ? { optionalDetails: optionalDetailsWithPreselect(null) } : {}),
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
@@ -438,7 +468,7 @@ export async function openGuestDraft(input: {
     }
   }
 
-  if (!startNameIsAcceptable(seededName)) {
+  if (!nameOk && !deferName) {
     return { error: t('companyNameInvalid') };
   }
 
@@ -497,6 +527,7 @@ export async function openGuestDraft(input: {
         businessName: seededName,
         currentStep: initialStep,
         completedSteps: JSON.stringify([1]),
+        ...(preselect ? { optionalDetails: optionalDetailsWithPreselect(null) } : {}),
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),

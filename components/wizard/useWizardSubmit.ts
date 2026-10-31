@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { WIZARD_ACTION_TIMEOUT_MS } from '@/lib/action-timeout';
 import { runWizardSave } from '@/lib/wizard-save';
-import { trackEvent } from '@/lib/analytics';
+import { preselectedEventProps, trackEvent } from '@/lib/analytics';
 import { useWizardStepAnalytics } from './WizardStepAnalytics';
 
 type StepResult = { ok?: boolean; error?: string } | void | undefined;
@@ -44,6 +44,7 @@ export function useWizardSubmit() {
       step: analytics.step,
       filing_id: analytics.filingId,
       ...eventProperties,
+      ...preselectedEventProps(analytics.preselected),
     });
   }
 

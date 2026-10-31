@@ -64,14 +64,27 @@ export function beginFilingPayload(filingId: string | null | undefined): GtagPur
   return { transaction_id: transactionId, value: 1, currency: 'USD' };
 }
 
-/** `?lf_ads_debug=1` logs the gtag payload. Preview deployments only. */
+const ADS_DEBUG_SESSION_KEY = 'lf_ads_debug';
+
+/**
+ * `?lf_ads_debug=1` is sticky for the browser session.
+ * Production cannot turn it on, even if the query or sessionStorage says so.
+ */
 export function adsDebugActive(
   search: string,
   vercelEnv: string | undefined = process.env.NEXT_PUBLIC_VERCEL_ENV,
 ): boolean {
-  if (vercelEnv !== 'preview') return false;
+  if (process.env.VERCEL_ENV === 'production' || vercelEnv === 'production') return false;
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-  return params.get(ADS_DEBUG_PARAM) === '1';
+  const fromUrl = params.get(ADS_DEBUG_PARAM) === '1';
+  if (typeof window === 'undefined') return fromUrl;
+  try {
+    if (fromUrl) window.sessionStorage.setItem(ADS_DEBUG_SESSION_KEY, '1');
+    if (window.sessionStorage.getItem(ADS_DEBUG_SESSION_KEY) === '1') return true;
+  } catch {
+    /* private mode still honors the query on this hit */
+  }
+  return fromUrl;
 }
 
 export function adsSendTo(adsId: string | undefined, label: string | undefined): string | null {

@@ -140,7 +140,8 @@ describe('optional start email and checkout analytics', () => {
     expect(success).toContain("trackEvent(\n        'checkout_success_viewed'");
     expect(success).toContain('checkoutSuccessAlreadyViewed');
     expect(success).toContain('markCheckoutSuccessViewed');
-    expect(shell).toContain("trackEvent('wizard_step_viewed', { step, filing_id: filingId })");
+    expect(shell).toContain("trackEvent('wizard_step_viewed'");
+    expect(shell).toContain('preselectedEventProps(preselected)');
     expect(source('components/wizard/useWizardSubmit.ts')).toContain("trackEvent('wizard_step_completed'");
     expect(launch).toContain('await captureThenNavigate');
     expect(launch).toContain('startNavigationEvents');

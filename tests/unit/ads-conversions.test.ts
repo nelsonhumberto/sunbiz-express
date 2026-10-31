@@ -56,6 +56,7 @@ describe('gtag conversion firing', () => {
     'NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL',
     'NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING',
     'NEXT_PUBLIC_VERCEL_ENV',
+    'VERCEL_ENV',
   ] as const;
   const previous: Record<string, string | undefined> = {};
   const store = new Map<string, string>();
@@ -135,8 +136,9 @@ describe('gtag conversion firing', () => {
     expect(gtag).not.toHaveBeenCalled();
   });
 
-  it('suppresses test users and logs the payload on preview instead of sending', () => {
+  it('sends a tester hit on preview only when the debug flag is set, with an lfdebug id', () => {
     const { gtag, info } = install('?lf_ads_debug=1');
+    process.env.VERCEL_ENV = 'preview';
     process.env.NEXT_PUBLIC_VERCEL_ENV = 'preview';
     trackGooglePurchase({
       transactionId: 'filing_qa',
@@ -144,15 +146,15 @@ describe('gtag conversion firing', () => {
       isTester: true,
       email: 'qa+buyer@launchforma.com',
     });
-    trackGoogleBeginFiling({
-      filingId: 'filing_qa',
-      isTest: true,
-      email: 'qa+buyer@launchforma.com',
+    const conversions = gtag.mock.calls.filter((call) => call[1] === 'conversion');
+    expect(conversions).toHaveLength(1);
+    expect(conversions[0]?.[2]).toMatchObject({
+      send_to: 'AW-123/purchaseLabel',
+      transaction_id: 'lfdebug-filing_qa',
     });
-    expect(gtag).not.toHaveBeenCalled();
-    expect(info).toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith('AW-123/purchaseLabel');
+    expect(store.get(purchaseConversionStorageKey('lfdebug-filing_qa'))).toBe('1');
     expect(store.has(purchaseConversionStorageKey('filing_qa'))).toBe(false);
-    expect(store.has(beginConversionStorageKey('filing_qa'))).toBe(false);
   });
 
   it('suppresses a qa mailbox with no debug log outside preview', () => {

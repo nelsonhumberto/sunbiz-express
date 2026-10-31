@@ -42,6 +42,8 @@ import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { filingTestCreateFields } from '@/lib/qa-marker';
 
 export async function createFiling(input?: {
   entityType?: 'LLC' | 'CORP';
@@ -61,6 +63,7 @@ export async function createFiling(input?: {
 
   const locale = await storedLocale();
   const entryPath = storedEntryPath();
+  const qaMarked = qaMarkedFromRequest();
   const filing = await prisma.filing.create({
     data: {
       userId: session.user.id,
@@ -71,7 +74,14 @@ export async function createFiling(input?: {
       ...(locale ? { locale } : {}),
       ...(entryPath ? { entryPath } : {}),
       ...filingUtmCreateFields(),
+      ...filingTestCreateFields({ qaMarked, isTester: session.user.isTester }),
     },
+  });
+  await stampQaLaunchformaGuest({
+    userId: session.user.id,
+    filingId: filing.id,
+    emails: [session.user.email],
+    qaMarked,
   });
 
   await sendEmail({

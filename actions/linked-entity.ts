@@ -7,6 +7,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { computeNextAnnualReport, FL } from '@/lib/florida';
 import { sendEmail } from '@/lib/email';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { filingTestCreateFields } from '@/lib/qa-marker';
 import {
   fetchFloridaEntityDetailByDocumentNumber,
   normalizeFloridaDocumentNumber,
@@ -106,11 +108,11 @@ function formationDate(d: FloridaEntityDetail): Date {
 async function resolveUser(
   sessionId: string,
   sessionEmail: string | null | undefined,
-): Promise<{ id: string; email: string; phone: string | null } | null> {
+): Promise<{ id: string; email: string; phone: string | null; isTester: boolean } | null> {
   // Primary: look up by the id in the JWT
   const byId = await prisma.user.findUnique({
     where: { id: sessionId },
-    select: { id: true, email: true, phone: true },
+    select: { id: true, email: true, phone: true, isTester: true },
   });
   if (byId) return byId;
 
@@ -118,7 +120,7 @@ async function resolveUser(
   if (!sessionEmail) return null;
   return prisma.user.findUnique({
     where: { email: sessionEmail.toLowerCase().trim() },
-    select: { id: true, email: true, phone: true },
+    select: { id: true, email: true, phone: true, isTester: true },
   });
 }
 
@@ -194,12 +196,14 @@ export async function confirmLinkedEntity(input: z.infer<typeof ConfirmSchema>) 
   const formed = formationDate(detail);
   const nextAr = computeNextAnnualReport(formed);
   const officers = (detail.officers ?? []).slice(0, 12);
+  const qaMarked = qaMarkedFromRequest();
 
   try {
     const filingId = await prisma.$transaction(async (tx) => {
       const filing = await tx.filing.create({
         data: {
           userId: user.id,
+          ...filingTestCreateFields({ qaMarked, isTester: user.isTester }),
           filingSource: 'LINKED',
           entityType,
           state: 'FL',
@@ -256,6 +260,13 @@ export async function confirmLinkedEntity(input: z.infer<typeof ConfirmSchema>) 
       return filing.id;
     });
 
+    await stampQaLaunchformaGuest({
+      userId: user.id,
+      filingId,
+      emails: [user.email],
+      qaMarked,
+    });
+
     await sendEmail({
       type: 'PAYMENT_CONFIRMATION',
       to: user.email,
@@ -295,12 +306,14 @@ export async function manualConfirmLinkedEntity(input: z.infer<typeof ManualConf
   }
 
   const nextAr = computeNextAnnualReport(new Date());
+  const qaMarked = qaMarkedFromRequest();
 
   try {
     const filingId = await prisma.$transaction(async (tx) => {
       const filing = await tx.filing.create({
         data: {
           userId: user.id,
+          ...filingTestCreateFields({ qaMarked, isTester: user.isTester }),
           filingSource: 'LINKED',
           entityType: data.entityType,
           state: 'FL',
@@ -340,6 +353,13 @@ export async function manualConfirmLinkedEntity(input: z.infer<typeof ManualConf
       });
 
       return filing.id;
+    });
+
+    await stampQaLaunchformaGuest({
+      userId: user.id,
+      filingId,
+      emails: [user.email],
+      qaMarked,
     });
 
     await sendEmail({

@@ -9,7 +9,14 @@ import { formatCurrency } from '@/lib/utils';
 export function isTestPayment(input: {
   stripePaymentIntentId?: string | null;
   livemode?: boolean | null;
+  /**
+   * Stripe metadata marks a QA charge only when this payer is isTester.
+   * The lf_qa cookie alone must not turn a real card payment into a test row.
+   */
+  metadata?: { isTest?: string | null } | null;
+  userIsTester?: boolean | null;
 }): boolean {
+  if (input.metadata?.isTest === 'true' && input.userIsTester === true) return true;
   const id = input.stripePaymentIntentId ?? '';
   if (id.startsWith('pi_mock_') || id.startsWith('TESTER_')) return true;
   return input.livemode === false;

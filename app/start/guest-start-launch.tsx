@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { continueButtonScrollDelta } from '@/lib/start-keyboard';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -193,6 +194,32 @@ export function GuestStartLaunch({
     void run({ businessName: trimmed });
   }
 
+  const continueRef = useRef<HTMLDivElement>(null);
+  const [nameFocused, setNameFocused] = useState(false);
+
+  function scrollContinueIntoView() {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    const node = continueRef.current;
+    if (!node) return;
+    const visibleHeight = window.visualViewport?.height ?? window.innerHeight;
+    const delta = continueButtonScrollDelta({
+      buttonBottom: node.getBoundingClientRect().bottom,
+      visibleHeight,
+    });
+    if (delta > 0) window.scrollBy({ top: delta });
+  }
+
+  useEffect(() => {
+    if (!nameFocused) return;
+    scrollContinueIntoView();
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const onResize = () => scrollContinueIntoView();
+    viewport.addEventListener('resize', onResize);
+    return () => viewport.removeEventListener('resize', onResize);
+  }, [nameFocused]);
+
   const essentialPrice = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
   return (
@@ -266,6 +293,11 @@ export function GuestStartLaunch({
                       setFormError(null);
                     }
                   }}
+                  onFocus={() => {
+                    setNameFocused(true);
+                    scrollContinueIntoView();
+                  }}
+                  onBlur={() => setNameFocused(false)}
                   autoComplete="organization"
                   autoCapitalize="words"
                   enterKeyHint="go"
@@ -275,10 +307,30 @@ export function GuestStartLaunch({
                   aria-describedby={nameError ? 'start-name-help start-name-error' : 'start-name-help'}
                   className="h-12 text-base"
                 />
-                <p id="start-name-help" className="text-[11px] text-ink-subtle">
-                  {t('nameHelper')}
-                </p>
               </div>
+
+              <div ref={continueRef}>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full h-12 text-base"
+                  disabled={pending}
+                  aria-disabled={pending}
+                >
+                  {pending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t('starting')}
+                    </>
+                  ) : (
+                    t('continue')
+                  )}
+                </Button>
+              </div>
+
+              <p id="start-name-help" className="text-[11px] text-ink-subtle">
+                {t('nameHelper')}
+              </p>
 
               <button
                 type="button"
@@ -297,23 +349,6 @@ export function GuestStartLaunch({
                   {formError || nameError}
                 </p>
               )}
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full h-12 text-base"
-                disabled={pending}
-                aria-disabled={pending}
-              >
-                {pending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('starting')}
-                  </>
-                ) : (
-                  t('continue')
-                )}
-              </Button>
 
               {showOptionalEmail && (
                 <div className="space-y-1.5 text-left">

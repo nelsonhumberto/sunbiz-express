@@ -14,6 +14,7 @@ import {
   beginFilingPayload,
   purchaseConversionStorageKey,
   purchasePayload,
+  qaCookieSuppressesAds,
   shouldSuppressAdsConversion,
   type AdsSuppressionInput,
 } from '@/lib/ads-conversions';
@@ -560,6 +561,14 @@ function browserSearch(): string {
   }
 }
 
+function browserCookie(): string {
+  try {
+    return document.cookie ?? '';
+  } catch {
+    return '';
+  }
+}
+
 function readConversionFlag(key: string): boolean {
   try {
     return window.localStorage.getItem(key) === '1';
@@ -585,7 +594,12 @@ function suppressionInput(
 ): AdsSuppressionInput {
   const emails = [...(input.emails ?? [])];
   if (input.email) emails.push(input.email);
-  return { isTester: input.isTester, isTest: input.isTest, emails };
+  return {
+    isTester: input.isTester,
+    isTest: input.isTest,
+    qaMarked: input.qaMarked || qaCookieSuppressesAds(browserCookie()),
+    emails,
+  };
 }
 
 /**
@@ -694,11 +708,13 @@ export function trackGoogleLead(input?: { service?: string }) {
   if (isClientAdMeasurementOptedOut()) return;
   const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
   const label = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_LEAD;
+  const suppressConversion = shouldSuppressAdsConversion(suppressionInput({}));
   whenReady(
     () => typeof window.gtag === 'function',
     () => {
       if (isClientAdMeasurementOptedOut()) return;
       window.gtag('event', 'generate_lead', input?.service ? { service: input.service } : {});
+      if (suppressConversion || shouldSuppressAdsConversion(suppressionInput({}))) return;
       if (adsId && label) {
         window.gtag('event', 'conversion', {
           send_to: `${adsId}/${label}`,

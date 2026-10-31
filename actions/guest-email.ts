@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
-import { stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
 import { auth, signOut } from '@/lib/auth';
 import { getGuestUser, clearGuestCookie, GUEST_COOKIE } from '@/lib/guest';
 import { redirectLocalized } from '@/lib/locale-redirect';
@@ -82,6 +82,7 @@ export async function storeGuestEmailOnDraft(
     userId: guest.id,
     filingId: filing.id,
     emails: [normalized],
+    qaMarked: qaMarkedFromRequest(),
   });
 
   const existing = await prisma.user.findUnique({

@@ -43,6 +43,7 @@ import { guestWizardStep } from '@/lib/start-draft';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
+import { testerCheckoutAllowed } from '@/lib/tester-checkout';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
 import { isPlaceholderGuestEmail, showPendingAccountBanner } from '@/lib/guest-identity';
@@ -156,6 +157,7 @@ export default async function WizardStepPage({ params }: PageProps) {
   }
   const actorEmail =
     actor?.kind === 'guest' ? (actor.email ?? undefined) : (signedInEmail ?? undefined);
+  const testerCheckout = actor?.kind === 'user' && testerCheckoutAllowed(signedInEmail);
   const realGuestEmail =
     actor?.kind === 'guest' && !isPlaceholderGuestEmail(actor.email) ? actor.email : '';
   const storedPendingAccountEmail =
@@ -251,6 +253,7 @@ export default async function WizardStepPage({ params }: PageProps) {
           <Step12Payment
             filing={filing}
             isTester={isTester}
+            testerCheckout={testerCheckout}
             testMode={testMode}
             isGuest={isGuest}
             guestEmail={realGuestEmail ?? ''}

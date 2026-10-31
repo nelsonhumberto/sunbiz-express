@@ -14,6 +14,7 @@ import { checkActionRateLimit } from '@/lib/rate-limit';
 import { getTranslations } from 'next-intl/server';
 import { storedLocale } from '@/lib/stored-locale';
 import { attachGuestDraftsToAccount } from '@/actions/guest-email';
+import { clearQaCookie } from '@/lib/qa-guest';
 
 const SignUpSchema = z
   .object({
@@ -106,6 +107,7 @@ export async function signUpAction(_: ActionResult, formData: FormData): Promise
   } catch (err) {
     // ignore - will redirect to sign-in
   }
+  clearQaCookie();
   await redirectAfterAuth(formData.get('next'), attached.resumeHref);
   throw new Error('Redirect did not stop execution.');
 }
@@ -167,6 +169,8 @@ export async function signInAction(_: ActionResult, formData: FormData): Promise
     if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw err;
     return { error: t('errorGeneric') };
   }
+
+  clearQaCookie();
 
   // Redirect admins straight to the admin panel. Honor an optional `next`
   // param (e.g. when we sent the user to /sign-in mid-checkout) so they

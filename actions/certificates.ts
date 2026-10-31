@@ -63,7 +63,7 @@ export async function purchaseCertificateAddOn(
       filingAdditionalServices: { select: { service: { select: { serviceSlug: true } } } },
       documents: { select: { documentType: true, pendingState: true } },
       user: {
-        select: { id: true, email: true, firstName: true, locale: true, stripeCustomerId: true },
+        select: { id: true, email: true, firstName: true, locale: true, stripeCustomerId: true, isTester: true },
       },
     },
   });
@@ -178,7 +178,12 @@ export async function purchaseCertificateAddOn(
           stripePaymentMethodId: pm?.id ?? null,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+          isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+            userIsTester: filing.user.isTester,
+          }),
           stateFilingFeeCents: quote.stateFeeCents,
           certificatesCopiesCents: quote.serviceCents,
           cardLast4: pm?.card?.last4 ?? null,

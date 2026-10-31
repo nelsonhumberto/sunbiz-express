@@ -15,6 +15,13 @@ import {
   sessionReplayAllowed,
 } from '@/lib/session-replay';
 import { stripLiFatIdFromLocation } from '@/lib/strip-li-fat-id';
+import {
+  hasQaCookie,
+  qaCookieHeader,
+  qaMarkerPathAllowed,
+  qaMarkerRequested,
+  testTrafficProps,
+} from '@/lib/qa-marker';
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
@@ -28,19 +35,44 @@ export function currentAttributionProps(): Record<string, string> {
   return definedAttributionProps(window.location.search, document.cookie);
 }
 
+function currentTestTraffic(): { is_test?: true; is_internal?: true } {
+  if (typeof document === 'undefined') return {};
+  const fromCookie = testTrafficProps(document.cookie);
+  if (fromCookie.is_test) return fromCookie;
+  try {
+    if ((window as Window & { __lf_tester?: number }).__lf_tester === 1) {
+      return { is_test: true, is_internal: true };
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
 function withAttribution(event: CaptureResult | null): CaptureResult | null {
   if (!event?.properties || SKIP_ATTRIBUTION_EVENTS.has(event.event)) return event;
   const attribution = currentAttributionProps();
-  const internal = currentBrowserIsInternal();
-  if (Object.keys(attribution).length === 0 && !internal) return event;
+  const testTraffic = currentTestTraffic();
+  const internal = currentBrowserIsInternal() || testTraffic.is_internal === true;
+  if (Object.keys(attribution).length === 0 && !internal && !testTraffic.is_test) return event;
   return {
     ...event,
     properties: {
       ...event.properties,
       ...attribution,
       ...(internal ? { is_internal: true } : {}),
+      ...testTraffic,
     },
   };
+}
+
+/** Arm lf_qa before PostHog's first pageview when this URL asked for QA. */
+export function persistQaMarker(pathname = '', search = ''): void {
+  if (typeof document === 'undefined') return;
+  if (!qaMarkerPathAllowed(pathname)) return;
+  if (!qaMarkerRequested(search)) return;
+  if (hasQaCookie(document.cookie)) return;
+  document.cookie = qaCookieHeader(window.location.protocol === 'https:');
 }
 
 function currentBrowserIsInternal(): boolean {
@@ -116,11 +148,25 @@ function installSessionReplayRouteListener(): void {
   };
   const pushState = window.history.pushState.bind(window.history);
   const replaceState = window.history.replaceState.bind(window.history);
+  const armQa = (url: unknown) => {
+    if (typeof url === 'string' && url) {
+      try {
+        const next = new URL(url, window.location.href);
+        persistQaMarker(next.pathname, next.search);
+        return;
+      } catch {
+        /* use the current address */
+      }
+    }
+    persistQaMarker(window.location.pathname, window.location.search);
+  };
   window.history.pushState = (...args) => {
+    armQa(args[2]);
     pushState(...args);
     notify();
   };
   window.history.replaceState = (...args) => {
+    armQa(args[2]);
     replaceState(...args);
     notify();
   };
@@ -138,6 +184,7 @@ function installSessionReplayRouteListener(): void {
 if (typeof window !== 'undefined') {
   stripLiFatIdFromLocation();
   persistInternalQueryFlag();
+  persistQaMarker(window.location.pathname, window.location.search);
 }
 if (typeof window !== 'undefined' && POSTHOG_KEY && POSTHOG_ENV === 'production') {
   if (!posthog.__loaded) {
@@ -159,6 +206,8 @@ if (typeof window !== 'undefined' && POSTHOG_KEY && POSTHOG_ENV === 'production'
         const attribution = currentAttributionProps();
         if (Object.keys(attribution).length > 0) client.register(attribution);
         if (currentBrowserIsInternal()) client.register({ is_internal: true });
+        const testTraffic = currentTestTraffic();
+        if (testTraffic.is_test) client.register(testTraffic);
       },
     });
   }

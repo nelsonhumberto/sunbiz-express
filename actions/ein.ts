@@ -289,7 +289,7 @@ export async function purchaseEinAddOn(
       createdAt: true,
       businessName: true,
       filingAdditionalServices: { select: { service: { select: { serviceSlug: true } } } },
-      user: { select: { id: true, email: true, firstName: true, stripeCustomerId: true } },
+      user: { select: { id: true, email: true, firstName: true, stripeCustomerId: true, isTester: true } },
     },
   });
   if (!filing || filing.userId !== session.user.id) {
@@ -384,7 +384,12 @@ export async function purchaseEinAddOn(
           stripePaymentMethodId: pm?.id ?? null,
           amountCents: pi.amount,
           status: 'SUCCEEDED',
-          isTest: isTestPayment({ stripePaymentIntentId: pi.id, livemode: pi.livemode }),
+          isTest: isTestPayment({
+            stripePaymentIntentId: pi.id,
+            livemode: pi.livemode,
+            metadata: pi.metadata,
+            userIsTester: filing.user.isTester,
+          }),
           einCents: priceCents,
           cardLast4: pm?.card?.last4 ?? null,
           cardBrand: pm?.card?.brand

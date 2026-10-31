@@ -28,7 +28,9 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
-import { stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { isLaunchformaQaEmail } from '@/lib/ads-conversions';
+import { clearQaCookie, qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { filingTestCreateFields, guestTesterCreateFields } from '@/lib/qa-marker';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
@@ -137,6 +139,8 @@ export async function startGuestFiling(
     return { error: t('companyNameInvalid') };
   }
   const email = parsed.data.email.toLowerCase().trim();
+  const qaMarked = qaMarkedFromRequest();
+  const emailHit = isLaunchformaQaEmail(email);
   const locale = await storedLocale();
   const localeData = locale ? { locale } : {};
   const entryPath = storedEntryPath();
@@ -163,6 +167,10 @@ export async function startGuestFiling(
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
+        ...filingTestCreateFields({
+          qaMarked,
+          isTester: session.user.isTester === true || emailHit,
+        }),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
@@ -170,6 +178,7 @@ export async function startGuestFiling(
       userId: session.user.id,
       filingId: filing.id,
       emails: [session.user.email],
+      qaMarked,
     });
     return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
   }
@@ -203,6 +212,7 @@ export async function startGuestFiling(
       guestToken: token,
       ...localeData,
       ...userUtmCreateFields(),
+      ...guestTesterCreateFields({ qaMarked, emailHit }),
     },
   });
 
@@ -227,6 +237,7 @@ export async function startGuestFiling(
       ...localeData,
       ...entryData,
       ...filingUtmCreateFields(),
+      ...filingTestCreateFields({ qaMarked, isTester: emailHit }),
       ...(sessionPlan === 'separate'
         ? { optionalDetails: JSON.stringify({ typedGuestEmail: email }) }
         : {}),
@@ -237,6 +248,7 @@ export async function startGuestFiling(
     userId: guestUser.id,
     filingId: filing.id,
     emails: [email, guestUser.email],
+    qaMarked,
   });
 
   return await redirectLocalized(`/wizard/${filing.id}/2`, locale);
@@ -303,6 +315,8 @@ export async function openGuestDraft(input: {
     | 'PREMIUM';
   const seededName = normalizeNameCheckQuery(input.businessName) || null;
   const optionalEmail = (input.email ?? '').trim();
+  const qaMarked = qaMarkedFromRequest();
+  const emailHit = isLaunchformaQaEmail(optionalEmail);
   if (input.draftIntent !== 'resume' && !startNameIsAcceptable(seededName)) {
     return { error: t('companyNameInvalid') };
   }
@@ -335,6 +349,10 @@ export async function openGuestDraft(input: {
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
+        ...filingTestCreateFields({
+          qaMarked,
+          isTester: session.user.isTester === true || emailHit,
+        }),
       },
     });
     await syncSCorpElectionAddOn(filing.id, taxElection === 'S_CORP', serviceTier as TierSlug);
@@ -342,6 +360,7 @@ export async function openGuestDraft(input: {
       userId: session.user.id,
       filingId: filing.id,
       emails: [session.user.email, optionalEmail],
+      qaMarked,
     });
     return await finishGuestDraft(`/wizard/${filing.id}/2`, locale, input.returnRedirect);
   }
@@ -452,6 +471,7 @@ export async function openGuestDraft(input: {
           guestToken: token,
           ...localeData,
           ...userUtmCreateFields(),
+          ...guestTesterCreateFields({ qaMarked, emailHit }),
         },
       });
       userId = created.id;
@@ -480,6 +500,10 @@ export async function openGuestDraft(input: {
         ...localeData,
         ...entryData,
         ...filingUtmCreateFields(),
+        ...filingTestCreateFields({
+          qaMarked,
+          isTester: guest?.isTester === true || emailHit,
+        }),
       },
     });
     filingId = filing.id;
@@ -488,6 +512,7 @@ export async function openGuestDraft(input: {
       userId,
       filingId: filing.id,
       emails: [optionalEmail, guestRecord?.email],
+      qaMarked,
     });
     if (guestRecord) {
       await rememberStartEmail(
@@ -673,6 +698,7 @@ export async function claimGuestAccount(
       },
     });
     clearGuestCookie();
+    clearQaCookie();
   }
 
   // Welcome email has no temporary password. Don't block the draft on delivery.

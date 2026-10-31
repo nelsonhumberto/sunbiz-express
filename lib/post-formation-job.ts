@@ -110,6 +110,12 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
         select: { id: true, email: true, firstName: true, locale: true, accountStatus: true },
       },
       payments: { select: { status: true, isTest: true } },
+      raServices: {
+        where: { serviceProvider: 'INTERNAL', status: { not: 'CANCELLED' } },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { renewalPriceCents: true },
+      },
     },
     orderBy: { sunbizApprovedAt: 'asc' },
     take: 100,
@@ -215,6 +221,7 @@ export async function runPostFormationSeries(nowMs: number): Promise<SeriesJobRe
             locale,
             unsubscribeUrl,
             linkFilingId: filing.id,
+            raRenewalPriceCents: filing.raServices[0]?.renewalPriceCents ?? null,
           },
         });
         const outcome = claimStatusAfterSend({

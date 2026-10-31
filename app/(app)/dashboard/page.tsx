@@ -18,6 +18,7 @@ import { prisma } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { Progress } from '@/components/ui/progress';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
 import { formatCurrency, formatDate, formatRelative, safeParseJson } from '@/lib/utils';
 import { formatDueLabel } from '@/lib/due-label';
 import {
@@ -253,7 +254,9 @@ export default async function DashboardPage() {
                         },
                         locale,
                       )}{' '}
-                      · {t('raRenewalPrice', { price: formatCurrency(svc.renewalPriceCents) })}
+                      · {t('raRenewalPrice', {
+                        price: formatRaRenewalPrice(svc.renewalPriceCents),
+                      })}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-ink-subtle" />

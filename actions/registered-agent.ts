@@ -9,6 +9,7 @@ import { checkActionRateLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { isTestPayment } from '@/lib/payment-test';
+import { raRenewalChargeCents } from '@/lib/ra-renewal-price';
 
 const RenewSchema = z.object({
   raServiceId: z.string().min(1),
@@ -161,7 +162,8 @@ export async function renewRegisteredAgent(input: z.infer<typeof RenewSchema>) {
       context: {
         firstName: svc.filing.user.firstName,
         businessName: svc.filing.businessName ?? undefined,
-        totalCents: svc.renewalPriceCents,
+        totalCents: raRenewalChargeCents(svc.renewalPriceCents),
+        raRenewalPriceCents: svc.renewalPriceCents,
         dueDate: newRenewalDate,
       },
     });

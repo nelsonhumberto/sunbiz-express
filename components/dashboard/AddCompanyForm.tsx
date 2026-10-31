@@ -20,13 +20,13 @@ import {
   manualConfirmLinkedEntity,
   previewLinkedEntity,
 } from '@/actions/linked-entity';
-import { RA_RENEWAL_PRICE_CENTS } from '@/lib/pricing';
-import { formatCurrency } from '@/lib/utils';
 import { searchEntitiesByName, type EntitySearchHit } from '@/actions/annual-report';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatRaRenewalPrice } from '@/lib/ra-renewal-price';
+
 type Preview = {
   documentNumber: string;
   name: string;
@@ -278,7 +278,7 @@ export function AddCompanyForm() {
                   {t('raUpsellTitle')}
                 </div>
                 <p className="text-ink-muted">
-                  {t('raUpsellBody', { price: formatCurrency(RA_RENEWAL_PRICE_CENTS) })}
+                  {t('raUpsellBody', { price: formatRaRenewalPrice(null) })}
                 </p>
               </div>
             )}

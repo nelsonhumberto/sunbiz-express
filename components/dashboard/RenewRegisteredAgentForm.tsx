@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { raRenewalChargeCents } from '@/lib/ra-renewal-price';
 import { formatCurrency, formatDateLong } from '@/lib/utils';
 
 export type RaSavedCard = {
@@ -26,13 +27,14 @@ export type RenewRegisteredAgentFormProps = {
   agentAddress: string;
   currentRenewalDate: string;
   newRenewalDate: string;
-  renewalPriceCents: number;
+  renewalPriceCents: number | null;
   savedCard: RaSavedCard | null;
 };
 
 export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
   const t = useTranslations('dashboard');
   const router = useLocalizedRouter();
+  const renewalPriceCents = raRenewalChargeCents(props.renewalPriceCents);
 
   const hasSaved = !!props.savedCard;
   const [useSavedCard, setUseSavedCard] = useState(hasSaved);
@@ -50,9 +52,9 @@ export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
       return;
     }
     start(async () => {
-      // The server charges this service's snapshotted renewal price.
+      // The server charges this service's snapshotted renewal price and ignores amountCents.
       const result = await cardRef.current!.confirm({
-        amountCents: props.renewalPriceCents,
+        amountCents: renewalPriceCents,
         purpose: 'ra_renewal',
         raServiceId: props.raServiceId,
         cardholderName: useSavedCard ? props.savedCard!.cardholderName : cardholderName,
@@ -94,7 +96,7 @@ export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
           <div className="border-t border-border pt-3 flex items-baseline justify-between">
             <span className="font-semibold">{t('raRenewPrice')}</span>
             <span className="font-display text-2xl font-medium">
-              {formatCurrency(props.renewalPriceCents)}
+              {formatCurrency(renewalPriceCents)}
             </span>
           </div>
         </CardContent>
@@ -175,7 +177,7 @@ export function RenewRegisteredAgentForm(props: RenewRegisteredAgentFormProps) {
         {pending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          t('raRenewPay', { amount: formatCurrency(props.renewalPriceCents) })
+          t('raRenewPay', { amount: formatCurrency(renewalPriceCents) })
         )}
       </Button>
     </div>

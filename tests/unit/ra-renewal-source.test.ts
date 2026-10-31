@@ -82,9 +82,15 @@ describe('registered agent renewal price source', () => {
     expect(facts).not.toMatch(/\$150|\$119/);
     expect(knowledge).toContain('registeredAgent.renewalCents');
     expect(knowledge).not.toContain('RA_RENEWAL_PRICE_CENTS');
-    expect(readFileSync('lib/post-formation-email.ts', 'utf8')).toContain('RA_RENEWAL_PRICE_CENTS');
+    expect(readFileSync('lib/ra-renewal-price.ts', 'utf8')).toContain(
+      'return renewalPriceCents ?? RA_RENEWAL_PRICE_CENTS',
+    );
+    expect(readFileSync('lib/post-formation-email.ts', 'utf8')).toContain(
+      'formatRaRenewalPrice(args.renewalPriceCents)',
+    );
     expect(readFileSync('lib/email-mock.ts', 'utf8')).not.toContain('$149');
-    expect(readFileSync('lib/email.ts', 'utf8')).toContain('ctx.raRenewalPriceCents ?? RA_RENEWAL_PRICE_CENTS');
+    expect(readFileSync('lib/email-mock.ts', 'utf8')).toContain('formatRaRenewalPrice(renewalPriceCents)');
+    expect(readFileSync('lib/email.ts', 'utf8')).toContain('formatRaRenewalPrice(ctx.raRenewalPriceCents)');
     expect(readFileSync('lib/email.ts', 'utf8')).toContain('formatCurrency(totalCents)');
   });
 });

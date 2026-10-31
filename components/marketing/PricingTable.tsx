@@ -71,6 +71,7 @@ export function PricingTable({
   attributionSearch: attributionFromServer = '',
 }: PricingTableProps) {
   const t = useTranslations('pricing');
+  const tLp = useTranslations('lpFlorida');
   const [attributionSearch, setAttributionSearch] = useState(attributionFromServer);
   useEffect(() => {
     if (attributionFromServer) return;
@@ -118,7 +119,7 @@ export function PricingTable({
                 className={cn(
                   'relative rounded-2xl bg-white border transition-all duration-300',
                   tier.recommended
-                    ? 'border-primary shadow-glow lg:scale-[1.03] lg:-mt-2'
+                    ? 'order-first border-primary shadow-glow lg:order-none lg:scale-[1.03] lg:-mt-2'
                     : 'border-border shadow-soft [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1'
                 )}
               >
@@ -159,10 +160,12 @@ export function PricingTable({
                     className="mt-4 w-full touch-manipulation active:scale-100"
                   >
                     <Link
+                      data-testid="pricing-start"
                       href={hrefWithAttribution(
                         `/start?tier=${tier.slug}${bookableCode !== 'FL' ? `&state=${bookableCode}` : ''}`,
                         attributionSearch,
                       )}
+                      aria-label={`${tLp('startButton')}, ${tierName}`}
                       onClick={() =>
                         trackCtaClicked('pricing_choose', {
                           tier: tier.slug,
@@ -171,7 +174,7 @@ export function PricingTable({
                         })
                       }
                     >
-                      {t('chooseTier', { name: tierName })}
+                      {tLp('startButton')}
                     </Link>
                   </Button>
                 </div>

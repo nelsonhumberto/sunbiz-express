@@ -30,6 +30,13 @@ describe('Florida LLC preselect', () => {
       }),
     ).toBe(true);
     expect(shouldPreselectFloridaLlc({ utmSource: 'Google' })).toBe(true);
+    expect(
+      shouldPreselectFloridaLlc({ referer: 'https://launchforma.com/pricing' }),
+    ).toBe(true);
+    expect(
+      shouldPreselectFloridaLlc({ referer: 'https://launchforma.com/es/pricing?tier=STANDARD' }),
+    ).toBe(true);
+    expect(shouldPreselectFloridaLlc({ path: '/pricing' })).toBe(true);
     expect(shouldPreselectFloridaLlc({ utmSource: 'facebook', path: '/start' })).toBe(false);
     expect(shouldPreselectFloridaLlc({ utmSource: 'email' })).toBe(false);
   });

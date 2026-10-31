@@ -18,10 +18,10 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { captureThenNavigate, filingIdFromWizardPath, startNavigationEvents, trackGoogleBeginFiling } from '@/lib/analytics';
-import { tierPackagePriceCents } from '@/lib/pricing';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
 import { formatCurrency } from '@/lib/utils';
 import { isDeliverableEmail } from '@/lib/email-address';
+import { startHeadlinePriceCents } from '@/lib/start-headline-price';
 import { startNameIsAcceptable } from '@/lib/start-draft';
 
 type EntityChoice = 'LLC' | 'CORP' | 'SCORP';
@@ -256,7 +256,13 @@ export function GuestStartLaunch({
     return () => viewport.removeEventListener('resize', onResize);
   }, [nameFocused]);
 
-  const essentialPrice = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+  const headlinePrice = formatCurrency(
+    startHeadlinePriceCents({
+      tier: defaultTier,
+      state: defaultState,
+      preselectFloridaLlc,
+    }),
+  );
 
   return (
     <div className="space-y-3 sm:space-y-8">
@@ -271,7 +277,7 @@ export function GuestStartLaunch({
       <Card>
         <CardContent className="p-4 sm:p-6 md:p-8">
           <p data-testid="start-value" className="mb-3 text-center text-xs leading-snug text-ink">
-            {essentialPrice} {tPricing('allIn')}
+            {headlinePrice} {tPricing('allIn')}
             {' · '}
             {tHero('previewBankReadyDetail')}
             {' · '}

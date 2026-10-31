@@ -49,12 +49,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const VALID_TIERS = new Set(['BASIC', 'STANDARD', 'PREMIUM']);
 
-function resolveTier(raw: string | undefined): 'BASIC' | 'STANDARD' | 'PREMIUM' {
-  const upper = (raw ?? '').toUpperCase();
-  return (VALID_TIERS.has(upper) ? upper : 'STANDARD') as
-    | 'BASIC'
-    | 'STANDARD'
-    | 'PREMIUM';
+function resolveTier(raw: string | undefined): 'BASIC' | 'STANDARD' | 'PREMIUM' | undefined {
+  const upper = (raw ?? '').trim().toUpperCase();
+  if (!VALID_TIERS.has(upper)) return undefined;
+  return upper as 'BASIC' | 'STANDARD' | 'PREMIUM';
 }
 
 function resolveEntityParam(raw: string | undefined): {

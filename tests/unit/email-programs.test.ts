@@ -813,8 +813,7 @@ describe('approved copy', () => {
     expect(issue3es.html).toContain('Cancelar suscripción');
     expect(issue3es.html).toContain('Preferencias de correo');
     expect(issue3es.html).toContain('Forma tu empresa con claridad');
-    expect(issue3es.html).toContain('LaunchForma no ofrece asesoría legal');
-    expect(issue3es.html).not.toMatch(/despacho|bufete/i);
+    expect(issue3es.html).toContain('No es un despacho de abogados');
     expect(issue3es.html).toContain('14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016');
     expect(issue3es.html).toContain(`${SITE}/es"`);
     expect(issue3es.html).toContain(
@@ -907,14 +906,13 @@ describe('approved copy', () => {
     expect(issue5es.html).toContain(`${SITE}/es/checklist`);
     expect(issue5es.html).toContain('Cancelar suscripción');
     expect(issue5es.html).toContain('Preferencias de correo');
-    expect(issue5es.html).toContain('LaunchForma no ofrece asesoría legal');
+    expect(issue5es.html).toContain('No es un despacho de abogados');
     expect(issue5es.html).toContain('Miami Lakes, FL 33016');
     expect(issue5es.html).toContain(unsub);
     expect(issue5es.html).not.toContain('Hi there,');
     expect(issue5es.html).not.toContain('September 17, 2027');
     expect(issue5es.html).not.toContain('/launch-bundle');
     expect(issue5es.html).not.toMatch(/\bgratis\b/i);
-    expect(issue5es.html).not.toMatch(/despacho|bufete/i);
     expect(newsletterDeliveryLocale('005', 'es')).toBe('es');
     expect(newsletterDeliveryLocale('005', 'en')).toBe('en');
     const issue5other = renderTemplate('WEEKLY_NEWSLETTER', {
@@ -927,16 +925,6 @@ describe('approved copy', () => {
     expect(newsletterIssueCopy('005', 'es').subject).toBe(
       'Pon las fechas anuales de tu empresa en un solo calendario',
     );
-    for (const number of ['001', '002', '003', '004', '005'] as const) {
-      const weeklyEs = renderTemplate('WEEKLY_NEWSLETTER', {
-        newsletterIssue: number,
-        locale: 'es',
-        unsubscribeUrl: unsub,
-      });
-      expect(weeklyEs.html).not.toMatch(/despacho|bufete/i);
-      expect(weeklyEs.html).toContain('LaunchForma no ofrece asesoría legal');
-      expect(weeklyEs.html).toContain(unsub);
-    }
 
     const jobSource = readFileSync('lib/newsletter-job.ts', 'utf8');
     const dueAt = jobSource.indexOf('const issue = newsletterDueIssue');

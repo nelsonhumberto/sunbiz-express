@@ -208,7 +208,7 @@ describe('operating agreement email unsubscribe', () => {
       expect(esMail.html).toContain('Forma tu empresa con claridad');
       expect(esMail.html).toContain('¿Preguntas?');
       expect(esMail.html).toContain('Preferencias de correo');
-      expect(esMail.html).toContain('LaunchForma no ofrece asesoría legal');
+      expect(esMail.html).toContain('No es un despacho de abogados');
       expect(esMail.html).toContain(`href="${escaped}"`);
       expect(esMail.html).not.toContain('/dashboard/settings');
       expect(esMail.html).not.toContain('Email preferences');

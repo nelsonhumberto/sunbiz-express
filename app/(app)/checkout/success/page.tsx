@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { getFormationState } from '@/lib/formation-states';
 import { CheckoutConversionTracker } from '@/components/analytics/CheckoutConversionTracker';
+import { CheckoutPaymentWatch } from '@/components/analytics/CheckoutPaymentWatch';
 import { adsActorForUser } from '@/lib/ads-actor';
 import { retrieveCheckoutSession } from '@/lib/retrieve-checkout-session';
 import {
@@ -83,13 +84,22 @@ export default async function CheckoutSuccessPage({
 
   if (!sessionId && !paidFiling) {
     return (
-      <OrderNotice
-        pending
-        title={t('confirmingTitle')}
-        body={t('confirmingBody')}
-        dashboardLabel={t('goDashboard')}
-        locale={locale}
-      />
+      <>
+        {urlFilingId ? (
+          <CheckoutPaymentWatch
+            filingId={urlFilingId}
+            isTester={actor.isTester}
+            email={actor.email}
+          />
+        ) : null}
+        <OrderNotice
+          pending
+          title={t('confirmingTitle')}
+          body={t('confirmingBody')}
+          dashboardLabel={t('goDashboard')}
+          locale={locale}
+        />
+      </>
     );
   }
 

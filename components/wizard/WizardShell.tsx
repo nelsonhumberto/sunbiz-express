@@ -197,11 +197,9 @@ function LiveCostSidebar({
   // order summary updates the instant a customer toggles an add-on, before the
   // step is saved. Falls back to the server-persisted selection elsewhere.
   const addOnSlugs = addOnsPreview ?? costData.addOnSlugs;
-  // The customer-facing total stays hidden until they actively interact
-  // with the package selection step. Before step 3 we only show the
-  // package placeholder; on step 3+ (or whenever a preview is active) we
-  // surface the running total.
-  const packageSelected = step >= 3 || tierPreview !== null;
+  // A saved tier (step 2, after pricing or /start) is shown. Step 1 still
+  // waits, unless the package step is previewing a choice.
+  const packageSelected = step >= 2 || tierPreview !== null;
   return (
     <CostSidebar
       entityType={costData.entityType}

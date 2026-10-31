@@ -6,6 +6,7 @@ import { routing } from '@/i18n/routing';
 import { toSpanishUrl } from '@/lib/locale-paths';
 import { localeAlternates } from '@/lib/locale-seo';
 import { tierPackagePriceCents } from '@/lib/pricing';
+import { startHeadlinePriceCents } from '@/lib/start-headline-price';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
@@ -89,7 +90,28 @@ describe('Florida LLC ad landing', () => {
     const launch = source('app/start/guest-start-launch.tsx');
     expect(start.indexOf('<GuestStartLaunch')).toBeLessThan(start.indexOf('<GovDisclosure'));
     expect(launch).toContain('data-testid="start-value"');
-    expect(launch).toContain('tierPackagePriceCents');
+    expect(launch).toContain('startHeadlinePriceCents');
+    expect(source('lib/start-headline-price.ts')).toContain('tierPackagePriceCents');
     expect(launch).toContain('trackGoogleBeginFiling');
+  });
+
+  it('prices /start from the carried tier and shows a saved package on step 2', () => {
+    expect(startHeadlinePriceCents({})).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    expect(startHeadlinePriceCents({ tier: '  ' })).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    expect(startHeadlinePriceCents({ tier: 'nope' })).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    expect(startHeadlinePriceCents({ tier: 'standard', preselectFloridaLlc: true })).toBe(
+      tierPackagePriceCents('STANDARD', 'LLC', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ tier: 'PREMIUM' })).toBe(
+      tierPackagePriceCents('PREMIUM', 'LLC', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ tier: 'BASIC', state: 'WY' })).toBe(
+      tierPackagePriceCents('BASIC', 'LLC', 'WY'),
+    );
+    const shell = source('components/wizard/WizardShell.tsx');
+    expect(shell).toContain('step >= 2 || tierPreview !== null');
+    expect(shell).not.toContain('step >= 3 || tierPreview !== null');
+    expect(en.pricing.allIn.length).toBeGreaterThan(0);
+    expect(es.pricing.allIn.length).toBeGreaterThan(0);
   });
 });

@@ -387,7 +387,7 @@ const EMAIL_SHELL_ES: EmailShellCopy = {
   tagline: 'Forma tu empresa con claridad',
   questions: '¿Preguntas?',
   preferences: 'Preferencias de correo',
-  notALawFirm: 'No es un despacho de abogados',
+  notALawFirm: 'LaunchForma no ofrece asesoría legal',
 };
 
 export function emailShellCopy(locale: DripLocale): EmailShellCopy {

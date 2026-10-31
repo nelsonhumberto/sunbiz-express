@@ -27,6 +27,10 @@ for (const value of Object.values(routing.pathnames ?? {})) {
  */
 const GUIDE_TWIN_SLUGS: Record<string, string> = {
   '/guides/florida-llc-cost': '/guides/costo-llc-florida',
+  // English articles land with the English guides PR. These maps only
+  // change the language switcher. They do not rewrite the Spanish URL.
+  '/guides/florida-llc-without-ssn': '/guides/llc-florida-sin-seguro-social',
+  '/guides/florida-llc-non-resident': '/guides/llc-florida-para-extranjeros',
 };
 
 const GUIDE_TWIN_EN_BY_SLUG: Record<string, string> = Object.fromEntries(

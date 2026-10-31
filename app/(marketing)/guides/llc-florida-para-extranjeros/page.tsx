@@ -5,7 +5,10 @@ const PATH = '/guides/llc-florida-para-extranjeros';
 const NS = 'guideLlcExtranjeros';
 
 export function generateMetadata(): Promise<Metadata> {
-  return spanishGuideMetadata(PATH, NS, { indexable: true });
+  return spanishGuideMetadata(PATH, NS, {
+    indexable: true,
+    twinEnglishPath: '/guides/florida-llc-non-resident',
+  });
 }
 
 export default function LlcFloridaParaExtranjerosPage() {

@@ -5,7 +5,10 @@ const PATH = '/guides/llc-florida-sin-seguro-social';
 const NS = 'guideLlcSinSsn';
 
 export function generateMetadata(): Promise<Metadata> {
-  return spanishGuideMetadata(PATH, NS, { indexable: true });
+  return spanishGuideMetadata(PATH, NS, {
+    indexable: true,
+    twinEnglishPath: '/guides/florida-llc-without-ssn',
+  });
 }
 
 export default function LlcFloridaSinSeguroSocialPage() {

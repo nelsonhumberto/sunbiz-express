@@ -211,12 +211,28 @@ describe('Spanish buyer-intent guides', () => {
         );
         expect(long.endsWith('todo incluido.')).toBe(true);
         expect(long).not.toContain('reporte anual');
+        expect(es.guideLlcCosto.body).toContain('El EIN lo emite el IRS');
+        expect(es.guideLlcCosto.body.toLowerCase()).not.toContain('gratis');
+        expect(es.guideLlcCosto.body).toContain('/es/pricing');
+        expect(es.guideLlcCosto.body).toContain('https://dos.fl.gov/sunbiz/forms/fees/llc-fees/');
       }
     }
   });
 
   it('pairs the cost guide with the English page and keeps the other two Spanish-only', async () => {
     expect(toSpanishUrl('/guides/florida-llc-cost')).toBe('/es/guides/costo-llc-florida');
+    expect(toSpanishUrl('/guides/florida-llc-without-ssn')).toBe(
+      '/es/guides/llc-florida-sin-seguro-social',
+    );
+    expect(pathForLocale('/es/guides/llc-florida-sin-seguro-social', 'en')).toBe(
+      '/guides/florida-llc-without-ssn',
+    );
+    expect(toSpanishUrl('/guides/florida-llc-non-resident')).toBe(
+      '/es/guides/llc-florida-para-extranjeros',
+    );
+    expect(pathForLocale('/es/guides/llc-florida-para-extranjeros', 'en')).toBe(
+      '/guides/florida-llc-non-resident',
+    );
     expect(pathForLocale('/guides/florida-llc-cost', 'es')).toBe('/es/guides/costo-llc-florida');
     expect(pathForLocale('/es/guides/costo-llc-florida', 'en')).toBe('/guides/florida-llc-cost');
     expect(pathForLocale('/es/guides/costo-llc-florida?utm_source=ig', 'en')).toBe(
@@ -233,13 +249,21 @@ describe('Spanish buyer-intent guides', () => {
       'x-default': '/guides/florida-llc-cost',
     });
 
+    request.path = '/es/guides/llc-florida-sin-seguro-social';
+    const ssnMetaResult = await ssnMeta();
+    expect(ssnMetaResult.alternates?.languages).toEqual({
+      en: '/guides/florida-llc-without-ssn',
+      es: '/es/guides/llc-florida-sin-seguro-social',
+      'x-default': '/guides/florida-llc-without-ssn',
+    });
+
     request.path = '/es/guides/llc-florida-para-extranjeros';
     const foreign = await foreignMeta();
     expect(foreign.alternates?.languages).toEqual({
+      en: '/guides/florida-llc-non-resident',
       es: '/es/guides/llc-florida-para-extranjeros',
-      'x-default': '/es/guides/llc-florida-para-extranjeros',
+      'x-default': '/guides/florida-llc-non-resident',
     });
-    expect(foreign.alternates?.languages).not.toHaveProperty('en');
   });
 
   it('lists the new URLs in the sitemap and llms.txt', () => {

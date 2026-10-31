@@ -1710,6 +1710,6 @@
     "privacyLink": "Read the Privacy Policy"
   },
   "legalPrivacy": {
-    "googleCookieless": "Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept."
+    "googleCookieless": "Before you accept, these tags send only cookieless signals; advertising and analytics cookies are set only after you accept."
   }
 }

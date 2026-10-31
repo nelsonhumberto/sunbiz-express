@@ -33,6 +33,12 @@ export function marketingTagsAllowed(input: {
   return input.consent === ADS_CONSENT_ALL;
 }
 
+/** The cookie bar sets `--lf-cookie-h` to its height, or `0px` when it is closed. */
+export function cookieBannerIsOpen(heightValue: string | null | undefined): boolean {
+  const height = Number.parseFloat((heightValue ?? '').trim());
+  return Number.isFinite(height) && height > 0;
+}
+
 /** The bar is shown once, until the visitor chooses or an opt-out is already set. */
 export function shouldShowCookieNotice(input: { consent: string | null; optedOut: boolean }): boolean {
   if (input.optedOut) return false;

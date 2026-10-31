@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { marketingTagsAllowed, readAdsConsent, shouldShowCookieNotice } from '@/lib/ad-consent';
+import { cookieBannerIsOpen, marketingTagsAllowed, readAdsConsent, shouldShowCookieNotice } from '@/lib/ad-consent';
 import { newlyReachedScrollDepths } from '@/lib/scroll-depth';
 import { readFileSync } from 'node:fs';
 
@@ -37,9 +37,13 @@ describe('landing tracking and consent', () => {
     expect(bar).toContain('requestIdleCallback');
     expect(bar).not.toContain('overflow-hidden');
     expect(bar).toContain('--lf-cookie-h');
-    expect(readFileSync('components/assistant/ChatWidget.tsx', 'utf8')).toContain(
-      'calc(1.25rem + var(--lf-cookie-h, 0px))',
-    );
+    const chat = readFileSync('components/assistant/ChatWidget.tsx', 'utf8');
+    expect(chat).toContain('cookieBannerIsOpen');
+    expect(chat).toContain('bottom-5');
+    expect(chat).not.toContain('calc(1.25rem + var(--lf-cookie-h, 0px))');
+    expect(cookieBannerIsOpen('48px')).toBe(true);
+    expect(cookieBannerIsOpen('0px')).toBe(false);
+    expect(cookieBannerIsOpen('')).toBe(false);
     expect(readFileSync('components/marketing/FloridaLlcLanding.tsx', 'utf8')).toContain(
       "bottom: 'var(--lf-cookie-h, 0px)'",
     );

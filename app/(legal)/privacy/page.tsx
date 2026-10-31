@@ -28,7 +28,7 @@ We share information with the services that help us run LaunchForma:
 - **Vercel**: to host our website and app, and for basic site performance and visitor analytics.
 - **Supabase**: to host our database.
 - **PostHog**: for product analytics (pageviews and events) and session replay. Data is processed in the United States.
-- **Google (Google Analytics and Google Ads)**: to measure site traffic and our Google Ads campaigns, including remarketing and purchase and signup conversions. These tags load only after you accept cookies in this browser. They stay off if you opt out. Opting back in on the Do Not Sell or Share page turns them on again when cookies are accepted.
+- **Google (Google Analytics and Google Ads)**: to measure site traffic and our Google Ads campaigns, including remarketing and purchase and signup conversions. Before you accept, these tags send only cookieless signals; advertising and analytics cookies are set only after you accept. They stay off if you opt out. Opting back in on the Do Not Sell or Share page turns them on again when cookies are accepted.
 - **OpenAI**: through the OpenAI ads measurement pixel, to measure our ads shown in ChatGPT, including signups.
 - **DeepSeek**: to power our in-app assistant. We remove SSNs and tax IDs before anything is sent.
 - **Telnyx**: to send and receive faxes related to your filings.
@@ -59,10 +59,8 @@ We use cookies and similar technologies (such as local storage) for:
 - **Essential:** keeping you signed in (auth session cookie) and saving your in-progress filing if you start without an account (a guest cookie that lasts up to 30 days).
 - **Campaign tracking:** remembering which ad or campaign brought you to the site (a first-party cookie that lasts up to 30 days).
 - **Ad measurement choice:** a first-party cookie (\`lf_ad_optout\`) that lasts up to 1 year. It stores whether you opted out of Google and OpenAI ad measurement in this browser. We set it when you use the footer link or when your browser sends Global Privacy Control. Opting back in on the Do Not Sell or Share page turns measurement on again only if you have also accepted cookies.
-- **Cookie choice:** a first-party cookie (\`lf_ads_consent\`) that lasts up to 1 year. Accept loads Google Analytics and Google Ads, including the remarketing tag. Essential only keeps those tags off. You can change this later by opting out or opting back in.
-- **Analytics and advertising:** Google Analytics, Google Ads (including remarketing), the OpenAI ads pixel, PostHog, and Vercel may set their own cookies or identifiers to measure visits and ad conversions. Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results.
-
-Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept.
+- **Cookie choice:** a first-party cookie (\`lf_ads_consent\`) that lasts up to 1 year. Accept lets Google Analytics and Google Ads set cookies. Essential only keeps them cookieless. You can change this later by opting out or opting back in.
+- **Analytics and advertising:** Google Analytics, Google Ads (including remarketing), the OpenAI ads pixel, PostHog, and Vercel may set their own cookies or identifiers to measure visits and ad conversions.
 
 **Session replay.** On our production site, PostHog may record how you interact with public pages, pricing, the start page, ad landing pages, and the filing wizard (clicks, scrolling, page changes) so we can find and fix problems. All text and form inputs are masked, and images and media are blocked, so we do not see what you type or upload. Session replay is turned off on checkout, including card fields, on your dashboard, on sign-in and account pages, and on our admin pages.
 

@@ -112,4 +112,82 @@ describe('weekly newsletter locale', () => {
       expect(claim?.data.locale).toBe(row.locale);
     }
   });
+
+  it('sends issue 005 in Spanish only when the subscriber locale is es', async () => {
+    process.env.WEEKLY_NEWSLETTER_ENABLED = 'true';
+    const sent004At = new Date('2026-10-21T12:00:00.000Z');
+    const subscribers = [
+      { email: 'en@example.com', locale: 'en', confirmedAt: CONFIRMED, isTest: false },
+      { email: 'es@example.com', locale: 'es', confirmedAt: CONFIRMED, isTest: false },
+      { email: 'fr@example.com', locale: 'fr', confirmedAt: CONFIRMED, isTest: false },
+      { email: 'blank@example.com', locale: '', confirmedAt: CONFIRMED, isTest: false },
+    ];
+    signupCount.mockResolvedValue(subscribers.length);
+    signupFindMany.mockResolvedValue(subscribers);
+    optOutFindMany.mockResolvedValue([]);
+    suppressionFindMany.mockResolvedValue([]);
+    sendFindMany.mockResolvedValue(
+      subscribers.flatMap((row) => [
+        { email: row.email, issueNumber: '001', status: 'SENT', sentAt: CONFIRMED },
+        { email: row.email, issueNumber: '002', status: 'SENT', sentAt: SENT_002 },
+        { email: row.email, issueNumber: '003', status: 'SENT', sentAt: SENT_002 },
+        { email: row.email, issueNumber: '004', status: 'SENT', sentAt: sent004At },
+      ]),
+    );
+    sendFindUnique.mockResolvedValue(null);
+    sendCreate.mockResolvedValue({ id: 'claim' });
+    sendUpdate.mockResolvedValue({});
+    sendEmail.mockResolvedValue({ status: 'SENT' });
+
+    const result = await runWeeklyNewsletter(NOW);
+
+    expect(result.sent).toBe(4);
+    expect(sendEmail).toHaveBeenCalledTimes(4);
+
+    const expected = [
+      {
+        email: 'en@example.com',
+        locale: 'en',
+        subject: "Put your company's yearly dates on one calendar",
+      },
+      {
+        email: 'es@example.com',
+        locale: 'es',
+        subject: 'Pon las fechas anuales de tu empresa en un solo calendario',
+      },
+      {
+        email: 'fr@example.com',
+        locale: 'en',
+        subject: "Put your company's yearly dates on one calendar",
+      },
+      {
+        email: 'blank@example.com',
+        locale: 'en',
+        subject: "Put your company's yearly dates on one calendar",
+      },
+    ] as const;
+
+    for (const row of expected) {
+      const args = sendEmail.mock.calls
+        .map((call) => call[0] as SendArgs)
+        .find((call) => call.to === row.email);
+      expect(args?.step).toBe('005');
+      expect(args?.context?.newsletterIssue).toBe('005');
+      expect(args?.context?.locale).toBe(row.locale);
+      expect(
+        buildNewsletterEmail({
+          issue: '005',
+          locale: row.locale,
+          siteUrl: 'https://launchforma.com',
+          unsubscribeUrl: args?.context?.unsubscribeUrl ?? '',
+        }).subject,
+      ).toBe(row.subject);
+
+      const claim = sendCreate.mock.calls
+        .map((call) => call[0] as { data: { email: string; locale: string; issueNumber: string } })
+        .find((call) => call.data.email === row.email);
+      expect(claim?.data.issueNumber).toBe('005');
+      expect(claim?.data.locale).toBe(row.locale);
+    }
+  });
 });

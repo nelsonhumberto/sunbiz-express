@@ -361,7 +361,9 @@ describe('marketing send idempotency', () => {
     expect(newsletterSendKey('Ada@Example.com', '002')).not.toBe(newsletterSendKey('ada@example.com', '001'));
     expect(newsletterSendKey('Ada@Example.com', '003')).toBe('ada@example.com:003');
     expect(newsletterSendKey('Ada@Example.com', '004')).toBe('ada@example.com:004');
+    expect(newsletterSendKey('Ada@Example.com', '005')).toBe('ada@example.com:005');
     expect(newsletterSendKey('Ada@Example.com', '003')).not.toBe(newsletterSendKey('ada@example.com', '004'));
+    expect(newsletterSendKey('Ada@Example.com', '004')).not.toBe(newsletterSendKey('ada@example.com', '005'));
   });
 });
 
@@ -379,9 +381,11 @@ describe('newsletter schedule', () => {
     expect(schedule.issue002.toISOString()).toBe('2026-11-03T13:00:00.000Z');
     expect(schedule.issue003.toISOString()).toBe('2026-11-10T13:00:00.000Z');
     expect(schedule.issue004.toISOString()).toBe('2026-11-17T13:00:00.000Z');
+    expect(schedule.issue005.toISOString()).toBe('2026-11-24T13:00:00.000Z');
     expect(addEtDays(schedule.issue001, 7).toISOString()).toBe(schedule.issue002.toISOString());
     expect(addEtDays(schedule.issue002, 7).toISOString()).toBe(schedule.issue003.toISOString());
     expect(addEtDays(schedule.issue003, 7).toISOString()).toBe(schedule.issue004.toISOString());
+    expect(addEtDays(schedule.issue004, 7).toISOString()).toBe(schedule.issue005.toISOString());
 
     expect(isEtWeekdayMorning(new Date('2026-10-27T13:00:00.000Z'))).toBe(true);
     expect(isEtWeekdayMorning(new Date('2026-11-02T13:00:00.000Z'))).toBe(true);
@@ -563,6 +567,78 @@ describe('newsletter schedule', () => {
         sent003At: deployMorning,
       }),
     ).toBe('004');
+
+    const sent004At = addEtDays(deployMorning, 7);
+    expect(
+      newsletterDueIssue({
+        ...caughtUp,
+        now: sent004At,
+        sent003: true,
+        sent004: true,
+        sent003At: deployMorning,
+        sent004At,
+      }),
+    ).toBeNull();
+    expect(
+      newsletterDueIssue({
+        ...caughtUp,
+        now: addEtDays(deployMorning, 14),
+        sent003: true,
+        sent004: true,
+        sent003At: deployMorning,
+        sent004At,
+      }),
+    ).toBe('005');
+  });
+
+  it('sends 005 seven days after that subscriber 004, and not before 004', () => {
+    const confirmed = new Date('2026-10-27T10:00:00.000Z');
+    const schedule = newsletterIssueSchedule(confirmed);
+    const morning005 = new Date(schedule.issue005.getTime() + 60 * 60 * 1000);
+    const base = {
+      confirmedAt: confirmed,
+      sent001: true,
+      sent002: true,
+      sent003: true,
+      sent004: false,
+      sent005: false,
+      sent002At: schedule.issue002,
+      sent003At: schedule.issue003,
+    };
+    expect(newsletterDueIssue({ ...base, now: morning005 })).toBe('004');
+    expect(
+      newsletterDueIssue({
+        ...base,
+        now: morning005,
+        sent004: true,
+        sent004At: addEtDays(schedule.issue005, -1),
+      }),
+    ).toBeNull();
+    expect(
+      newsletterDueIssue({
+        ...base,
+        now: morning005,
+        sent004: true,
+        sent004At: schedule.issue004,
+      }),
+    ).toBe('005');
+    expect(
+      newsletterDueIssue({
+        ...base,
+        now: morning005,
+        sent004: true,
+        sent005: true,
+        sent004At: schedule.issue004,
+      }),
+    ).toBeNull();
+    expect(
+      newsletterDueIssue({
+        ...base,
+        now: addEtDays(morning005, -1),
+        sent004: true,
+        sent004At: new Date('2026-09-01T12:00:00.000Z'),
+      }),
+    ).toBe('005');
   });
 });
 
@@ -799,6 +875,57 @@ describe('approved copy', () => {
     expect(newsletterDeliveryLocale('004', 'es')).toBe('es');
     expect(newsletterDeliveryLocale('004', 'en')).toBe('en');
     expect(newsletterIssueCopy('004', 'es').subject).toBe('Dale al dinero de tu negocio su propio carril');
+
+    const issue5 = renderTemplate('WEEKLY_NEWSLETTER', {
+      newsletterIssue: '005',
+      locale: 'en',
+      unsubscribeUrl: unsub,
+    });
+    expect(issue5.subject).toBe("Put your company's yearly dates on one calendar");
+    expect(issue5.html).toContain('Florida LLC or corporation? Your annual report window opens January 1.');
+    expect(issue5.html).toContain('January 1 and May 1');
+    expect(issue5.html).toContain('September 17, 2027');
+    expect(issue5.html).toContain('$400 late fee');
+    expect(issue5.html).toContain('sunbiz.org');
+    expect(issue5.html).toContain(`${SITE}/checklist`);
+    expect(issue5.html).toContain(unsub);
+    expect(issue5.html).toContain('Unsubscribe');
+    expect(issue5.html).toContain('14160 Palmetto Frontage Rd, Suite 101, Miami Lakes, FL 33016');
+    expect(issue5.html).not.toContain('/launch-bundle');
+    expect(issue5.html).not.toMatch(/\$39|\$59|\$84|\$150|\$199|\$349/);
+    const issue5es = renderTemplate('WEEKLY_NEWSLETTER', {
+      newsletterIssue: '005',
+      locale: 'es',
+      unsubscribeUrl: unsub,
+    });
+    expect(issue5es.subject).toBe('Pon las fechas anuales de tu empresa en un solo calendario');
+    expect(issue5es.html).toContain('lang="es"');
+    expect(issue5es.html).toContain('1 de enero y el 1 de mayo');
+    expect(issue5es.html).toContain('17 de septiembre de 2027');
+    expect(issue5es.html).toContain('recargo de $400');
+    expect(issue5es.html).toContain(`${SITE}/es/checklist`);
+    expect(issue5es.html).toContain('Cancelar suscripción');
+    expect(issue5es.html).toContain('Preferencias de correo');
+    expect(issue5es.html).toContain('No es un despacho de abogados');
+    expect(issue5es.html).toContain('Miami Lakes, FL 33016');
+    expect(issue5es.html).toContain(unsub);
+    expect(issue5es.html).not.toContain('Hi there,');
+    expect(issue5es.html).not.toContain('September 17, 2027');
+    expect(issue5es.html).not.toContain('/launch-bundle');
+    expect(issue5es.html).not.toMatch(/\bgratis\b/i);
+    expect(newsletterDeliveryLocale('005', 'es')).toBe('es');
+    expect(newsletterDeliveryLocale('005', 'en')).toBe('en');
+    const issue5other = renderTemplate('WEEKLY_NEWSLETTER', {
+      newsletterIssue: '005',
+      locale: 'fr',
+      unsubscribeUrl: unsub,
+    });
+    expect(issue5other.subject).toBe(issue5.subject);
+    expect(issue5other.html).toContain('lang="en"');
+    expect(newsletterIssueCopy('005', 'es').subject).toBe(
+      'Pon las fechas anuales de tu empresa en un solo calendario',
+    );
+
     const jobSource = readFileSync('lib/newsletter-job.ts', 'utf8');
     const dueAt = jobSource.indexOf('const issue = newsletterDueIssue');
     const localeAt = jobSource.indexOf('newsletterDeliveryLocale(issue');
@@ -816,18 +943,28 @@ describe('approved copy', () => {
       'prisma/migrations/20261028040000_newsletter_issues_003_004/migration.sql',
       'utf8',
     );
+    const issue005Sql = readFileSync(
+      'prisma/migrations/20261031120000_newsletter_issue_005/migration.sql',
+      'utf8',
+    );
     expect(issueSql).not.toContain('Obtén tu EIN de la forma correcta');
+    expect(issue005Sql).not.toContain('Pon las fechas anuales de tu empresa en un solo calendario');
     expect(readFileSync('lib/newsletter.ts', 'utf8')).toContain('Obtén tu EIN de la forma correcta');
     expect(readFileSync('lib/newsletter.ts', 'utf8')).toContain('Dale al dinero de tu negocio su propio carril');
-    const storedSql = `${sql}\n${issueSql}`;
+    expect(readFileSync('lib/newsletter.ts', 'utf8')).toContain(
+      'Pon las fechas anuales de tu empresa en un solo calendario',
+    );
+    const storedSql = `${sql}\n${issueSql}\n${issue005Sql}`;
     for (const issue of STORED_NEWSLETTER_ISSUES) {
       expect(storedSql).toContain(issue.subject);
       expect(storedSql).toContain(issue.preview);
     }
     expect(issueSql).not.toMatch(/CREATE TABLE|ALTER TABLE|DROP TABLE/i);
+    expect(issue005Sql).not.toMatch(/CREATE TABLE|ALTER TABLE|DROP TABLE/i);
     const job = readFileSync('lib/newsletter-job.ts', 'utf8');
     expect(job).toContain('sent002At');
     expect(job).toContain('sent003At');
+    expect(job).toContain('sent004At');
     expect(job).toContain('replyTo: resumeEmailReplyTo()');
     expect(job).toContain('listUnsubscribeUrl');
     expect(sql).toContain('ALTER TABLE "NewsletterIssue" ENABLE ROW LEVEL SECURITY');

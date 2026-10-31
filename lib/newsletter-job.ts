@@ -177,6 +177,7 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
     const sent002 = recorded('002');
     const sent003 = recorded('003');
     const sent004 = recorded('004');
+    const sent005 = recorded('005');
     const issue = newsletterDueIssue({
       now,
       confirmedAt: row.confirmedAt,
@@ -184,8 +185,10 @@ export async function runWeeklyNewsletter(nowMs: number): Promise<SeriesJobResul
       sent002: Boolean(sent002),
       sent003: Boolean(sent003),
       sent004: Boolean(sent004),
+      sent005: Boolean(sent005),
       sent002At: sent002?.sentAt ?? null,
       sent003At: sent003?.sentAt ?? null,
+      sent004At: sent004?.sentAt ?? null,
     });
     if (!issue) {
       skipped += 1;

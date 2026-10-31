@@ -100,12 +100,14 @@ export function newsletterIssueSchedule(confirmedAt: Date): {
   issue002: Date;
   issue003: Date;
   issue004: Date;
+  issue005: Date;
 } {
   const issue001 = firstWeekdayMorningEt(confirmedAt);
   const issue002 = addEtDays(issue001, 7);
   const issue003 = addEtDays(issue002, 7);
   const issue004 = addEtDays(issue003, 7);
-  return { issue001, issue002, issue003, issue004 };
+  const issue005 = addEtDays(issue004, 7);
+  return { issue001, issue002, issue003, issue004, issue005 };
 }
 
 /** Whole America/New_York calendar days from earlier to later. The same day is 0. */
@@ -117,10 +119,10 @@ export function etCalendarDaysBetween(earlier: Date, later: Date): number {
   return Math.round((endUtc - startUtc) / 86_400_000);
 }
 
-export type NewsletterIssueNumber = '001' | '002' | '003' | '004';
+export type NewsletterIssueNumber = '001' | '002' | '003' | '004' | '005';
 
 export function normalizeNewsletterIssue(value: string | null | undefined): NewsletterIssueNumber {
-  if (value === '002' || value === '003' || value === '004') return value;
+  if (value === '002' || value === '003' || value === '004' || value === '005') return value;
   return '001';
 }
 
@@ -130,8 +132,9 @@ export function normalizeNewsletterIssue(value: string | null | undefined): News
  *
  * 003 is due on a weekday morning once 7 Eastern calendar days have passed
  * since that subscriber's own 002 send. 004 uses the same gap after their
- * 003 send. The confirm-date slots are not used for 003 or 004, so a deploy
- * cannot hand someone who is already past 002 both new issues at once.
+ * 003 send. 005 uses the same gap after their 004 send. The confirm-date
+ * slots are not used for 003, 004, or 005, so a deploy cannot hand someone
+ * more than one of those issues at once.
  */
 export function newsletterDueIssue(input: {
   now: Date;
@@ -140,8 +143,10 @@ export function newsletterDueIssue(input: {
   sent002: boolean;
   sent003?: boolean;
   sent004?: boolean;
+  sent005?: boolean;
   sent002At?: Date | null;
   sent003At?: Date | null;
+  sent004At?: Date | null;
 }): NewsletterIssueNumber | null {
   if (!isEtWeekdayMorning(input.now)) return null;
   const { issue001, issue002 } = newsletterIssueSchedule(input.confirmedAt);
@@ -165,6 +170,17 @@ export function newsletterDueIssue(input: {
     etCalendarDaysBetween(input.sent003At, input.now) >= 7
   ) {
     return '004';
+  }
+  if (
+    input.sent001 &&
+    input.sent002 &&
+    input.sent003 &&
+    input.sent004 &&
+    !input.sent005 &&
+    input.sent004At &&
+    etCalendarDaysBetween(input.sent004At, input.now) >= 7
+  ) {
+    return '005';
   }
   return null;
 }
@@ -582,11 +598,98 @@ const ISSUE_004_ES: NewsletterIssueCopy = {
   address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
 };
 
+const ISSUE_005_EN: NewsletterIssueCopy = {
+  number: '005',
+  subject: "Put your company's yearly dates on one calendar",
+  preview: 'Florida LLC or corporation? Your annual report window opens January 1.',
+  greeting: 'Hi there,',
+  intro: 'Here is one quick tip and one date to know, and then you can get back to building.',
+  sections: [
+    {
+      title: "This week's tip: make a simple company calendar",
+      paragraphs: [
+        'Open your calendar app and add a yearly event for every filing your company owes.',
+      ],
+      bulletLead: 'A few to include:',
+      bullets: [
+        'Your state annual report.',
+        'Your tax return dates.',
+        'Your registered agent renewal.',
+      ],
+      after:
+        'Set a reminder two weeks before each one. It takes about ten minutes and helps you avoid late fees you never saw coming.',
+    },
+    {
+      title: 'Deadline reminder: Florida annual report',
+      paragraphs: [
+        'Florida LLCs and corporations file an annual report every year to stay active with the state. Reports are due between January 1 and May 1. In 2027, May 1 falls on a Saturday, so plan to file early in the window. After May 1, the state adds a $400 late fee for LLCs and profit corporations. If the report is still not filed by the third Friday in September (September 17, 2027), the state can administratively dissolve the company. You can file it yourself at sunbiz.org.',
+        'Not in Florida? Other states have their own dates and fees, so check your Secretary of State website.',
+      ],
+    },
+  ],
+  closerTitle: 'Your next step',
+  closerBody:
+    'Grab our free LLC checklist. It walks you through what to do after your company is formed, in plain words.',
+  cta: 'Get the free checklist',
+  ctaPath: '/checklist',
+  signoff: 'Talk soon,',
+  team: 'The LaunchForma Team',
+  disclaimer: 'This email is general information, not legal or tax advice.',
+  reason: 'You are receiving this because you signed up for LaunchForma updates.',
+  unsubscribe: 'Unsubscribe',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
+};
+
+const ISSUE_005_ES: NewsletterIssueCopy = {
+  number: '005',
+  subject: 'Pon las fechas anuales de tu empresa en un solo calendario',
+  preview:
+    '¿Tienes una LLC o corporación en Florida? El periodo para tu informe anual abre el 1 de enero.',
+  greeting: 'Hola,',
+  intro:
+    'Aquí van un consejo rápido y una fecha que debes conocer, y luego puedes volver a construir tu negocio.',
+  sections: [
+    {
+      title: 'El consejo de esta semana: arma un calendario sencillo para tu empresa',
+      paragraphs: [
+        'Abre tu app de calendario y agrega un evento anual por cada trámite que le toca a tu empresa.',
+      ],
+      bulletLead: 'Algunos que conviene incluir:',
+      bullets: [
+        'El informe anual de tu estado.',
+        'Las fechas de tu declaración de impuestos.',
+        'La renovación de tu agente registrado.',
+      ],
+      after:
+        'Pon un recordatorio dos semanas antes de cada uno. Te toma unos diez minutos y te ayuda a evitar recargos que no viste venir.',
+    },
+    {
+      title: 'Recordatorio de fecha límite: informe anual de Florida',
+      paragraphs: [
+        'Las LLC y corporaciones de Florida presentan un informe anual cada año para seguir activas ante el estado. Se presenta entre el 1 de enero y el 1 de mayo. En 2027, el 1 de mayo cae sábado, así que planea presentarlo con tiempo. Después del 1 de mayo, el estado cobra un recargo de $400 a las LLC y corporaciones con fines de lucro. Si el informe sigue sin presentarse el tercer viernes de septiembre (17 de septiembre de 2027), el estado puede disolver la empresa por vía administrativa. Puedes presentarlo por tu cuenta en sunbiz.org.',
+        '¿Tu empresa no está en Florida? Cada estado tiene sus propias fechas y tarifas, así que revisa el sitio web de la Secretaría de Estado que te corresponde.',
+      ],
+    },
+  ],
+  closerTitle: 'Tu siguiente paso',
+  closerBody:
+    'Descarga nuestra lista de verificación para tu LLC, sin costo. Te explica en palabras sencillas qué hacer después de formar tu empresa.',
+  cta: 'Obtén la lista de verificación',
+  ctaPath: '/es/checklist',
+  signoff: 'Hasta pronto,',
+  team: 'El equipo de LaunchForma',
+  disclaimer: 'Este correo es información general, no asesoría legal ni fiscal.',
+  reason: 'Recibes este correo porque te suscribiste a las novedades de LaunchForma.',
+  unsubscribe: 'Cancelar suscripción',
+  address: `LaunchForma, ${DRIP_MAILING_ADDRESS}`,
+};
+
 const EN_ISSUES: Record<NewsletterIssueNumber, NewsletterIssueCopy> = {
   '001': ISSUE_001_EN,
   '002': ISSUE_002_EN,
   '003': ISSUE_003_EN,
   '004': ISSUE_004_EN,
+  '005': ISSUE_005_EN,
 };
 
 const ES_ISSUES: Record<NewsletterIssueNumber, NewsletterIssueCopy> = {
@@ -594,6 +697,7 @@ const ES_ISSUES: Record<NewsletterIssueNumber, NewsletterIssueCopy> = {
   '002': ISSUE_002_ES,
   '003': ISSUE_003_ES,
   '004': ISSUE_004_ES,
+  '005': ISSUE_005_ES,
 };
 
 /** es subscribers get the Spanish issue. Every other locale gets English. */
@@ -631,11 +735,16 @@ export const STORED_NEWSLETTER_ISSUES = [
     subject: ISSUE_004_EN.subject,
     preview: ISSUE_004_EN.preview,
   },
+  {
+    id: '005',
+    subject: ISSUE_005_EN.subject,
+    preview: ISSUE_005_EN.preview,
+  },
 ] as const;
 
 export function allNewsletterCopyText(): string {
   const chunks: string[] = [];
-  for (const number of ['001', '002', '003', '004'] as const) {
+  for (const number of ['001', '002', '003', '004', '005'] as const) {
     for (const locale of ['en', 'es'] as const) {
       const copy = newsletterIssueCopy(number, locale);
       chunks.push(

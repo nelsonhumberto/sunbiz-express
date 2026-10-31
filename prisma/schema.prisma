@@ -601,7 +601,7 @@ model MarketingOptOut {
   updatedAt DateTime @updatedAt
 }
 
-// Approved weekly issues 001 through 004. Each row stores the English
+// Approved weekly issues 001 through 005. Each row stores the English
 // subject, preview, and body. Spanish for every issue lives in
 // lib/newsletter.ts, same as 001 and 002. Sending does not read this table.
 model NewsletterIssue {

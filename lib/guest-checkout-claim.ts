@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { isDeliverableEmail, normalizeEmail } from '@/lib/email-address';
 import { guestSetPasswordSiteUrl, planGuestAccountClaim } from '@/lib/guest-checkout';
 import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
+import { clearQaCookie } from '@/lib/qa-guest';
 
 /** Checkout set-password links stay valid for three days, same as a magic link. */
 const SET_PASSWORD_TTL_MS = 3 * 24 * 60 * 60 * 1000;
@@ -78,6 +79,7 @@ export async function claimPaidGuestAccount(input: {
       guestToken: null,
     },
   });
+  clearQaCookie();
   if (updated.count !== 1) {
     const again = await prisma.user.findUnique({
       where: { id: user.id },

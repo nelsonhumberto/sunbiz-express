@@ -7,6 +7,7 @@ import { signIn } from '@/lib/auth';
 import { findLoginLink, LOGIN_LINK_COOKIE } from '@/lib/login-link';
 import { checkActionRateLimit } from '@/lib/rate-limit';
 import { safeRedirectPath } from '@/lib/utils';
+import { clearQaCookie } from '@/lib/qa-guest';
 
 export async function continueWithLoginLink() {
   if (checkActionRateLimit('login-link', 10, 15 * 60 * 1000)) return await redirectLocalized('/sign-in');
@@ -24,5 +25,6 @@ export async function continueWithLoginLink() {
   }
 
   cookies().set(LOGIN_LINK_COOKIE, '', { path: '/login-link', maxAge: 0 });
+  clearQaCookie();
   return await redirectLocalized(safeRedirectPath(link.nextPath) ?? '/dashboard');
 }

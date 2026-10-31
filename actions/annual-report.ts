@@ -169,7 +169,15 @@ export async function submitAnnualReport(input: unknown) {
 
   const filing = await prisma.filing.findUnique({
     where: { id: data.filingId },
-    select: { id: true, userId: true, entityType: true, businessName: true, state: true, locale: true },
+    select: {
+      id: true,
+      userId: true,
+      entityType: true,
+      businessName: true,
+      state: true,
+      locale: true,
+      user: { select: { isTester: true } },
+    },
   });
   if (!filing || filing.userId !== userId) {
     return { ok: false as const, error: 'Filing not found.' };
@@ -312,9 +320,10 @@ export async function submitAnnualReport(input: unknown) {
             amountCents: pi.amount,
             status: 'SUCCEEDED',
             isTest: isTestPayment({
-            stripePaymentIntentId: pi.id,
-            livemode: pi.livemode,
-            metadata: pi.metadata,
+              stripePaymentIntentId: pi.id,
+              livemode: pi.livemode,
+              metadata: pi.metadata,
+              userIsTester: filing.user.isTester,
           }),
             stateFilingFeeCents: quote.stateFilingFeeCents,
             formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,
@@ -625,6 +634,7 @@ export async function submitGuestAnnualReport(input: z.infer<typeof GuestSubmitS
             stripePaymentIntentId: pi.id,
             livemode: pi.livemode,
             metadata: pi.metadata,
+            userIsTester: user!.isTester,
           }),
           stateFilingFeeCents: quote.stateFilingFeeCents,
           formationServiceFeeCents: ANNUAL_REPORT_SERVICE_FEE_CENTS,

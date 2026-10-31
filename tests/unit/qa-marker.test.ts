@@ -114,7 +114,10 @@ describe('QA marker', () => {
     expect(submit).toBeLessThan(help);
     expect(launch).toContain('enterKeyHint="go"');
     expect(launch).toContain("matchMedia('(max-width: 767px)')");
-    expect(launch).toContain('scrollIntoView({ block: \'nearest\' })');
+    expect(launch).toContain('visualViewport');
+    expect(launch).toContain("addEventListener('resize', onResize)");
+    expect(launch).toContain("removeEventListener('resize', onResize)");
+    expect(launch).toContain('setNameFocused(false)');
   });
 
   it('registers the flags before the first PostHog pageview', () => {

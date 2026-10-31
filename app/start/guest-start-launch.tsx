@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { continueButtonScrollDelta } from '@/lib/start-keyboard';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -194,12 +195,30 @@ export function GuestStartLaunch({
   }
 
   const continueRef = useRef<HTMLDivElement>(null);
+  const [nameFocused, setNameFocused] = useState(false);
 
   function scrollContinueIntoView() {
     if (typeof window === 'undefined') return;
     if (!window.matchMedia('(max-width: 767px)').matches) return;
-    continueRef.current?.scrollIntoView({ block: 'nearest' });
+    const node = continueRef.current;
+    if (!node) return;
+    const visibleHeight = window.visualViewport?.height ?? window.innerHeight;
+    const delta = continueButtonScrollDelta({
+      buttonBottom: node.getBoundingClientRect().bottom,
+      visibleHeight,
+    });
+    if (delta > 0) window.scrollBy({ top: delta });
   }
+
+  useEffect(() => {
+    if (!nameFocused) return;
+    scrollContinueIntoView();
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const onResize = () => scrollContinueIntoView();
+    viewport.addEventListener('resize', onResize);
+    return () => viewport.removeEventListener('resize', onResize);
+  }, [nameFocused]);
 
   const essentialPrice = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
 
@@ -274,7 +293,11 @@ export function GuestStartLaunch({
                       setFormError(null);
                     }
                   }}
-                  onFocus={scrollContinueIntoView}
+                  onFocus={() => {
+                    setNameFocused(true);
+                    scrollContinueIntoView();
+                  }}
+                  onBlur={() => setNameFocused(false)}
                   autoComplete="organization"
                   autoCapitalize="words"
                   enterKeyHint="go"

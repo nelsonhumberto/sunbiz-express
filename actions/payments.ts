@@ -18,6 +18,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { isTestPayment } from '@/lib/payment-test';
+import { freeTesterCheckout } from '@/lib/tester-checkout';
 import {
   CHECKOUT_BELOW_STATE_FEE_ERROR,
   checkoutBelowStateFee,
@@ -267,18 +268,19 @@ export async function processCheckout(input: {
     return { error: readiness.error };
   }
 
-  // ── Tester bypass ────────────────────────────────────────────────────────
-  // When an admin has flagged the user as a tester, any card is accepted and
-  // no real Stripe charge is made. Guests can never be testers (they have no
-  // admin-assigned isTester flag), so this path is gated to authed users.
-  let isTesterBypass = false;
-  if (actor.kind === 'user') {
-    const callerUser = await prisma.user.findUnique({
-      where: { id: actor.id },
-      select: { isTester: true },
-    });
-    isTesterBypass =
-      callerUser?.isTester === true && input.paymentIntentId === 'TESTER_BYPASS';
+  // Free checkout is an allowlisted email, not isTester and not the QA cookie.
+  // An empty TESTER_CHECKOUT_EMAILS list disables it.
+  const payer = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { isTester: true, email: true },
+  });
+  const isTesterBypass = freeTesterCheckout({
+    actorKind: actor.kind,
+    email: payer?.email,
+    paymentIntentId: input.paymentIntentId,
+  });
+  if (input.paymentIntentId === 'TESTER_BYPASS' && !isTesterBypass) {
+    return { error: 'A card payment is required.' };
   }
 
   // Recompute cost (needed in both paths for fee breakdown storage)
@@ -407,6 +409,7 @@ export async function processCheckout(input: {
           stripePaymentIntentId: stripeIntentId,
           livemode,
           metadata: paidIntent.metadata,
+          userIsTester: payer?.isTester === true,
         }),
         stateFilingFeeCents: breakdown.governmentRemittanceCents,
         formationServiceFeeCents: breakdown.packageMarginCents,

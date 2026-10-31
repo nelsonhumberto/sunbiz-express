@@ -102,7 +102,10 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     return 'noop';
   }
 
-  const filing = await prisma.filing.findUnique({ where: { id: filingId } });
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    include: { user: { select: { isTester: true } } },
+  });
   if (!filing) return 'noop';
   // Only reconcile drafts - submitted/approved filings are already finalized.
   if (filing.status !== 'DRAFT') return 'noop';
@@ -147,6 +150,7 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
           stripePaymentIntentId: pi.id,
           livemode: pi.livemode,
           metadata: pi.metadata,
+          userIsTester: filing.user.isTester,
         }),
         stateFilingFeeCents: filing.stateFeeCents,
         formationServiceFeeCents: filing.serviceFeeCents,

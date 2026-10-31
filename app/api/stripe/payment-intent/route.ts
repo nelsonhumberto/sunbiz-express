@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { cookies, headers } from 'next/headers';
-import { qaMarkedFromRequest } from '@/lib/qa-guest';
-import { paymentIntentIsTest, stripeIsTestMetadata } from '@/lib/qa-marker';
+import { stripeIsTestMetadata } from '@/lib/qa-marker';
 import { auth } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
@@ -556,11 +555,7 @@ function isUniqueConflict(err: unknown): boolean {
 }
 
 function chargeIsTest(input: { filingIsTest?: boolean | null; isTester?: boolean | null }): boolean {
-  return paymentIntentIsTest({
-    qaMarked: qaMarkedFromRequest(),
-    filingIsTest: input.filingIsTest,
-    isTester: input.isTester,
-  });
+  return input.filingIsTest === true || input.isTester === true;
 }
 
 async function actorChargeIsTest(userId?: string | null): Promise<boolean> {

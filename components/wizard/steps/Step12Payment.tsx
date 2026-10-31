@@ -50,6 +50,7 @@ import {
 export function Step12Payment({
   filing,
   isTester = false,
+  testerCheckout = false,
   testMode = false,
   isGuest = false,
   guestEmail = '',
@@ -58,6 +59,8 @@ export function Step12Payment({
 }: {
   filing: WizardFiling;
   isTester?: boolean;
+  /** Allowlisted email only. isTester does not open the no-charge path. */
+  testerCheckout?: boolean;
   /** Server-computed: not production, or the publishable key is pk_test_. */
   testMode?: boolean;
   isGuest?: boolean;
@@ -171,12 +174,12 @@ export function Step12Payment({
       if (isGuest && !checkoutEmail.trim()) {
         return { ok: false, error: t('guestPayEmailRequired') };
       }
-      if (!(isTester && !isGuest) && !cardholderName.trim()) {
+      if (!testerCheckout && !cardholderName.trim()) {
         return { ok: false, error: t('errorCardholder') };
       }
       trackEvent('checkout_payment_submitted', paymentEventProps);
 
-      if (isTester && !isGuest) {
+      if (testerCheckout) {
         // Tester mode: skip Stripe entirely, use bypass sentinel
         paymentIntentId = 'TESTER_BYPASS';
       } else {
@@ -348,7 +351,7 @@ export function Step12Payment({
       {/* Card form / Tester bypass. Guests pay on this step. The email sits
           above the card. An address that already has an account stops here
           and asks them to sign in, with next= back to payment. */}
-      {isTester && !isGuest ? (
+      {testerCheckout ? (
         <div className="rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 p-5 space-y-3">
           <div className="flex items-center gap-2 text-amber-700 font-semibold">
             <FlaskConical className="h-5 w-5" />
@@ -424,7 +427,7 @@ export function Step12Payment({
       {/* Registered Agent auto-renew mandate - affirmative, informed consent
           with the amount, date, cadence, and cancel path shown inline. Only
           when the customer chose our RA and there's a real charge to renew. */}
-      {usesOurRa && !(isTester && !isGuest) && (
+      {usesOurRa && !testerCheckout && (
         <label className="flex items-start gap-3 rounded-lg border border-border bg-paper-soft p-4 cursor-pointer">
           <input
             type="checkbox"

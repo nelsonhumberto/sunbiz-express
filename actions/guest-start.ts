@@ -29,7 +29,7 @@ import { getTranslations } from 'next-intl/server';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { syncSCorpElectionAddOn } from '@/actions/wizard';
 import { isLaunchformaQaEmail } from '@/lib/ads-conversions';
-import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
+import { clearQaCookie, qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
 import { filingTestCreateFields, guestTesterCreateFields } from '@/lib/qa-marker';
 import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
@@ -698,6 +698,7 @@ export async function claimGuestAccount(
       },
     });
     clearGuestCookie();
+    clearQaCookie();
   }
 
   // Welcome email has no temporary password. Don't block the draft on delivery.

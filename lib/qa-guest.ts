@@ -14,6 +14,21 @@ export function qaMarkedFromRequest(): boolean {
   }
 }
 
+/** Drop lf_qa so a later real payment is not treated as a QA charge. */
+export function clearQaCookie(): void {
+  try {
+    cookies().set(QA_COOKIE, '', {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+      maxAge: 0,
+      secure: process.env.NODE_ENV === 'production',
+    });
+  } catch {
+    /* outside a request */
+  }
+}
+
 /**
  * Guest filings opened with a qa+@launchforma.com address are test traffic.
  * One stamp covers every create path: the filing is isTest and its user is isTester.

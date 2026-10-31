@@ -291,12 +291,15 @@ describe('address step copy and analytics', () => {
     expect(step).toContain("t('useOurAgentP4')");
     expect(step).not.toContain('floridaOnly');
     expect(step).not.toContain('lockedStateCode');
-    expect(step).toContain('no_florida_address: noFloridaAddress');
+    expect(step).toContain('addressStepCompletedProperties(filingState, noFloridaAddress)');
     expect(step).toContain("t('noInStateAddressHelper'");
     expect(source('components/wizard/useWizardSubmit.ts')).toContain(
       "trackEvent('wizard_step_completed'",
     );
     expect(source('components/wizard/steps/Step6RegisteredAgent.tsx')).toContain(
+      'initialUseOurRegisteredAgent(stored?.useOurService)',
+    );
+    expect(source('components/wizard/steps/Step6RegisteredAgent.tsx')).not.toContain(
       'choseNoInStateAddress ? true',
     );
   });

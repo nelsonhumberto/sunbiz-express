@@ -29,6 +29,7 @@ import {
 import { safeParseJson, cn, formatCurrency } from '@/lib/utils';
 import { isPoBox } from '@/lib/formation-validation';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
+import { initialUseOurRegisteredAgent } from '@/lib/registered-agent-choice';
 import type { WizardFiling } from '../types';
 
 interface RAStored extends AddressValue {
@@ -52,7 +53,7 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
       ?.noFloridaAddress === true;
 
   const [useOurService, setUseOurService] = useState(
-    choseNoInStateAddress ? true : (stored?.useOurService ?? true),
+    initialUseOurRegisteredAgent(stored?.useOurService),
   );
   const [hardshipsAccepted, setHardshipsAccepted] = useState(stored?.useOurService === false);
   const [showHardshipDialog, setShowHardshipDialog] = useState(false);

@@ -17,7 +17,7 @@ const SLUG = 'florida-llc-cost';
 const TITLE = 'Florida LLC Cost 2026: $125 State Fee and Yearly Costs';
 const H1 = 'How Much Does It Cost to Start an LLC in Florida? (2026 State Fees)';
 const DESCRIPTION =
-  'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee, what is free, and the costs owners forget.';
+  'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee and the costs owners forget.';
 
 const FAQ_HREFS: Record<string, string> = {
   'https://dos.fl.gov/sunbiz/manage-business/efile/annual-report/':
@@ -68,9 +68,9 @@ const BODY = `## Florida LLC state fees at a glance
 
 Source for every row: [https://dos.fl.gov/sunbiz/forms/fees/llc-fees/](https://dos.fl.gov/sunbiz/forms/fees/llc-fees/)
 
-## What is free
+## After your LLC is approved
 
-- **EIN (Employer Identification Number).** The IRS issues EINs for free. In the IRS's own words: "You never have to pay a fee for an EIN." The IRS also says to form your LLC with the state first, then apply. Source: [https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number](https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number)
+- **EIN (Employer Identification Number).** You apply for an EIN with the IRS after your LLC is approved. Source: [https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number](https://www.irs.gov/businesses/small-businesses-self-employed/get-an-employer-identification-number)
 - **BOI report.** [FinCEN's final rule permanently removed the beneficial ownership reporting requirement for companies formed in the United States.](https://www.fincen.gov/boi)
 
 ## Costs people forget

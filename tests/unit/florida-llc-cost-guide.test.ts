@@ -14,7 +14,7 @@ const URL = 'https://launchforma.com/guides/florida-llc-cost';
 
 const TITLE = 'Florida LLC Cost 2026: $125 State Fee and Yearly Costs';
 const DESCRIPTION =
-  'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee, what is free, and the costs owners forget.';
+  'Forming a Florida LLC costs $125 in state fees, and the annual report is $138.75 each year. See every Sunbiz fee and the costs owners forget.';
 
 const INTERNAL_LINKS: { href: string; file: string }[] = [
   {
@@ -51,7 +51,7 @@ describe('Florida LLC cost guide', () => {
 
   it('keeps the spec title, description, H1, and English-only metadata', () => {
     expect(TITLE).toHaveLength(54);
-    expect(DESCRIPTION).toHaveLength(156);
+    expect(DESCRIPTION).toHaveLength(141);
     expect(page).toContain(`const TITLE = '${TITLE}'`);
     expect(page).toContain(DESCRIPTION);
     expect(page).toContain(
@@ -174,7 +174,7 @@ describe('Florida LLC cost guide', () => {
 
     const text = buildLlmsTxt();
     expect(text).toContain(
-      '- [Florida LLC Cost](https://launchforma.com/guides/florida-llc-cost): State fees to form a Florida LLC ($125 = $100 filing + $25 registered agent), $138.75 annual report ($538.75 after May 1), free EIN, and commonly missed costs.',
+      '- [Florida LLC Cost](https://launchforma.com/guides/florida-llc-cost): State fees to form a Florida LLC ($125 = $100 filing + $25 registered agent), $138.75 annual report ($538.75 after May 1), and commonly missed costs.',
     );
     expect(text).not.toContain('/es/guides/florida-llc-cost');
   });

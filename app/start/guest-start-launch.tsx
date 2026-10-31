@@ -48,6 +48,7 @@ export function GuestStartLaunch({
   showOptionalEmail,
   accountEmail,
   isTester,
+  preselectFloridaLlc = false,
 }: {
   defaultState: 'FL' | 'WY' | 'DE';
   defaultEntity: EntityChoice;
@@ -57,6 +58,8 @@ export function GuestStartLaunch({
   showOptionalEmail: boolean;
   accountEmail?: string | null;
   isTester?: boolean;
+  /** Florida + LLC, from the landing pages or utm_source=google. */
+  preselectFloridaLlc?: boolean;
 }) {
   const t = useTranslations('start');
   const tPricing = useTranslations('pricing');
@@ -79,7 +82,8 @@ export function GuestStartLaunch({
   const [choice, setChoice] = useState<DraftNameChoice | null>(null);
   const [businessName, setBusinessName] = useState(defaultBusinessName ?? '');
   const [email, setEmail] = useState('');
-  const [entity, setEntity] = useState<EntityChoice>(defaultEntity);
+  const [nameLater, setNameLater] = useState(false);
+  const [entity, setEntity] = useState<EntityChoice>(preselectFloridaLlc ? 'LLC' : defaultEntity);
 
   const entityLabel =
     entity === 'SCORP' ? t('entitySCorp') : entity === 'CORP' ? t('entityCorp') : t('entityLLC');
@@ -89,13 +93,21 @@ export function GuestStartLaunch({
   async function run(extra?: { draftIntent?: 'resume' | 'new'; draftId?: string; businessName?: string }) {
     setPending(true);
     setFormError(null);
+    const typedName = (extra?.businessName ?? businessName).trim();
+    const deferName =
+      extra?.draftIntent !== 'resume' && nameLater && !startNameIsAcceptable(typedName);
+    const chosenEntity = preselectFloridaLlc ? 'LLC' : entity;
     try {
       const result = await withActionTimeout(
         openGuestDraft({
-          state: defaultState,
-          entityType: entity,
+          state: preselectFloridaLlc ? 'FL' : defaultState,
+          entityType: chosenEntity,
           tier: defaultTier,
-          businessName: extra?.draftIntent === 'resume' ? undefined : (extra?.businessName ?? businessName),
+          businessName:
+            extra?.draftIntent === 'resume' || deferName
+              ? undefined
+              : (extra?.businessName ?? businessName),
+          nameLater: deferName,
           email: showOptionalEmail ? email.trim() || undefined : undefined,
           draftIntent: extra?.draftIntent,
           draftId: extra?.draftId,
@@ -122,7 +134,13 @@ export function GuestStartLaunch({
           emails: [accountEmail, showOptionalEmail ? email.trim() : null],
         });
         await captureThenNavigate({
-          events: startNavigationEvents({ filingId, locale, entity }),
+          events: startNavigationEvents({
+            filingId,
+            locale,
+            entity: chosenEntity,
+            preselected: preselectFloridaLlc,
+            nameLater: deferName,
+          }),
           navigate: () => {
             const fromPath = window.location.pathname;
             router.push(redirectTo);
@@ -152,7 +170,13 @@ export function GuestStartLaunch({
           emails: [accountEmail, showOptionalEmail ? email.trim() : null],
         });
         await captureThenNavigate({
-          events: startNavigationEvents({ filingId, locale, entity }),
+          events: startNavigationEvents({
+            filingId,
+            locale,
+            entity: chosenEntity,
+            preselected: preselectFloridaLlc,
+            nameLater: deferName,
+          }),
           navigate: () => {
             const fromPath = window.location.pathname;
             router.push(href);
@@ -178,6 +202,18 @@ export function GuestStartLaunch({
     if (pending) return;
     const trimmed = businessName.trim();
     if (!startNameIsAcceptable(trimmed)) {
+      if (nameLater) {
+        setNameError(null);
+        setFormError(null);
+        setEmailError(null);
+        const typedEmail = email.trim();
+        if (showOptionalEmail && typedEmail && !isDeliverableEmail(typedEmail)) {
+          setEmailError(t('emailOptionalInvalid'));
+          return;
+        }
+        void run({ businessName: trimmed });
+        return;
+      }
       setNameError(t('companyNameInvalid'));
       setFormError(t('companyNameInvalid'));
       return;
@@ -334,10 +370,24 @@ export function GuestStartLaunch({
 
               <button
                 type="button"
+                hidden={preselectFloridaLlc || undefined}
                 onClick={() => setEntity((current) => (current === 'LLC' ? 'CORP' : 'LLC'))}
                 className="block text-left text-sm font-medium text-primary hover:underline"
               >
                 {entity === 'LLC' ? t('switchToCorp') : t('switchToLlc')}
+              </button>
+
+              <button
+                type="button"
+                aria-pressed={nameLater}
+                onClick={() => {
+                  setNameLater((current) => !current);
+                  setNameError(null);
+                  setFormError(null);
+                }}
+                className="block text-left text-sm text-ink-muted underline underline-offset-2"
+              >
+                {t('nameLater')}
               </button>
 
               {(formError || nameError) && (

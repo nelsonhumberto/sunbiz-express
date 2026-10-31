@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { useLocale, useTranslations } from 'next-intl';
 import {
+  preselectedEventProps,
   trackEvent,
   trackGoogleBeginFiling,
   wizardEntitySelectedProperties,
@@ -13,6 +14,7 @@ import { Building2, Briefcase, Check, MapPin, HelpCircle, Receipt } from 'lucide
 import { saveStep1 } from '@/actions/wizard';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
+import { useWizardStepAnalytics } from '../WizardStepAnalytics';
 import { GuestEmailField } from '../GuestEmailField';
 import { GuestSignInPrompt } from '../GuestSignInPrompt';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,7 @@ export function Step1Entity({
       : 'FL') as StateCode,
   );
   const { pending, error, run } = useWizardSubmit();
+  const stepAnalytics = useWizardStepAnalytics();
   const router = useLocalizedRouter(filing.locale);
   const stateRule = FORMATION_STATES[stateCode];
 
@@ -88,13 +91,13 @@ export function Step1Entity({
   ];
 
   const onContinue = () => {
-    trackEvent(
-      'wizard_step1_continue_clicked',
-      wizardStep1ContinueProperties({
+    trackEvent('wizard_step1_continue_clicked', {
+      ...wizardStep1ContinueProperties({
         filingId: filing.id,
         locale,
       }),
-    );
+      ...preselectedEventProps(stepAnalytics?.preselected),
+    });
     const entityType = selected === 'SCORP' ? sCorpEntity : selected;
     const taxElection = selected === 'SCORP' ? ('S_CORP' as const) : null;
     run(async () => {
@@ -188,14 +191,14 @@ export function Step1Entity({
               aria-checked={isSelected}
               onClick={() => {
                 setSelected(option.value);
-                trackEvent(
-                  'wizard_entity_selected',
-                  wizardEntitySelectedProperties({
+                trackEvent('wizard_entity_selected', {
+                  ...wizardEntitySelectedProperties({
                     filingId: filing.id,
                     locale,
                     entity: option.value,
                   }),
-                );
+                  ...preselectedEventProps(stepAnalytics?.preselected),
+                });
               }}
               className={cn(
                 'relative min-w-0 text-left rounded-xl border-2 px-2.5 py-3 transition-all min-h-11',

@@ -316,35 +316,64 @@ export function wizardEntitySelectedProperties(input: {
 }
 
 export type StartNavigationEvent = {
-  event: 'wizard_entity_selected' | 'wizard_step1_continue_clicked' | 'start_name_submitted';
-  properties: Record<string, string>;
+  event:
+    | 'wizard_entity_selected'
+    | 'wizard_step1_continue_clicked'
+    | 'start_name_submitted'
+    | 'start_name_later';
+  properties: Record<string, string | boolean>;
 };
+
+/** Present only when Florida + LLC was preselected for this visit. */
+export function preselectedEventProps(
+  preselected?: boolean,
+): { preselected: true } | Record<string, never> {
+  return preselected ? { preselected: true } : {};
+}
 
 /**
  * Successful /start redirect, English and Spanish.
  * The page is one name form. LLC is preselected unless the visitor switched
  * to a corporation or opened a URL that already chose the type.
  * `wizard_step1_continue_clicked` is the step 1 completion event.
+ * Florida LLC landing traffic and utm_source=google add preselected=true.
+ * Continuing without a name adds the start_name_later event.
  */
 export function startNavigationEvents(input: {
   filingId?: string | null;
   locale?: string | null;
   entity?: string | null;
+  preselected?: boolean;
+  nameLater?: boolean;
 }): StartNavigationEvent[] {
-  return [
+  const stamp = (properties: Record<string, string>): Record<string, string | boolean> => ({
+    ...properties,
+    ...preselectedEventProps(input.preselected),
+  });
+  const events: StartNavigationEvent[] = [
     {
       event: 'wizard_entity_selected',
-      properties: wizardEntitySelectedProperties(input),
+      properties: stamp(wizardEntitySelectedProperties(input)),
     },
     {
       event: 'start_name_submitted',
-      properties: startNameSubmittedProperties(input),
+      properties: stamp(startNameSubmittedProperties(input)),
     },
     {
       event: 'wizard_step1_continue_clicked',
-      properties: wizardStep1ContinueProperties(input),
+      properties: stamp(wizardStep1ContinueProperties(input)),
     },
   ];
+  if (input.nameLater) {
+    events.push({
+      event: 'start_name_later',
+      properties: {
+        ...stamp(startNameSubmittedProperties(input)),
+        name_later: true,
+      },
+    });
+  }
+  return events;
 }
 
 /** Longest pause before a full-page navigation while analytics leaves the browser. */

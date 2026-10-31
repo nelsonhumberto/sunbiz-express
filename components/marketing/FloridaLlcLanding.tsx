@@ -164,6 +164,7 @@ export function FloridaLlcLanding({
           filingId: filingIdFromWizardPath(redirectTo),
           locale,
           entity: 'LLC',
+          preselected: true,
         }),
         navigate: () => {
           const fromPath = window.location.pathname;
@@ -191,6 +192,7 @@ export function FloridaLlcLanding({
             filingId: filingIdFromWizardPath(href),
             locale,
             entity: 'LLC',
+            preselected: true,
           }),
           navigate: () => router.push(nextHref),
         });
@@ -242,12 +244,6 @@ export function FloridaLlcLanding({
         <p data-testid="lp-value" className="mt-1 text-center text-lg font-semibold leading-none">
           {price} {tPricing('allIn')}
         </p>
-        <p data-testid="lp-breakdown" className="mt-1 text-center text-[11px] leading-snug text-ink-muted">
-          {breakdown}
-        </p>
-        <p data-testid="lp-promise" className="text-center text-[11px] font-medium leading-snug">
-          {tPricing('feat_sameDay')}
-        </p>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
           <label htmlFor="lp-business-name" className="text-sm font-medium">
             {t('nameYourLlc')}
@@ -283,6 +279,12 @@ export function FloridaLlcLanding({
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : t('continue')}
           </button>
         </form>
+        <p data-testid="lp-breakdown" className="mt-1 text-center text-[11px] leading-snug text-ink-muted">
+          {breakdown}
+        </p>
+        <p data-testid="lp-promise" className="text-center text-[11px] font-medium leading-snug">
+          {tPricing('feat_sameDay')}
+        </p>
         <p className="mt-1 text-center text-[11px] leading-snug text-ink-muted">{floridaNote}</p>
       </section>
 

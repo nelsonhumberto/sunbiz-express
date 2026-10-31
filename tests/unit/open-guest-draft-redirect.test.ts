@@ -203,6 +203,72 @@ describe('openGuestDraft navigation', () => {
     expect(filingCreate).not.toHaveBeenCalled();
   });
 
+  it('opens a draft with no name when the visitor will name it later', async () => {
+    filingCreate.mockResolvedValueOnce({ id: 'filing_later' });
+    const opened = await openGuestDraft({
+      state: 'FL',
+      entityType: 'LLC',
+      businessName: '',
+      nameLater: true,
+      browserPath: '/start',
+      returnRedirect: true,
+    });
+    expect(opened).toEqual({ redirectTo: '/wizard/filing_later/2' });
+    expect(filingCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          businessName: null,
+          state: 'FL',
+          entityType: 'LLC',
+          currentStep: 2,
+        }),
+      }),
+    );
+  });
+
+  it('preselects Florida LLC from the landing page and from Google ads', async () => {
+    filingCreate.mockResolvedValueOnce({ id: 'filing_lp' });
+    const fromLanding = await openGuestDraft({
+      state: 'WY',
+      entityType: 'CORP',
+      businessName: 'Sol Norte',
+      browserPath: '/es/lp/llc-florida',
+      returnRedirect: true,
+    });
+    expect(fromLanding).toEqual({ redirectTo: '/es/wizard/filing_lp/2' });
+    const landingData = filingCreate.mock.calls[0]?.[0]?.data;
+    expect(landingData).toEqual(
+      expect.objectContaining({
+        state: 'FL',
+        entityType: 'LLC',
+        businessName: 'Sol Norte',
+        currentStep: 2,
+      }),
+    );
+    expect(JSON.parse(landingData.optionalDetails).floridaLlcPreselected).toBe(true);
+
+    filingCreate.mockClear();
+    cookieGet.mockImplementation((name: string) =>
+      name === 'lf_utm' ? { value: JSON.stringify({ utm_source: 'google' }) } : undefined,
+    );
+    filingCreate.mockResolvedValueOnce({ id: 'filing_ads' });
+    const fromAds = await openGuestDraft({
+      state: 'WY',
+      entityType: 'CORP',
+      businessName: 'Sol Norte',
+      browserPath: '/start',
+      returnRedirect: true,
+    });
+    expect(fromAds).toEqual({ redirectTo: '/wizard/filing_ads/2' });
+    expect(filingCreate.mock.calls[0]?.[0]?.data).toEqual(
+      expect.objectContaining({
+        state: 'FL',
+        entityType: 'LLC',
+        taxElection: null,
+      }),
+    );
+  });
+
   it('is only called from the start form and the Florida LLC ad landing', () => {
     const files: string[] = [];
     for (const dir of ['app', 'components', 'actions', 'lib']) {

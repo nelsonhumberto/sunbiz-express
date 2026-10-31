@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyGoogleConsent,
@@ -8,6 +9,7 @@ import {
   googleTagBootstrap,
   googleTagLoaderId,
   isGoogleTesterBrowser,
+  shouldLoadGoogleTags,
 } from '@/lib/google-consent';
 
 describe('Google Consent Mode bootstrap', () => {
@@ -143,5 +145,23 @@ describe('Google Consent Mode bootstrap', () => {
       expect.objectContaining({ ad_storage: 'granted' }),
     );
     vi.unstubAllGlobals();
+  });
+
+  it('does not load gtag for a tester unless the preview proof is on', () => {
+    expect(
+      shouldLoadGoogleTags({ optedOut: false, tester: true, adsDebug: false }),
+    ).toBe(false);
+    expect(
+      shouldLoadGoogleTags({ optedOut: false, tester: true, adsDebug: true }),
+    ).toBe(true);
+    expect(
+      shouldLoadGoogleTags({ optedOut: true, tester: true, adsDebug: true }),
+    ).toBe(false);
+    expect(
+      shouldLoadGoogleTags({ optedOut: false, tester: false, adsDebug: false }),
+    ).toBe(true);
+    const gate = readFileSync('components/analytics/AdMeasurementGate.tsx', 'utf8');
+    expect(gate).toContain('shouldLoadGoogleTags');
+    expect(gate).toContain('adsDebugActive');
   });
 });

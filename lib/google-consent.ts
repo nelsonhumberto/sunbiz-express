@@ -51,6 +51,20 @@ export function isGoogleTesterBrowser(): boolean {
   return hasQaCookie(cookie) || hasTesterCookie(cookie);
 }
 
+/**
+ * Testers and QA browsers do not load gtag.js, so no Google request is sent.
+ * The preview `lf_ads_debug` proof is the exception and still loads the tag.
+ */
+export function shouldLoadGoogleTags(input: {
+  optedOut: boolean;
+  tester: boolean;
+  adsDebug: boolean;
+}): boolean {
+  if (input.optedOut) return false;
+  if (input.tester && !input.adsDebug) return false;
+  return true;
+}
+
 export function googleConsentChoice(input: {
   consent: string | null;
   optedOut: boolean;

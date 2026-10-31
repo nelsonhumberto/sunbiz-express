@@ -23,9 +23,13 @@ export function readAdsConsent(cookieHeader: string | null | undefined): string 
   return null;
 }
 
-/** Marketing tags require an explicit accept and no ad opt-out. */
-export function marketingTagsAllowed(input: { consent: string | null; optedOut: boolean }): boolean {
-  if (input.optedOut) return false;
+/** Marketing tags require an explicit accept, no ad opt-out, and a non-tester browser. */
+export function marketingTagsAllowed(input: {
+  consent: string | null;
+  optedOut: boolean;
+  tester?: boolean;
+}): boolean {
+  if (input.optedOut || input.tester) return false;
   return input.consent === ADS_CONSENT_ALL;
 }
 

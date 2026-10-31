@@ -17,11 +17,13 @@ import {
   tearDownAdMeasurement,
 } from '@/lib/ad-opt-out';
 import { ADS_CONSENT_EVENT, marketingTagsAllowed, readAdsConsent } from '@/lib/ad-consent';
+import { adsDebugActive } from '@/lib/ads-conversions';
 import {
   applyGoogleConsent,
   applyGoogleTesterRedaction,
   googleConsentChoice,
   isGoogleTesterBrowser,
+  shouldLoadGoogleTags,
 } from '@/lib/google-consent';
 
 /**
@@ -65,8 +67,19 @@ export function AdMeasurementGate({
       clearGaDisableFlags();
       const consent = readAdsConsent(document.cookie);
       const tester = isGoogleTesterBrowser();
+      const adsDebug = adsDebugActive(window.location?.search ?? '');
+      if (!shouldLoadGoogleTags({ optedOut: false, tester, adsDebug })) {
+        setGoogleEnabled(false);
+        setOpenAiEnabled(false);
+        try {
+          tearDownAdMeasurement();
+        } catch {
+          // A tester browser must not keep a tag that already loaded.
+        }
+        return;
+      }
       setGoogleEnabled(true);
-      setOpenAiEnabled(marketingTagsAllowed({ consent, optedOut: false }));
+      setOpenAiEnabled(marketingTagsAllowed({ consent, optedOut: false, tester }));
       applyGoogleConsent(googleConsentChoice({ consent, optedOut: false, tester }));
       if (tester) applyGoogleTesterRedaction();
     };

@@ -24,6 +24,7 @@ describe('landing tracking and consent', () => {
     expect(marketingTagsAllowed({ consent: 'essential', optedOut: false })).toBe(false);
     expect(marketingTagsAllowed({ consent: 'all', optedOut: false })).toBe(true);
     expect(marketingTagsAllowed({ consent: 'all', optedOut: true })).toBe(false);
+    expect(marketingTagsAllowed({ consent: 'all', optedOut: false, tester: true })).toBe(false);
     expect(shouldShowCookieNotice({ consent: null, optedOut: false })).toBe(true);
     expect(shouldShowCookieNotice({ consent: 'all', optedOut: false })).toBe(false);
     expect(shouldShowCookieNotice({ consent: 'essential', optedOut: false })).toBe(false);
@@ -36,6 +37,9 @@ describe('landing tracking and consent', () => {
     expect(bar).toContain('requestIdleCallback');
     expect(bar).not.toContain('overflow-hidden');
     expect(bar).toContain('--lf-cookie-h');
+    expect(readFileSync('components/assistant/ChatWidget.tsx', 'utf8')).toContain(
+      'calc(1.25rem + var(--lf-cookie-h, 0px))',
+    );
     expect(readFileSync('components/marketing/FloridaLlcLanding.tsx', 'utf8')).toContain(
       "bottom: 'var(--lf-cookie-h, 0px)'",
     );

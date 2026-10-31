@@ -356,6 +356,22 @@ describe('privacy policy text', () => {
       'Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept.',
     );
     expect(page).toContain(en.legalPrivacy.googleCookieless);
+    expect(page).toContain(
+      'Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results.',
+    );
+    expect(page).not.toContain('The Google tags do not load until you accept.');
+    expect(en.privacyChoices.intro).toContain(
+      'Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results.',
+    );
+    expect(en.privacyChoices.intro).not.toContain('load only after you accept cookies');
+    expect(es.legalPrivacy.body).toContain(
+      'Las cookies de publicidad y de análisis no se usan hasta que aceptes; antes de eso, Google puede recibir señales sin cookies para medir los resultados de los anuncios.',
+    );
+    expect(es.legalPrivacy.body).not.toContain('Las etiquetas de Google no se cargan hasta que aceptas.');
+    expect(es.privacyChoices.intro).toContain(
+      'Las cookies de publicidad y de análisis no se usan hasta que aceptes; antes de eso, Google puede recibir señales sin cookies para medir los resultados de los anuncios.',
+    );
+    expect(es.privacyChoices.intro).not.toContain('se cargan solo después de que aceptas las cookies');
     expect(es.legalPrivacy.body).toContain(
       'Antes de que elijas una opción de cookies, Google puede recibir señales sin cookies de nuestro sitio para ayudarnos a medir los resultados de los anuncios. No se usan cookies de publicidad ni de análisis hasta que aceptes.',
     );

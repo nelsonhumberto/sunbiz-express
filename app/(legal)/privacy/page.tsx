@@ -60,7 +60,7 @@ We use cookies and similar technologies (such as local storage) for:
 - **Campaign tracking:** remembering which ad or campaign brought you to the site (a first-party cookie that lasts up to 30 days).
 - **Ad measurement choice:** a first-party cookie (\`lf_ad_optout\`) that lasts up to 1 year. It stores whether you opted out of Google and OpenAI ad measurement in this browser. We set it when you use the footer link or when your browser sends Global Privacy Control. Opting back in on the Do Not Sell or Share page turns measurement on again only if you have also accepted cookies.
 - **Cookie choice:** a first-party cookie (\`lf_ads_consent\`) that lasts up to 1 year. Accept loads Google Analytics and Google Ads, including the remarketing tag. Essential only keeps those tags off. You can change this later by opting out or opting back in.
-- **Analytics and advertising:** Google Analytics, Google Ads (including remarketing), the OpenAI ads pixel, PostHog, and Vercel may set their own cookies or identifiers to measure visits and ad conversions. The Google tags do not load until you accept.
+- **Analytics and advertising:** Google Analytics, Google Ads (including remarketing), the OpenAI ads pixel, PostHog, and Vercel may set their own cookies or identifiers to measure visits and ad conversions. Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results.
 
 Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept.
 

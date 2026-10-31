@@ -231,7 +231,7 @@ const CHECKLIST_EN: ChecklistCopy = {
         'Choose a registered agent with a physical address in your state',
         'File your Articles of Organization (some states call it a Certificate of Formation)',
         'Write an Operating Agreement, even if you are the only member',
-        'Get an EIN from the IRS (free at irs.gov)',
+        'Apply for an EIN with the IRS after your LLC is approved',
       ],
     },
     {
@@ -317,7 +317,7 @@ const CHECKLIST_ES: ChecklistCopy = {
         'Elige un agente registrado con dirección física en tu estado',
         'Presenta los artículos de organización (en algunos estados se llaman certificado de formación)',
         'Escribe un acuerdo operativo, aunque seas el único miembro',
-        'Obtén un EIN del IRS (gratis en irs.gov)',
+        'Solicita el EIN al IRS después de que se apruebe tu LLC',
       ],
     },
     {

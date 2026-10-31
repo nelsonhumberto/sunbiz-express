@@ -139,7 +139,7 @@ function day3Inner(locale: DripLocale, args: BuildArgs, safeCompany: string): st
 <p>Felicidades de nuevo por formar ${escapeHtml(safeCompany)}. Un paso común es abrir una cuenta bancaria de empresa, así que aquí va un consejo corto para que esa visita sea más fácil.</p>
 <p>Cada banco pone sus propias reglas, así que confirma con el tuyo primero. La mayoría suele pedir:</p>
 <ul>
-<li><strong>Tu EIN</strong> del IRS. Sacarlo es gratis en irs.gov.</li>
+<li><strong>Tu EIN</strong> del IRS. Lo solicitas en irs.gov después de que se apruebe tu LLC.</li>
 <li><strong>Tus artículos</strong> de organización o de incorporación, que te enviamos con los documentos presentados.</li>
 <li><strong>Un acuerdo operativo</strong> que explique quién es dueño de la empresa y quién la administra.</li>
 </ul>
@@ -160,7 +160,7 @@ ${footerHtml(locale, args.unsubscribeUrl)}`;
 <p>Congratulations again on forming ${escapeHtml(safeCompany)}. A common next step is opening a business bank account, so here is a short tip to make that visit easier.</p>
 <p>Banks set their own rules, so check with yours first. Most usually ask for:</p>
 <ul>
-<li><strong>Your EIN</strong> from the IRS. Getting one is free at irs.gov.</li>
+<li><strong>Your EIN</strong> from the IRS. You apply at irs.gov after your LLC is approved.</li>
 <li><strong>Your Articles</strong> of Organization or Incorporation, which we sent with your filed documents.</li>
 <li><strong>An operating agreement</strong> that explains who owns and runs the company.</li>
 </ul>

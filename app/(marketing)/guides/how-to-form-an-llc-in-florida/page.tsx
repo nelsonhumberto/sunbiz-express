@@ -194,7 +194,7 @@ export default async function HowToFormFloridaLlcGuide() {
         <h2>Step 5: After approval</h2>
         <p>Common next steps for many new LLCs:</p>
         <ul>
-          <li>Get an EIN from the IRS (the IRS does not charge for an EIN)</li>
+          <li>Apply for an EIN with the IRS after your LLC is approved</li>
           <li>
             Prepare an operating agreement (
             <a href="/guides/florida-llc-operating-agreement">Florida LLC operating agreement guide</a>

@@ -1457,7 +1457,7 @@
     "orderEyebrow": "Federal tax ID",
     "orderTitle": "Get your EIN",
     "orderIntro": "We prepare and file IRS Form SS-4 for {company} and upload your EIN confirmation letter to your dashboard when the IRS issues it.",
-    "orderFreeNote": "The IRS issues EINs for free if you apply yourself at irs.gov. Our fee covers preparing and filing the application for you.",
+    "orderPaidNote": "This is our one-time fee to prepare and file IRS Form SS-4. We upload your EIN confirmation letter here when the IRS issues it.",
     "orderCompany": "Company",
     "orderService": "Service",
     "orderServiceName": "EIN application & filing (IRS Form SS-4)",

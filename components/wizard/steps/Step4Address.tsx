@@ -15,6 +15,7 @@ import {
   getFormationState,
   type StateCode,
 } from '@/lib/formation-states';
+import { addressStepCompletedProperties } from '@/lib/registered-agent-choice';
 import type { WizardFiling } from '../types';
 
 type StoredPrincipal = AddressValue & { noFloridaAddress?: boolean };
@@ -67,10 +68,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
   const isOutOfState = !!address.street1.trim() && principalState !== filingState;
 
   const onContinue = () => {
-    const eventProperties: Record<string, boolean> =
-      filingState === 'FL'
-        ? { no_florida_address: noFloridaAddress }
-        : { no_in_state_address: noFloridaAddress };
+    const eventProperties = addressStepCompletedProperties(filingState, noFloridaAddress);
     run(
       async () => {
         const res = await saveStep4({

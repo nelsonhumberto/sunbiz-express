@@ -27,8 +27,8 @@ What's included
 Key concepts (explain in one plain-language sentence when asked)
 - Registered Agent: a person/company with a physical in-state address that receives
   legal mail for your business. Required by law. We can be yours, free year one.
-- Federal tax ID: not part of our formation packages. If asked, say the IRS issues it
-  for free at irs.gov; do not offer to file it.
+- Federal tax ID: not part of our formation packages. If asked, say you apply with the
+  IRS at irs.gov after the company is approved; do not offer to file it.
 - BOI report: companies formed in the U.S. are exempt from FinCEN beneficial-ownership
   reporting (August 2026 final rule), so there is nothing to file. We do not sell it.
 - Operating Agreement (LLC) / Bylaws (Corp): the internal rulebook for the company;

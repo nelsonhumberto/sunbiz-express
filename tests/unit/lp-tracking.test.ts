@@ -16,7 +16,7 @@ describe('landing tracking and consent', () => {
     expect(newlyReachedScrollDepths(Number.NaN, seen)).toEqual([]);
   });
 
-  it('loads Google tags only after accept, and an opt-out still blocks them', () => {
+  it('keeps OpenAI behind Accept, and an opt-out still blocks every ad tag', () => {
     expect(readAdsConsent('theme=1; lf_ads_consent=all')).toBe('all');
     expect(readAdsConsent('lf_ads_consent=essential')).toBe('essential');
     expect(readAdsConsent('')).toBeNull();
@@ -67,6 +67,8 @@ describe('landing tracking and consent', () => {
     );
     expect(success).toContain("trackEvent('checkout_paid'");
     expect(gate).toContain('marketingTagsAllowed');
+    expect(gate).toContain('setGoogleEnabled(true)');
+    expect(gate).toContain('googleConsentChoice');
     expect(readFileSync('actions/checklist-signup.ts', 'utf8')).toContain('getServerUtmAttribution');
     expect(readFileSync('actions/guest-start.ts', 'utf8')).toContain('rememberStartEmail');
   });

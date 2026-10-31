@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { purchaseConversionStorageKey } from '@/lib/ads-conversions';
+import { beginConversionStorageKey, purchaseConversionStorageKey } from '@/lib/ads-conversions';
+import { applyGoogleConsent } from '@/lib/google-consent';
 import {
   clearPendingAdsQueueForTests,
   flushPendingAdsConversions,
@@ -63,7 +64,7 @@ describe('ads conversion queue', () => {
     return { gtag, info, window: window as Window & { gtag?: (...args: unknown[]) => void } };
   }
 
-  it('fires a queued purchase once after Accept, including one saved on the success page', () => {
+  it('fires a stored purchase once when gtag exists, without Accept', () => {
     const { gtag, window: win } = install({ pathname: '/checkout/success', gtag: false });
     trackGooglePurchase({
       transactionId: 'filing_1',
@@ -93,12 +94,56 @@ describe('ads conversion queue', () => {
     expect(session.size).toBe(0);
   });
 
-  it('does not fire when the buyer never accepts', () => {
-    const { gtag } = install({ gtag: false });
-    trackGooglePurchase({ transactionId: 'filing_1', valueCents: 19900, currency: 'usd' });
+  it('keeps a begin_filing hit in sessionStorage until gtag exists, then sends it once', () => {
+    const { gtag, window: win } = install({ gtag: false });
     trackGoogleBeginFiling({ filingId: 'filing_1' });
-    flushPendingAdsConversions();
     expect(gtag).not.toHaveBeenCalled();
+    expect([...session.keys()].some((key) => key.includes('lf_ads_begin:filing_1'))).toBe(true);
+
+    clearPendingAdsQueueForTests();
+    expect([...session.keys()].some((key) => key.includes('filing_1'))).toBe(true);
+
+    win.gtag = gtag;
+    flushPendingAdsConversions();
+    flushPendingAdsConversions();
+    applyGoogleConsent('granted');
+
+    const conversions = gtag.mock.calls.filter((call) => call[1] === 'conversion');
+    expect(conversions).toHaveLength(1);
+    expect(conversions[0]?.[2]).toMatchObject({
+      send_to: 'AW-123/beginLabel',
+      transaction_id: 'filing_1',
+      value: 1,
+      currency: 'USD',
+    });
+    expect(local.get(beginConversionStorageKey('filing_1'))).toBe('1');
+    expect([...session.keys()].some((key) => key.startsWith('lf_ads_pending:'))).toBe(false);
+    expect(gtag).toHaveBeenCalledWith('consent', 'update', {
+      ad_storage: 'granted',
+      analytics_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'granted',
+    });
+  });
+
+  it('fires begin_filing immediately in the denied state and does not send it again', () => {
+    const { gtag } = install({ gtag: true });
+    trackGoogleBeginFiling({ filingId: 'filing_1' });
+    trackGooglePurchase({ transactionId: 'filing_1', valueCents: 19900, currency: 'usd' });
+    applyGoogleConsent('granted');
+    flushPendingAdsConversions();
+    trackGoogleBeginFiling({ filingId: 'filing_1' });
+    trackGooglePurchase({ transactionId: 'filing_1', valueCents: 19900, currency: 'usd' });
+
+    const conversions = gtag.mock.calls.filter((call) => call[1] === 'conversion');
+    const purchases = gtag.mock.calls.filter((call) => call[1] === 'purchase');
+    expect(purchases).toHaveLength(1);
+    expect(conversions).toHaveLength(2);
+    expect(conversions.map((call) => (call[2] as { send_to?: string }).send_to).sort()).toEqual([
+      'AW-123/beginLabel',
+      'AW-123/purchaseLabel',
+    ]);
+    expect(session.size).toBe(0);
   });
 
   it('blocks a tester on production even with the debug flag', () => {

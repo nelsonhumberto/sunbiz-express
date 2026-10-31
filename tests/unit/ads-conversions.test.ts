@@ -4,6 +4,7 @@ import {
   adsSendTo,
   beginConversionStorageKey,
   isLaunchformaQaEmail,
+  isProductionAdsHost,
   purchaseConversionStorageKey,
   purchasePayload,
   shouldSuppressAdsConversion,
@@ -36,10 +37,15 @@ describe('ad conversion helpers', () => {
     expect(adsSendTo(undefined, 'purchaseLabel')).toBeNull();
   });
 
-  it('turns the debug flag on only for preview', () => {
+  it('turns the debug flag on only for an explicit preview or development deploy', () => {
     expect(adsDebugActive('?lf_ads_debug=1', 'preview')).toBe(true);
+    expect(adsDebugActive('?lf_ads_debug=1', 'development')).toBe(true);
     expect(adsDebugActive('lf_ads_debug=1', 'production')).toBe(false);
+    expect(adsDebugActive('?lf_ads_debug=1', undefined)).toBe(false);
     expect(adsDebugActive('', 'preview')).toBe(false);
+    expect(isProductionAdsHost('launchforma.com')).toBe(true);
+    expect(isProductionAdsHost('www.launchforma.com')).toBe(true);
+    expect(isProductionAdsHost('launchforma-git-preview.vercel.app')).toBe(false);
   });
 
   it('keeps utm and gclid on the wizard href and does not replace tier', () => {
@@ -155,6 +161,33 @@ describe('gtag conversion firing', () => {
     expect(info).toHaveBeenCalledWith('AW-123/purchaseLabel');
     expect(store.get(purchaseConversionStorageKey('lfdebug-filing_qa'))).toBe('1');
     expect(store.has(purchaseConversionStorageKey('filing_qa'))).toBe(false);
+  });
+
+  it('does not send a tester proof on the production host or when the deploy env is missing', () => {
+    const { gtag } = install('?lf_ads_debug=1');
+    process.env.VERCEL_ENV = 'preview';
+    process.env.NEXT_PUBLIC_VERCEL_ENV = 'preview';
+    (window.location as { hostname?: string }).hostname = 'www.launchforma.com';
+    trackGooglePurchase({
+      transactionId: 'filing_real',
+      valueCents: 19900,
+      isTester: true,
+      email: 'qa+buyer@launchforma.com',
+    });
+    expect(gtag).not.toHaveBeenCalled();
+    expect(store.size).toBe(0);
+
+    (window.location as { hostname?: string }).hostname = 'preview.vercel.app';
+    delete process.env.VERCEL_ENV;
+    delete process.env.NEXT_PUBLIC_VERCEL_ENV;
+    trackGooglePurchase({
+      transactionId: 'filing_real',
+      valueCents: 19900,
+      isTester: true,
+      email: 'qa+buyer@launchforma.com',
+    });
+    expect(gtag).not.toHaveBeenCalled();
+    expect(store.has(purchaseConversionStorageKey('filing_real'))).toBe(false);
   });
 
   it('suppresses a qa mailbox with no debug log outside preview', () => {

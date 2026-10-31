@@ -352,6 +352,13 @@ describe('privacy policy text', () => {
     expect(es.footer.doNotSell).toBe('No vender ni compartir mi información personal');
     expect(en.footer.doNotSell).toBe('Do Not Sell or Share My Personal Information');
     expect(en.privacyChoices.gpc).toBe("GPC signal detected, you're opted out");
+    expect(en.legalPrivacy.googleCookieless).toBe(
+      'Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept.',
+    );
+    expect(page).toContain(en.legalPrivacy.googleCookieless);
+    expect(es.legalPrivacy.body).toContain(
+      'Antes de que elijas una opción de cookies, Google puede recibir señales sin cookies de nuestro sitio para ayudarnos a medir los resultados de los anuncios. No se usan cookies de publicidad ni de análisis hasta que aceptes.',
+    );
 
     expect(readFileSync('app/(legal)/disclaimer/page.tsx', 'utf8')).toContain('LegalDraftNotice');
     expect(readFileSync('app/(legal)/terms/page.tsx', 'utf8')).toContain('LegalDraftNotice');

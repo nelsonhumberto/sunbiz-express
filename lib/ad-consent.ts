@@ -1,6 +1,7 @@
 /**
- * Google tags (Analytics, Ads remarketing, conversion, OpenAI pixel) load
- * only after this cookie is `all`, and never when the ad opt-out is on.
+ * Full marketing cookies (Google storage granted, OpenAI pixel) load only
+ * after this cookie is `all`, and never when the ad opt-out is on.
+ * Google tag itself loads earlier in Consent Mode with storage denied.
  * PostHog is separate and is not gated here.
  */
 

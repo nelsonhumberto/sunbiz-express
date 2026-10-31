@@ -17,12 +17,14 @@ import {
   tearDownAdMeasurement,
 } from '@/lib/ad-opt-out';
 import { ADS_CONSENT_EVENT, marketingTagsAllowed, readAdsConsent } from '@/lib/ad-consent';
+import { applyGoogleConsent, googleConsentChoice } from '@/lib/google-consent';
 
 /**
- * Injects Google (gtag.js / GA4 / Google Ads) and the OpenAI ads pixel only
- * after a client check. The server passes `serverGpc` from `Sec-GPC: 1`.
- * The first render is always empty, so nothing is in the HTML to fire and
- * then stop. Opting out removes tags already added in this tab.
+ * Google (gtag.js / GA4 / Google Ads) loads before a cookie choice, in
+ * Consent Mode with storage denied, unless the visitor is opted out.
+ * OpenAI stays behind Accept via marketingTagsAllowed. The server passes
+ * `serverGpc` from `Sec-GPC: 1`. The first render is empty, so nothing is in
+ * the HTML to fire and then stop. Opting out removes tags already added.
  */
 export function AdMeasurementGate({
   serverGpc,
@@ -31,7 +33,8 @@ export function AdMeasurementGate({
   serverGpc: boolean;
   serverCookie: string | null;
 }) {
-  const [enabled, setEnabled] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [openAiEnabled, setOpenAiEnabled] = useState(false);
   const clientChose = useRef(false);
 
   useEffect(() => {
@@ -44,13 +47,9 @@ export function AdMeasurementGate({
         cookie,
         globalPrivacyControl: readGlobalPrivacyControl(),
       });
-      const allow = marketingTagsAllowed({
-        consent: readAdsConsent(document.cookie),
-        optedOut,
-      });
-      if (!allow) {
-        // Unmount first. A throw while stopping gtag must not leave the tags mounted.
-        setEnabled(false);
+      if (optedOut) {
+        setGoogleEnabled(false);
+        setOpenAiEnabled(false);
         try {
           tearDownAdMeasurement();
         } catch {
@@ -59,7 +58,10 @@ export function AdMeasurementGate({
         return;
       }
       clearGaDisableFlags();
-      setEnabled(true);
+      const consent = readAdsConsent(document.cookie);
+      setGoogleEnabled(true);
+      setOpenAiEnabled(marketingTagsAllowed({ consent, optedOut: false }));
+      applyGoogleConsent(googleConsentChoice({ consent, optedOut: false }));
     };
     const onChoice = () => {
       clientChose.current = true;
@@ -74,13 +76,15 @@ export function AdMeasurementGate({
     };
   }, [serverGpc, serverCookie]);
 
-  if (!enabled) return null;
-
   return (
     <>
-      <GoogleAnalytics />
-      <OpenAiPixelLoader />
-      <OpenAiPixel />
+      {googleEnabled ? <GoogleAnalytics /> : null}
+      {openAiEnabled ? (
+        <>
+          <OpenAiPixelLoader />
+          <OpenAiPixel />
+        </>
+      ) : null}
     </>
   );
 }

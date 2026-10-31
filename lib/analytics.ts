@@ -12,6 +12,7 @@ import {
   adsSendTo,
   beginConversionStorageKey,
   beginFilingPayload,
+  isProductionAdsHost,
   purchaseConversionStorageKey,
   purchasePayload,
   qaCookieSuppressesAds,
@@ -628,56 +629,55 @@ type PendingAdsConversion = {
   debugLog: boolean;
 };
 
-const pendingAds: PendingAdsConversion[] = [];
-const PENDING_PURCHASE_PREFIX = 'lf_ads_pending_purchase:';
-
-function pagePath(): string {
-  try {
-    return window.location?.pathname ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function onCheckoutSuccessPage(): boolean {
-  const path = pagePath();
-  return path === '/checkout/success' || path === '/es/checkout/success';
-}
+/** Unsent hits only. A sent hit is removed so it cannot fire again. */
+const PENDING_PREFIX = 'lf_ads_pending:';
+/** Older purchase backlog, kept so a tab that queued before this deploy still flushes once. */
+const LEGACY_PENDING_PURCHASE_PREFIX = 'lf_ads_pending_purchase:';
 
 function gtagReady(): boolean {
   return typeof window.gtag === 'function';
 }
 
-function rememberPendingPurchase(hit: PendingAdsConversion): void {
-  if (hit.kind !== 'purchase' || !onCheckoutSuccessPage()) return;
+function pendingStorageKey(storageKey: string): string {
+  return `${PENDING_PREFIX}${storageKey}`;
+}
+
+function rememberPending(hit: PendingAdsConversion): void {
   try {
-    window.sessionStorage.setItem(
-      `${PENDING_PURCHASE_PREFIX}${hit.transactionId}`,
-      JSON.stringify(hit),
-    );
+    window.sessionStorage.setItem(pendingStorageKey(hit.storageKey), JSON.stringify(hit));
   } catch {
-    /* the in-memory queue still covers this document */
+    /* private mode cannot survive a full navigation */
   }
 }
 
-function forgetPendingPurchase(transactionId: string): void {
+function forgetPending(hit: PendingAdsConversion): void {
   try {
-    window.sessionStorage.removeItem(`${PENDING_PURCHASE_PREFIX}${transactionId}`);
+    window.sessionStorage.removeItem(pendingStorageKey(hit.storageKey));
+    window.sessionStorage.removeItem(`${LEGACY_PENDING_PURCHASE_PREFIX}${hit.transactionId}`);
+    window.sessionStorage.removeItem(`${LEGACY_PENDING_PURCHASE_PREFIX}${hit.storageKey}`);
   } catch {
     /* ignore */
   }
 }
 
-function readPendingPurchases(): PendingAdsConversion[] {
+function isPendingKey(key: string): boolean {
+  return key.startsWith(PENDING_PREFIX) || key.startsWith(LEGACY_PENDING_PURCHASE_PREFIX);
+}
+
+function readPending(): PendingAdsConversion[] {
   const hits: PendingAdsConversion[] = [];
   try {
+    const keys: string[] = [];
     for (let i = 0; i < window.sessionStorage.length; i += 1) {
       const key = window.sessionStorage.key(i);
-      if (!key?.startsWith(PENDING_PURCHASE_PREFIX)) continue;
+      if (key && isPendingKey(key)) keys.push(key);
+    }
+    for (const key of keys) {
       const raw = window.sessionStorage.getItem(key);
       if (!raw) continue;
       const parsed = JSON.parse(raw) as PendingAdsConversion;
       if (!parsed?.transactionId || !parsed.storageKey) continue;
+      if (parsed.kind !== 'purchase' && parsed.kind !== 'begin') continue;
       hits.push(parsed);
     }
   } catch {
@@ -690,14 +690,34 @@ function adsProduction(): boolean {
   return process.env.VERCEL_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
 }
 
+function browserHostname(): string {
+  try {
+    return window.location?.hostname ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** A proof hit must be an lfdebug id on a non-production deploy. Anything else is dropped. */
+function proofHitAllowed(hit: PendingAdsConversion): boolean {
+  if (!hit.debugLog) return true;
+  if (!hit.transactionId.startsWith('lfdebug-')) return false;
+  if (adsProduction() || isProductionAdsHost(browserHostname())) return false;
+  return adsDebugActive(browserSearch());
+}
+
 function sendAdsHit(hit: PendingAdsConversion): void {
   if (!gtagReady()) return;
   if (isClientAdMeasurementOptedOut()) return;
-  if (hit.debugLog && adsProduction()) return;
-  if (readConversionFlag(hit.storageKey)) {
-    forgetPendingPurchase(hit.transactionId);
+  if (!proofHitAllowed(hit)) {
+    forgetPending(hit);
     return;
   }
+  if (readConversionFlag(hit.storageKey)) {
+    forgetPending(hit);
+    return;
+  }
+  writeConversionFlag(hit.storageKey);
   if (hit.kind === 'purchase') {
     window.gtag('event', 'purchase', {
       transaction_id: hit.transactionId,
@@ -714,39 +734,33 @@ function sendAdsHit(hit: PendingAdsConversion): void {
     });
     if (hit.debugLog) console.info(hit.sendTo);
   }
-  writeConversionFlag(hit.storageKey);
-  forgetPendingPurchase(hit.transactionId);
+  forgetPending(hit);
 }
 
-function queueOrSend(hit: PendingAdsConversion): void {
+/**
+ * Send now. Consent Mode delivers the hit while storage is denied.
+ * If gtag is not defined yet, keep the hit in sessionStorage so a navigation
+ * to the wizard can flush it. Nothing waits for Accept.
+ */
+function deliverAdsHit(hit: PendingAdsConversion): void {
+  if (readConversionFlag(hit.storageKey)) return;
   if (gtagReady()) {
     sendAdsHit(hit);
     return;
   }
-  if (pendingAds.some((item) => item.storageKey === hit.storageKey)) return;
-  pendingAds.push(hit);
-  rememberPendingPurchase(hit);
+  rememberPending(hit);
 }
 
-/** Send Ads hits that fired before Accept, once gtag exists. Opt-out stays off. */
+/** Send hits stored before gtag.js defined `window.gtag`. Opt-out stays off. */
 export function flushPendingAdsConversions(): void {
   if (typeof window === 'undefined' || !gtagReady()) return;
   if (isClientAdMeasurementOptedOut()) return;
-  const hits = pendingAds.splice(0, pendingAds.length);
-  for (const hit of hits) sendAdsHit(hit);
-  for (const hit of readPendingPurchases()) {
-    if (readConversionFlag(hit.storageKey)) {
-      forgetPendingPurchase(hit.transactionId);
-      continue;
-    }
-    if (hits.some((item) => item.storageKey === hit.storageKey)) continue;
-    sendAdsHit(hit);
-  }
+  for (const hit of readPending()) sendAdsHit(hit);
 }
 
-/** Test helper. Does not clear sessionStorage. */
+/** Test helper. Pending hits live in sessionStorage, which this does not clear. */
 export function clearPendingAdsQueueForTests(): void {
-  pendingAds.splice(0, pendingAds.length);
+  return;
 }
 
 function debugTransactionId(transactionId: string, bypass: boolean): string {
@@ -771,8 +785,8 @@ function suppressionInput(
  * GA4 `purchase` plus the Filing Purchase Ads conversion.
  * One hit per transaction id in this browser. Refreshing the receipt does not
  * send again. `transaction_id` is also sent for Ads-side dedup.
- * Test users are skipped. On a preview deploy, `?lf_ads_debug=1` logs the
- * payload instead of sending that skipped hit.
+ * Test users are skipped. On a preview deploy, `?lf_ads_debug=1` sends that
+ * skipped hit with an lfdebug- transaction id. Production cannot.
  */
 export function trackGooglePurchase(input: {
   transactionId: string;
@@ -788,7 +802,7 @@ export function trackGooglePurchase(input: {
 
   const suppressed = shouldSuppressAdsConversion(suppressionInput(input));
   const debug = adsDebugActive(browserSearch());
-  const bypass = debug && suppressed && !adsProduction();
+  const bypass = debug && suppressed && !adsProduction() && !isProductionAdsHost(browserHostname());
   const sendTo = adsSendTo(
     process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
     process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL,
@@ -806,7 +820,7 @@ export function trackGooglePurchase(input: {
   }
   if (isClientAdMeasurementOptedOut()) return;
 
-  queueOrSend({
+  deliverAdsHit({
     storageKey,
     kind: 'purchase',
     sendTo,
@@ -821,7 +835,8 @@ export function trackGooglePurchase(input: {
  * Begin Filing Ads conversion. Once per filing id, on the /lp CTA and on
  * step 1 submit. The same id from the landing CTA into step 1 does not send
  * again. Value is 1 USD. Sends only when the Begin Filing label env is set.
- * Test users are skipped and do not consume the dedupe key.
+ * The hit fires immediately, including while consent is denied. Test users
+ * are skipped and do not consume the dedupe key.
  */
 export function trackGoogleBeginFiling(input?: {
   filingId?: string | null;
@@ -835,7 +850,7 @@ export function trackGoogleBeginFiling(input?: {
   if (!base) return;
   const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
   const debug = adsDebugActive(browserSearch());
-  const bypass = debug && suppressed && !adsProduction();
+  const bypass = debug && suppressed && !adsProduction() && !isProductionAdsHost(browserHostname());
   const outboundId = debugTransactionId(base.transaction_id, bypass);
   const storageKey = beginConversionStorageKey(outboundId);
   if (readConversionFlag(storageKey)) return;
@@ -858,7 +873,7 @@ export function trackGoogleBeginFiling(input?: {
     return;
   }
 
-  queueOrSend({
+  deliverAdsHit({
     storageKey,
     kind: 'begin',
     sendTo,

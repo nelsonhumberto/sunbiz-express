@@ -62,6 +62,8 @@ We use cookies and similar technologies (such as local storage) for:
 - **Cookie choice:** a first-party cookie (\`lf_ads_consent\`) that lasts up to 1 year. Accept loads Google Analytics and Google Ads, including the remarketing tag. Essential only keeps those tags off. You can change this later by opting out or opting back in.
 - **Analytics and advertising:** Google Analytics, Google Ads (including remarketing), the OpenAI ads pixel, PostHog, and Vercel may set their own cookies or identifiers to measure visits and ad conversions. The Google tags do not load until you accept.
 
+Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept.
+
 **Session replay.** On our production site, PostHog may record how you interact with public pages, pricing, the start page, ad landing pages, and the filing wizard (clicks, scrolling, page changes) so we can find and fix problems. All text and form inputs are masked, and images and media are blocked, so we do not see what you type or upload. Session replay is turned off on checkout, including card fields, on your dashboard, on sign-in and account pages, and on our admin pages.
 
 We do not currently respond to Do Not Track signals, but we do honor Global Privacy Control (see Section 6).

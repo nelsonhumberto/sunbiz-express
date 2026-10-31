@@ -1708,5 +1708,8 @@
     "optIn": "Opt back in",
     "stillRun": "Essential cookies and our own product analytics (PostHog and Vercel) still run. We store this choice in a cookie for 1 year.",
     "privacyLink": "Read the Privacy Policy"
+  },
+  "legalPrivacy": {
+    "googleCookieless": "Before you choose a cookie option, Google may receive cookieless signals from our site to help us measure ad results. No advertising or analytics cookies are set until you accept."
   }
 }

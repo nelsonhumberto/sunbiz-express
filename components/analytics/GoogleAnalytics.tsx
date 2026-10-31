@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
 import { flushPendingAdsConversions } from '@/lib/analytics';
-import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
+import { googleTagBootstrap, googleTagLoaderId } from '@/lib/google-consent';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
@@ -15,25 +15,24 @@ const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 const UNTRACKED_PATHS = new Set(['/reset-password']);
 
 /**
- * Loads Google Analytics 4 (gtag.js) sitewide and configures SPA pageview
- * tracking. Also configures the Google Ads tag on the same gtag instance
- * when an Ads ID is present, so Ads conversions can be attributed.
+ * Loads gtag.js for every visitor the gate mounts, before a cookie choice.
+ * Consent default is denied and runs before config. A stored Accept is
+ * granted before config. Pageviews and queued Ads hits then fire in that state.
  *
- * All of this is a no-op when NEXT_PUBLIC_GA_MEASUREMENT_ID is unset, so the
- * app runs fine without analytics configured (local dev, previews).
- * AdMeasurementGate is what decides whether this component mounts at all.
+ * No-op when neither measurement id is set (local dev, a preview without the
+ * Production env vars).
  */
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const untracked = UNTRACKED_PATHS.has(pathname);
+  const loaderId = googleTagLoaderId(GA_MEASUREMENT_ID, GOOGLE_ADS_ID);
 
-  // Manual SPA pageviews. We init gtag with send_page_view:false below so the
-  // initial load isn't double-counted; this effect fires the page_view on
-  // every client-side navigation (and once on mount). `li_fat_id` is dropped
-  // from the hit. utm params and gclid stay.
+  // Manual SPA pageviews. send_page_view is false so the initial load isn't
+  // double-counted; this effect fires page_view on navigation (and once on
+  // mount). `li_fat_id` is dropped from the hit. utm params and gclid stay.
   useEffect(() => {
-    if (!GA_MEASUREMENT_ID || untracked) return;
+    if (!loaderId || untracked) return;
     let cancelled = false;
     const start = Date.now();
     const tick = () => {
@@ -58,28 +57,20 @@ export function GoogleAnalytics() {
     return () => {
       cancelled = true;
     };
-  }, [pathname, searchParams, untracked]);
+  }, [pathname, searchParams, untracked, loaderId]);
 
-  if (!GA_MEASUREMENT_ID || untracked) return null;
+  if (!loaderId || untracked) return null;
   if (typeof document !== 'undefined' && isClientAdMeasurementOptedOut()) return null;
 
   return (
     <>
+      <Script id="google-analytics" strategy="afterInteractive">
+        {googleTagBootstrap({ gaId: GA_MEASUREMENT_ID, adsId: GOOGLE_ADS_ID })}
+      </Script>
       <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${loaderId}`}
         strategy="afterInteractive"
       />
-      <Script id="google-analytics" strategy="afterInteractive">
-        {`
-          ${LI_FAT_ID_STRIP_SCRIPT}
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          window.gtag = gtag;
-          gtag('js', new Date());
-          gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
-          ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ''}
-        `}
-      </Script>
     </>
   );
 }

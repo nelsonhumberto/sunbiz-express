@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { googleTagBootstrap } from '@/lib/google-consent';
 import { hrefWithoutLiFatId, LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 describe('li_fat_id landing URL', () => {
@@ -30,8 +31,11 @@ describe('li_fat_id landing URL', () => {
     expect(init).toBeGreaterThan(strip);
 
     const ga = readFileSync('components/analytics/GoogleAnalytics.tsx', 'utf8');
-    expect(ga.indexOf('LI_FAT_ID_STRIP_SCRIPT')).toBeLessThan(ga.indexOf("gtag('js'"));
+    expect(ga).toContain('googleTagBootstrap');
     expect(ga).toContain("params.delete('li_fat_id')");
+    const bootstrap = googleTagBootstrap({ gaId: 'G-TEST', adsId: 'AW-TEST' });
+    expect(bootstrap.indexOf("searchParams.delete('li_fat_id')")).toBeLessThan(bootstrap.indexOf("gtag('js'"));
+    expect(bootstrap.indexOf("gtag('consent', 'default'")).toBeLessThan(bootstrap.indexOf("gtag('config'"));
 
     const layout = readFileSync('app/layout.tsx', 'utf8');
     const early = layout.indexOf('id="strip-li-fat-id"');

@@ -1,0 +1,85 @@
+import { describe, expect, it, vi } from 'vitest';
+import {
+  applyGoogleConsent,
+  GOOGLE_CONSENT_DENIED,
+  GOOGLE_CONSENT_GRANTED,
+  googleConsentChoice,
+  googleTagBootstrap,
+  googleTagLoaderId,
+} from '@/lib/google-consent';
+
+describe('Google Consent Mode bootstrap', () => {
+  it('sets default denied before any config, then grants a stored Accept before config', () => {
+    const script = googleTagBootstrap({
+      gaId: 'G-SSYG3R6NHM',
+      adsId: 'AW-18328422146',
+    });
+    const strip = script.indexOf("searchParams.delete('li_fat_id')");
+    const denied = script.indexOf("gtag('consent', 'default'");
+    const granted = script.indexOf("gtag('consent', 'update'");
+    const js = script.indexOf("gtag('js'");
+    const configGa = script.indexOf("gtag('config', 'G-SSYG3R6NHM'");
+    const configAw = script.indexOf("gtag('config', 'AW-18328422146'");
+
+    expect(strip).toBeGreaterThan(-1);
+    expect(denied).toBeGreaterThan(strip);
+    expect(granted).toBeGreaterThan(denied);
+    expect(js).toBeGreaterThan(granted);
+    expect(configGa).toBeGreaterThan(js);
+    expect(configAw).toBeGreaterThan(configGa);
+
+    for (const [key, value] of Object.entries(GOOGLE_CONSENT_DENIED)) {
+      expect(script).toContain(`${key}: '${value}'`);
+    }
+    for (const [key, value] of Object.entries(GOOGLE_CONSENT_GRANTED)) {
+      expect(script).toContain(`${key}: '${value}'`);
+    }
+    expect(script).toContain('wait_for_update: 500');
+    expect(script).toContain('lf_ads_consent=all');
+    expect(script).toContain('lf_ad_optout=1');
+    expect(script.indexOf("gtag('config'")).toBe(configGa);
+  });
+
+  it('loads gtag.js from either measurement id', () => {
+    expect(googleTagLoaderId('G-SSYG3R6NHM', 'AW-18328422146')).toBe(
+      'G-SSYG3R6NHM',
+    );
+    expect(googleTagLoaderId(undefined, 'AW-18328422146')).toBe(
+      'AW-18328422146',
+    );
+    expect(googleTagLoaderId('', '')).toBeNull();
+    expect(googleTagBootstrap({ gaId: 'bad id', adsId: 'AW-1' })).toContain(
+      "gtag('config', 'AW-1'",
+    );
+    expect(googleTagBootstrap({ gaId: 'bad id', adsId: 'AW-1' })).not.toContain(
+      'bad id',
+    );
+  });
+
+  it('updates all four signals on Accept and on decline', () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('window', { gtag });
+    expect(googleConsentChoice({ consent: null, optedOut: false })).toBe(
+      'denied',
+    );
+    expect(googleConsentChoice({ consent: 'essential', optedOut: false })).toBe(
+      'denied',
+    );
+    expect(googleConsentChoice({ consent: 'all', optedOut: false })).toBe(
+      'granted',
+    );
+    expect(googleConsentChoice({ consent: 'all', optedOut: true })).toBe(
+      'denied',
+    );
+
+    applyGoogleConsent('granted');
+    applyGoogleConsent('denied');
+    expect(gtag).toHaveBeenNthCalledWith(1, 'consent', 'update', {
+      ...GOOGLE_CONSENT_GRANTED,
+    });
+    expect(gtag).toHaveBeenNthCalledWith(2, 'consent', 'update', {
+      ...GOOGLE_CONSENT_DENIED,
+    });
+    vi.unstubAllGlobals();
+  });
+});

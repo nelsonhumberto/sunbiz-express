@@ -13,7 +13,13 @@
 
 import { ALL_MARKETING_STATES, FLORIDA, localizedStateName } from '@/lib/marketing-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
-import { tierPriceParts } from '@/lib/pricing';
+import {
+  TIERS,
+  TIER_BY_SLUG,
+  tierBundledAddOns,
+  tierPriceParts,
+  type TierSlug,
+} from '@/lib/pricing';
 import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
 import { formatCurrency } from '@/lib/utils';
 
@@ -24,10 +30,48 @@ const ESSENTIAL_STATE_FEE = formatCurrency(ESSENTIAL_FL_LLC.stateFeeCents);
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 const SUMMARY =
-  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida with transparent all-in pricing (state fee included), a free Year-1 Registered Agent, and submission within 1 business day.';
+  'LaunchForma is a modern business formation service that files LLCs and Corporations in Florida with transparent all-in pricing (state fee included) and submission within 1 business day. See Packages for what each package includes.';
 
 const ABOUT =
-  'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. Every package includes the required state filing fee, free Year-1 Registered Agent service, and digital delivery of filed documents. Optional add-ons include Operating Agreements, S-Corp election (IRS Form 2553), managed annual reports, and compliance alerts. The company also files Florida annual reports. LaunchForma is not a law firm and does not provide legal advice.';
+  'LaunchForma helps founders form US companies without the upsells, hidden fees, or 45-minute forms common to legacy filing services. The company also files Florida annual reports. LaunchForma is not a law firm and does not provide legal advice. Package contents and Florida LLC prices are in the Packages section.';
+
+/** Expand "everything in the previous package" into the included feature labels. */
+function includedLabels(slug: TierSlug): string[] {
+  const labels: string[] = [];
+  for (const feature of TIER_BY_SLUG[slug].features) {
+    if (!feature.included) continue;
+    if (
+      feature.label === 'Everything in Filing Only' ||
+      feature.label === 'Everything in Basic Filing'
+    ) {
+      labels.push(...includedLabels('BASIC'));
+      continue;
+    }
+    if (
+      feature.label === 'Everything in Popular' ||
+      feature.label === 'Everything in Bank-Ready Filing'
+    ) {
+      labels.push(...includedLabels('STANDARD'));
+      continue;
+    }
+    labels.push(feature.label);
+  }
+  return labels;
+}
+
+function packageSection(): string[] {
+  const withDomain = TIERS.filter((tier) => tierBundledAddOns(tier.slug).includes('domain_com'));
+  const domainLine =
+    withDomain.length === 1
+      ? `Only ${withDomain[0].name} includes a .com domain.`
+      : `Packages that include a .com domain: ${withDomain.map((tier) => tier.name).join(', ') || 'none'}.`;
+  const intro = `Florida LLC all-in prices from the pricing catalog. Each total includes that package's bundled state fees. Corporations and other states keep the same package names, and the total changes with that state's fees. ${domainLine}`;
+  const bullets = TIERS.map((tier) => {
+    const price = formatCurrency(tierPriceParts(tier.slug, 'LLC', 'FL').totalCents);
+    return `- ${tier.name} (${price}): ${includedLabels(tier.slug).join('. ')}.`;
+  });
+  return [intro, '', ...bullets];
+}
 
 interface LinkEntry {
   title: string;
@@ -131,6 +175,9 @@ export function buildLlmsTxt(): string {
   parts.push(`> ${SUMMARY}`);
   parts.push('');
   parts.push(ABOUT);
+  parts.push('');
+  parts.push('## Packages');
+  parts.push(...packageSection());
   parts.push('');
   parts.push('## Core pages');
   parts.push(...published(CORE_PAGES));

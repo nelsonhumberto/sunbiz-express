@@ -465,6 +465,7 @@
     "nameYourCorp": "Name your corporation",
     "nameYourSCorp": "Name your S-Corp",
     "nameHelper": "You can change it before we file.",
+    "nameLater": "I'll name it later",
     "switchToCorp": "Forming a corporation instead?",
     "switchToLlc": "Forming an LLC instead?",
     "emailOptional": "Email (optional)",
@@ -823,6 +824,7 @@
     "step1Subtitle": "We'll handle the paperwork - you choose the structure.",
     "step2Title": "What's your business name?",
     "step2Subtitle": "We'll run a preliminary name search with the state registry. It is not a guarantee of approval.",
+    "changeEntity": "Change",
     "step3Title": "Pick your filing package",
     "step3Subtitle": "One all-in price per package - state filing fee already included.",
     "step4Title": "Principal place of business",
@@ -1690,6 +1692,7 @@
     "trustTitle": "Why people use LaunchForma",
     "emailTitle": "Send me the checklist and cost breakdown",
     "emailButton": "Send me the checklist and cost breakdown",
+    "startButton": "Start",
     "stickyCta": "Start with your company name",
     "repeatCta": "Start your Florida LLC"
   },

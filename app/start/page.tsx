@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { Link } from '@/i18n/navigation';
@@ -16,6 +17,8 @@ import {
 } from '@/lib/formation-states';
 import { pageTitle } from '@/lib/seo-title';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
+import { shouldPreselectFloridaLlc } from '@/lib/florida-llc-preselect';
+import { getServerUtmAttribution } from '@/lib/utm-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,17 +73,30 @@ function resolveEntityParam(raw: string | undefined): {
 }
 
 interface StartPageProps {
-  searchParams?: { state?: string; entity?: string; tier?: string; name?: string };
+  searchParams?: {
+    state?: string;
+    entity?: string;
+    tier?: string;
+    name?: string;
+    utm_source?: string;
+  };
 }
 
 export default async function StartPage({ searchParams }: StartPageProps) {
   const t = await getTranslations('start');
   const tDisc = await getTranslations('disclosure');
   const locale = await getLocale();
+  const preselectFloridaLlc = shouldPreselectFloridaLlc({
+    referer: headers().get('referer'),
+    utmSource: searchParams?.utm_source || getServerUtmAttribution()?.utm_source,
+  });
   const resolved = resolveRequestedFormationState(searchParams?.state);
-  const stateCode = resolved.stateCode;
-  const stateNote = resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
-  const { choice: entityChoice } = resolveEntityParam(searchParams?.entity);
+  const stateCode = preselectFloridaLlc ? 'FL' : resolved.stateCode;
+  const stateNote =
+    !preselectFloridaLlc && resolved.fellBackFromInactive ? floridaOnlyNote(locale) : null;
+  const { choice: entityChoice } = resolveEntityParam(
+    preselectFloridaLlc ? 'LLC' : searchParams?.entity,
+  );
   const marketingState = ACTIVE_MARKETING_STATES.find((state) => state.code === stateCode);
   const stateName = marketingState ? localizedStateName(marketingState, locale) : stateCode;
   const session = await auth();
@@ -110,6 +126,7 @@ export default async function StartPage({ searchParams }: StartPageProps) {
           showOptionalEmail={!session?.user?.id}
           accountEmail={actor.email}
           isTester={actor.isTester}
+          preselectFloridaLlc={preselectFloridaLlc}
         />
 
         <div className="mt-4">

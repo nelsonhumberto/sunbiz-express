@@ -7,6 +7,7 @@ import {
   NAVIGATION_FLUSH_MAX_MS,
   navigationFlushBudget,
   posthogCaptureOptions,
+  preselectedEventProps,
   startNavigationEvents,
   trackEvent,
   wizardEntitySelectedProperties,
@@ -95,6 +96,30 @@ describe('start navigation event properties', () => {
     });
   });
 
+  it('marks preselected wizard events and a name-later event without the company name', () => {
+    expect(preselectedEventProps(true)).toEqual({ preselected: true });
+    expect(preselectedEventProps(false)).toEqual({});
+    const events = startNavigationEvents({
+      filingId: 'filing_1',
+      locale: 'es',
+      entity: 'LLC',
+      preselected: true,
+      nameLater: true,
+    });
+    expect(events.map((item) => item.event)).toEqual([
+      'wizard_entity_selected',
+      'start_name_submitted',
+      'wizard_step1_continue_clicked',
+      'start_name_later',
+    ]);
+    for (const item of events) {
+      expect(item.properties.preselected).toBe(true);
+      expect(item.properties).not.toHaveProperty('business_name');
+      expect(item.properties).not.toHaveProperty('name');
+    }
+    expect(events[3]?.properties.name_later).toBe(true);
+  });
+
   it('places the /start captures before client navigation', () => {
     const launch = readFileSync('app/start/guest-start-launch.tsx', 'utf8');
     const captureAt = launch.indexOf('await captureThenNavigate');
@@ -106,7 +131,9 @@ describe('start navigation event properties', () => {
     expect(redirectAssign).toBeGreaterThan(redirectPush);
     expect(fallbackAssign).toBeGreaterThan(redirectAssign);
     expect(launch).toContain('returnRedirect: true');
-    expect(launch).toContain('startNavigationEvents({ filingId, locale, entity })');
+    expect(launch).toContain('startNavigationEvents({');
+    expect(launch).toContain('nameLater: deferName');
+    expect(launch).toContain('preselected: preselectFloridaLlc');
     expect(launch).toContain('NAVIGATION_FALLBACK_MS = 4000');
     expect(launch).toContain('window.location.pathname !== fromPath');
     expect(launch).not.toMatch(/try\s*\{[^}]*router\.push/);

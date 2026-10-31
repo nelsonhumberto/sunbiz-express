@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
+import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
 import { saveStep2 } from '@/actions/wizard';
@@ -37,11 +38,14 @@ export function Step2Name({
   needsGuestEmail = false,
   initialGuestEmail = '',
   pendingAccountEmail = '',
+  preselected = false,
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
   initialGuestEmail?: string;
   pendingAccountEmail?: string;
+  /** Florida + LLC was chosen before this step. Change returns to that choice. */
+  preselected?: boolean;
 }) {
   const t = useTranslations('wizard');
   const [name, setName] = useState(filing.businessName ?? '');
@@ -131,6 +135,17 @@ export function Step2Name({
         />
       )}
 
+      {preselected ? (
+        <p className="text-xs text-ink-muted">
+          <Link
+            href={`/wizard/${filing.id}/1?change=1`}
+            className="font-medium text-primary underline underline-offset-2"
+          >
+            {t('changeEntity')}
+          </Link>
+        </p>
+      ) : null}
+
       <NameCheckWidget
         initialName={seededBusinessName(filing.businessName)}
         entityType={filing.entityType as 'LLC' | 'CORP'}
@@ -200,7 +215,7 @@ export function Step2Name({
       </div>
 
       <WizardActions
-        prevHref={`/wizard/${filing.id}/1`}
+        prevHref={`/wizard/${filing.id}/1?change=1`}
         onNext={onContinue}
         nextDisabled={!canContinue}
         onBlocked={() => setShowNameError(true)}

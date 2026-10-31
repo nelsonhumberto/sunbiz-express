@@ -322,7 +322,7 @@ export default async function FilingDetailPage({ params }: PageProps) {
                     Most banks ask for an EIN to open a business account. We prepare and file IRS
                     Form SS-4 for {filing.businessName ?? 'your company'} and upload your EIN
                     confirmation letter here for {formatCurrency(ADD_ON_BY_SLUG.ein.serviceMarginCents)}.
-                    Prefer to do it yourself? The IRS issues EINs free at irs.gov.
+                    Prefer to do it yourself? You can apply for an EIN with the IRS at irs.gov.
                   </p>
                 </div>
                 <Button asChild className="shrink-0">

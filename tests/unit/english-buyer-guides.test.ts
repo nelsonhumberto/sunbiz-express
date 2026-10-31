@@ -236,7 +236,7 @@ describe('English buyer-intent guides', () => {
       (item) => item.url === `${base}/guides/florida-llc-non-resident`,
     );
     expect(nonResident?.alternates?.languages?.es).toBe(`${base}${NONRESIDENT_ES}`);
-    expect(urls).not.toContain(`${base}${NONRESIDENT_ES}`);
+    expect(urls.filter((url) => url === `${base}${NONRESIDENT_ES}`)).toHaveLength(1);
 
     const text = buildLlmsTxt();
     expect(text).toContain('/guides/cheapest-way-to-form-florida-llc');

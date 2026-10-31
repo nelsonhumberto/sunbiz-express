@@ -69,6 +69,7 @@ export function FloridaLlcLanding({
   const checklist = checklistCopy(lang);
   const router = useRouter();
   const [name, setName] = useState('');
+  const [nameLater, setNameLater] = useState(false);
   const [leadEmail, setLeadEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
@@ -128,11 +129,17 @@ export function FloridaLlcLanding({
     document.getElementById('lp-business-name')?.focus();
   }
 
-  async function openDraft(tier: TierSlug, businessName: string, location: string) {
+  async function openDraft(
+    tier: TierSlug,
+    businessName: string,
+    location: string,
+    deferName = false,
+  ) {
     if (pending) return;
     setPending(true);
     setError(null);
     const trimmed = businessName.trim();
+    const skipName = deferName && !startNameIsAcceptable(trimmed);
     trackCtaClicked('lp_continue', { location, tier });
     try {
       const result = await withActionTimeout(
@@ -140,7 +147,8 @@ export function FloridaLlcLanding({
           state: 'FL',
           entityType: 'LLC',
           tier,
-          businessName: trimmed,
+          businessName: skipName ? undefined : trimmed,
+          nameLater: skipName,
           email: leadEmail.trim() || undefined,
           browserPath: window.location.pathname,
           returnRedirect: true,
@@ -165,6 +173,7 @@ export function FloridaLlcLanding({
           locale,
           entity: 'LLC',
           preselected: true,
+          nameLater: skipName,
         }),
         navigate: () => {
           const fromPath = window.location.pathname;
@@ -193,6 +202,7 @@ export function FloridaLlcLanding({
             locale,
             entity: 'LLC',
             preselected: true,
+            nameLater: skipName,
           }),
           navigate: () => router.push(nextHref),
         });
@@ -207,11 +217,12 @@ export function FloridaLlcLanding({
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = name.trim();
-    if (!startNameIsAcceptable(trimmed)) {
+    const defer = nameLater && !startNameIsAcceptable(trimmed);
+    if (!defer && !startNameIsAcceptable(trimmed)) {
       setError(t('companyNameInvalid'));
       return;
     }
-    void openDraft(selected, trimmed, 'hero');
+    void openDraft(selected, trimmed, 'hero', defer);
   }
 
   async function onLead(event: React.FormEvent<HTMLFormElement>) {
@@ -270,13 +281,25 @@ export function FloridaLlcLanding({
             </p>
           ) : null}
           <button
+            type="button"
+            data-testid="lp-name-later"
+            aria-pressed={nameLater}
+            onClick={() => {
+              setNameLater((current) => !current);
+              setError(null);
+            }}
+            className="mt-1 block text-left text-xs text-ink-muted underline underline-offset-2"
+          >
+            {t('nameLater')}
+          </button>
+          <button
             ref={ctaRef}
             type="submit"
             data-testid="lp-cta"
             disabled={pending}
-            className="mt-2 flex h-11 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white disabled:opacity-60"
+            className="mt-1 flex h-11 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white disabled:opacity-60"
           >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : t('continue')}
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : tLp('startButton')}
           </button>
         </form>
         <p data-testid="lp-breakdown" className="mt-1 text-center text-[11px] leading-snug text-ink-muted">
@@ -405,9 +428,10 @@ export function FloridaLlcLanding({
                   onClick={(event) => {
                     trackCtaClicked('lp_choose', { location: 'plan', tier: tier.slug });
                     const trimmed = name.trim();
-                    if (!startNameIsAcceptable(trimmed)) return;
+                    const defer = nameLater && !startNameIsAcceptable(trimmed);
+                    if (!startNameIsAcceptable(trimmed) && !defer) return;
                     event.preventDefault();
-                    void openDraft(tier.slug, trimmed, 'plan');
+                    void openDraft(tier.slug, trimmed, 'plan', defer);
                   }}
                   className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold"
                 >

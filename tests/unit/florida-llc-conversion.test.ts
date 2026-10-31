@@ -52,6 +52,8 @@ describe('name later and a null company name', () => {
     expect(es.start.nameLater).toBe('Lo nombro después');
     expect(en.wizard.changeEntity).toBe('Change');
     expect(es.wizard.changeEntity).toBe('Cambiar');
+    expect(en.lpFlorida.startButton).toBe('Start');
+    expect(es.lpFlorida.startButton).toBe('Empezar');
     for (const copy of [en.start.nameLater, es.start.nameLater, en.wizard.changeEntity, es.wizard.changeEntity]) {
       expect(copy).not.toMatch(/\u2014|\u2013/);
     }
@@ -100,6 +102,13 @@ describe('Florida LLC landing fold', () => {
     expect(hero.indexOf('data-testid="lp-cta"')).toBeLessThan(hero.indexOf('data-testid="lp-breakdown"'));
     expect(landing).not.toMatch(/\$199/);
     expect(landing).toContain('preselected: true');
+    expect(landing).toContain("tLp('startButton')");
+    expect(landing).toContain("t('nameLater')");
+    expect(landing).toContain('nameLater: skipName');
+    expect(landing).toContain("source: 'lp-florida-llc'");
+    expect(landing.indexOf('data-testid="lp-cta"')).toBeLessThan(
+      landing.indexOf('aria-label={tLp(\'emailTitle\')}'),
+    );
     const bar = source('components/analytics/CookieConsentBar.tsx');
     expect(bar).toContain('min-h-11');
     expect(bar).not.toContain('basis-full');

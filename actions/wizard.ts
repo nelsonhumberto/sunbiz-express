@@ -394,17 +394,33 @@ const AddressSchema = z.object({
   inCareOf: z.string().optional().nullable(),
 });
 
-export async function saveStep4(input: { filingId: string; address: z.infer<typeof AddressSchema> }) {
+export async function saveStep4(input: {
+  filingId: string;
+  address: z.infer<typeof AddressSchema>;
+  /**
+   * Customer does not have a street address in the formation state.
+   * Stored on the existing principal-address JSON. It does not add a
+   * product, a price, or a column. The registered agent step still saves
+   * LaunchForma's existing agent service.
+   */
+  noFloridaAddress?: boolean;
+}) {
   const address = AddressSchema.parse(input.address);
   const { filing } = await getFilingForUser(input.filingId);
   const blocked = inactiveStateResult(filing.state, filing.locale);
   if (blocked) return blocked;
+  // Principal place may be outside the formation state. Only the registered
+  // agent address is required to be an in-state street address.
   const v = validateGeneralAddress(address);
   if (!v.valid) return { ok: false, error: v.error };
+  const noFloridaAddress = input.noFloridaAddress === true;
+  // Customer-entered principal only. Never the registered agent street, and
+  // this step does not write a mailing address.
+  const stored = noFloridaAddress ? { ...address, noFloridaAddress: true } : address;
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      principalAddress: JSON.stringify(address),
+      principalAddress: JSON.stringify(stored),
       currentStep: Math.max(filing.currentStep, 5),
       completedSteps: markStepComplete(filing.completedSteps, 4),
     },

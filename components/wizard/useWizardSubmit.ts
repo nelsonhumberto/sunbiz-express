@@ -38,17 +38,19 @@ export function useWizardSubmit() {
     };
   }, []);
 
-  function markStepCompleted() {
+  function markStepCompleted(eventProperties?: Record<string, string | number | boolean>) {
     if (!analytics?.filingId) return;
     trackEvent('wizard_step_completed', {
       step: analytics.step,
       filing_id: analytics.filingId,
+      ...eventProperties,
     });
   }
 
   function run(
     task: (signal: AbortSignal) => Promise<StepResult>,
     timeoutMs: number = WIZARD_ACTION_TIMEOUT_MS,
+    eventProperties?: Record<string, string | number | boolean>,
   ) {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -62,7 +64,7 @@ export function useWizardSubmit() {
         const outcome = await runWizardSave(task, timeoutMs, controller.signal);
         if (!stillCurrent() || outcome.type === 'aborted') return;
         if (outcome.type === 'redirect') {
-          markStepCompleted();
+          markStepCompleted(eventProperties);
           if (outcome.href) router.push(outcome.href);
           return;
         }
@@ -84,7 +86,7 @@ export function useWizardSubmit() {
           setError(message);
           toast.error(message);
         } else {
-          markStepCompleted();
+          markStepCompleted(eventProperties);
         }
       } finally {
         if (stillCurrent()) setPending(false);

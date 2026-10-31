@@ -47,8 +47,13 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
   const internalAgent = stateRule.registeredAgent;
   const raPrice = formatCurrency(internalAgent.renewalCents);
   const stored = safeParseJson<RAStored | null>(filing.registeredAgent, null);
+  const choseNoInStateAddress =
+    safeParseJson<{ noFloridaAddress?: boolean } | null>(filing.principalAddress, null)
+      ?.noFloridaAddress === true;
 
-  const [useOurService, setUseOurService] = useState(stored?.useOurService ?? true);
+  const [useOurService, setUseOurService] = useState(
+    choseNoInStateAddress ? true : (stored?.useOurService ?? true),
+  );
   const [hardshipsAccepted, setHardshipsAccepted] = useState(stored?.useOurService === false);
   const [showHardshipDialog, setShowHardshipDialog] = useState(false);
 
@@ -146,6 +151,9 @@ export function Step6RegisteredAgent({ filing }: { filing: WizardFiling }) {
 
   return (
     <div className="space-y-6">
+      {choseNoInStateAddress && (
+        <p className="text-sm text-ink-muted leading-relaxed">{t('addOnDesc_registered_agent')}</p>
+      )}
       {/* Toggle - primary big card vs smaller secondary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Primary, recommended option (2/3 width on desktop) */}

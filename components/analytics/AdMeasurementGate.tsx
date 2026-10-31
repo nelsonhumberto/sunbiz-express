@@ -17,7 +17,12 @@ import {
   tearDownAdMeasurement,
 } from '@/lib/ad-opt-out';
 import { ADS_CONSENT_EVENT, marketingTagsAllowed, readAdsConsent } from '@/lib/ad-consent';
-import { applyGoogleConsent, googleConsentChoice } from '@/lib/google-consent';
+import {
+  applyGoogleConsent,
+  applyGoogleTesterRedaction,
+  googleConsentChoice,
+  isGoogleTesterBrowser,
+} from '@/lib/google-consent';
 
 /**
  * Google (gtag.js / GA4 / Google Ads) loads before a cookie choice, in
@@ -59,9 +64,11 @@ export function AdMeasurementGate({
       }
       clearGaDisableFlags();
       const consent = readAdsConsent(document.cookie);
+      const tester = isGoogleTesterBrowser();
       setGoogleEnabled(true);
       setOpenAiEnabled(marketingTagsAllowed({ consent, optedOut: false }));
-      applyGoogleConsent(googleConsentChoice({ consent, optedOut: false }));
+      applyGoogleConsent(googleConsentChoice({ consent, optedOut: false, tester }));
+      if (tester) applyGoogleTesterRedaction();
     };
     const onChoice = () => {
       clientChose.current = true;

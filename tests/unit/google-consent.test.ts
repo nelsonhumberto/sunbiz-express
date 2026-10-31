@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyGoogleConsent,
+  applyGoogleTesterRedaction,
   GOOGLE_CONSENT_DENIED,
   GOOGLE_CONSENT_GRANTED,
   googleConsentChoice,
   googleTagBootstrap,
   googleTagLoaderId,
+  isGoogleTesterBrowser,
 } from '@/lib/google-consent';
 
 describe('Google Consent Mode bootstrap', () => {
@@ -80,6 +82,66 @@ describe('Google Consent Mode bootstrap', () => {
     expect(gtag).toHaveBeenNthCalledWith(2, 'consent', 'update', {
       ...GOOGLE_CONSENT_DENIED,
     });
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps consent denied for a QA or tester browser after Accept and redacts ads', () => {
+    expect(
+      googleConsentChoice({ consent: 'all', optedOut: false, tester: true }),
+    ).toBe('denied');
+    expect(
+      googleConsentChoice({ consent: 'all', optedOut: false, tester: false }),
+    ).toBe('granted');
+
+    const script = googleTagBootstrap({ gaId: 'G-1', adsId: 'AW-1' });
+    const redact = script.indexOf("gtag('set', 'ads_data_redaction', true)");
+    const personalization = script.indexOf(
+      "gtag('set', 'allow_ad_personalization_signals', false)",
+    );
+    const config = script.indexOf("gtag('config'");
+    expect(script).toContain('lf_qa=1');
+    expect(script).toContain('lf_tester=1');
+    expect(script).toContain('__lf_tester');
+    expect(redact).toBeGreaterThan(-1);
+    expect(personalization).toBeGreaterThan(redact);
+    expect(config).toBeGreaterThan(personalization);
+    expect(script.indexOf('else if (lfAccepted')).toBeGreaterThan(personalization);
+
+    const gtag = vi.fn();
+    vi.stubGlobal('window', { gtag, __lf_tester: 1 });
+    vi.stubGlobal('document', { cookie: 'lf_ads_consent=all' });
+    expect(isGoogleTesterBrowser()).toBe(true);
+    const signedIn = googleConsentChoice({
+      consent: 'all',
+      optedOut: false,
+      tester: isGoogleTesterBrowser(),
+    });
+    applyGoogleConsent(signedIn);
+    applyGoogleTesterRedaction();
+
+    vi.stubGlobal('window', { gtag });
+    vi.stubGlobal('document', { cookie: 'lf_ads_consent=all; lf_qa=1' });
+    expect(isGoogleTesterBrowser()).toBe(true);
+    vi.stubGlobal('document', { cookie: 'lf_ads_consent=all; lf_tester=1' });
+    expect(isGoogleTesterBrowser()).toBe(true);
+    vi.stubGlobal('document', { cookie: 'lf_ads_consent=all' });
+    expect(isGoogleTesterBrowser()).toBe(false);
+
+    expect(signedIn).toBe('denied');
+    expect(gtag).toHaveBeenCalledWith('consent', 'update', {
+      ...GOOGLE_CONSENT_DENIED,
+    });
+    expect(gtag).toHaveBeenCalledWith('set', 'ads_data_redaction', true);
+    expect(gtag).toHaveBeenCalledWith(
+      'set',
+      'allow_ad_personalization_signals',
+      false,
+    );
+    expect(gtag).not.toHaveBeenCalledWith(
+      'consent',
+      'update',
+      expect.objectContaining({ ad_storage: 'granted' }),
+    );
     vi.unstubAllGlobals();
   });
 });

@@ -113,10 +113,15 @@ function OpenAiPixelLoader() {
   const pathname = usePathname();
   const id = openAiPixelId();
   if (!id || pathname === '/reset-password') return null;
+  const optedOut = !shouldInjectAdScripts({
+    cookie: readAdOptOutCookieFromDocument(),
+    globalPrivacyControl: readGlobalPrivacyControl(),
+  });
   if (
-    !shouldInjectAdScripts({
-      cookie: readAdOptOutCookieFromDocument(),
-      globalPrivacyControl: readGlobalPrivacyControl(),
+    !marketingTagsAllowed({
+      consent: readAdsConsent(typeof document === 'undefined' ? '' : document.cookie),
+      optedOut,
+      tester: isGoogleTesterBrowser(),
     })
   ) {
     return null;

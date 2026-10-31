@@ -12,10 +12,9 @@ const UNTRACKED_PATHS = new Set(['/reset-password']);
 /**
  * SPA `page_viewed` events for the OpenAI Ads pixel.
  *
- * The loader and `oaiq("init")` live in the root layout as a
- * beforeInteractive script so the stub exists before hydration. Init does
- * not emit `page_viewed` or `lead_created`. `lead_created` is sent from the
- * business-services thank-you page (English and `/es/...`, same route).
+ * The SDK loader runs only after Accept, from AdMeasurementGate.
+ * Init does not emit `page_viewed` or `lead_created`. `lead_created` is
+ * sent from the business-services thank-you page (English and `/es/...`).
  */
 export function OpenAiPixel() {
   const pathname = usePathname();

@@ -10,6 +10,7 @@ import { MessageCircle, X, Send, Sparkles, ArrowRight, Loader2 } from 'lucide-re
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
+import { cookieBannerIsOpen } from '@/lib/ad-consent';
 import { trackEvent } from '@/lib/analytics';
 
 /** Pull the filing id out of a /wizard/{id}/{step} path, if present. */
@@ -52,6 +53,18 @@ export function ChatWidget() {
   const filingId = filingIdFromPath(pathname);
   const onWizard = isWizardPath(pathname);
   const onAdLanding = /\/lp(\/|$)/.test(pathname ?? '');
+  const [bannerOpen, setBannerOpen] = useState(false);
+
+  useEffect(() => {
+    const read = () => {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--lf-cookie-h');
+      setBannerOpen(cookieBannerIsOpen(raw));
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+    return () => observer.disconnect();
+  }, []);
 
   const transport = useMemo(
     () =>
@@ -126,7 +139,7 @@ export function ChatWidget() {
 
   return (
     <>
-      {!open && (
+      {!open && !bannerOpen && (
         <button
           type="button"
           onClick={onOpen}

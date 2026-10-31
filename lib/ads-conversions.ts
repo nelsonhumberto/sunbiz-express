@@ -10,8 +10,9 @@
  * Do not hardcode it.
  *
  * Preview verification: on a Vercel preview deployment, add `?lf_ads_debug=1`.
- * A suppressed test hit is logged and not sent. A real hit is sent and logged.
- * The flag does nothing in production.
+ * A suppressed test hit is logged and, on that preview only, sent with an
+ * `lfdebug-` transaction id. The flag does nothing in production, on
+ * launchforma.com, or when the deploy env is missing.
  */
 
 import { hasQaCookie } from '@/lib/qa-marker';
@@ -66,15 +67,39 @@ export function beginFilingPayload(filingId: string | null | undefined): GtagPur
 
 const ADS_DEBUG_SESSION_KEY = 'lf_ads_debug';
 
+/** launchforma.com never runs the tester proof, even if a preview env var leaked into the build. */
+export function isProductionAdsHost(hostname: string | null | undefined): boolean {
+  if (!hostname) return false;
+  const host = hostname.trim().toLowerCase().replace(/\.+$/, '');
+  return host === 'launchforma.com' || host === 'www.launchforma.com';
+}
+
 /**
- * `?lf_ads_debug=1` is sticky for the browser session.
- * Production cannot turn it on, even if the query or sessionStorage says so.
+ * The tester proof is on only for an explicit preview or development deploy.
+ * A missing env is not preview. Production is never proof, including when
+ * only one of the two env vars says so.
+ */
+export function adsProofEnvAllowed(
+  vercelEnv: string | undefined = process.env.NEXT_PUBLIC_VERCEL_ENV,
+): boolean {
+  if (process.env.VERCEL_ENV === 'production') return false;
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') return false;
+  if (vercelEnv === 'production') return false;
+  const env = vercelEnv ?? process.env.VERCEL_ENV;
+  return env === 'preview' || env === 'development';
+}
+
+/**
+ * `?lf_ads_debug=1` is sticky for the browser session on a proof deploy.
+ * Production, launchforma.com, and a build with no deploy env cannot turn it on,
+ * even if the query or sessionStorage says so.
  */
 export function adsDebugActive(
   search: string,
   vercelEnv: string | undefined = process.env.NEXT_PUBLIC_VERCEL_ENV,
 ): boolean {
-  if (process.env.VERCEL_ENV === 'production' || vercelEnv === 'production') return false;
+  if (!adsProofEnvAllowed(vercelEnv)) return false;
+  if (typeof window !== 'undefined' && isProductionAdsHost(window.location?.hostname)) return false;
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
   const fromUrl = params.get(ADS_DEBUG_PARAM) === '1';
   if (typeof window === 'undefined') return fromUrl;

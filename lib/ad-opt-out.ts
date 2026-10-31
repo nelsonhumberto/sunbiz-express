@@ -13,7 +13,12 @@
  *
  * PostHog, Vercel Analytics, essential cookies, and Stripe attribution are
  * not affected.
+ *
+ * Cookie decline is not an opt-out. Google Consent Mode keeps gtag.js loaded
+ * with storage denied. This module still removes the tags on a real opt-out.
  */
+
+import { clearGoogleTagBootstrap } from '@/lib/google-consent';
 
 export const AD_OPT_OUT_COOKIE = 'lf_ad_optout';
 /** Explicit Do Not Sell or Share choice. Kept for 1 year. */
@@ -229,4 +234,5 @@ export function tearDownAdMeasurement(): void {
   runStep(neutralizeGtag);
   runStep(neutralizeDataLayerPush);
   runStep(removeBlockedAdScripts);
+  runStep(clearGoogleTagBootstrap);
 }

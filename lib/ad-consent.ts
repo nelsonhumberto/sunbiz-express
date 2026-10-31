@@ -1,6 +1,7 @@
 /**
- * Google tags (Analytics, Ads remarketing, conversion, OpenAI pixel) load
- * only after this cookie is `all`, and never when the ad opt-out is on.
+ * Full marketing cookies (Google storage granted, OpenAI pixel) load only
+ * after this cookie is `all`, and never when the ad opt-out is on.
+ * Google tag itself loads earlier in Consent Mode with storage denied.
  * PostHog is separate and is not gated here.
  */
 
@@ -22,10 +23,20 @@ export function readAdsConsent(cookieHeader: string | null | undefined): string 
   return null;
 }
 
-/** Marketing tags require an explicit accept and no ad opt-out. */
-export function marketingTagsAllowed(input: { consent: string | null; optedOut: boolean }): boolean {
-  if (input.optedOut) return false;
+/** Marketing tags require an explicit accept, no ad opt-out, and a non-tester browser. */
+export function marketingTagsAllowed(input: {
+  consent: string | null;
+  optedOut: boolean;
+  tester?: boolean;
+}): boolean {
+  if (input.optedOut || input.tester) return false;
   return input.consent === ADS_CONSENT_ALL;
+}
+
+/** The cookie bar sets `--lf-cookie-h` to its height, or `0px` when it is closed. */
+export function cookieBannerIsOpen(heightValue: string | null | undefined): boolean {
+  const height = Number.parseFloat((heightValue ?? '').trim());
+  return Number.isFinite(height) && height > 0;
 }
 
 /** The bar is shown once, until the visitor chooses or an opt-out is already set. */

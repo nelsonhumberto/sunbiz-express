@@ -1700,7 +1700,7 @@
     "metaTitle": "Do Not Sell or Share My Personal Information",
     "metaDescription": "Opt out of sharing visit data with advertising tools for cross-context behavioral advertising. LaunchForma honors Global Privacy Control.",
     "title": "Do Not Sell or Share My Personal Information",
-    "intro": "Some states (such as California) may treat sharing visit data with ad tools for cross-context behavioral advertising as \"sharing.\" Google Analytics and Google Ads, including remarketing, load only after you accept cookies. Use this page to opt out in this browser, or to opt back in. We honor Global Privacy Control (GPC) browser signals as an opt-out.",
+    "intro": "Some states (such as California) may treat sharing visit data with ad tools for cross-context behavioral advertising as \"sharing.\" Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results. Use this page to opt out in this browser, or to opt back in. We honor Global Privacy Control (GPC) browser signals as an opt-out.",
     "statusOn": "Ad measurement is on in this browser.",
     "statusOff": "You are opted out in this browser. We do not load the Google Analytics and Google Ads tags, including remarketing, or the OpenAI ads pixel.",
     "gpc": "GPC signal detected, you're opted out",
@@ -1708,5 +1708,8 @@
     "optIn": "Opt back in",
     "stillRun": "Essential cookies and our own product analytics (PostHog and Vercel) still run. We store this choice in a cookie for 1 year.",
     "privacyLink": "Read the Privacy Policy"
+  },
+  "legalPrivacy": {
+    "googleCookieless": "Before you accept, these tags send only cookieless signals; advertising and analytics cookies are set only after you accept."
   }
 }

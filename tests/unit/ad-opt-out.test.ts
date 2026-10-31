@@ -352,6 +352,35 @@ describe('privacy policy text', () => {
     expect(es.footer.doNotSell).toBe('No vender ni compartir mi información personal');
     expect(en.footer.doNotSell).toBe('Do Not Sell or Share My Personal Information');
     expect(en.privacyChoices.gpc).toBe("GPC signal detected, you're opted out");
+    expect(en.legalPrivacy.googleCookieless).toBe(
+      'Before you accept, these tags send only cookieless signals; advertising and analytics cookies are set only after you accept.',
+    );
+    expect(page).toContain(en.legalPrivacy.googleCookieless);
+    expect(page.match(/cookieless signals/g)).toHaveLength(1);
+    expect(page).toContain('Accept lets Google Analytics and Google Ads set cookies. Essential only keeps them cookieless.');
+    expect(page).not.toContain('The Google tags do not load until you accept.');
+    expect(page).not.toContain('These tags load only after you accept');
+    expect(page).not.toContain('keeps those tags off');
+    expect(page).not.toContain('Before you choose a cookie option');
+    expect(en.privacyChoices.intro).toContain(
+      'Advertising and analytics cookies are not set until you accept; before that, Google may receive cookieless signals to measure ad results.',
+    );
+    expect(en.privacyChoices.intro).not.toContain('load only after you accept cookies');
+    expect(es.legalPrivacy.body).toContain(
+      'Antes de que aceptes, estas etiquetas solo envían señales sin cookies; las cookies de publicidad y de análisis se usan solo después de que aceptes.',
+    );
+    expect(es.legalPrivacy.body.match(/señales sin cookies/g)).toHaveLength(1);
+    expect(es.legalPrivacy.body).toContain(
+      'Aceptar permite que Google Analytics y Google Ads usen cookies. Solo lo esencial las deja sin cookies.',
+    );
+    expect(es.legalPrivacy.body).not.toContain('Las etiquetas de Google no se cargan hasta que aceptas.');
+    expect(es.legalPrivacy.body).not.toContain('se cargan solo');
+    expect(es.legalPrivacy.body).not.toContain('etiquetas apagadas');
+    expect(es.legalPrivacy.body).not.toContain('Antes de que elijas una opción de cookies');
+    expect(es.privacyChoices.intro).toContain(
+      'Las cookies de publicidad y de análisis no se usan hasta que aceptes; antes de eso, Google puede recibir señales sin cookies para medir los resultados de los anuncios.',
+    );
+    expect(es.privacyChoices.intro).not.toContain('se cargan solo después de que aceptas las cookies');
 
     expect(readFileSync('app/(legal)/disclaimer/page.tsx', 'utf8')).toContain('LegalDraftNotice');
     expect(readFileSync('app/(legal)/terms/page.tsx', 'utf8')).toContain('LegalDraftNotice');

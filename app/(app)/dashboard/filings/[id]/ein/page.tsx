@@ -77,7 +77,7 @@ export default async function EinPage({ params }: PageProps) {
           priceCents={ADD_ON_BY_SLUG.ein.serviceMarginCents}
           savedCard={savedCard}
         />
-        <p className="text-xs text-ink-subtle leading-relaxed">{t('orderFreeNote')}</p>
+        <p className="text-xs text-ink-subtle leading-relaxed">{t('orderPaidNote')}</p>
       </>
     );
   } else if (ein?.status === 'submitted' || ein?.status === 'delivered') {

@@ -389,7 +389,7 @@ const ADD_ON_DEFS: Omit<AddOnDef, 'priceCents'>[] = [
     slug: 'ein',
     name: 'EIN Application & Filing',
     description:
-      'We prepare and file IRS Form SS-4 for your formed company and upload your EIN confirmation letter to your dashboard. The IRS issues EINs at no cost if you apply yourself at irs.gov; our fee covers the preparation and filing service.',
+      'We prepare and file IRS Form SS-4 for your formed company and upload your EIN confirmation letter to your dashboard. Our fee covers the preparation and filing service.',
     serviceMarginCents: 7_900,
     category: 'formation',
     iconKey: 'Hash',

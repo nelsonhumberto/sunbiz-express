@@ -916,6 +916,7 @@
     "addressChoiceLegend": "¿Tienes una dirección en {state}?",
     "hasInStateAddress": "Tengo una dirección en {state}",
     "noInStateAddress": "No tengo una dirección en {state}",
+    "noInStateAddressHelper": "Puedes usar cualquier dirección comercial, incluso fuera de {state}. Nosotros seremos tu agente registrado en {state}.",
     "foreignRegistrationCalloutTitle": "¿Operas en otro estado?",
     "foreignRegistrationCalloutBody": "Si operas activamente en un estado distinto a {filingState}, ese estado puede requerir que te registres como entidad extranjera. Lo manejamos por separado - termina tu formación en {filingState} primero, luego contáctanos desde tu panel.",
     "sameAsPrincipal": "Usar la misma dirección que mi domicilio principal",

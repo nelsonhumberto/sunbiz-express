@@ -151,6 +151,68 @@ describe('principal address outside Florida', () => {
       'principalAddress',
     ]);
   });
+
+  it('requires a real principal street and never copies the registered agent address', async () => {
+    const ra = FORMATION_STATES.FL.registeredAgent;
+    const blank = await saveStep4({
+      filingId: 'filing_1',
+      noFloridaAddress: true,
+      address: { ...outOfState, street1: '   ' },
+    });
+    expect(blank).toEqual({ ok: false, error: 'Street address is required.' });
+    expect(filingUpdate).not.toHaveBeenCalled();
+
+    await expect(
+      saveStep4({
+        filingId: 'filing_1',
+        noFloridaAddress: true,
+        address: { street1: '', city: 'Miami', state: 'FL', zip: '33131' },
+      }),
+    ).rejects.toThrow();
+    expect(filingUpdate).not.toHaveBeenCalled();
+
+    const saved = await saveStep4({
+      filingId: 'filing_1',
+      noFloridaAddress: true,
+      address: outOfState,
+    });
+    expect(saved).toEqual({ ok: true });
+    const data = filingUpdate.mock.calls[0][0].data as {
+      principalAddress: string;
+      mailingAddress?: string;
+      registeredAgent?: string;
+    };
+    const stored = JSON.parse(data.principalAddress) as {
+      street1: string;
+      street2?: string;
+      city: string;
+      state: string;
+      zip: string;
+    };
+    expect(stored).toMatchObject({
+      street1: '1 Market Street',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94105',
+    });
+    expect(stored.street1).not.toBe(ra.street1);
+    expect(stored.street2 ?? '').not.toBe(ra.street2);
+    expect(stored.city).not.toBe(ra.city);
+    expect(stored.zip).not.toBe(ra.zip);
+    expect(data.mailingAddress).toBeUndefined();
+    expect(data.registeredAgent).toBeUndefined();
+    expect(JSON.stringify(data)).not.toContain('Palmetto');
+
+    const step4 = source('components/wizard/steps/Step4Address.tsx');
+    const step5 = source('components/wizard/steps/Step5Mailing.tsx');
+    const wizard = source('actions/wizard.ts');
+    expect(step4).toContain('principalRequired || noFloridaAddress');
+    expect(step4).not.toContain('registeredAgent.street1');
+    expect(step4).not.toContain('internalAgent');
+    expect(step5).not.toContain('registeredAgent.street');
+    expect(wizard).not.toMatch(/principalAddress:\s*JSON\.stringify\(\s*\{[^}]*registeredAgent/);
+    expect(wizard).not.toMatch(/mailingAddress:\s*JSON\.stringify\(\s*\{[^}]*registeredAgent/);
+  });
 });
 
 describe('registered agent product stays the one already sold', () => {
@@ -182,25 +244,35 @@ describe('address step copy and analytics', () => {
     en.wizard.addressChoiceLegend,
     en.wizard.hasInStateAddress,
     en.wizard.noInStateAddress,
+    en.wizard.noInStateAddressHelper,
   ];
   const freshEs = [
     es.wizard.addressChoiceLegend,
     es.wizard.hasInStateAddress,
     es.wizard.noInStateAddress,
+    es.wizard.noInStateAddressHelper,
   ];
 
   it('adds the choice in English and Spanish without an em dash', () => {
     expect(en.wizard.addressChoiceLegend).toBe('Do you have a {state} address?');
     expect(en.wizard.hasInStateAddress).toBe('I have a {state} address');
     expect(en.wizard.noInStateAddress).toBe("I don't have a {state} address");
+    expect(en.wizard.noInStateAddressHelper).toBe(
+      "You can use any street address for your business, even outside {state}. We'll be your {state} registered agent.",
+    );
     expect(es.wizard.addressChoiceLegend).toBe('¿Tienes una dirección en {state}?');
     expect(es.wizard.hasInStateAddress).toBe('Tengo una dirección en {state}');
     expect(es.wizard.noInStateAddress).toBe('No tengo una dirección en {state}');
+    expect(es.wizard.noInStateAddressHelper).toBe(
+      'Puedes usar cualquier dirección comercial, incluso fuera de {state}. Nosotros seremos tu agente registrado en {state}.',
+    );
     for (const copy of [...freshEn, ...freshEs]) {
       expect(copy).not.toMatch(/\u2014|\u2013/);
     }
     expect(es.wizard.addressChoiceLegend.startsWith('¿Tienes')).toBe(true);
     expect(es.wizard.noInStateAddress).not.toMatch(/listo|lista|dueño|dueña|bienvenido|bienvenida/);
+    expect(es.wizard.noInStateAddressHelper).toMatch(/^Puedes /);
+    expect(es.wizard.noInStateAddressHelper).toContain('tu agente registrado');
   });
 
   it('describes the choice with the existing registered-agent product copy', () => {
@@ -220,6 +292,7 @@ describe('address step copy and analytics', () => {
     expect(step).not.toContain('floridaOnly');
     expect(step).not.toContain('lockedStateCode');
     expect(step).toContain('no_florida_address: noFloridaAddress');
+    expect(step).toContain("t('noInStateAddressHelper'");
     expect(source('components/wizard/useWizardSubmit.ts')).toContain(
       "trackEvent('wizard_step_completed'",
     );

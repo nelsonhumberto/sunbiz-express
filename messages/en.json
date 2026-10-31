@@ -916,6 +916,7 @@
     "addressChoiceLegend": "Do you have a {state} address?",
     "hasInStateAddress": "I have a {state} address",
     "noInStateAddress": "I don't have a {state} address",
+    "noInStateAddressHelper": "You can use any street address for your business, even outside {state}. We'll be your {state} registered agent.",
     "foreignRegistrationCalloutTitle": "Operating in another state?",
     "foreignRegistrationCalloutBody": "If you actively conduct business in a state other than {filingState}, that state may require you to register as a foreign entity. We handle this for you separately - finish your {filingState} formation first, then reach out from your dashboard.",
     "sameAsPrincipal": "Use the same address as my principal office",

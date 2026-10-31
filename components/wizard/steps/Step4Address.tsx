@@ -52,7 +52,10 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
     address.city.trim() &&
     address.state &&
     address.zip.trim();
-  const valid = principalRequired ? !!filledOut : true;
+  // "I don't have a {state} address" still needs the customer's own principal
+  // street. It never substitutes the registered agent address.
+  const principalStillRequired = principalRequired || noFloridaAddress;
+  const valid = principalStillRequired ? !!filledOut : true;
   const showInStateChoice = addressRules.registeredAgentAddressMustBeInState;
   const raPrice = formatCurrency(stateRule.registeredAgent.renewalCents);
 
@@ -128,6 +131,12 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
       )}
 
       {showInStateChoice && noFloridaAddress && (
+        <p className="text-sm text-ink-muted leading-relaxed">
+          {t('noInStateAddressHelper', { state: stateRule.name })}
+        </p>
+      )}
+
+      {showInStateChoice && noFloridaAddress && (
         <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
           <p className="font-medium text-ink">{t('addOnName_registered_agent')}</p>
           <p className="text-xs leading-relaxed text-ink-muted mt-1">
@@ -147,9 +156,9 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
         onChange={setAddress}
         showInCareOf
         defaultStateCode={filingState}
-        highlightMissing={showMissing && principalRequired}
+        highlightMissing={showMissing && principalStillRequired}
       />
-      {showMissing && !valid && (
+      {showMissing && principalStillRequired && !valid && (
         <p className="text-sm text-destructive">{t('missingFields')}</p>
       )}
 

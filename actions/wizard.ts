@@ -414,6 +414,8 @@ export async function saveStep4(input: {
   const v = validateGeneralAddress(address);
   if (!v.valid) return { ok: false, error: v.error };
   const noFloridaAddress = input.noFloridaAddress === true;
+  // Customer-entered principal only. Never the registered agent street, and
+  // this step does not write a mailing address.
   const stored = noFloridaAddress ? { ...address, noFloridaAddress: true } : address;
   await prisma.filing.update({
     where: { id: filing.id },

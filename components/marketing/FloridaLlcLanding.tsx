@@ -249,10 +249,10 @@ export function FloridaLlcLanding({
   return (
     <div className="pb-28">
       <section data-testid="lp-hero" className="container max-w-lg px-4 pt-1">
-        <h1 className="text-center font-display text-xl font-medium leading-tight tracking-tight sm:text-4xl">
+        <h1 className="min-h-[3.125rem] text-center font-display text-xl font-medium leading-tight tracking-tight sm:min-h-0 sm:text-4xl">
           {tPricing('pageHeadline', { state: stateName })}
         </h1>
-        <p data-testid="lp-value" className="mt-1 text-center text-lg font-semibold leading-none">
+        <p data-testid="lp-value" className="mt-1 min-h-[1.125rem] text-center text-lg font-semibold leading-none">
           {price} {tPricing('allIn')}
         </p>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
@@ -288,7 +288,7 @@ export function FloridaLlcLanding({
               setNameLater((current) => !current);
               setError(null);
             }}
-            className="mt-1 block text-left text-xs text-ink-muted underline underline-offset-2"
+            className="mt-1 block min-h-4 text-left text-xs text-ink-muted underline underline-offset-2"
           >
             {t('nameLater')}
           </button>

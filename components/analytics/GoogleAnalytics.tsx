@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { isClientAdMeasurementOptedOut } from '@/lib/ad-opt-out';
+import { flushPendingAdsConversions } from '@/lib/analytics';
 import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
@@ -38,6 +39,7 @@ export function GoogleAnalytics() {
     const tick = () => {
       if (cancelled || isClientAdMeasurementOptedOut()) return;
       if (typeof window.gtag === 'function') {
+        flushPendingAdsConversions();
         const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.delete('li_fat_id');
         const query = params.toString();

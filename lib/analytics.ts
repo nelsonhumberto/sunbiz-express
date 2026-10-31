@@ -567,7 +567,7 @@ export async function captureThenNavigate(input: {
 // These fire on top of PostHog so Google Ads can attribute conversions. All
 // calls are safe no-ops when gtag isn't loaded (env vars unset).
 
-/** Poll until gtag.js has loaded. A slow tag still counts. */
+/** Poll until a client SDK has loaded. Ads conversions do not use this. */
 function whenReady(ready: () => boolean, run: () => void, timeoutMs = 4000) {
   if (typeof window === 'undefined') return;
   const start = Date.now();
@@ -618,6 +618,142 @@ function logAdsDebug(kind: string, payload: unknown): void {
   console.info(`[lf_ads_debug] ${kind}`, payload);
 }
 
+type PendingAdsConversion = {
+  storageKey: string;
+  kind: 'purchase' | 'begin';
+  sendTo: string | null;
+  value: number;
+  currency: string;
+  transactionId: string;
+  debugLog: boolean;
+};
+
+const pendingAds: PendingAdsConversion[] = [];
+const PENDING_PURCHASE_PREFIX = 'lf_ads_pending_purchase:';
+
+function pagePath(): string {
+  try {
+    return window.location?.pathname ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function onCheckoutSuccessPage(): boolean {
+  const path = pagePath();
+  return path === '/checkout/success' || path === '/es/checkout/success';
+}
+
+function gtagReady(): boolean {
+  return typeof window.gtag === 'function';
+}
+
+function rememberPendingPurchase(hit: PendingAdsConversion): void {
+  if (hit.kind !== 'purchase' || !onCheckoutSuccessPage()) return;
+  try {
+    window.sessionStorage.setItem(
+      `${PENDING_PURCHASE_PREFIX}${hit.transactionId}`,
+      JSON.stringify(hit),
+    );
+  } catch {
+    /* the in-memory queue still covers this document */
+  }
+}
+
+function forgetPendingPurchase(transactionId: string): void {
+  try {
+    window.sessionStorage.removeItem(`${PENDING_PURCHASE_PREFIX}${transactionId}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+function readPendingPurchases(): PendingAdsConversion[] {
+  const hits: PendingAdsConversion[] = [];
+  try {
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (!key?.startsWith(PENDING_PURCHASE_PREFIX)) continue;
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as PendingAdsConversion;
+      if (!parsed?.transactionId || !parsed.storageKey) continue;
+      hits.push(parsed);
+    }
+  } catch {
+    /* ignore */
+  }
+  return hits;
+}
+
+function adsProduction(): boolean {
+  return process.env.VERCEL_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
+}
+
+function sendAdsHit(hit: PendingAdsConversion): void {
+  if (!gtagReady()) return;
+  if (isClientAdMeasurementOptedOut()) return;
+  if (hit.debugLog && adsProduction()) return;
+  if (readConversionFlag(hit.storageKey)) {
+    forgetPendingPurchase(hit.transactionId);
+    return;
+  }
+  if (hit.kind === 'purchase') {
+    window.gtag('event', 'purchase', {
+      transaction_id: hit.transactionId,
+      value: hit.value,
+      currency: hit.currency,
+    });
+  }
+  if (hit.sendTo) {
+    window.gtag('event', 'conversion', {
+      send_to: hit.sendTo,
+      transaction_id: hit.transactionId,
+      value: hit.value,
+      currency: hit.currency,
+    });
+    if (hit.debugLog) console.info(hit.sendTo);
+  }
+  writeConversionFlag(hit.storageKey);
+  forgetPendingPurchase(hit.transactionId);
+}
+
+function queueOrSend(hit: PendingAdsConversion): void {
+  if (gtagReady()) {
+    sendAdsHit(hit);
+    return;
+  }
+  if (pendingAds.some((item) => item.storageKey === hit.storageKey)) return;
+  pendingAds.push(hit);
+  rememberPendingPurchase(hit);
+}
+
+/** Send Ads hits that fired before Accept, once gtag exists. Opt-out stays off. */
+export function flushPendingAdsConversions(): void {
+  if (typeof window === 'undefined' || !gtagReady()) return;
+  if (isClientAdMeasurementOptedOut()) return;
+  const hits = pendingAds.splice(0, pendingAds.length);
+  for (const hit of hits) sendAdsHit(hit);
+  for (const hit of readPendingPurchases()) {
+    if (readConversionFlag(hit.storageKey)) {
+      forgetPendingPurchase(hit.transactionId);
+      continue;
+    }
+    if (hits.some((item) => item.storageKey === hit.storageKey)) continue;
+    sendAdsHit(hit);
+  }
+}
+
+/** Test helper. Does not clear sessionStorage. */
+export function clearPendingAdsQueueForTests(): void {
+  pendingAds.splice(0, pendingAds.length);
+}
+
+function debugTransactionId(transactionId: string, bypass: boolean): string {
+  if (!bypass) return transactionId;
+  return transactionId.startsWith('lfdebug-') ? transactionId : `lfdebug-${transactionId}`;
+}
+
 function suppressionInput(
   input: AdsSuppressionInput & { email?: string | null },
 ): AdsSuppressionInput {
@@ -649,36 +785,36 @@ export function trackGooglePurchase(input: {
   if (typeof window === 'undefined') return;
   const payload = purchasePayload(input);
   if (!payload) return;
-  const storageKey = purchaseConversionStorageKey(payload.transaction_id);
-  if (readConversionFlag(storageKey)) return;
 
   const suppressed = shouldSuppressAdsConversion(suppressionInput(input));
   const debug = adsDebugActive(browserSearch());
+  const bypass = debug && suppressed && !adsProduction();
   const sendTo = adsSendTo(
     process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
     process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL,
   );
-  const conversion = sendTo ? { send_to: sendTo, ...payload } : null;
+  const outboundId = debugTransactionId(payload.transaction_id, bypass);
+  const storageKey = purchaseConversionStorageKey(outboundId);
+  if (readConversionFlag(storageKey)) return;
+  const conversion = sendTo
+    ? { send_to: sendTo, transaction_id: outboundId, value: payload.value, currency: payload.currency }
+    : null;
 
-  if (suppressed) {
+  if (suppressed && !bypass) {
     if (debug) logAdsDebug('purchase suppressed', { purchase: payload, conversion });
     return;
   }
   if (isClientAdMeasurementOptedOut()) return;
 
-  whenReady(
-    () => typeof window.gtag === 'function',
-    () => {
-      if (readConversionFlag(storageKey)) return;
-      if (isClientAdMeasurementOptedOut()) return;
-      if (shouldSuppressAdsConversion(suppressionInput(input))) return;
-      window.gtag('event', 'purchase', payload);
-      if (conversion) window.gtag('event', 'conversion', conversion);
-      if (debug) logAdsDebug('purchase', { purchase: payload, conversion });
-      writeConversionFlag(storageKey);
-    },
-    10000,
-  );
+  queueOrSend({
+    storageKey,
+    kind: 'purchase',
+    sendTo,
+    value: payload.value,
+    currency: payload.currency,
+    transactionId: outboundId,
+    debugLog: bypass,
+  });
 }
 
 /**
@@ -697,39 +833,40 @@ export function trackGoogleBeginFiling(input?: {
   if (typeof window === 'undefined') return;
   const base = beginFilingPayload(input?.filingId);
   if (!base) return;
-  const storageKey = beginConversionStorageKey(base.transaction_id);
+  const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
+  const debug = adsDebugActive(browserSearch());
+  const bypass = debug && suppressed && !adsProduction();
+  const outboundId = debugTransactionId(base.transaction_id, bypass);
+  const storageKey = beginConversionStorageKey(outboundId);
   if (readConversionFlag(storageKey)) return;
 
   const sendTo = adsSendTo(
     process.env.NEXT_PUBLIC_GOOGLE_ADS_ID,
     process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL_BEGIN_FILING,
   );
-  const payload = sendTo ? { send_to: sendTo, ...base } : null;
-  const suppressed = shouldSuppressAdsConversion(suppressionInput(input ?? {}));
-  const debug = adsDebugActive(browserSearch());
+  const payload = sendTo
+    ? { send_to: sendTo, transaction_id: outboundId, value: base.value, currency: base.currency }
+    : null;
 
-  if (suppressed) {
+  if (suppressed && !bypass) {
     if (debug) logAdsDebug('begin_filing suppressed', payload ?? { missingLabel: true });
     return;
   }
   if (isClientAdMeasurementOptedOut()) return;
-  if (!payload) {
+  if (!payload || !sendTo) {
     if (debug) logAdsDebug('begin_filing missing label', { missingLabel: true });
     return;
   }
 
-  whenReady(
-    () => typeof window.gtag === 'function',
-    () => {
-      if (readConversionFlag(storageKey)) return;
-      if (isClientAdMeasurementOptedOut()) return;
-      if (shouldSuppressAdsConversion(suppressionInput(input ?? {}))) return;
-      window.gtag('event', 'conversion', payload);
-      if (debug) logAdsDebug('begin_filing', payload);
-      writeConversionFlag(storageKey);
-    },
-    10000,
-  );
+  queueOrSend({
+    storageKey,
+    kind: 'begin',
+    sendTo,
+    value: base.value,
+    currency: base.currency,
+    transactionId: outboundId,
+    debugLog: bypass,
+  });
 }
 
 /** GA4 generate_lead, plus a Google Ads conversion when a lead label is set. */

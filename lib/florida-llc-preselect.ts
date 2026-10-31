@@ -7,6 +7,8 @@
 export const FLORIDA_LLC_PRESELECT_KEY = 'floridaLlcPreselected';
 
 const LANDING_PATHS = new Set(['/lp/florida-llc', '/es/lp/llc-florida']);
+/** Same Florida + LLC handoff as the landing pages, including the pricing referer. */
+const PRICING_PATHS = new Set(['/pricing', '/es/pricing']);
 
 export function pathnameOnly(value: string | null | undefined): string {
   if (!value) return '';
@@ -27,6 +29,11 @@ export function isFloridaLlcLandingPath(value: string | null | undefined): boole
   return LANDING_PATHS.has(pathnameOnly(value));
 }
 
+function isFloridaLlcPreselectPath(value: string | null | undefined): boolean {
+  const path = pathnameOnly(value);
+  return LANDING_PATHS.has(path) || PRICING_PATHS.has(path);
+}
+
 export function isGoogleAdsSource(source: string | null | undefined): boolean {
   return (source ?? '').trim().toLowerCase() === 'google';
 }
@@ -37,8 +44,8 @@ export function shouldPreselectFloridaLlc(input: {
   utmSource?: string | null;
 }): boolean {
   if (isGoogleAdsSource(input.utmSource)) return true;
-  if (isFloridaLlcLandingPath(input.path)) return true;
-  if (isFloridaLlcLandingPath(input.referer)) return true;
+  if (isFloridaLlcPreselectPath(input.path)) return true;
+  if (isFloridaLlcPreselectPath(input.referer)) return true;
   return false;
 }
 

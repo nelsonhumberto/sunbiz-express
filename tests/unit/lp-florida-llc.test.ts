@@ -74,6 +74,10 @@ describe('Florida LLC ad landing', () => {
     expect(table).toContain('aria-controls={detailsId}');
     expect(table).toContain('hrefWithAttribution');
     expect(table).toContain('`/start?tier=${tier.slug}');
+    expect(table).toContain('data-testid="pricing-start"');
+    expect(table).toContain("tLp('startButton')");
+    expect(table).toContain('order-first');
+    expect(table).toContain('lg:order-none');
     expect(table.replaceAll('[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1', '')).not.toContain(
       'hover:-translate-y-1',
     );

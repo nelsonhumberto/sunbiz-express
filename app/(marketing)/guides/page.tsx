@@ -63,14 +63,14 @@ const GUIDES = [
   },
   {
     slug: 'florida-llc-non-resident',
-    title: 'Florida LLC for a non resident',
+    title: 'Florida LLC for non-resident',
     description:
       'Sunbiz does not require you to live in Florida. You still need a registered agent with a Florida street address.',
     readingMinutes: 6,
   },
   {
     slug: 'florida-llc-without-ssn',
-    title: 'Florida LLC without SSN',
+    title: 'Florida LLC without an SSN',
     description: 'Sunbiz has no SSN field on the Florida LLC filing form.',
     readingMinutes: 5,
   },

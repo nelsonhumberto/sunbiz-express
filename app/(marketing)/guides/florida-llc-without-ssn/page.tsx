@@ -1,13 +1,15 @@
 import { englishBuyerMetadata, EnglishBuyerGuide } from '@/components/marketing/EnglishBuyerGuide';
 import { WITHOUT_SSN_EN, WITHOUT_SSN_ES } from '@/lib/buyer-guide-hreflang';
 import { floridaLlcGuideFees } from '@/lib/florida-llc-guide-fees';
+import { tierPriceParts } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 
 const PUBLISHED = '2026-10-28';
 const fees = floridaLlcGuideFees();
+const price = tierPriceParts('BASIC', 'LLC', 'FL');
 
-const TITLE = 'Florida LLC without SSN';
-const DESCRIPTION =
-  'Sunbiz has no SSN field on the Florida LLC filing form. You can form a Florida LLC without SSN. This is general information, not legal advice.';
+const TITLE = 'Florida LLC without an SSN';
+const DESCRIPTION = `You can form a Florida LLC without an SSN. The Sunbiz filing form has no SSN field. LaunchForma files it for you for ${formatCurrency(price.totalCents)} all in.`;
 
 const FAQ = [
   {
@@ -26,7 +28,7 @@ const FAQ = [
 
 const BODY = `## What the form asks for
 
-You file Articles of Organization with the Division of Corporations on Sunbiz. The [instructions](https://dos.fl.gov/sunbiz/start-business/efile/fl-llc/instructions/) cover the company name, the principal address, the mailing address, and a registered agent with a Florida street address. The agent signs to accept. An SSN is not on that form.
+You file Articles of Organization with the Division of Corporations on Sunbiz. The [instructions](https://dos.fl.gov/sunbiz/start-business/efile/fl-llc/instructions/) cover the company name, the principal address, the mailing address, and a registered agent with a Florida street address. The agent signs to accept. An SSN is not on that form. This is general information, not legal advice.
 
 The state fee is ${fees.total}: ${fees.filing} to file and ${fees.agent} to designate the registered agent. Source: [LLC fees](https://dos.fl.gov/sunbiz/forms/fees/llc-fees/).
 
@@ -40,7 +42,7 @@ Whether you need an ITIN is a tax question. Talk to a CPA. This page is not tax 
 
 The annual report is due between January 1 and May 1 each year, starting the year after you form, for ${fees.annual}. See the [Florida annual report guide](/guides/florida-annual-report).
 
-If you live outside Florida, read [Florida LLC for a non resident](/guides/florida-llc-non-resident). The state fee table is in [how much a Florida LLC costs](/guides/florida-llc-cost). Packages are on [pricing](/pricing).
+If you live outside Florida, read [Florida LLC for a non-resident](/guides/florida-llc-non-resident). The state fee table is in [how much a Florida LLC costs](/guides/florida-llc-cost). Packages are on [pricing](/pricing).
 `;
 
 const DISCLAIMER =

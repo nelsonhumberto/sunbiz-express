@@ -75,21 +75,21 @@ const PAGES = [
     render: CheapestPage,
     meta: cheapestMeta,
     h1: 'Cheapest way to form an LLC in Florida',
-    leadStart: 'The cheapest way to form an LLC in Florida',
+    leadStart: 'The cheapest way to form a Florida LLC is to file on Sunbiz yourself',
   },
   {
     path: '/guides/florida-llc-non-resident',
     render: NonResidentPage,
     meta: nonResidentMeta,
-    h1: 'Florida LLC for non resident',
-    leadStart: 'You can form a Florida LLC as a non resident',
+    h1: 'Florida LLC for non-resident',
+    leadStart: 'You can form a Florida LLC as a non-resident',
   },
   {
     path: '/guides/florida-llc-without-ssn',
     render: WithoutSsnPage,
     meta: withoutSsnMeta,
-    h1: 'Florida LLC without SSN',
-    leadStart: 'Sunbiz has no SSN field',
+    h1: 'Florida LLC without an SSN',
+    leadStart: 'You can form a Florida LLC without an SSN',
   },
   {
     path: '/guides/how-long-to-form-florida-llc',
@@ -158,6 +158,13 @@ describe('English buyer-intent guides', () => {
       if (page.path.endsWith('how-long-to-form-florida-llc')) {
         expect(html).toContain('https://dos.fl.gov/sunbiz/document-processing-dates/');
         expect(html).toContain('in the order received');
+        expect(html).toContain(
+          'Filing within 1 business day is when LaunchForma submits your filing to Sunbiz',
+        );
+        expect(html).toContain('not when the state approves');
+      }
+      if (page.path.endsWith('florida-llc-without-ssn')) {
+        expect(html).toContain('not legal advice');
       }
       if (page.path.endsWith('florida-llc-non-resident')) {
         expect(html).toContain('We currently form Florida companies only.');
@@ -169,6 +176,23 @@ describe('English buyer-intent guides', () => {
       const meta = await page.meta();
       expect(meta.robots).toEqual({ index: true, follow: true });
       expect(meta.description).toContain(page.leadStart);
+      if (page.path.endsWith('cheapest-way-to-form-florida-llc')) {
+        expect(meta.description).toBe(
+          'The cheapest way to form a Florida LLC is to file on Sunbiz yourself for the $125 state fee. Or LaunchForma files it for you for $199 all in.',
+        );
+      }
+      if (page.path.endsWith('florida-llc-without-ssn')) {
+        expect(meta.description).toBe(
+          'You can form a Florida LLC without an SSN. The Sunbiz filing form has no SSN field. LaunchForma files it for you for $199 all in.',
+        );
+        expect(String(meta.description)).not.toMatch(/legal advice/i);
+      }
+      if (page.path.endsWith('florida-llc-non-resident')) {
+        expect(html).toContain('Form SS-4');
+        expect(html).toContain('fax or mail');
+        expect(html).toContain('Form 5472');
+        expect(html.toLowerCase()).not.toContain('free');
+      }
       expect(meta.alternates?.canonical).toBe(page.path);
       expect(String(meta.title)).not.toMatch(/—|–/);
     }

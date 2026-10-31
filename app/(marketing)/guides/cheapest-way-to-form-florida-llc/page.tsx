@@ -1,12 +1,15 @@
 import { englishBuyerMetadata, EnglishBuyerGuide } from '@/components/marketing/EnglishBuyerGuide';
 import { floridaLlcGuideFees } from '@/lib/florida-llc-guide-fees';
+import { tierPriceParts } from '@/lib/pricing';
+import { formatCurrency } from '@/lib/utils';
 
 const PATH = '/guides/cheapest-way-to-form-florida-llc';
 const PUBLISHED = '2026-10-28';
 const fees = floridaLlcGuideFees();
+const price = tierPriceParts('BASIC', 'LLC', 'FL');
 
 const TITLE = 'Cheapest way to form an LLC in Florida';
-const DESCRIPTION = `The cheapest way to form an LLC in Florida is to file on Sunbiz yourself and pay the ${fees.total} state fee. A service is optional help on top of that fee.`;
+const DESCRIPTION = `The cheapest way to form a Florida LLC is to file on Sunbiz yourself for the ${formatCurrency(price.stateFeeCents)} state fee. Or LaunchForma files it for you for ${formatCurrency(price.totalCents)} all in.`;
 
 const FAQ = [
   {

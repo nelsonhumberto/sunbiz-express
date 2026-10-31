@@ -6,13 +6,13 @@ import { floridaLlcGuideFees } from '@/lib/florida-llc-guide-fees';
 const PUBLISHED = '2026-10-28';
 const fees = floridaLlcGuideFees();
 
-const TITLE = 'Florida LLC for non resident';
+const TITLE = 'Florida LLC for non-resident';
 const DESCRIPTION =
-  'You can form a Florida LLC as a non resident. Sunbiz does not require you to live in the state. The registered agent needs a Florida street address.';
+  'You can form a Florida LLC as a non-resident. Sunbiz does not require you to live in the state. The registered agent needs a Florida street address.';
 
 const FAQ = [
   {
-    q: 'Can a non resident form a Florida LLC?',
+    q: 'Can a non-resident form a Florida LLC?',
     a: 'Yes. The Sunbiz instructions ask for a name, addresses, and a registered agent. They do not require you to live in Florida.',
   },
   {
@@ -27,7 +27,7 @@ const FAQ = [
 
 const BODY = `## No residency requirement
 
-The [Sunbiz instructions](https://dos.fl.gov/sunbiz/start-business/efile/fl-llc/instructions/) for Articles of Organization ask for the company name, the principal and mailing addresses, and a registered agent. They do not ask you to live in Florida or in the United States. A non resident can form the LLC.
+The [Sunbiz instructions](https://dos.fl.gov/sunbiz/start-business/efile/fl-llc/instructions/) for Articles of Organization ask for the company name, the principal and mailing addresses, and a registered agent. They do not ask you to live in Florida or in the United States. A non-resident can form the LLC.
 
 ## Registered agent with a Florida street address
 
@@ -45,15 +45,15 @@ Forming the LLC and opening a bank account are different steps. Each bank sets i
 
 ## Taxes
 
-Taxes depend on your situation. This is general information, not tax advice. Talk to a CPA.
+Taxes depend on your situation. This is general information, not tax advice. Talk to a CPA about your own case, including questions such as Form 5472.
 
-The EIN is issued by the IRS. If you do not have an SSN or an ITIN, you request it with [Form SS-4](https://www.irs.gov/instructions/iss4).
+The EIN is issued by the IRS. If you do not have an SSN or an ITIN, you request it with [Form SS-4](https://www.irs.gov/instructions/iss4) by fax or mail.
 
 ## Where we file
 
 ${FLORIDA_ONLY_NOTE.en}
 
-The price above includes the Florida state filing fee. We submit your filing within 1 business day. Approval timing is up to the state. See [pricing](/pricing) and [how much a Florida LLC costs](/guides/florida-llc-cost). If you are filing without an SSN, read [Florida LLC without SSN](/guides/florida-llc-without-ssn).
+The price above includes the Florida state filing fee. We submit your filing within 1 business day. Approval timing is up to the state. See [pricing](/pricing) and [how much a Florida LLC costs](/guides/florida-llc-cost). If you are filing without an SSN, read [Florida LLC without an SSN](/guides/florida-llc-without-ssn).
 `;
 
 const DISCLAIMER =

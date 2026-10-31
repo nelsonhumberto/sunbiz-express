@@ -34,7 +34,7 @@ Online filings and mailed filings are not the same stack. The processing dates p
 
 ## What we submit
 
-LaunchForma submits your filing within 1 business day after you finish. That sentence is about our submission, not about when Florida approves the LLC. Approval timing is up to the state. We do not promise a state turnaround.
+Filing within 1 business day is when LaunchForma submits your filing to Sunbiz. It is not when the state approves the LLC. Approval timing is up to the state. We do not promise a state turnaround.
 
 The state fee is ${fees.total} (${fees.filing} to file and ${fees.agent} for the registered agent). It is included in the price above. Source: [LLC fees](https://dos.fl.gov/sunbiz/forms/fees/llc-fees/).
 

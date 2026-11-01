@@ -366,6 +366,8 @@ describe('name check copy and wiring', () => {
     expect(hero).toContain('id="hero-business-name"');
     expect(hero).toContain('HERO_NAME_CONTROL_HEIGHT');
     expect(hero).toContain('h-14 min-h-14 sm:h-[60px] sm:min-h-[60px]');
+    expect(hero).toContain('text-4xl leading-[1.08] sm:text-5xl sm:leading-[1.05]');
+    expect(hero).toContain('pt-2 pb-16 sm:pt-12 sm:pb-24');
     expect(hero).toContain('sm:flex-1');
     expect(hero).toContain('text-lg');
     expect(hero).not.toContain('sr-only');

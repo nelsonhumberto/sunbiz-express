@@ -30,6 +30,7 @@ import { startNameIsAcceptable } from '@/lib/start-draft';
 import { newlyReachedScrollDepths } from '@/lib/scroll-depth';
 import { checklistCopy, type DripLocale } from '@/lib/drip-copy';
 import { localizedHref } from '@/lib/locale-paths';
+import { floridaLlcBuyerHeadline } from '@/lib/lp-buyer-headline';
 import { cn, formatCurrency } from '@/lib/utils';
 
 const NAVIGATION_FALLBACK_MS = 4000;
@@ -249,12 +250,12 @@ export function FloridaLlcLanding({
   return (
     <div className="pb-28">
       <section data-testid="lp-hero" className="container max-w-lg px-4 pt-1">
-        <h1 className="min-h-[3.125rem] text-center font-display text-xl font-medium leading-tight tracking-tight sm:min-h-0 sm:text-4xl">
-          {tPricing('pageHeadline', { state: stateName })}
+        <h1
+          data-testid="lp-value"
+          className="min-h-[3.125rem] text-center font-display text-xl font-medium leading-tight tracking-tight sm:min-h-0 sm:text-4xl"
+        >
+          {floridaLlcBuyerHeadline(locale, price)}
         </h1>
-        <p data-testid="lp-value" className="mt-1 min-h-[1.125rem] text-center text-lg font-semibold leading-none">
-          {price} {tPricing('allIn')}
-        </p>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
           <label htmlFor="lp-business-name" className="text-sm font-medium">
             {t('nameYourLlc')}
@@ -311,53 +312,9 @@ export function FloridaLlcLanding({
         <p className="mt-1 text-center text-[11px] leading-snug text-ink-muted">{floridaNote}</p>
       </section>
 
-      <section className="container max-w-lg px-4 pt-3" aria-label={tLp('emailTitle')}>
-        {leadDone ? (
-          <p className="mb-2 text-sm text-ink" role="status">
-            {checklist.thanksBody}
-          </p>
-        ) : null}
-        <form onSubmit={onLead} noValidate>
-            <p className="text-sm font-semibold">{tLp('emailTitle')}</p>
-            <input
-              type="email"
-              name="email"
-              value={leadEmail}
-              onChange={(event) => setLeadEmail(event.target.value)}
-              autoComplete="email"
-              inputMode="email"
-              placeholder={checklist.emailPlaceholder}
-              className="mt-1 h-11 w-full rounded-lg border border-border px-3 text-base"
-            />
-            <label className="mt-2 flex items-start gap-2 text-[11px] leading-snug text-ink-muted">
-              <input
-                type="checkbox"
-                name="consent"
-                checked={consent}
-                onChange={(event) => setConsent(event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0"
-              />
-              <span>
-                {checklist.consentBefore}
-                <a href={localizedHref('/privacy', lang)} className="font-medium text-primary underline">
-                  {checklist.consentLink}
-                </a>
-                {checklist.consentAfter}
-              </span>
-            </label>
-            {leadError ? (
-              <p role="alert" className="mt-1 text-sm text-destructive">
-                {leadError}
-              </p>
-            ) : null}
-            <button type="submit" className="mt-2 h-10 w-full rounded-lg border border-border text-sm font-semibold">
-              {tLp('emailButton')}
-            </button>
-          </form>
-      </section>
-
       <section className="container max-w-lg px-4 pt-8">
-        <h2 className="font-display text-2xl font-medium">{tLp('stepsTitle')}</h2>
+        <h2 className="font-display text-2xl font-medium">{tPricing('pageHeadline', { state: stateName })}</h2>
+        <h2 className="mt-6 font-display text-2xl font-medium">{tLp('stepsTitle')}</h2>
         <ol className="mt-3 space-y-3">
           {[
             { title: tHow('step1Title'), body: tHow('step1Body') },
@@ -392,6 +349,51 @@ export function FloridaLlcLanding({
           <li>{tLp('need2')}</li>
           <li>{tLp('need3')}</li>
         </ul>
+      </section>
+
+      <section className="container max-w-lg px-4 pt-8" aria-label={tLp('emailTitle')}>
+        {leadDone ? (
+          <p className="mb-2 text-sm text-ink" role="status">
+            {checklist.thanksBody}
+          </p>
+        ) : null}
+        <form onSubmit={onLead} noValidate>
+          <p className="text-sm font-semibold">{tLp('emailTitle')}</p>
+          <input
+            type="email"
+            name="email"
+            value={leadEmail}
+            onChange={(event) => setLeadEmail(event.target.value)}
+            autoComplete="email"
+            inputMode="email"
+            placeholder={checklist.emailPlaceholder}
+            className="mt-1 h-11 w-full rounded-lg border border-border px-3 text-base"
+          />
+          <label className="mt-2 flex items-start gap-2 text-[11px] leading-snug text-ink-muted">
+            <input
+              type="checkbox"
+              name="consent"
+              checked={consent}
+              onChange={(event) => setConsent(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            <span>
+              {checklist.consentBefore}
+              <a href={localizedHref('/privacy', lang)} className="font-medium text-primary underline">
+                {checklist.consentLink}
+              </a>
+              {checklist.consentAfter}
+            </span>
+          </label>
+          {leadError ? (
+            <p role="alert" className="mt-1 text-sm text-destructive">
+              {leadError}
+            </p>
+          ) : null}
+          <button type="submit" className="mt-2 h-10 w-full rounded-lg border border-border text-sm font-semibold">
+            {tLp('emailButton')}
+          </button>
+        </form>
       </section>
 
       <section data-testid="lp-plans" className="container max-w-lg space-y-2 px-4 pt-8" aria-label={tPricing('kicker')}>

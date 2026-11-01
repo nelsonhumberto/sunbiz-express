@@ -35,7 +35,7 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
   return (
     <section
       data-marketing-state={bookable}
-      className="relative isolate pt-4 pb-24 sm:pt-12 md:pt-20 md:pb-32 overflow-hidden"
+      className="relative isolate pt-2 pb-16 sm:pt-12 sm:pb-24 md:pt-20 md:pb-32 overflow-hidden"
     >
       <div className="absolute inset-0 mesh-bg" />
       <div className="aurora" />
@@ -53,24 +53,24 @@ export function Hero({ state = FLORIDA }: HeroProps = {}) {
         >
           <Link
             href={localizedHref('/about', locale)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 sm:mb-6 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1 mb-1.5 sm:mb-6 sm:py-1.5 rounded-full bg-primary/5 border border-primary/10 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
           >
             <Sparkles className="h-3.5 w-3.5" />
             {t('badge')}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
 
-          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.05] tracking-tight text-balance">
+          <h1 className="font-display text-4xl leading-[1.08] sm:text-5xl sm:leading-[1.05] md:text-6xl lg:text-7xl font-medium tracking-tight text-balance">
             {t('headlineLine1')}{' '}
             <br className="hidden md:block" />
             <span className="gradient-text italic">{t('headlineLine2')}</span>
           </h1>
 
-          <p className="mt-4 sm:mt-6 text-lg md:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+          <p className="mt-2 sm:mt-6 text-sm leading-snug sm:text-lg md:text-xl sm:leading-relaxed text-ink-muted max-w-2xl mx-auto text-balance">
             {t('subhead')}
           </p>
 
-          <p className="mt-3 sm:mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl mx-auto text-balance">
+          <p className="mt-1.5 sm:mt-4 text-xs leading-snug sm:text-sm sm:leading-relaxed text-ink-muted max-w-2xl mx-auto text-balance">
             {t('formaLine')}
           </p>
 
@@ -150,8 +150,8 @@ function HeroNameCheck({ stateCode }: { stateCode: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 sm:mt-8 mx-auto w-full max-w-xl text-left">
-      <Label htmlFor="hero-business-name" className="mb-2 block">
+    <form onSubmit={onSubmit} className="mt-2 sm:mt-8 mx-auto w-full max-w-xl text-left">
+      <Label htmlFor="hero-business-name" className="mb-1 sm:mb-2 block">
         {t('nameCheckLabel')}
       </Label>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

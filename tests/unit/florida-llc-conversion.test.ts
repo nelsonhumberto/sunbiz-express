@@ -114,7 +114,10 @@ describe('Florida LLC landing fold', () => {
     expect(landing).toContain('nameLater: skipName');
     expect(landing).toContain("source: 'lp-florida-llc'");
     expect(landing.indexOf('data-testid="lp-cta"')).toBeLessThan(
-      landing.indexOf('aria-label={tLp(\'emailTitle\')}'),
+      landing.indexOf("aria-label={tLp('emailTitle')}"),
+    );
+    expect(landing.indexOf('data-testid="lp-breakdown"')).toBeLessThan(
+      landing.indexOf("aria-label={tLp('emailTitle')}"),
     );
     const bar = source('components/analytics/CookieConsentBar.tsx');
     expect(bar).toContain('min-h-11');

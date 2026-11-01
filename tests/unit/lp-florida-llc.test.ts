@@ -5,8 +5,10 @@ import robots from '@/app/robots';
 import { routing } from '@/i18n/routing';
 import { toSpanishUrl } from '@/lib/locale-paths';
 import { localeAlternates } from '@/lib/locale-seo';
+import { floridaLlcBuyerHeadline } from '@/lib/lp-buyer-headline';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { startHeadlinePriceCents } from '@/lib/start-headline-price';
+import { formatCurrency } from '@/lib/utils';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
@@ -49,7 +51,20 @@ describe('Florida LLC ad landing', () => {
     expect(page).toContain("withLocaleMeta(\n    '/lp/florida-llc'");
     expect(page).toContain('floridaOnlyNote');
     expect(page).toContain("tDisc('notAffiliated')");
-    expect(landing).toContain('tierPackagePriceCents');
+    expect(landing).toContain("tierPackagePriceCents('BASIC', 'LLC', 'FL')");
+    expect(landing).toContain('floridaLlcBuyerHeadline');
+    const essential = formatCurrency(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    expect(essential).toBe('$199');
+    expect(tierPackagePriceCents('BASIC', 'LLC', 'FL')).toBe(startHeadlinePriceCents({ tier: 'BASIC' }));
+    expect(startHeadlinePriceCents({})).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+    expect(floridaLlcBuyerHeadline('en', essential)).toBe('Form your Florida LLC online, $199 all in');
+    expect(floridaLlcBuyerHeadline('es', essential)).toBe(
+      'Abre tu LLC en Florida en línea, $199 todo incluido',
+    );
+    expect(landing.indexOf('data-testid="lp-breakdown"')).toBeLessThan(
+      landing.indexOf("aria-label={tLp('emailTitle')}"),
+    );
+    expect(landing.indexOf('<h1')).toBeLessThan(landing.indexOf("tPricing('pageHeadline'"));
     expect(landing).not.toMatch(/\$199/);
     expect(landing).toContain("tPricing('feat_sameDay')");
     expect(page).toContain("tHero('previewBankReadyDetail')");

@@ -82,7 +82,7 @@ export function WizardShell({
       step={step}
       serverTier={costData.tier as TierSlug}
     >
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col pb-[var(--lf-cookie-h,0px)]">
       <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-border">
         <div className="container flex h-16 items-center justify-between gap-4">
           <Logo size="sm" />
@@ -281,8 +281,9 @@ export function WizardActions({
   return (
     <div
       ref={barRef}
+      style={{ bottom: 'var(--lf-cookie-h, 0px)' }}
       className={cn(
-        'sticky bottom-0 z-20 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border',
+        'sticky z-20 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border',
         fullWidth ? 'mt-4' : 'mt-10',
       )}
     >

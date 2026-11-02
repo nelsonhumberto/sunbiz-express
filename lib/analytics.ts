@@ -123,8 +123,12 @@ export function resetAnalytics() {
 
 // ── Typed event helpers (match the taxonomy from the audit) ──────────────
 
-export function trackCtaClicked(ctaId: string, extra?: Record<string, unknown>) {
-  trackEvent('cta_clicked', { cta_id: ctaId, ...extra });
+export function trackCtaClicked(
+  ctaId: string,
+  extra?: Record<string, unknown>,
+  options?: TrackEventOptions,
+) {
+  trackEvent('cta_clicked', { cta_id: ctaId, ...extra }, options);
 }
 
 export function trackTierSelected(tier: string, state: string, entityType: string, source: string) {

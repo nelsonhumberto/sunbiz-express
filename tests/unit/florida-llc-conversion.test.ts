@@ -59,12 +59,25 @@ describe('name later and a null company name', () => {
     expect(es.start.nameLater).toBe('Lo nombro después');
     expect(en.wizard.changeEntity).toBe('Change');
     expect(es.wizard.changeEntity).toBe('Cambiar');
-    expect(en.lpFlorida.startButton).toBe('Start');
-    expect(es.lpFlorida.startButton).toBe('Empezar');
-    for (const copy of [en.start.nameLater, es.start.nameLater, en.wizard.changeEntity, es.wizard.changeEntity]) {
+    expect(en.lpFlorida.startButton).toBe('Start my Florida LLC');
+    expect(es.lpFlorida.startButton).toBe('Empezar mi LLC en Florida');
+    expect(en.lpFlorida.nameOptional).toBe('(optional)');
+    expect(es.lpFlorida.nameOptional).toBe('(opcional)');
+    for (const copy of [
+      en.start.nameLater,
+      es.start.nameLater,
+      en.wizard.changeEntity,
+      es.wizard.changeEntity,
+      en.lpFlorida.startButton,
+      es.lpFlorida.startButton,
+      en.lpFlorida.nameOptional,
+      es.lpFlorida.nameOptional,
+    ]) {
       expect(copy).not.toMatch(/\u2014|\u2013/);
     }
     expect(es.start.nameLater).not.toMatch(/\b(listo|lista|bienvenido|bienvenida)\b/i);
+    expect(es.lpFlorida.startButton).not.toMatch(/\b(listo|lista|bienvenido|bienvenida)\b/i);
+    expect(es.lpFlorida.nameOptional).not.toMatch(/\b(listo|lista|bienvenido|bienvenida)\b/i);
     const launch = source('app/start/guest-start-launch.tsx');
     expect(launch).toContain("t('nameLater')");
     expect(launch).toContain('nameLater: deferName');
@@ -110,7 +123,9 @@ describe('Florida LLC landing fold', () => {
     expect(landing).not.toMatch(/\$199/);
     expect(landing).toContain('preselected: true');
     expect(landing).toContain("tLp('startButton')");
-    expect(landing).toContain("t('nameLater')");
+    expect(landing).toContain("tLp('nameOptional')");
+    expect(landing).not.toContain("t('nameLater')");
+    expect(landing).not.toContain('lp-name-later');
     expect(landing).toContain('nameLater: skipName');
     expect(landing).toContain("source: 'lp-florida-llc'");
     expect(landing.indexOf('data-testid="lp-cta"')).toBeLessThan(

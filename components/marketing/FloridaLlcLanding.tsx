@@ -8,6 +8,7 @@ import { openGuestDraft } from '@/actions/guest-start';
 import { captureChecklistSignup } from '@/actions/checklist-signup';
 import { Link } from '@/i18n/navigation';
 import {
+  BEFORE_NAVIGATION_CAPTURE,
   captureThenNavigate,
   filingIdFromWizardPath,
   startNavigationEvents,
@@ -70,7 +71,6 @@ export function FloridaLlcLanding({
   const checklist = checklistCopy(lang);
   const router = useRouter();
   const [name, setName] = useState('');
-  const [nameLater, setNameLater] = useState(false);
   const [leadEmail, setLeadEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
@@ -125,11 +125,6 @@ export function FloridaLlcLanding({
     return hrefWithAttribution(`/start?${params.toString()}`, attributionSearch);
   }
 
-  function focusName() {
-    document.getElementById('lp-business-name')?.scrollIntoView({ block: 'center' });
-    document.getElementById('lp-business-name')?.focus();
-  }
-
   async function openDraft(
     tier: TierSlug,
     businessName: string,
@@ -137,11 +132,12 @@ export function FloridaLlcLanding({
     deferName = false,
   ) {
     if (pending) return;
+    // The click handler already sent cta_clicked. Do not send it again here.
+    void location;
     setPending(true);
     setError(null);
     const trimmed = businessName.trim();
     const skipName = deferName && !startNameIsAcceptable(trimmed);
-    trackCtaClicked('lp_continue', { location, tier });
     try {
       const result = await withActionTimeout(
         openGuestDraft({
@@ -217,13 +213,13 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    trackCtaClicked('lp_continue', { location: 'hero', has_name: name.trim().length > 0 }, BEFORE_NAVIGATION_CAPTURE);
     const trimmed = name.trim();
-    const defer = nameLater && !startNameIsAcceptable(trimmed);
-    if (!defer && !startNameIsAcceptable(trimmed)) {
-      setError(t('companyNameInvalid'));
+    if (!startNameIsAcceptable(trimmed)) {
+      void openDraft(selected, trimmed, 'hero', true);
       return;
     }
-    void openDraft(selected, trimmed, 'hero', defer);
+    void openDraft(selected, trimmed, 'hero');
   }
 
   async function onLead(event: React.FormEvent<HTMLFormElement>) {
@@ -258,7 +254,7 @@ export function FloridaLlcLanding({
         </h1>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
           <label htmlFor="lp-business-name" className="text-sm font-medium">
-            {t('nameYourLlc')}
+            {t('nameYourLlc')} <span className="font-normal text-ink-muted">{tLp('nameOptional')}</span>
           </label>
           <input
             id="lp-business-name"
@@ -281,18 +277,6 @@ export function FloridaLlcLanding({
               {error}
             </p>
           ) : null}
-          <button
-            type="button"
-            data-testid="lp-name-later"
-            aria-pressed={nameLater}
-            onClick={() => {
-              setNameLater((current) => !current);
-              setError(null);
-            }}
-            className="mt-1 block min-h-4 text-left text-xs text-ink-muted underline underline-offset-2"
-          >
-            {t('nameLater')}
-          </button>
           <button
             ref={ctaRef}
             type="submit"
@@ -428,12 +412,16 @@ export function FloridaLlcLanding({
                 <Link
                   href={startHref(tier.slug, name)}
                   onClick={(event) => {
-                    trackCtaClicked('lp_choose', { location: 'plan', tier: tier.slug });
+                    trackCtaClicked(
+                      'lp_continue',
+                      { location: 'plan', has_name: name.trim().length > 0 },
+                      BEFORE_NAVIGATION_CAPTURE,
+                    );
                     const trimmed = name.trim();
-                    const defer = nameLater && !startNameIsAcceptable(trimmed);
-                    if (!startNameIsAcceptable(trimmed) && !defer) return;
+                    trackCtaClicked('lp_choose', { location: 'plan', tier: tier.slug });
+                    if (!startNameIsAcceptable(trimmed)) return;
                     event.preventDefault();
-                    void openDraft(tier.slug, trimmed, 'plan', defer);
+                    void openDraft(tier.slug, trimmed, 'plan');
                   }}
                   className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold"
                 >
@@ -484,8 +472,12 @@ export function FloridaLlcLanding({
           type="button"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white"
           onClick={() => {
-            trackCtaClicked('lp_continue', { location: 'repeat' });
-            focusName();
+            trackCtaClicked(
+              'lp_continue',
+              { location: 'repeat', has_name: name.trim().length > 0 },
+              BEFORE_NAVIGATION_CAPTURE,
+            );
+            void openDraft(selected, name, 'repeat', !startNameIsAcceptable(name));
           }}
         >
           {tLp('repeatCta')}
@@ -502,8 +494,12 @@ export function FloridaLlcLanding({
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"
             onClick={() => {
-              trackCtaClicked('lp_continue', { location: 'sticky' });
-              focusName();
+              trackCtaClicked(
+                'lp_continue',
+                { location: 'sticky', has_name: name.trim().length > 0 },
+                BEFORE_NAVIGATION_CAPTURE,
+              );
+              void openDraft(selected, name, 'sticky', !startNameIsAcceptable(name));
             }}
           >
             {tLp('stickyCta')}

@@ -65,6 +65,27 @@ export function nameCheckBlocksContinue(
   return result?.status === 'exact_conflict';
 }
 
+const WIZARD_STEP_PATH = /\/wizard\/[^/]+\/\d+$/;
+
+/**
+ * A failed or timed-out lookup never chooses a new page.
+ * If the address bar left the wizard step during that lookup, the only
+ * allowed href is that same step, so the visitor can be put back.
+ */
+export function nameCheckFailureNavigation(input: {
+  status: string;
+  deferred: boolean;
+  fromPath: string;
+  toPath: string;
+}): { href: string | null } {
+  const failed = input.deferred || input.status === 'error';
+  if (!failed) return { href: null };
+  const fromPath = input.fromPath.split('?')[0]?.split('#')[0] ?? input.fromPath;
+  const toPath = input.toPath.split('?')[0]?.split('#')[0] ?? input.toPath;
+  if (!WIZARD_STEP_PATH.test(fromPath) || fromPath === toPath) return { href: null };
+  return { href: fromPath };
+}
+
 export function normalizeNameCheckQuery(raw: string | null | undefined): string {
   return (raw ?? '').trim().slice(0, NAME_CHECK_MAX_LENGTH);
 }
@@ -367,7 +388,19 @@ export async function requestNameCheck(
     const res = await fetchImpl(url, {
       ...(signal ? { signal } : {}),
       cache: 'no-store',
+      // A 3xx must not be followed. Following it can leave step 2 for the
+      // page that opened the draft, which is the ad landing page.
+      redirect: 'manual',
     });
+    if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+      return {
+        deferred: true,
+        status: 'error',
+        ms: elapsedMs(started),
+        error: 'redirect',
+        result: null,
+      };
+    }
     let body: unknown = null;
     try {
       body = await res.json();

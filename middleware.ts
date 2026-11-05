@@ -198,15 +198,21 @@ export function middleware(request: NextRequest) {
     LOCALE_HEADER,
     effectiveLocale === 'es' ? 'es' : routing.defaultLocale,
   );
+  // The English next() path can drop the page searchParams. The Spanish
+  // rewrite keeps them because it clones nextUrl. Forward the raw query so
+  // /lp/florida-llc?tier=STANDARD is visible the same way as /es/lp/llc-florida.
+  requestHeaders.set('x-lf-search', request.nextUrl.search);
   if (internalTrafficQueryRequested(request.nextUrl.search)) {
     requestHeaders.set(INTERNAL_TRAFFIC_HEADER, '1');
   }
   const requestInit = { request: { headers: requestHeaders } };
 
   let response: NextResponse;
-  if (strippedPath) {
+  // English /lp/florida-llc is not rewritten. Clone nextUrl anyway, the same
+  // way /es/lp/llc-florida does, so ?tier= stays on the page query.
+  if (strippedPath || pathname === '/lp/florida-llc') {
     const url = request.nextUrl.clone();
-    url.pathname = appPath;
+    if (strippedPath) url.pathname = appPath;
     response = NextResponse.rewrite(url, requestInit);
   } else {
     response = NextResponse.next(requestInit);

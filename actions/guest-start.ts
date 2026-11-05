@@ -410,6 +410,12 @@ export async function openGuestDraft(input: {
       },
     });
     if (draft && (!input.draftId || input.draftId === draft.id)) {
+      // A later visit with ?tier= must not keep the package from the first
+      // draft. The landing page already decided the tier.
+      await prisma.filing.update({
+        where: { id: draft.id },
+        data: { serviceTier },
+      });
       const decision = decideDraftNameResume({
         existingName: draft.businessName,
         proposedName: input.draftIntent === 'resume' ? null : seededName,

@@ -24,6 +24,7 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
+import { asTier } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
@@ -35,14 +36,29 @@ import { floridaLlcBuyerHeadline } from '@/lib/lp-buyer-headline';
 import { cn, formatCurrency } from '@/lib/utils';
 
 const NAVIGATION_FALLBACK_MS = 4000;
-const VALID_TIERS = new Set<TierSlug>(['BASIC', 'STANDARD', 'PREMIUM']);
 /** Exact sentence from the English Florida LLC cost guide. The Spanish twin is /es/guides/costo-llc-florida. */
 export const MIAMI_LAKES_EN =
   'LaunchForma files Florida LLCs online from our Miami Lakes office.';
 
-function asTier(value: string | undefined): TierSlug {
-  const upper = (value ?? '').toUpperCase();
-  return VALID_TIERS.has(upper as TierSlug) ? (upper as TierSlug) : 'STANDARD';
+/** The payload Start sends. Tests call this with the English form and URL. */
+export async function submitFloridaLlcLanding(input: {
+  tier: TierSlug;
+  businessName: string;
+  email?: string;
+  browserPath: string;
+}) {
+  const trimmed = input.businessName.trim();
+  const nameLater = !startNameIsAcceptable(trimmed);
+  return openGuestDraft({
+    state: 'FL',
+    entityType: 'LLC',
+    tier: input.tier,
+    businessName: nameLater ? undefined : trimmed,
+    nameLater,
+    email: input.email?.trim() || undefined,
+    browserPath: input.browserPath,
+    returnRedirect: true,
+  });
 }
 
 export function FloridaLlcLanding({
@@ -75,7 +91,23 @@ export function FloridaLlcLanding({
   const [consent, setConsent] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<TierSlug>(asTier(initialTier));
+  const [pickedTier, setPickedTier] = useState<TierSlug | null>(null);
+  // At submit and in the hidden field: a card the visitor pressed, else the
+  // live address-bar ?tier= when it is Basic, Standard, or Premium, else Basic.
+  // The server render has no window, so it shows the tier the page resolved
+  // (Basic when that query was empty). No effect copies the search into state,
+  // so a later empty read cannot overwrite a tier.
+  function startTier(picked: TierSlug | null): TierSlug {
+    if (picked) return picked;
+    if (typeof window !== 'undefined') {
+      const raw = new URLSearchParams(window.location.search).get('tier');
+      const upper = (raw ?? '').trim().toUpperCase();
+      if (upper === 'BASIC' || upper === 'STANDARD' || upper === 'PREMIUM') return upper;
+      if (raw != null && raw.trim() !== '') return 'BASIC';
+    }
+    return asTier(initialTier);
+  }
+  const selected = startTier(pickedTier);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSticky, setShowSticky] = useState(false);
@@ -140,15 +172,11 @@ export function FloridaLlcLanding({
     const skipName = deferName && !startNameIsAcceptable(trimmed);
     try {
       const result = await withActionTimeout(
-        openGuestDraft({
-          state: 'FL',
-          entityType: 'LLC',
+        submitFloridaLlcLanding({
           tier,
-          businessName: skipName ? undefined : trimmed,
-          nameLater: skipName,
-          email: leadEmail.trim() || undefined,
+          businessName: trimmed,
+          email: leadEmail,
           browserPath: window.location.pathname,
-          returnRedirect: true,
         }),
         WIZARD_ACTION_TIMEOUT_MS,
       );
@@ -213,13 +241,18 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    trackCtaClicked('lp_continue', { location: 'hero', has_name: name.trim().length > 0 }, BEFORE_NAVIGATION_CAPTURE);
+    const tier = startTier(pickedTier);
+    trackCtaClicked('lp_continue', {
+      location: 'hero',
+      has_name: name.trim().length > 0,
+      tier,
+    }, BEFORE_NAVIGATION_CAPTURE);
     const trimmed = name.trim();
     if (!startNameIsAcceptable(trimmed)) {
-      void openDraft(selected, trimmed, 'hero', true);
+      void openDraft(tier, trimmed, 'hero', true);
       return;
     }
-    void openDraft(selected, trimmed, 'hero');
+    void openDraft(tier, trimmed, 'hero');
   }
 
   async function onLead(event: React.FormEvent<HTMLFormElement>) {
@@ -253,6 +286,7 @@ export function FloridaLlcLanding({
           {floridaLlcBuyerHeadline(locale, price)}
         </h1>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
+          <input type="hidden" name="tier" value={selected} />
           <label htmlFor="lp-business-name" className="text-sm font-medium">
             {t('nameYourLlc')} <span className="font-normal text-ink-muted">{tLp('nameOptional')}</span>
           </label>
@@ -384,16 +418,16 @@ export function FloridaLlcLanding({
         {TIERS.map((tier) => {
           const tierName = tPricing(`tier_${tier.slug}` as 'tier_BASIC');
           const amount = formatCurrency(tierPackagePriceCents(tier.slug, 'LLC', 'FL'));
-          const highlighted = tier.slug === 'STANDARD';
+          const popular = tier.slug === 'STANDARD';
           return (
             <div
               key={tier.slug}
               className={cn(
                 'rounded-xl border bg-white px-3 py-2',
-                highlighted || selected === tier.slug ? 'border-primary' : 'border-border',
+                selected === tier.slug ? 'border-primary' : 'border-border',
               )}
             >
-              {highlighted ? (
+              {popular ? (
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                   {tPricing('ribbon_recommended')}
                 </p>
@@ -402,7 +436,7 @@ export function FloridaLlcLanding({
                 <button
                   type="button"
                   aria-pressed={selected === tier.slug}
-                  onClick={() => setSelected(tier.slug)}
+                  onClick={() => setPickedTier(tier.slug)}
                   className="min-w-0 text-left"
                 >
                   <span className="block text-sm font-medium">{tierName}</span>
@@ -472,12 +506,13 @@ export function FloridaLlcLanding({
           type="button"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white"
           onClick={() => {
+            const tier = startTier(pickedTier);
             trackCtaClicked(
               'lp_continue',
-              { location: 'repeat', has_name: name.trim().length > 0 },
+              { location: 'repeat', has_name: name.trim().length > 0, tier },
               BEFORE_NAVIGATION_CAPTURE,
             );
-            void openDraft(selected, name, 'repeat', !startNameIsAcceptable(name));
+            void openDraft(tier, name, 'repeat', !startNameIsAcceptable(name));
           }}
         >
           {tLp('repeatCta')}
@@ -494,12 +529,13 @@ export function FloridaLlcLanding({
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"
             onClick={() => {
+              const tier = startTier(pickedTier);
               trackCtaClicked(
                 'lp_continue',
-                { location: 'sticky', has_name: name.trim().length > 0 },
+                { location: 'sticky', has_name: name.trim().length > 0, tier },
                 BEFORE_NAVIGATION_CAPTURE,
               );
-              void openDraft(selected, name, 'sticky', !startNameIsAcceptable(name));
+              void openDraft(tier, name, 'sticky', !startNameIsAcceptable(name));
             }}
           >
             {tLp('stickyCta')}

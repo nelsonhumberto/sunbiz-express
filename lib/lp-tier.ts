@@ -18,3 +18,23 @@ export function tierFromLandingSearch(search: string | null | undefined): string
   const tier = new URLSearchParams(raw).get('tier')?.trim();
   return tier || undefined;
 }
+
+/**
+ * Tier sent to openGuestDraft.
+ * A card the visitor pressed wins. Otherwise the address-bar ?tier= wins,
+ * then the hidden form field, then the prop from the page.
+ * An empty value is Basic. It must not replace a tier that was actually passed.
+ */
+export function landingStartTier(input: {
+  picked: TierSlug | null;
+  formTier?: string | null;
+  search?: string | null;
+  initialTier?: string | null;
+}): TierSlug {
+  if (input.picked) return input.picked;
+  const fromUrl = tierFromLandingSearch(input.search);
+  if (fromUrl) return asTier(fromUrl);
+  const posted = typeof input.formTier === 'string' ? input.formTier.trim() : '';
+  if (posted) return asTier(posted);
+  return asTier(input.initialTier);
+}

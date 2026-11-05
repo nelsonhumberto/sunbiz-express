@@ -24,7 +24,7 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
-import { asTier, tierFromLandingSearch } from '@/lib/lp-tier';
+import { landingStartTier } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
@@ -40,7 +40,26 @@ const NAVIGATION_FALLBACK_MS = 4000;
 export const MIAMI_LAKES_EN =
   'LaunchForma files Florida LLCs online from our Miami Lakes office.';
 
-export { asTier };
+/** The payload Start sends. Tests call this with the English form and URL. */
+export async function submitFloridaLlcLanding(input: {
+  tier: TierSlug;
+  businessName: string;
+  email?: string;
+  browserPath: string;
+}) {
+  const trimmed = input.businessName.trim();
+  const nameLater = !startNameIsAcceptable(trimmed);
+  return openGuestDraft({
+    state: 'FL',
+    entityType: 'LLC',
+    tier: input.tier,
+    businessName: nameLater ? undefined : trimmed,
+    nameLater,
+    email: input.email?.trim() || undefined,
+    browserPath: input.browserPath,
+    returnRedirect: true,
+  });
+}
 
 export function FloridaLlcLanding({
   attributionSearch,
@@ -72,21 +91,18 @@ export function FloridaLlcLanding({
   const [consent, setConsent] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<TierSlug>(asTier(initialTier));
-  const tierPicked = useRef(false);
-  // The English document can render before searchParams includes ?tier=.
-  // The address bar still has it. Use that until the visitor picks a card.
+  const [pickedTier, setPickedTier] = useState<TierSlug | null>(null);
+  const [browserSearch, setBrowserSearch] = useState<string | null>(null);
+  // useState(initialTier) would stay Basic if the English page passed the
+  // query only on a later render. Recompute from the prop and the address bar.
   useLayoutEffect(() => {
-    if (tierPicked.current) return;
-    const fromUrl = tierFromLandingSearch(window.location.search);
-    if (!fromUrl) return;
-    setSelected(asTier(fromUrl));
-  }, []);
-  function tierForStart(): TierSlug {
-    if (tierPicked.current) return selected;
-    if (typeof window === 'undefined') return asTier(initialTier);
-    return asTier(tierFromLandingSearch(window.location.search) ?? initialTier);
-  }
+    setBrowserSearch(window.location.search);
+  }, [initialTier]);
+  const selected = landingStartTier({
+    picked: pickedTier,
+    initialTier,
+    search: browserSearch,
+  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSticky, setShowSticky] = useState(false);
@@ -151,15 +167,11 @@ export function FloridaLlcLanding({
     const skipName = deferName && !startNameIsAcceptable(trimmed);
     try {
       const result = await withActionTimeout(
-        openGuestDraft({
-          state: 'FL',
-          entityType: 'LLC',
+        submitFloridaLlcLanding({
           tier,
-          businessName: skipName ? undefined : trimmed,
-          nameLater: skipName,
-          email: leadEmail.trim() || undefined,
+          businessName: trimmed,
+          email: leadEmail,
           browserPath: window.location.pathname,
-          returnRedirect: true,
         }),
         WIZARD_ACTION_TIMEOUT_MS,
       );
@@ -224,7 +236,13 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const tier = tierForStart();
+    const posted = new FormData(event.currentTarget).get('tier');
+    const tier = landingStartTier({
+      picked: pickedTier,
+      formTier: typeof posted === 'string' ? posted : null,
+      search: window.location.search,
+      initialTier,
+    });
     trackCtaClicked('lp_continue', {
       location: 'hero',
       has_name: name.trim().length > 0,
@@ -419,10 +437,7 @@ export function FloridaLlcLanding({
                 <button
                   type="button"
                   aria-pressed={selected === tier.slug}
-                  onClick={() => {
-                    tierPicked.current = true;
-                    setSelected(tier.slug);
-                  }}
+                  onClick={() => setPickedTier(tier.slug)}
                   className="min-w-0 text-left"
                 >
                   <span className="block text-sm font-medium">{tierName}</span>
@@ -492,7 +507,11 @@ export function FloridaLlcLanding({
           type="button"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white"
           onClick={() => {
-            const tier = tierForStart();
+            const tier = landingStartTier({
+              picked: pickedTier,
+              search: window.location.search,
+              initialTier,
+            });
             trackCtaClicked(
               'lp_continue',
               { location: 'repeat', has_name: name.trim().length > 0, tier },
@@ -515,7 +534,11 @@ export function FloridaLlcLanding({
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"
             onClick={() => {
-              const tier = tierForStart();
+              const tier = landingStartTier({
+                picked: pickedTier,
+                search: window.location.search,
+                initialTier,
+              });
               trackCtaClicked(
                 'lp_continue',
                 { location: 'sticky', has_name: name.trim().length > 0, tier },

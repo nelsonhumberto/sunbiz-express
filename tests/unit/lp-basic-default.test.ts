@@ -34,8 +34,8 @@ describe('Florida LLC landing defaults to Basic', () => {
     expect(middleware).toContain("pathname === '/lp/florida-llc'");
 
     const landing = source('components/marketing/FloridaLlcLanding.tsx');
-    expect(landing).toContain('useState<TierSlug>(asTier(initialTier))');
-    expect(landing).toContain('tierFromLandingSearch(window.location.search)');
+    expect(landing).toContain('landingStartTier({');
+    expect(landing).toContain('window.location.search');
     expect(landing).toContain('name="tier"');
     expect(landing).toContain("void openDraft(tier, trimmed, 'hero', true)");
     expect(landing).toContain('tier,');

@@ -203,6 +203,49 @@ describe('openGuestDraft navigation', () => {
     expect(filingCreate).not.toHaveBeenCalled();
   });
 
+  it('writes a passed tier onto an existing Basic draft', async () => {
+    cookieGet.mockImplementation((name: string) =>
+      name === 'LF_GUEST_TOKEN' ? { value: 'tok' } : undefined,
+    );
+    userFindUnique.mockImplementation(async (args: { where?: { guestToken?: string } }) => {
+      if (args?.where?.guestToken) {
+        return {
+          id: 'guest_1',
+          email: 'g@guest.launchforma.invalid',
+          firstName: '',
+          lastName: '',
+          accountStatus: 'GUEST',
+          isTester: false,
+        };
+      }
+      return null;
+    });
+    filingFindFirst.mockResolvedValueOnce({
+      id: 'filing_old',
+      currentStep: 2,
+      businessName: 'Northwind',
+      locale: 'en',
+      userId: 'guest_1',
+      optionalDetails: null,
+    });
+    const opened = await openGuestDraft({
+      state: 'FL',
+      entityType: 'LLC',
+      tier: 'STANDARD',
+      businessName: 'Northwind',
+      browserPath: '/lp/florida-llc',
+      returnRedirect: true,
+    });
+    expect(opened).toEqual({ redirectTo: '/wizard/filing_old/2' });
+    expect(filingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'filing_old' },
+        data: expect.objectContaining({ serviceTier: 'STANDARD' }),
+      }),
+    );
+    expect(filingCreate).not.toHaveBeenCalled();
+  });
+
   it('opens a draft with no name when the visitor will name it later', async () => {
     filingCreate.mockResolvedValueOnce({ id: 'filing_later' });
     const opened = await openGuestDraft({

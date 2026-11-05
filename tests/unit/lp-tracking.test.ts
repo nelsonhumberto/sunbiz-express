@@ -67,7 +67,7 @@ describe('landing tracking and consent', () => {
     expect(landing).toContain("trackEvent('lead_capture_submitted'");
     expect(landing).toContain("trackEvent('scroll_depth'");
     expect(landing).toContain("trackCtaClicked('lp_continue'");
-    expect(landing).toContain('email: leadEmail.trim() || undefined');
+    expect(landing).toContain('email: input.email?.trim() || undefined');
     expect(payment).toContain("trackEvent('checkout_started'");
     expect(payment.match(/trackEvent\('checkout_started'/g)).toHaveLength(1);
     expect(readFileSync('components/wizard/WizardShell.tsx', 'utf8')).not.toContain(

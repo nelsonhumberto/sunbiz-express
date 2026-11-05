@@ -104,15 +104,7 @@ describe('English landing passes tier=STANDARD into openGuestDraft', () => {
     );
     expect(html).toContain('name="tier"');
 
-    const form = new FormData();
-    form.set('tier', 'STANDARD');
-    form.set('businessName', 'Northwind');
-    const tier = landingStartTier({
-      picked: null,
-      formTier: form.get('tier') as string,
-      search: EN_SEARCH,
-      initialTier: undefined,
-    });
+    const tier = landingStartTier(null, EN_SEARCH);
     expect(tier).toBe('STANDARD');
     expect(tierPackagePriceCents(tier, 'LLC', 'FL')).toBe(34_900);
 
@@ -133,13 +125,11 @@ describe('English landing passes tier=STANDARD into openGuestDraft', () => {
     );
   });
 
-  it('keeps the URL tier when the hidden field is still the stale Basic value', async () => {
-    const tier = landingStartTier({
-      picked: null,
-      formTier: 'BASIC',
-      search: EN_SEARCH,
-      initialTier: undefined,
-    });
+  it('keeps the URL tier when a stale Basic value is not the address bar', async () => {
+    const tier = landingStartTier(null, EN_SEARCH);
+    expect(landingStartTier('PREMIUM', EN_SEARCH)).toBe('PREMIUM');
+    expect(landingStartTier(null, '?utm_source=google&utm_medium=cpc&utm_campaign=x')).toBe('BASIC');
+    expect(landingStartTier(null, '?tier=nope')).toBe('BASIC');
     expect(tier).toBe('STANDARD');
     await submitFloridaLlcLanding({
       tier,

@@ -21,20 +21,16 @@ export function tierFromLandingSearch(search: string | null | undefined): string
 
 /**
  * Tier sent to openGuestDraft.
- * A card the visitor pressed wins. Otherwise the address-bar ?tier= wins,
- * then the hidden form field, then the prop from the page.
- * An empty value is Basic. It must not replace a tier that was actually passed.
+ * A card the visitor pressed wins. Otherwise `?tier=` on this search wins
+ * when it is Basic, Standard, or Premium. Anything else is Basic.
+ * The hidden field and a missing page prop are not consulted: a Basic
+ * value rendered before the address bar was read must not replace the URL.
  */
-export function landingStartTier(input: {
-  picked: TierSlug | null;
-  formTier?: string | null;
-  search?: string | null;
-  initialTier?: string | null;
-}): TierSlug {
-  if (input.picked) return input.picked;
-  const fromUrl = tierFromLandingSearch(input.search);
-  if (fromUrl) return asTier(fromUrl);
-  const posted = typeof input.formTier === 'string' ? input.formTier.trim() : '';
-  if (posted) return asTier(posted);
-  return asTier(input.initialTier);
+export function landingStartTier(picked: TierSlug | null, search: string | null | undefined): TierSlug {
+  if (picked) return picked;
+  if (search == null) return 'BASIC';
+  const raw = new URLSearchParams(search).get('tier');
+  const upper = (raw ?? '').trim().toUpperCase();
+  if (upper === 'BASIC' || upper === 'STANDARD' || upper === 'PREMIUM') return upper;
+  return 'BASIC';
 }

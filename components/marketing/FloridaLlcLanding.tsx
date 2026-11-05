@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -24,7 +24,7 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
-import { landingStartTier } from '@/lib/lp-tier';
+import { asTier } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
@@ -92,17 +92,22 @@ export function FloridaLlcLanding({
   const [leadDone, setLeadDone] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [pickedTier, setPickedTier] = useState<TierSlug | null>(null);
-  const [browserSearch, setBrowserSearch] = useState<string | null>(null);
-  // useState(initialTier) would stay Basic if the English page passed the
-  // query only on a later render. Recompute from the prop and the address bar.
-  useLayoutEffect(() => {
-    setBrowserSearch(window.location.search);
-  }, [initialTier]);
-  const selected = landingStartTier({
-    picked: pickedTier,
-    initialTier,
-    search: browserSearch,
-  });
+  // At submit and in the hidden field: a card the visitor pressed, else the
+  // live address-bar ?tier= when it is Basic, Standard, or Premium, else Basic.
+  // The server render has no window, so it shows the tier the page resolved
+  // (Basic when that query was empty). No effect copies the search into state,
+  // so a later empty read cannot overwrite a tier.
+  function startTier(picked: TierSlug | null): TierSlug {
+    if (picked) return picked;
+    if (typeof window !== 'undefined') {
+      const raw = new URLSearchParams(window.location.search).get('tier');
+      const upper = (raw ?? '').trim().toUpperCase();
+      if (upper === 'BASIC' || upper === 'STANDARD' || upper === 'PREMIUM') return upper;
+      if (raw != null && raw.trim() !== '') return 'BASIC';
+    }
+    return asTier(initialTier);
+  }
+  const selected = startTier(pickedTier);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSticky, setShowSticky] = useState(false);
@@ -236,13 +241,7 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const posted = new FormData(event.currentTarget).get('tier');
-    const tier = landingStartTier({
-      picked: pickedTier,
-      formTier: typeof posted === 'string' ? posted : null,
-      search: window.location.search,
-      initialTier,
-    });
+    const tier = startTier(pickedTier);
     trackCtaClicked('lp_continue', {
       location: 'hero',
       has_name: name.trim().length > 0,
@@ -507,11 +506,7 @@ export function FloridaLlcLanding({
           type="button"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white"
           onClick={() => {
-            const tier = landingStartTier({
-              picked: pickedTier,
-              search: window.location.search,
-              initialTier,
-            });
+            const tier = startTier(pickedTier);
             trackCtaClicked(
               'lp_continue',
               { location: 'repeat', has_name: name.trim().length > 0, tier },
@@ -534,11 +529,7 @@ export function FloridaLlcLanding({
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"
             onClick={() => {
-              const tier = landingStartTier({
-                picked: pickedTier,
-                search: window.location.search,
-                initialTier,
-              });
+              const tier = startTier(pickedTier);
               trackCtaClicked(
                 'lp_continue',
                 { location: 'sticky', has_name: name.trim().length > 0, tier },

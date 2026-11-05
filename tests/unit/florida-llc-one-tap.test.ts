@@ -55,8 +55,8 @@ describe('Florida LLC landing one tap', () => {
     expect(onSubmit).toContain('if (!startNameIsAcceptable(trimmed))');
     expect(onSubmit).toContain("openDraft(tier, trimmed, 'hero', true)");
     expect(onSubmit).toContain("openDraft(tier, trimmed, 'hero')");
-    expect(onSubmit).toContain('landingStartTier({');
-    expect(onSubmit).toContain('new FormData(event.currentTarget)');
+    expect(onSubmit).toContain('startTier(pickedTier)');
+    expect(onSubmit).not.toContain('new FormData');
     expect(onSubmit).not.toContain('companyNameInvalid');
     expect(onSubmit).not.toContain('setError');
     expect(openDraft).toContain('const skipName = deferName && !startNameIsAcceptable(trimmed)');

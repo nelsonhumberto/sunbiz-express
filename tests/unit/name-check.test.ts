@@ -12,8 +12,10 @@ import {
   NAME_TOO_SHORT_ERROR,
   nameCheckClientError,
   nameCheckDelayMs,
+  nameCheckBlocksContinue,
   nameCheckErrorEvent,
   nameCheckErrorResponse,
+  nameCheckFailureNavigation,
   nameCheckResultEvent,
   nameCheckSubmittedEvent,
   nameHasMinimumSubstance,
@@ -237,6 +239,47 @@ describe('name check failures', () => {
     });
     expect(outcome).toMatchObject({ deferred: true, status: 'error', error: 'timeout', result: null });
   });
+
+  it('does not follow a redirect back to the landing page', async () => {
+    let redirectMode: RequestRedirect | undefined;
+    const outcome = await requestNameCheck(
+      '/api/sunbiz/name-check?name=Acme',
+      async (_url, init) => {
+        redirectMode = init?.redirect;
+        return new Response(null, {
+          status: 302,
+          headers: { location: '/lp/florida-llc' },
+        });
+      },
+    );
+    expect(redirectMode).toBe('manual');
+    expect(outcome).toMatchObject({ deferred: true, status: 'error', error: 'redirect', result: null });
+    expect(
+      nameCheckFailureNavigation({
+        status: 'error',
+        deferred: true,
+        fromPath: '/wizard/cmw2kydrq/2',
+        toPath: '/lp/florida-llc',
+      }),
+    ).toEqual({ href: '/wizard/cmw2kydrq/2' });
+    expect(
+      nameCheckFailureNavigation({
+        status: 'error',
+        deferred: true,
+        fromPath: '/es/wizard/cmw2kydrq/2',
+        toPath: '/es/lp/llc-florida',
+      }),
+    ).toEqual({ href: '/es/wizard/cmw2kydrq/2' });
+    expect(
+      nameCheckFailureNavigation({
+        status: 'timeout',
+        deferred: true,
+        fromPath: '/wizard/cmw2kydrq/2',
+        toPath: '/wizard/cmw2kydrq/2',
+      }),
+    ).toEqual({ href: null });
+    expect(nameCheckBlocksContinue(null)).toBe(false);
+  });
 });
 
 describe('name-check route errors', () => {
@@ -317,10 +360,10 @@ describe('name-check route errors', () => {
 describe('name check copy and wiring', () => {
   it('uses the deferred note in both locales without dashes', () => {
     expect(en.wizard.nameCheckDeferred).toBe(
-      "We couldn't verify this name right now. We'll check it before filing.",
+      "We couldn't check that name right now. You can keep going and we'll verify it before filing.",
     );
     expect(es.wizard.nameCheckDeferred).toBe(
-      'No pudimos verificar este nombre ahora. Lo revisamos antes de presentar.',
+      'No pudimos verificar ese nombre ahora. Puedes seguir y lo verificaremos antes de presentar.',
     );
     expect(en.wizard.nameCheckRetry).toBe('Retry');
     expect(es.wizard.nameCheckRetry).toBe('Reintentar');
@@ -387,6 +430,14 @@ describe('name check copy and wiring', () => {
     expect(widget).toContain("nameCheckSubmittedEvent('wizard')");
     expect(widget).toContain('nameCheckResultEvent');
     expect(widget).toContain("t('nameCheckDeferred')");
+    expect(widget).toContain('nameCheckFailureNavigation');
+    expect(widget).toContain('history.forward');
+    expect(widget).not.toContain('router.back');
+    expect(widget).not.toContain('location.assign');
+    expect(step).not.toContain('router.back');
+    expect(step).not.toContain('location.assign');
+    expect(step).toContain('const canContinue = !nameTooShort && !isHardBlocked && !nameTaken');
+    expect(step).not.toContain('checkFailed');
     expect(widget).toContain('A new lookup replaces the previous failure note.');
     expect(widget).toContain('setCheckFailed(false)');
     expect(widget).toContain("t('nameCheckRetry')");

@@ -36,6 +36,7 @@ import {
   NAME_CHECK_CLIENT_TIMEOUT_MS,
   nameCheckDelayMs,
   nameCheckErrorEvent,
+  nameCheckFailureNavigation,
   nameCheckRequestUrl,
   nameCheckResultEvent,
   nameCheckSubmittedEvent,
@@ -311,6 +312,7 @@ export function NameCheckWidget({
       setRateLimited(false);
       const submitted = nameCheckSubmittedEvent('wizard');
       trackEvent(submitted.event, submitted.properties);
+      const fromPath = window.location.pathname;
       const outcome = await requestNameCheck(
         nameCheckRequestUrl(combinedName, entityType, { fresh: bypassCache }),
         fetch,
@@ -318,6 +320,18 @@ export function NameCheckWidget({
         controller.signal,
       );
       if (inflightRef.current === controller) inflightRef.current = null;
+      const stay = nameCheckFailureNavigation({
+        status: outcome.status,
+        deferred: outcome.deferred,
+        fromPath,
+        toPath: window.location.pathname,
+      });
+      // A redirect or history rollback during the lookup must not leave step 2.
+      // forward() returns to the wizard entry when the failure popped history
+      // back to the landing page. The name already on this step stays filled in.
+      if (stay.href && window.location.pathname !== stay.href) {
+        window.history.forward();
+      }
       const recorded = nameCheckResultEvent({
         status: outcome.status,
         ms: outcome.ms,

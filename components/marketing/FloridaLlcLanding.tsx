@@ -24,6 +24,7 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
+import { asTier } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
@@ -35,15 +36,11 @@ import { floridaLlcBuyerHeadline } from '@/lib/lp-buyer-headline';
 import { cn, formatCurrency } from '@/lib/utils';
 
 const NAVIGATION_FALLBACK_MS = 4000;
-const VALID_TIERS = new Set<TierSlug>(['BASIC', 'STANDARD', 'PREMIUM']);
 /** Exact sentence from the English Florida LLC cost guide. The Spanish twin is /es/guides/costo-llc-florida. */
 export const MIAMI_LAKES_EN =
   'LaunchForma files Florida LLCs online from our Miami Lakes office.';
 
-function asTier(value: string | undefined): TierSlug {
-  const upper = (value ?? '').toUpperCase();
-  return VALID_TIERS.has(upper as TierSlug) ? (upper as TierSlug) : 'STANDARD';
-}
+export { asTier };
 
 export function FloridaLlcLanding({
   attributionSearch,
@@ -213,7 +210,11 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    trackCtaClicked('lp_continue', { location: 'hero', has_name: name.trim().length > 0 }, BEFORE_NAVIGATION_CAPTURE);
+    trackCtaClicked('lp_continue', {
+      location: 'hero',
+      has_name: name.trim().length > 0,
+      tier: selected,
+    }, BEFORE_NAVIGATION_CAPTURE);
     const trimmed = name.trim();
     if (!startNameIsAcceptable(trimmed)) {
       void openDraft(selected, trimmed, 'hero', true);
@@ -384,16 +385,16 @@ export function FloridaLlcLanding({
         {TIERS.map((tier) => {
           const tierName = tPricing(`tier_${tier.slug}` as 'tier_BASIC');
           const amount = formatCurrency(tierPackagePriceCents(tier.slug, 'LLC', 'FL'));
-          const highlighted = tier.slug === 'STANDARD';
+          const popular = tier.slug === 'STANDARD';
           return (
             <div
               key={tier.slug}
               className={cn(
                 'rounded-xl border bg-white px-3 py-2',
-                highlighted || selected === tier.slug ? 'border-primary' : 'border-border',
+                selected === tier.slug ? 'border-primary' : 'border-border',
               )}
             >
-              {highlighted ? (
+              {popular ? (
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                   {tPricing('ribbon_recommended')}
                 </p>
@@ -474,7 +475,7 @@ export function FloridaLlcLanding({
           onClick={() => {
             trackCtaClicked(
               'lp_continue',
-              { location: 'repeat', has_name: name.trim().length > 0 },
+              { location: 'repeat', has_name: name.trim().length > 0, tier: selected },
               BEFORE_NAVIGATION_CAPTURE,
             );
             void openDraft(selected, name, 'repeat', !startNameIsAcceptable(name));
@@ -496,7 +497,7 @@ export function FloridaLlcLanding({
             onClick={() => {
               trackCtaClicked(
                 'lp_continue',
-                { location: 'sticky', has_name: name.trim().length > 0 },
+                { location: 'sticky', has_name: name.trim().length > 0, tier: selected },
                 BEFORE_NAVIGATION_CAPTURE,
               );
               void openDraft(selected, name, 'sticky', !startNameIsAcceptable(name));

@@ -895,7 +895,7 @@
     "nameStatusSimilar": "We found similar filings (some may be inactive or cross-references). The state requires names to be distinguishable - try a more distinct variation.",
     "nameStatusEnterMin": "Enter at least 2 characters to check availability.",
     "nameStatusError": "We couldn't reach the state registry right now. Try again in a moment.",
-    "nameCheckDeferred": "We couldn't verify this name right now. We'll check it before filing.",
+    "nameCheckDeferred": "We couldn't check that name right now. You can keep going and we'll verify it before filing.",
     "nameCheckRetry": "Retry",
     "nameCheckRateLimit": "Too many checks, try again in a few seconds",
     "nameTooShort": "Enter at least 2 letters or numbers. The legal ending does not count.",

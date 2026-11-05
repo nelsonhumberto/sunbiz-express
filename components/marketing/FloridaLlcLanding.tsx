@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -24,7 +24,7 @@ import {
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
 import { hrefWithAttribution } from '@/lib/preserve-attribution';
-import { asTier } from '@/lib/lp-tier';
+import { asTier, tierFromLandingSearch } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
@@ -73,6 +73,20 @@ export function FloridaLlcLanding({
   const [leadDone, setLeadDone] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<TierSlug>(asTier(initialTier));
+  const tierPicked = useRef(false);
+  // The English document can render before searchParams includes ?tier=.
+  // The address bar still has it. Use that until the visitor picks a card.
+  useLayoutEffect(() => {
+    if (tierPicked.current) return;
+    const fromUrl = tierFromLandingSearch(window.location.search);
+    if (!fromUrl) return;
+    setSelected(asTier(fromUrl));
+  }, []);
+  function tierForStart(): TierSlug {
+    if (tierPicked.current) return selected;
+    if (typeof window === 'undefined') return asTier(initialTier);
+    return asTier(tierFromLandingSearch(window.location.search) ?? initialTier);
+  }
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSticky, setShowSticky] = useState(false);
@@ -210,17 +224,18 @@ export function FloridaLlcLanding({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const tier = tierForStart();
     trackCtaClicked('lp_continue', {
       location: 'hero',
       has_name: name.trim().length > 0,
-      tier: selected,
+      tier,
     }, BEFORE_NAVIGATION_CAPTURE);
     const trimmed = name.trim();
     if (!startNameIsAcceptable(trimmed)) {
-      void openDraft(selected, trimmed, 'hero', true);
+      void openDraft(tier, trimmed, 'hero', true);
       return;
     }
-    void openDraft(selected, trimmed, 'hero');
+    void openDraft(tier, trimmed, 'hero');
   }
 
   async function onLead(event: React.FormEvent<HTMLFormElement>) {
@@ -254,6 +269,7 @@ export function FloridaLlcLanding({
           {floridaLlcBuyerHeadline(locale, price)}
         </h1>
         <form onSubmit={onSubmit} className="mt-2" noValidate>
+          <input type="hidden" name="tier" value={selected} />
           <label htmlFor="lp-business-name" className="text-sm font-medium">
             {t('nameYourLlc')} <span className="font-normal text-ink-muted">{tLp('nameOptional')}</span>
           </label>
@@ -403,7 +419,10 @@ export function FloridaLlcLanding({
                 <button
                   type="button"
                   aria-pressed={selected === tier.slug}
-                  onClick={() => setSelected(tier.slug)}
+                  onClick={() => {
+                    tierPicked.current = true;
+                    setSelected(tier.slug);
+                  }}
                   className="min-w-0 text-left"
                 >
                   <span className="block text-sm font-medium">{tierName}</span>
@@ -473,12 +492,13 @@ export function FloridaLlcLanding({
           type="button"
           className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-white"
           onClick={() => {
+            const tier = tierForStart();
             trackCtaClicked(
               'lp_continue',
-              { location: 'repeat', has_name: name.trim().length > 0, tier: selected },
+              { location: 'repeat', has_name: name.trim().length > 0, tier },
               BEFORE_NAVIGATION_CAPTURE,
             );
-            void openDraft(selected, name, 'repeat', !startNameIsAcceptable(name));
+            void openDraft(tier, name, 'repeat', !startNameIsAcceptable(name));
           }}
         >
           {tLp('repeatCta')}
@@ -495,12 +515,13 @@ export function FloridaLlcLanding({
             type="button"
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white shadow-lg"
             onClick={() => {
+              const tier = tierForStart();
               trackCtaClicked(
                 'lp_continue',
-                { location: 'sticky', has_name: name.trim().length > 0, tier: selected },
+                { location: 'sticky', has_name: name.trim().length > 0, tier },
                 BEFORE_NAVIGATION_CAPTURE,
               );
-              void openDraft(selected, name, 'sticky', !startNameIsAcceptable(name));
+              void openDraft(tier, name, 'sticky', !startNameIsAcceptable(name));
             }}
           >
             {tLp('stickyCta')}

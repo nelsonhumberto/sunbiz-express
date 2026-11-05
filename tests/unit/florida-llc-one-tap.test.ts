@@ -53,8 +53,9 @@ describe('Florida LLC landing one tap', () => {
     expect(startNameIsAcceptable('A LLC')).toBe(false);
     expect(startNameIsAcceptable('Northwind')).toBe(true);
     expect(onSubmit).toContain('if (!startNameIsAcceptable(trimmed))');
-    expect(onSubmit).toContain("openDraft(selected, trimmed, 'hero', true)");
-    expect(onSubmit).toContain("openDraft(selected, trimmed, 'hero')");
+    expect(onSubmit).toContain("openDraft(tier, trimmed, 'hero', true)");
+    expect(onSubmit).toContain("openDraft(tier, trimmed, 'hero')");
+    expect(onSubmit).toContain('tierForStart()');
     expect(onSubmit).not.toContain('companyNameInvalid');
     expect(onSubmit).not.toContain('setError');
     expect(openDraft).toContain('const skipName = deferName && !startNameIsAcceptable(trimmed)');
@@ -69,10 +70,10 @@ describe('Florida LLC landing one tap', () => {
   });
 
   it('sticky CTA opens draft', () => {
-    expect(sticky).toContain("openDraft(selected, name, 'sticky', !startNameIsAcceptable(name))");
+    expect(sticky).toContain("openDraft(tier, name, 'sticky', !startNameIsAcceptable(name))");
     expect(sticky).not.toContain('focusName');
     expect(sticky).not.toContain('scrollIntoView');
-    expect(repeat).toContain("openDraft(selected, name, 'repeat', !startNameIsAcceptable(name))");
+    expect(repeat).toContain("openDraft(tier, name, 'repeat', !startNameIsAcceptable(name))");
     expect(repeat).not.toContain('focusName');
     expect(landing).not.toContain('focusName()');
   });

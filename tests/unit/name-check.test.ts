@@ -363,7 +363,7 @@ describe('name check copy and wiring', () => {
       "We couldn't check that name right now. You can keep going and we'll verify it before filing.",
     );
     expect(es.wizard.nameCheckDeferred).toBe(
-      'No pudimos verificar ese nombre ahora. Puedes seguir y lo verificaremos antes de presentar.',
+      'No pudimos verificar ese nombre ahora. Puedes seguir y lo verificaremos antes de presentarlo.',
     );
     expect(en.wizard.nameCheckRetry).toBe('Retry');
     expect(es.wizard.nameCheckRetry).toBe('Reintentar');

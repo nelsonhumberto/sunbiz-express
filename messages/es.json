@@ -895,7 +895,7 @@
     "nameStatusSimilar": "Encontramos trámites similares (algunos inactivos o cruzados que pueden seguir reservados). El estado exige nombres distinguibles - prueba con una variación más distintiva.",
     "nameStatusEnterMin": "Escribe al menos 2 caracteres para verificar la disponibilidad.",
     "nameStatusError": "No pudimos consultar el registro estatal en este momento. Vuelve a intentarlo en un momento.",
-    "nameCheckDeferred": "No pudimos verificar ese nombre ahora. Puedes seguir y lo verificaremos antes de presentar.",
+    "nameCheckDeferred": "No pudimos verificar ese nombre ahora. Puedes seguir y lo verificaremos antes de presentarlo.",
     "nameCheckRetry": "Reintentar",
     "nameCheckRateLimit": "Demasiadas verificaciones. Inténtalo de nuevo en unos segundos.",
     "nameTooShort": "Escribe al menos 2 letras o números. La terminación legal no cuenta.",

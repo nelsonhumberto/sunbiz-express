@@ -1,0 +1,20 @@
+name: migration-guard
+
+on:
+  pull_request:
+
+jobs:
+  migration-guard:
+    name: migration-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch the base branch
+        run: git fetch origin "${{ github.base_ref }}"
+      - name: Fail destructive migrations that need Nelson's OK
+        run: node scripts/guard-migrations.mjs --ci "origin/${{ github.base_ref }}"

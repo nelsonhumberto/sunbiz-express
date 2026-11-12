@@ -65,6 +65,22 @@ export function nameCheckBlocksContinue(
   return result?.status === 'exact_conflict';
 }
 
+/**
+ * Step 2 Continue. A timeout, a network error, or any status other than
+ * an exact conflict leaves the button enabled. A too-short name or a
+ * hard state rule still blocks.
+ */
+export function step2CanContinue(input: {
+  name: string;
+  hardBlocked: boolean;
+  status?: string | null;
+}): boolean {
+  if (!nameHasMinimumSubstance(input.name)) return false;
+  if (input.hardBlocked) return false;
+  if (nameCheckBlocksContinue(input.status ? { status: input.status } : null)) return false;
+  return true;
+}
+
 const WIZARD_STEP_PATH = /\/wizard\/[^/]+\/\d+$/;
 
 /**

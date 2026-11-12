@@ -88,6 +88,7 @@ export function Step7Members({
   filing,
   defaultMemberName,
   defaultEmail,
+  lpShort = false,
 }: {
   filing: WizardFiling;
   /** Pre-fill for the first member's name when none have been entered yet
@@ -95,6 +96,8 @@ export function Step7Members({
   defaultMemberName?: string;
   /** Pre-fill for the email field on officer/director rows. */
   defaultEmail?: string;
+  /** Landing draft: one named owner, member-managed, extra people inline. */
+  lpShort?: boolean;
 }) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
@@ -200,6 +203,17 @@ export function Step7Members({
 
   const updateMember = (idx: number, patch: Partial<Member>) =>
     setMembers((prev) => prev.map((m, i) => (i === idx ? { ...m, ...patch } : m)));
+
+  const chooseManagement = (next: ManagementType) => {
+    setManagementType(next);
+    if (!lpShort) return;
+    setMembers((prev) =>
+      prev.map((member) => ({
+        ...member,
+        title: next === 'manager-managed' ? 'MGR' : 'AMBR',
+      })),
+    );
+  };
 
   const addMember = () =>
     setMembers((prev) => [
@@ -345,7 +359,7 @@ export function Step7Members({
         })),
         includeMembersOnArticles: isDelawareLlc ? includeMembersOnArticles : undefined,
       });
-      if (res.ok) router.push(`/wizard/${filing.id}/8`);
+      if (res.ok) router.push(`/wizard/${filing.id}/${lpShort ? 9 : 8}`);
       return res;
     });
   };
@@ -366,14 +380,14 @@ export function Step7Members({
               title={t('memberManaged')}
               description={t('memberManagedDesc')}
               selected={managementType === 'member-managed'}
-              onClick={() => setManagementType('member-managed')}
+              onClick={() => chooseManagement('member-managed')}
             />
             <ManagementCard
               icon={UserCog}
               title={t('managerManaged')}
               description={t('managerManagedDesc')}
               selected={managementType === 'manager-managed'}
-              onClick={() => setManagementType('manager-managed')}
+              onClick={() => chooseManagement('manager-managed')}
             />
           </div>
         </div>
@@ -381,6 +395,7 @@ export function Step7Members({
 
       {/* Title help - collapsible explanation of AMBR / MGR / MGRM / officer
           codes, mirroring the wording on Florida CR2E047 / 607 forms. */}
+      {!lpShort && (
       <div className="rounded-lg border border-border bg-muted/30 p-4">
         <button
           type="button"
@@ -435,6 +450,7 @@ export function Step7Members({
           </div>
         )}
       </div>
+      )}
 
       {members.map((member, idx) => (
         <div
@@ -466,6 +482,7 @@ export function Step7Members({
             to "Business" replaces the personal-name field with structured
             entity fields (legal name + jurisdiction + optional signer).
           */}
+          {!lpShort && (
           <div className="inline-flex items-center rounded-md bg-muted/40 p-0.5 border border-border">
             <button
               type="button"
@@ -494,8 +511,10 @@ export function Step7Members({
               {t('ownerBusiness')}
             </button>
           </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {!lpShort && (
             <div className="space-y-1.5">
               <Label>
                 {t('title')} <span className="text-destructive">*</span>
@@ -516,8 +535,9 @@ export function Step7Members({
                 </SelectContent>
               </Select>
             </div>
+            )}
 
-            {member.ownerType === 'business' ? (
+            {member.ownerType === 'business' && !lpShort ? (
               <>
                 <div className="md:col-span-2 space-y-1.5">
                   <Label>
@@ -579,6 +599,7 @@ export function Step7Members({
               </div>
             )}
 
+            {!lpShort && (
             <div className="md:col-span-3 space-y-1.5">
               <Label className="flex items-center gap-2">
                 {t('addressLabel')}
@@ -635,6 +656,7 @@ export function Step7Members({
                 />
               </div>
             </div>
+            )}
 
             {isLLC && oaEntitled && (
               <div className="space-y-1.5">
@@ -679,7 +701,7 @@ export function Step7Members({
         </p>
       )}
 
-      {isLLC && !oaEntitled && members.length > 1 && (
+      {isLLC && !oaEntitled && !lpShort && members.length > 1 && (
         <div className="rounded-2xl border-2 border-accent/40 bg-accent/5 p-5 flex items-start gap-4">
           <div className="h-11 w-11 rounded-xl bg-accent text-white flex items-center justify-center shrink-0">
             <FileText className="h-5 w-5" />
@@ -700,7 +722,7 @@ export function Step7Members({
         </div>
       )}
 
-      {isLLC && !oaEntitled && members.length <= 1 && (
+      {isLLC && !oaEntitled && !lpShort && members.length <= 1 && (
         <p className="text-xs text-ink-muted">{t('oaUpsellLine')}</p>
       )}
 
@@ -766,7 +788,7 @@ export function Step7Members({
       )}
 
       <WizardActions
-        prevHref={`/wizard/${filing.id}/6`}
+        prevHref={`/wizard/${filing.id}/${lpShort ? 4 : 6}`}
         onNext={onContinue}
         nextDisabled={!valid}
         onBlocked={() => {

@@ -33,14 +33,23 @@ import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
-import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
 import {
+  CHECKOUT_ACCOUNT_REQUIRED,
+  checkoutAllowsPayment,
+  isPlaceholderGuestEmail,
+} from '@/lib/guest-identity';
+import { isDeliverableEmail } from '@/lib/email-address';
+import {
+  checkoutEmailFromDetails,
+  filingContactEmail,
   maySignInClaimedGuest,
+  paymentConfirmationRecipient,
   planGuestClaimFollowUp,
   planRecoveredGuestClaim,
   submittedFilingHref,
   withGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
+import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { claimPaidGuestAccount, type GuestClaimResult } from '@/lib/guest-checkout-claim';
 import type { SiteLocale } from '@/lib/pick-locale';
 import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
@@ -213,11 +222,29 @@ export async function processCheckout(input: {
     if (redirectTo) return { ok: true, redirectTo };
     return { error: 'Please sign in.' };
   }
-  // A guest pays only after the PaymentIntent route stored a real email on
-  // that guest. Placeholder rows still stop here. We never look a payer up
-  // by the typed email and sign into that other account.
+  // A guest pays only after a real email is stored on that guest, unless this
+  // is a landing draft whose typed address already belongs to someone else.
+  // That other account is not loaded and nobody is signed in.
   if (!checkoutAllowsPayment(actor.kind, actor.email)) {
-    return { error: CHECKOUT_ACCOUNT_REQUIRED };
+    const peek = await prisma.filing.findUnique({
+      where: { id: input.filingId },
+      select: {
+        userId: true,
+        optionalDetails: true,
+        entryPath: true,
+        entityType: true,
+      },
+    });
+    const typed = filingContactEmail({ optionalDetails: peek?.optionalDetails });
+    const landingPay =
+      peek?.userId === actor.id &&
+      Boolean(typed) &&
+      usesLpShortWizard({
+        optionalDetails: peek?.optionalDetails,
+        entryPath: peek?.entryPath,
+        entityType: peek?.entityType,
+      });
+    if (!landingPay) return { error: CHECKOUT_ACCOUNT_REQUIRED };
   }
 
   const filing = await prisma.filing.findUnique({
@@ -467,9 +494,14 @@ export async function processCheckout(input: {
     ...existingOptional,
     autoRenewRa,
   };
-  // Set before submit. The wizard re-render after this action redirects, and
-  // it must already see that a guest should stay on the success page.
-  if (actor.kind === 'guest') {
+  // A guest who already owns the mailbox gets the set-password prompt.
+  // A held address stays on the other account, so this row is not promoted
+  // and nobody is signed in.
+  const guestOwnsMailbox =
+    actor.kind === 'guest' &&
+    isDeliverableEmail(actor.email) &&
+    !isPlaceholderGuestEmail(actor.email);
+  if (guestOwnsMailbox) {
     Object.assign(nextOptional, withGuestSetPasswordPending(nextOptional));
   }
   if (autoRenewRa) {
@@ -506,17 +538,25 @@ export async function processCheckout(input: {
   // path, the filing locale remains. English stays unprefixed.
   const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
 
-  await sendEmail({
-    type: 'PAYMENT_CONFIRMATION',
-    to: actor.email ?? '',
-    userId: actor.id,
-    filingId: filing.id,
-    context: {
-      businessName: filing.businessName ?? '',
-      totalCents: expectedTotal,
-      locale: checkoutLocale,
-    },
+  const confirmTo = paymentConfirmationRecipient({
+    accountEmail: actor.email,
+    checkoutEmail:
+      (typeof nextOptional.checkoutEmail === 'string' ? nextOptional.checkoutEmail : null) ??
+      checkoutEmailFromDetails(filing.optionalDetails),
   });
+  if (confirmTo) {
+    await sendEmail({
+      type: 'PAYMENT_CONFIRMATION',
+      to: confirmTo,
+      userId: actor.id,
+      filingId: filing.id,
+      context: {
+        businessName: filing.businessName ?? '',
+        totalCents: expectedTotal,
+        locale: checkoutLocale,
+      },
+    });
+  }
 
   await notifyAdminOfPaidOrder(filing.id);
 
@@ -531,7 +571,7 @@ export async function processCheckout(input: {
     checkoutLocale,
   );
   let postCheckoutRedirect = successPath;
-  if (actor.kind === 'guest') {
+  if (guestOwnsMailbox) {
     try {
       const claim = await claimPaidGuestAccount({
         userId: actor.id,

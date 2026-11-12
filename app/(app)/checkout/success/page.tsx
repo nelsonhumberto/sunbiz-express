@@ -31,9 +31,11 @@ import {
 } from '@/lib/success-documents';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 import {
+  filingContactEmail,
   filingNeedsSetPasswordPrompt,
   withoutGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
+import { guestReceiptViewer } from '@/lib/guest-receipt-viewer';
 import { safeParseJson } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -48,8 +50,11 @@ export default async function CheckoutSuccessPage({
   };
 }) {
   const session = await auth();
-  if (!session?.user?.id) return await redirectLocalized('/sign-in');
-  const actor = await adsActorForUser(session.user.id, session.user.email);
+  const guestViewer = session?.user?.id ? null : await guestReceiptViewer();
+  if (!session?.user?.id && !guestViewer) return await redirectLocalized('/sign-in');
+  const viewerId = session?.user?.id ?? guestViewer!.userId;
+  const viewerEmail = session?.user?.email ?? guestViewer?.email ?? '';
+  const actor = await adsActorForUser(viewerId, viewerEmail);
 
   const t = await getTranslations('checkoutSuccess');
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
@@ -64,7 +69,7 @@ export default async function CheckoutSuccessPage({
     ? await prisma.filing.findFirst({
         where: {
           id: urlFilingId,
-          userId: session.user.id,
+          userId: viewerId,
           payments: { some: { status: 'SUCCEEDED' } },
         },
         include: {
@@ -143,12 +148,12 @@ export default async function CheckoutSuccessPage({
     const candidateIds = checkoutFilingCandidates(checkoutSession, urlFilingId);
     const [user, filings] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: viewerId },
         select: { email: true, stripeCustomerId: true },
       }),
       candidateIds.length
         ? prisma.filing.findMany({
-            where: { id: { in: candidateIds }, userId: session.user.id },
+            where: { id: { in: candidateIds }, userId: viewerId },
             include: {
               documents: true,
               filingAdditionalServices: {
@@ -163,8 +168,8 @@ export default async function CheckoutSuccessPage({
       sessionId,
       session: checkoutSession,
       owner: {
-        userId: session.user.id,
-        email: user?.email ?? session.user.email,
+        userId: viewerId,
+        email: user?.email ?? viewerEmail,
         stripeCustomerId: user?.stripeCustomerId,
         requestedFilingId: urlFilingId,
         ownedFilingIds: filings.map((row) => row.id),
@@ -212,7 +217,7 @@ export default async function CheckoutSuccessPage({
 
   const tracker = (
     <CheckoutConversionTracker
-      userId={session.user.id}
+      userId={viewerId}
       filingId={trackedFilingId}
       amountCents={amountCents}
       currency={currency}
@@ -297,14 +302,14 @@ export default async function CheckoutSuccessPage({
               strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
             })}
           </p>
-          {setPassword ? (
+          {setPassword && session?.user ? (
             <div
               role="status"
               className="mt-6 max-w-xl mx-auto rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-left"
             >
               <p className="font-semibold text-ink">{t('setPasswordTitle')}</p>
               <p className="mt-1 text-sm text-ink-muted leading-relaxed">
-                {t('setPasswordBody', { email: session.user.email ?? '' })}
+                {t('setPasswordBody', { email: viewerEmail })}
               </p>
               <p className="mt-1 text-sm text-ink-muted leading-relaxed">{t('setPasswordEmailed')}</p>
             </div>
@@ -332,15 +337,31 @@ export default async function CheckoutSuccessPage({
 
           {/* Quick actions */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild size="lg">
-              <Link href={hrefForLocale(`/dashboard/filings/${filing.id}`, locale)}>
-                {t('viewDetails')}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={hrefForLocale('/dashboard', locale)}>{t('goDashboard')}</Link>
-            </Button>
+            {guestViewer ? (
+              <Button asChild size="lg">
+                <Link
+                  href={hrefForLocale(
+                    `/sign-in?next=${encodeURIComponent(hrefForLocale(`/dashboard/filings/${filing.id}`, locale))}`,
+                    locale,
+                  )}
+                >
+                  {t('signInToSeeFiling')}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild size="lg">
+                  <Link href={hrefForLocale(`/dashboard/filings/${filing.id}`, locale)}>
+                    {t('viewDetails')}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href={hrefForLocale('/dashboard', locale)}>{t('goDashboard')}</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -354,7 +375,16 @@ export default async function CheckoutSuccessPage({
           <NextStep
             icon={<Mail className="h-5 w-5 text-primary" />}
             title={t('checkEmail')}
-            body={t('checkEmailBody', { email: session.user.email ?? '' })}
+            body={t('checkEmailBody', {
+              email:
+                filingContactEmail({
+                  accountEmail: guestViewer ? null : viewerEmail,
+                  optionalDetails:
+                    filing && 'optionalDetails' in filing
+                      ? (filing as { optionalDetails?: string | null }).optionalDetails
+                      : null,
+                }) ?? viewerEmail,
+            })}
             timing={t('now')}
           />
           <NextStep

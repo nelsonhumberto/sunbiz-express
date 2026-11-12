@@ -3,8 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderTemplate } from '@/lib/email';
 import {
   authorizeGuestFormationPayment,
+  checkoutEmailFromDetails,
   filingCheckoutEmailDetails,
+  filingContactEmail,
   filingNeedsSetPasswordPrompt,
+  paidFilingIdsToClaim,
+  paymentConfirmationRecipient,
   guestSetPasswordSiteUrl,
   maySignInClaimedGuest,
   planGuestAccountClaim,
@@ -16,6 +20,7 @@ import {
   withoutGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
 import { hrefForLocale } from '@/lib/app-href';
+import { resolveSunbizCoverEmail } from '@/lib/sunbiz-cover';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
@@ -90,6 +95,104 @@ describe('guest PaymentIntent authorization', () => {
         emailOwner: { id: 'victim', accountStatus: 'SUSPENDED' },
       }).ok,
     ).toBe(false);
+  });
+
+  it('lets a landing draft pay when the email already belongs to someone else', () => {
+    const heldAccount = authorizeGuestFormationPayment({
+      ...owner,
+      email: 'Buyer@Example.com',
+      emailOwner: { id: 'account_1', accountStatus: 'ACTIVE' },
+      allowHeldEmail: true,
+    });
+    const heldGuest = authorizeGuestFormationPayment({
+      ...owner,
+      email: 'buyer@example.com',
+      emailOwner: { id: 'guest_2', accountStatus: 'GUEST' },
+      allowHeldEmail: true,
+    });
+    expect(heldAccount).toEqual({ ok: true, email: 'buyer@example.com', emailHeld: true });
+    expect(heldGuest).toEqual({ ok: true, email: 'buyer@example.com', emailHeld: true });
+    expect(
+      authorizeGuestFormationPayment({
+        ...owner,
+        email: 'buyer@example.com',
+        emailOwner: { id: 'account_1', accountStatus: 'ACTIVE' },
+      }),
+    ).toEqual({ ok: false, reason: 'existing_account' });
+    expect(
+      authorizeGuestFormationPayment({
+        ...owner,
+        email: 'buyer@example.com',
+        emailOwner: { id: 'guest_2', accountStatus: 'GUEST' },
+      }),
+    ).toEqual({ ok: false, reason: 'email_held' });
+  });
+
+  it('sends the confirmation to the typed address when the guest mailbox is still a placeholder', () => {
+    expect(
+      paymentConfirmationRecipient({
+        accountEmail: 'guest.abc@guest.launchforma.invalid',
+        checkoutEmail: 'Buyer@Example.com',
+      }),
+    ).toBe('buyer@example.com');
+    expect(
+      paymentConfirmationRecipient({
+        accountEmail: 'ada@example.com',
+        checkoutEmail: 'other@example.com',
+      }),
+    ).toBe('ada@example.com');
+    expect(paymentConfirmationRecipient({ accountEmail: 'guest.abc@guest.launchforma.invalid' })).toBeNull();
+    expect(checkoutEmailFromDetails(JSON.stringify({ checkoutEmail: 'buyer@example.com' }))).toBe(
+      'buyer@example.com',
+    );
+  });
+
+  it('uses the typed email for review and Sunbiz correspondence, never the guest placeholder', () => {
+    const details = JSON.stringify({
+      checkoutEmail: 'buyer@example.com',
+      typedGuestEmail: 'buyer@example.com',
+    });
+    expect(
+      filingContactEmail({
+        accountEmail: 'guest.abc@guest.launchforma.invalid',
+        correspondenceEmail: 'guest.abc@guest.launchforma.invalid',
+        optionalDetails: details,
+      }),
+    ).toBe('buyer@example.com');
+    expect(
+      resolveSunbizCoverEmail({
+        useOurRegisteredAgent: false,
+        customerEmail: 'guest.abc@guest.launchforma.invalid',
+      }),
+    ).toBe('notice@launchforma.com');
+    expect(
+      resolveSunbizCoverEmail({
+        useOurRegisteredAgent: false,
+        customerEmail: 'buyer@example.com',
+      }),
+    ).toBe('buyer@example.com');
+  });
+
+  it('attaches a paid filing only after sign-in with the typed address', () => {
+    const details = JSON.stringify({
+      checkoutEmail: 'buyer@example.com',
+      typedGuestEmail: 'buyer@example.com',
+    });
+    expect(
+      paidFilingIdsToClaim({
+        accountEmail: 'Buyer@Example.com',
+        filings: [
+          { id: 'draft_1', status: 'DRAFT', optionalDetails: details },
+          { id: 'paid_1', status: 'SUBMITTED', optionalDetails: details },
+        ],
+      }),
+    ).toEqual(['paid_1']);
+    expect(
+      paidFilingIdsToClaim({
+        accountEmail: 'other@example.com',
+        filings: [{ id: 'paid_1', status: 'SUBMITTED', optionalDetails: details }],
+      }),
+    ).toEqual([]);
   });
 
   it('stores the real email on the filing details and drops a pending sign-in flag', () => {

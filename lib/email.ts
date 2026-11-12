@@ -13,7 +13,8 @@
  */
 
 import { prisma } from './db';
-import { isDeliverableEmail, isQaOrE2eRecipient, normalizeEmail } from './email-address';
+import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
+import { filingContactEmail } from './guest-checkout';
 import { EMAIL_STATUS_SKIPPED_TEST } from './email-status';
 import { formatRaRenewalPrice } from './ra-renewal-price';
 import { formatCurrency, formatDateLong } from './utils';
@@ -1227,11 +1228,49 @@ export function isEmailDeliveryConfigured(): boolean {
   );
 }
 
+/**
+ * Guest filings store the real address on the filing. A placeholder
+ * User.email must never be handed to the provider.
+ */
+async function customerRecipient(to: unknown, filingId?: string | null): Promise<string> {
+  const typed = typeof to === 'string' ? to.trim() : '';
+  if (isDeliverableEmail(typed)) return typed;
+  if (!filingId || !isReservedMailbox(typed)) return typed;
+  try {
+    const filing = await prisma.filing.findUnique({
+      where: { id: filingId },
+      select: {
+        optionalDetails: true,
+        correspondenceContact: true,
+        user: { select: { email: true } },
+      },
+    });
+    let correspondenceEmail: string | null = null;
+    if (filing?.correspondenceContact) {
+      try {
+        const parsed = JSON.parse(filing.correspondenceContact) as { email?: unknown };
+        correspondenceEmail = typeof parsed.email === 'string' ? parsed.email : null;
+      } catch {
+        correspondenceEmail = null;
+      }
+    }
+    return (
+      filingContactEmail({
+        accountEmail: filing?.user.email,
+        correspondenceEmail,
+        optionalDetails: filing?.optionalDetails,
+      }) ?? typed
+    );
+  } catch {
+    return typed;
+  }
+}
+
 export async function sendEmail(args: SendEmailArgs) {
   const tpl = TEMPLATES[args.type];
   if (!tpl) throw new Error(`Unknown email type: ${args.type}`);
   const { subject, body } = tpl(args.context ?? {});
-  const recipient = typeof args.to === 'string' ? args.to.trim() : '';
+  const recipient = await customerRecipient(args.to, args.filingId);
   const templateName = args.type.toLowerCase();
 
   async function save(data: {

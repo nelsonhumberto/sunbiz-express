@@ -31,27 +31,38 @@ import {
   type StateCode,
 } from '@/lib/formation-states';
 import { STEP2_SAVE_TIMEOUT_MS } from '@/lib/action-timeout';
-import { nameCheckBlocksContinue, nameHasMinimumSubstance, seededBusinessName } from '@/lib/name-check';
+import {
+  nameCheckBlocksContinue,
+  nameHasMinimumSubstance,
+  seededBusinessName,
+  step2CanContinue,
+} from '@/lib/name-check';
 
 export function Step2Name({
   filing,
   needsGuestEmail = false,
+  askGuestEmail = false,
   initialGuestEmail = '',
   pendingAccountEmail = '',
   preselected = false,
+  lpShort = false,
 }: {
   filing: WizardFiling;
   needsGuestEmail?: boolean;
+  /** Landing drafts always show one email field. It does not create an account. */
+  askGuestEmail?: boolean;
   initialGuestEmail?: string;
   pendingAccountEmail?: string;
   /** Florida + LLC was chosen before this step. Change returns to that choice. */
   preselected?: boolean;
+  /** Florida LLC ad landing draft. Name and email only, then the short path. */
+  lpShort?: boolean;
 }) {
   const t = useTranslations('wizard');
   const [name, setName] = useState(filing.businessName ?? '');
   const [guestEmail, setGuestEmail] = useState(initialGuestEmail);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail));
+  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail) && !lpShort);
   const [result, setResult] = useState<NameCheckResult | null>(null);
   const [assessment, setAssessment] = useState<BusinessNameAssessment | null>(null);
   const [showUnavailable, setShowUnavailable] = useState(false);
@@ -65,11 +76,15 @@ export function Step2Name({
   const stateName = getFormationState(formationState).name;
 
   // The legal ending does not count. "A LLC" is one real character and must
-  // not pass. A failed name lookup does not disable Continue.
+  // not pass. A failed or timed-out Sunbiz lookup does not disable Continue.
   const isHardBlocked = assessment ? !assessment.valid : false;
   const nameTooShort = !nameHasMinimumSubstance(name);
   const nameTaken = nameCheckBlocksContinue(result);
-  const canContinue = !nameTooShort && !isHardBlocked && !nameTaken;
+  const canContinue = step2CanContinue({
+    name,
+    hardBlocked: isHardBlocked,
+    status: result?.status ?? null,
+  });
 
   const saveAndAdvance = () => {
     // A slow Sunbiz lookup must not sit in front of the save. Abort it and
@@ -81,19 +96,21 @@ export function Step2Name({
         businessName: name,
         available: result?.available ?? undefined,
         nameStatus: result?.status,
-        contactEmail: needsGuestEmail ? guestEmail.trim() : undefined,
+        contactEmail: needsGuestEmail || askGuestEmail ? guestEmail.trim() : undefined,
       });
       if (!res.ok) {
         if ('needsSignIn' in res && res.needsSignIn) {
-          setNeedsSignIn(true);
-          setEmailError(null);
-          return;
+          if (!lpShort) {
+            setNeedsSignIn(true);
+            setEmailError(null);
+            return;
+          }
         }
         setNeedsSignIn(false);
         setEmailError(res.error ?? null);
         return { ok: false, error: res.error };
       }
-      router.push(`/wizard/${filing.id}/3`);
+      router.push(`/wizard/${filing.id}/${lpShort ? 4 : 3}`);
     }, STEP2_SAVE_TIMEOUT_MS);
   };
 
@@ -103,9 +120,9 @@ export function Step2Name({
       return;
     }
     if (!canContinue) return;
-    // If the state lookup says the name is taken, confirm via an accessible
-    // dialog (keyboard + screen-reader friendly) instead of window.confirm().
-    if (result && !result.available && !nameCheckBlocksContinue(result)) {
+    // Similar names can continue. Landing drafts skip the extra dialog.
+    // Only an exact conflict disables the button, with the taken message.
+    if (!lpShort && result && !result.available && !nameCheckBlocksContinue(result)) {
       setShowUnavailable(true);
       return;
     }
@@ -114,7 +131,7 @@ export function Step2Name({
 
   return (
     <div className="space-y-6">
-      {needsGuestEmail && (
+      {(needsGuestEmail || askGuestEmail) && (
         <GuestEmailField
           value={guestEmail}
           onChange={(value) => {
@@ -126,7 +143,7 @@ export function Step2Name({
         />
       )}
 
-      {needsSignIn && (
+      {needsSignIn && !lpShort && (
         <GuestSignInPrompt
           filingId={filing.id}
           email={pendingAccountEmail || guestEmail}

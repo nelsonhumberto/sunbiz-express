@@ -15,12 +15,15 @@ const create = vi.hoisted(() => vi.fn());
 const update = vi.hoisted(() => vi.fn());
 const findUnique = vi.hoisted(() => vi.fn());
 
+const filingFindUnique = vi.hoisted(() => vi.fn());
+
 vi.mock('resend', () => ({ Resend }));
 
 vi.mock('@/lib/db', () => ({
   prisma: {
     emailNotification: { create, update },
     emailSuppression: { findUnique },
+    filing: { findUnique: filingFindUnique },
   },
 }));
 
@@ -37,6 +40,8 @@ beforeEach(() => {
   update.mockReset();
   findUnique.mockReset();
   findUnique.mockResolvedValue(null);
+  filingFindUnique.mockReset();
+  filingFindUnique.mockResolvedValue(null);
   create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
     id: 'ntf_1',
     ...data,
@@ -122,6 +127,27 @@ describe('test-address suppression', () => {
     );
     expect(send).not.toHaveBeenCalled();
     error.mockRestore();
+  });
+
+  it('sends filing mail to the typed checkout email instead of the guest placeholder', async () => {
+    filingFindUnique.mockResolvedValue({
+      optionalDetails: JSON.stringify({
+        checkoutEmail: 'buyer@example.com',
+        typedGuestEmail: 'buyer@example.com',
+      }),
+      correspondenceContact: JSON.stringify({ email: 'guest.abc@guest.launchforma.invalid' }),
+      user: { email: 'guest.abc@guest.launchforma.invalid' },
+    });
+    for (const type of ['FILING_SUBMITTED', 'FILING_APPROVED', 'FILING_REJECTED', 'RA_RENEWAL_30'] as const) {
+      send.mockClear();
+      const result = await sendEmail({
+        type,
+        to: 'guest.abc@guest.launchforma.invalid',
+        filingId: 'fil_1',
+      });
+      expect(result.status).toBe('SENT');
+      expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: 'buyer@example.com' }));
+    }
   });
 
   it('skips a test recipient on the direct helper and still sends other local parts', async () => {

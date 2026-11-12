@@ -35,6 +35,7 @@ import type { TierSlug } from '@/lib/pricing';
 import { normalizeNameCheckQuery } from '@/lib/name-check';
 import { decideDraftNameResume, guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
 import {
+  isFloridaLlcLandingPath,
   optionalDetailsWithPreselect,
   shouldPreselectFloridaLlc,
 } from '@/lib/florida-llc-preselect';
@@ -446,14 +447,24 @@ export async function openGuestDraft(input: {
           businessName: draft.businessName,
           currentStep: draft.currentStep,
         });
-        return {
-          choice: {
-            draftId: draft.id,
-            existingName: draft.businessName?.trim() || '',
-            proposedName: seededName,
-            resumeHref: hrefForLocale(`/wizard/${draft.id}/${step}`, chosenLocale),
-          },
-        };
+        // /start asks which name to keep. The landing page has no choice
+        // dialog, so a second visit reopens the open draft instead of erroring.
+        if (!isFloridaLlcLandingPath(input.browserPath)) {
+          return {
+            choice: {
+              draftId: draft.id,
+              existingName: draft.businessName?.trim() || '',
+              proposedName: seededName,
+              resumeHref: hrefForLocale(`/wizard/${draft.id}/${step}`, chosenLocale),
+            },
+          };
+        }
+        await rememberStartEmail(guestRecord, filingRecord, optionalEmail);
+        return await finishGuestDraft(
+          `/wizard/${draft.id}/${step}`,
+          chosenLocale,
+          input.returnRedirect,
+        );
       }
       const step = guestWizardStep({
         businessName: draft.businessName,

@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { redirectToSignIn } from '@/lib/sign-in-gate';
+import { guestReceiptViewer } from '@/lib/guest-receipt-viewer';
 import { DashboardNav } from '@/components/dashboard/DashboardNav';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
@@ -13,8 +14,18 @@ export const metadata: Metadata = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) return await redirectToSignIn();
   const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
+  if (!session?.user) {
+    const guestReceipt = await guestReceiptViewer();
+    if (!guestReceipt) return await redirectToSignIn();
+    return (
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <main id="main-content" tabIndex={-1} className="min-h-screen w-full min-w-0 max-w-full bg-surface focus:outline-none">
+          {children}
+        </main>
+      </NextIntlClientProvider>
+    );
+  }
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

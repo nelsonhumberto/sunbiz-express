@@ -112,11 +112,16 @@ export function adsDebugActive(
   return fromUrl;
 }
 
+/** Google Ads conversion target. Anything else is not sent. */
+const ADS_SEND_TO = /^AW-[A-Za-z0-9]+\/[A-Za-z0-9_-]+$/;
+
 export function adsSendTo(adsId: string | undefined, label: string | undefined): string | null {
-  const id = adsId?.trim();
-  const conversionLabel = label?.trim();
-  if (!id || !conversionLabel) return null;
-  return `${id}/${conversionLabel}`;
+  const id = adsId?.trim() ?? '';
+  const conversionLabel = label?.trim() ?? '';
+  if (!id || !conversionLabel || conversionLabel.includes('/')) return null;
+  const sendTo = `${id}/${conversionLabel}`;
+  if (!ADS_SEND_TO.test(sendTo)) return null;
+  return sendTo;
 }
 
 export type GtagPurchasePayload = {

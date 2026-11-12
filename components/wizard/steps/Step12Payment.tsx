@@ -56,6 +56,7 @@ export function Step12Payment({
   guestEmail = '',
   pendingAccountEmail,
   serverTotalCents,
+  lpShort = false,
 }: {
   filing: WizardFiling;
   isTester?: boolean;
@@ -68,6 +69,8 @@ export function Step12Payment({
   pendingAccountEmail?: string;
   /** Catalog total from the server, in cents. The client amount is not charged. */
   serverTotalCents: number;
+  /** Landing draft. An address that already exists can still pay. */
+  lpShort?: boolean;
 }) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
@@ -122,7 +125,9 @@ export function Step12Payment({
 
   const [cardholderName, setCardholderName] = useState(filing.incorporatorSignature ?? '');
   const [checkoutEmail, setCheckoutEmail] = useState(guestEmail || pendingAccountEmail || '');
-  const [needsSignIn, setNeedsSignIn] = useState(Boolean(pendingAccountEmail) && !guestEmail);
+  const [needsSignIn, setNeedsSignIn] = useState(
+    Boolean(pendingAccountEmail) && !guestEmail && !lpShort,
+  );
   // Unchecked until the customer opts in. The mandate still shows the price,
   // the renewal date, and that they can cancel.
   const [autoRenewRa, setAutoRenewRa] = useState(RA_AUTORENEW_CHECKED_BY_DEFAULT);
@@ -191,11 +196,11 @@ export function Step12Payment({
           ...(isGuest ? { email: checkoutEmail.trim() } : {}),
         });
         if ('error' in result) {
-          if (result.code === GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE) {
+          if (!lpShort && result.code === GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE) {
             setNeedsSignIn(true);
             return { ok: false, error: t('guestEmailHasAccount') };
           }
-          if (result.code === GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE) {
+          if (!lpShort && result.code === GUEST_CHECKOUT_EMAIL_UNAVAILABLE_CODE) {
             return { ok: false, error: t('guestCheckoutEmailUnavailable') };
           }
           return { ok: false, error: result.error };
@@ -396,7 +401,7 @@ export function Step12Payment({
                 }}
               />
               <p className="text-xs text-ink-subtle leading-snug">{t('guestPayEmailHint')}</p>
-              {needsSignIn && (
+              {needsSignIn && !lpShort && (
                 <GuestSignInPrompt
                   filingId={filing.id}
                   email={checkoutEmail.trim() || pendingAccountEmail || ''}

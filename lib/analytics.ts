@@ -727,6 +727,9 @@ function sendAdsHit(hit: PendingAdsConversion): void {
       transaction_id: hit.transactionId,
       value: hit.value,
       currency: hit.currency,
+      // The Ads purchase action reads send_to on this event. The matching
+      // conversion event below uses the same transaction_id so Ads counts once.
+      ...(hit.sendTo ? { send_to: hit.sendTo } : {}),
     });
   }
   if (hit.sendTo) {

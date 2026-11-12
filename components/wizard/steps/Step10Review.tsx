@@ -27,11 +27,18 @@ import type { WizardFiling } from '../types';
 import type { AddressValue } from '../AddressForm';
 import { parseOptionalPhone } from '@/lib/phone';
 import { memberTitleLabel, reviewMemberText } from '@/lib/member-title';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import { serviceTierDisplayName } from '@/lib/tier-display';
 
 type ManagementType = 'member-managed' | 'manager-managed';
 
-export function Step10Review({ filing }: { filing: WizardFiling }) {
+export function Step10Review({
+  filing,
+  lpShort = false,
+}: {
+  filing: WizardFiling;
+  lpShort?: boolean;
+}) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
   const tPricing = useTranslations('pricing');
@@ -140,7 +147,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       </div>
 
       {/* Sections */}
-      <ReviewSection title={t('businessBasics')} stepHref={stepHref(1)} editLabel={tCommon('edit')}>
+      <ReviewSection title={t('businessBasics')} stepHref={stepHref(lpShort ? 2 : 1)} editLabel={tCommon('edit')}>
         <Row
           label={t('entityType')}
           value={
@@ -167,7 +174,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
         />
       </ReviewSection>
 
-      <ReviewSection title={t('registeredAgent')} stepHref={stepHref(6)} editLabel={tCommon('edit')}>
+      <ReviewSection title={t('registeredAgent')} stepHref={stepHref(lpShort ? 4 : 6)} editLabel={tCommon('edit')}>
         <Row
           label={t('providerLabel')}
           value={ra?.useOurService ? t('providerInternal') : t('providerExternal')}
@@ -206,7 +213,16 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       </ReviewSection>
 
       <ReviewSection title={t('correspondenceEmail')} stepHref={null} editLabel={tCommon('edit')}>
-        <Row label={t('emailAccountLabel')} value={correspondence?.email ?? '-'} mono />
+        <Row
+          label={t('emailAccountLabel')}
+          value={
+            filingContactEmail({
+              correspondenceEmail: correspondence?.email,
+              optionalDetails: filing.optionalDetails,
+            }) ?? '-'
+          }
+          mono
+        />
         <div className="space-y-1.5 pt-2">
           <Label htmlFor="contactPhone">
             {t('phone')}{' '}
@@ -242,7 +258,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
           opt.processingOption ||
           opt.foreignRegistrationInterest ||
           opt.shareStructure) && (
-          <ReviewSection title={t('optionalDetails')} stepHref={stepHref(8)} editLabel={tCommon('edit')}>
+          <ReviewSection title={t('optionalDetails')} stepHref={lpShort ? null : stepHref(8)} editLabel={tCommon('edit')}>
             {opt.effectiveDate && (
               <Row label={t('effectiveDate')} value={formatDate(opt.effectiveDate)} />
             )}
@@ -339,7 +355,7 @@ export function Step10Review({ filing }: { filing: WizardFiling }) {
       </div>
 
       <WizardActions
-        prevHref={`/wizard/${filing.id}/8`}
+        prevHref={`/wizard/${filing.id}/${lpShort ? 7 : 8}`}
         onNext={onContinue}
         nextDisabled={!valid}
         pending={pending}

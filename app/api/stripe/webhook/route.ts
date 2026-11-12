@@ -11,7 +11,11 @@ import { isTestPayment } from '@/lib/payment-test';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
-import { planWebhookPaidReplay } from '@/lib/guest-checkout';
+import {
+  checkoutEmailFromDetails,
+  paymentConfirmationRecipient,
+  planWebhookPaidReplay,
+} from '@/lib/guest-checkout';
 import { claimPaidGuestAccount } from '@/lib/guest-checkout-claim';
 
 export const dynamic = 'force-dynamic';
@@ -190,10 +194,14 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
       where: { id: filing.userId },
       select: { email: true },
     });
-    if (user?.email) {
+    const confirmTo = paymentConfirmationRecipient({
+      accountEmail: user?.email,
+      checkoutEmail: checkoutEmailFromDetails(filing.optionalDetails),
+    });
+    if (confirmTo) {
       await sendEmail({
         type: 'PAYMENT_CONFIRMATION',
-        to: user.email,
+        to: confirmTo,
         userId: filing.userId,
         filingId: filing.id,
         context: { businessName: filing.businessName ?? '', totalCents: amountCents },

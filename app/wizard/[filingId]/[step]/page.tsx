@@ -16,6 +16,9 @@ const Step3Tier = nextDynamic(() =>
 const Step4Address = nextDynamic(() =>
   import('@/components/wizard/steps/Step4Address').then((m) => m.Step4Address),
 );
+const LpSetupStep = nextDynamic(() =>
+  import('@/components/wizard/steps/LpSetupStep').then((m) => m.LpSetupStep),
+);
 const Step5Mailing = nextDynamic(() =>
   import('@/components/wizard/steps/Step5Mailing').then((m) => m.Step5Mailing),
 );
@@ -41,6 +44,7 @@ import { type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { quoteDraftFiling } from '@/lib/filing-totals';
 import { guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
 import { readFloridaLlcPreselected } from '@/lib/florida-llc-preselect';
+import { lpProgressFromDraft, lpRouteStep, usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { isActiveFormationState, type StateCode } from '@/lib/formation-states';
 import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
@@ -90,10 +94,37 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
     );
   }
 
+  const preselected = readFloridaLlcPreselected(filing.optionalDetails);
+  const choosingEntity = searchParams?.change === '1';
+  const lpShort = usesLpShortWizard({
+    optionalDetails: filing.optionalDetails,
+    entryPath: filing.entryPath,
+    entityType: filing.entityType,
+  });
+  if (lpShort && !(stepNum === 1 && choosingEntity)) {
+    const target = lpRouteStep(
+      stepNum,
+      lpProgressFromDraft({
+        businessName: filing.businessName,
+        principalAddress: filing.principalAddress,
+        mailingAddress: filing.mailingAddress,
+        registeredAgent: filing.registeredAgent,
+        memberNames: filing.managersMembers?.map((member) => member.name) ?? [],
+        incorporatorSignature: filing.incorporatorSignature,
+      }),
+    );
+    if (target !== stepNum) {
+      const incomplete = stepNum === 11 ? '?incomplete=1' : '';
+      return await redirectLocalized(`/wizard/${filing.id}/${target}${incomplete}`, filing.locale);
+    }
+  }
+
   // Step-order guard: don't let anyone land on Payment (11) with a draft that's
   // missing core data - they'd otherwise only discover it when the charge is
   // rejected. Send them to the earliest incomplete step instead.
-  if (stepNum === 11) {
+  // Landing drafts use lpRouteStep above so a missing agent returns to the
+  // combined address screen instead of the skipped agent step.
+  if (!lpShort && stepNum === 11) {
     const ra = safeParseJson<{ useOurService?: boolean; name?: string; street1?: string } | null>(
       filing.registeredAgent,
       null,
@@ -195,8 +226,6 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
       }).totalCents
     : filing.totalCents;
 
-  const preselected = readFloridaLlcPreselected(filing.optionalDetails);
-  const choosingEntity = searchParams?.change === '1';
   // A draft opened without a name stays on the name step until one is saved.
   // Review and every later step require that name.
   if (stepNum > 2 && !startNameIsAcceptable(filing.businessName)) {
@@ -231,6 +260,7 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
         isGuest={isGuest}
         guestEmail={actor?.kind === 'guest' ? actor.email : undefined}
         preselected={preselected}
+        lpShort={lpShort}
       >
         {stepNum === 1 && (
           <Step1Entity
@@ -245,13 +275,17 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
           <Step2Name
             filing={filing}
             needsGuestEmail={needsGuestEmail}
-            initialGuestEmail={guestEmailPrefill}
-            pendingAccountEmail={pendingAccountEmail}
+            askGuestEmail={lpShort && isGuest}
+            initialGuestEmail={
+              lpShort && isGuest ? realGuestEmail || guestEmailPrefill : guestEmailPrefill
+            }
+            pendingAccountEmail={lpShort ? '' : pendingAccountEmail}
             preselected={preselected}
+            lpShort={lpShort}
           />
         )}
         {stepNum === 3 && <Step3Tier filing={filing} />}
-        {stepNum === 4 && <Step4Address filing={filing} />}
+        {stepNum === 4 && (lpShort ? <LpSetupStep filing={filing} /> : <Step4Address filing={filing} />)}
         {stepNum === 5 && <Step5Mailing filing={filing} />}
         {stepNum === 6 && <Step6RegisteredAgent filing={filing} />}
         {stepNum === 7 && (
@@ -259,11 +293,12 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
             filing={filing}
             defaultMemberName={actorDisplayName}
             defaultEmail={actorEmail}
+            lpShort={lpShort}
           />
         )}
         {stepNum === 8 && <Step9Optional filing={filing} />}
-        {stepNum === 9 && <Step10Review filing={filing} />}
-        {stepNum === 10 && <Step11AddOns filing={filing} />}
+        {stepNum === 9 && <Step10Review filing={filing} lpShort={lpShort} />}
+        {stepNum === 10 && <Step11AddOns filing={filing} lpShort={lpShort} />}
         {stepNum === 11 && (
           <Step12Payment
             filing={filing}
@@ -274,6 +309,7 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
             guestEmail={realGuestEmail ?? ''}
             pendingAccountEmail={pendingAccountEmail || undefined}
             serverTotalCents={serverTotalCents}
+            lpShort={lpShort}
           />
         )}
       </WizardShell>
@@ -281,7 +317,7 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
       {/* Guest-only popup: appears after Step 1 (entity choice) so we have
           collected enough info to position the offer. The popup is dismissable
           and persists its dismissal in localStorage. */}
-      {isGuest && actor?.kind === 'guest' && realGuestEmail && stepNum >= 2 && (
+      {isGuest && actor?.kind === 'guest' && realGuestEmail && stepNum >= 2 && !lpShort && (
         <GuestAccountPrompt
           firstName={actor.firstName}
           email={realGuestEmail}

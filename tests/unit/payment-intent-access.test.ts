@@ -234,6 +234,58 @@ describe('payment intent access', () => {
     expect(filingWrites.every((write) => write.data?.userId === undefined)).toBe(true);
   });
 
+  it('lets a landing guest pay with an email that already has an account', async () => {
+    auth.mockResolvedValue(null);
+    getGuestUser.mockResolvedValue({
+      id: 'guest_1',
+      email: 'guest.abc@guest.launchforma.invalid',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+    });
+    filingFindUnique.mockResolvedValue({
+      ...filingOwnedBy('guest_1'),
+      entryPath: '/lp/florida-llc',
+      optionalDetails: JSON.stringify({ floridaLlcPreselected: true, pendingAccountEmail: 'buyer@example.com' }),
+    });
+    userFindUnique.mockImplementation(async (args: { where: { email?: string; id?: string } }) => {
+      if (args.where.email) {
+        return { id: 'account_1', accountStatus: 'ACTIVE', email: 'buyer@example.com' };
+      }
+      return {
+        id: 'guest_1',
+        email: 'guest.abc@guest.launchforma.invalid',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        stripeCustomerId: 'cus_g',
+        isTester: false,
+        accountStatus: 'GUEST',
+      };
+    });
+    const res = await POST({
+      json: async () => ({ filingId: 'filing_1', email: 'buyer@example.com', amountCents: 50 }),
+    } as never);
+    expect(res.status).toBe(200);
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(customersUpdate).toHaveBeenCalledWith(
+      'cus_g',
+      expect.objectContaining({ email: 'buyer@example.com' }),
+    );
+    expect(paymentIntentsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receipt_email: 'buyer@example.com',
+        metadata: expect.objectContaining({ userId: 'guest_1', filingId: 'filing_1' }),
+      }),
+      expect.anything(),
+    );
+    const filingWrites = filingUpdate.mock.calls.map(
+      (call) => call[0] as { data?: { userId?: string; optionalDetails?: string } },
+    );
+    expect(filingWrites.every((write) => write.data?.userId === undefined)).toBe(true);
+    const stored = filingWrites.find((write) => typeof write.data?.optionalDetails === 'string');
+    expect(stored?.data?.optionalDetails).toContain('"checkoutEmail":"buyer@example.com"');
+    expect(stored?.data?.optionalDetails).not.toContain('pendingAccountEmail');
+  });
+
   it('returns Spanish copy for the same code when the wizard path is /es', async () => {
     auth.mockResolvedValue(null);
     getGuestUser.mockResolvedValue(null);

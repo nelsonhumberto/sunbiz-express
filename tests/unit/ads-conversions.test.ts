@@ -33,7 +33,10 @@ describe('ad conversion helpers', () => {
     });
     expect(purchasePayload({ transactionId: ' ', valueCents: 100 })).toBeNull();
     expect(adsSendTo('AW-123', 'purchaseLabel')).toBe('AW-123/purchaseLabel');
+    expect(adsSendTo(' AW-123 ', ' purchaseLabel ')).toBe('AW-123/purchaseLabel');
     expect(adsSendTo('AW-123', '  ')).toBeNull();
+    expect(adsSendTo('AW-123/purchaseLabel', 'purchaseLabel')).toBeNull();
+    expect(adsSendTo('G-123', 'purchaseLabel')).toBeNull();
     expect(adsSendTo(undefined, 'purchaseLabel')).toBeNull();
   });
 
@@ -109,6 +112,12 @@ describe('gtag conversion firing', () => {
     const purchases = gtag.mock.calls.filter((call) => call[1] === 'purchase');
     expect(purchases).toHaveLength(1);
     expect(conversions).toHaveLength(1);
+    expect(purchases[0]?.[2]).toEqual({
+      send_to: 'AW-123/purchaseLabel',
+      transaction_id: 'filing_1',
+      value: 199,
+      currency: 'USD',
+    });
     expect(conversions[0]?.[2]).toEqual({
       send_to: 'AW-123/purchaseLabel',
       transaction_id: 'filing_1',

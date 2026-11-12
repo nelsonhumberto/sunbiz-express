@@ -16,6 +16,7 @@ import {
   phaseForStep,
   progressFraction,
 } from '@/lib/wizard-constants';
+import { LP_SHORT_TOTAL, lpProgressLabel } from '@/lib/lp-wizard-path';
 import { CostSidebar } from './CostSidebar';
 import { WizardCostPreviewProvider, useWizardCostPreview } from './WizardCostPreviewContext';
 import { GuestSaveExitDialog } from './GuestSaveExitDialog';
@@ -43,6 +44,8 @@ interface WizardShellProps {
   guestEmail?: string;
   /** Florida + LLC was chosen for landing-page or Google ad traffic. */
   preselected?: boolean;
+  /** Ad landing draft uses the 6-step path. /start stays on 11. */
+  lpShort?: boolean;
 }
 
 export function WizardShell({
@@ -54,6 +57,7 @@ export function WizardShell({
   isGuest,
   guestEmail,
   preselected,
+  lpShort = false,
 }: WizardShellProps) {
   const t = useTranslations('wizard');
   const tDisc = useTranslations('disclosure');
@@ -68,14 +72,17 @@ export function WizardShell({
 
   const stepKey = `step${step}Title` as keyof IntlMessages;
   const subKey = `step${step}Subtitle` as keyof IntlMessages;
-  const title = t(stepKey as never);
-  const subtitle = t(subKey as never);
+  const title = lpShort && step === 4 ? t('lpStep4Title' as never) : t(stepKey as never);
+  const subtitle = lpShort && step === 4 ? t('lpStep4Subtitle' as never) : t(subKey as never);
   const phase = phaseForStep(step);
   const phaseLabel = t(`phase_${phase}` as never);
 
-  const displayed = displayStepNumber(step);
-  const bonus = isBonusStep(step);
-  const progress = progressFraction(step) * 100;
+  const lpLabel = lpShort ? lpProgressLabel(step) : null;
+  const displayed = lpLabel ? lpLabel.current : displayStepNumber(step);
+  const bonus = lpShort ? false : isBonusStep(step);
+  const progress = lpLabel
+    ? (lpLabel.current / LP_SHORT_TOTAL) * 100
+    : progressFraction(step) * 100;
 
   return (
     <WizardCostPreviewProvider
@@ -120,10 +127,12 @@ export function WizardShell({
               >
                 {bonus ? t('bonusStepLabel') : phaseLabel}
               </span>
-              {t('stepOf', {
-                current: displayed,
-                total: TOTAL_STEPS,
-              })}{' '}
+              {lpLabel
+                ? t('stepOf', { current: lpLabel.current, total: LP_SHORT_TOTAL })
+                : t('stepOf', {
+                    current: displayed,
+                    total: TOTAL_STEPS,
+                  })}{' '}
               · <span className="text-primary font-semibold">{title}</span>
             </span>
             <span className="text-ink-subtle">{Math.round(progress)}%</span>
@@ -152,11 +161,13 @@ export function WizardShell({
             </div>
 
             <AnimatePresence mode="wait">
+              {/* Opacity only. An x transform would trap the sticky Continue
+                  bar, so the cookie banner covers it on a short phone. */}
               <motion.div
                 key={step}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
                 <WizardStepAnalyticsProvider filingId={filingId} step={step} preselected={preselected}>
@@ -283,7 +294,7 @@ export function WizardActions({
       ref={barRef}
       style={{ bottom: 'var(--lf-cookie-h, 0px)' }}
       className={cn(
-        'sticky z-20 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border',
+        'sticky z-30 -mx-1 px-1 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-surface via-surface to-surface/80 backdrop-blur-sm border-t border-border',
         fullWidth ? 'mt-4' : 'mt-10',
       )}
     >

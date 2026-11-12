@@ -60,7 +60,14 @@ const ICONS: Record<string, LucideIcon> = {
   BellRing,
 };
 
-export function Step11AddOns({ filing }: { filing: WizardFiling }) {
+export function Step11AddOns({
+  filing,
+  lpShort = false,
+}: {
+  filing: WizardFiling;
+  /** Landing draft: one tap to payment, no paid add-on selected up front. */
+  lpShort?: boolean;
+}) {
   const t = useTranslations('wizard');
   const tCommon = useTranslations('common');
   const tPricing = useTranslations('pricing');
@@ -137,7 +144,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
   const upgradeSavingsCents = upgradedCost
     ? currentCost.totalCents - upgradedCost.totalCents
     : 0;
-  const showUpgradeHint = upgradeTarget && upgradeSavingsCents > 0;
+  const showUpgradeHint = !lpShort && upgradeTarget && upgradeSavingsCents > 0;
 
   const onUpgrade = () => {
     if (!upgradeTarget) return;
@@ -416,6 +423,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
           {tCommon('back')}
         </Link>
         <div className="flex items-center gap-3">
+          {!lpShort && (
           <button
             type="button"
             onClick={onSkip}
@@ -424,6 +432,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
           >
             {t('addOnsSkipToPayment')}
           </button>
+          )}
           <button
             type="button"
             onClick={onContinue}
@@ -434,7 +443,7 @@ export function Step11AddOns({ filing }: { filing: WizardFiling }) {
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
             )}
           >
-            {pending ? tCommon('saving') : t('reviewPayment')}
+            {pending ? tCommon('saving') : lpShort ? t('continueToPayment') : t('reviewPayment')}
             {!pending && <span className="text-lg leading-none">→</span>}
           </button>
         </div>

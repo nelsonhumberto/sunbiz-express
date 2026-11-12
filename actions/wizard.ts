@@ -33,6 +33,7 @@ import { InactiveFormationStateError } from '@/lib/filing-totals';
 import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
 import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
+import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActionTimeout } from '@/lib/action-timeout';
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
 import { getTranslations } from 'next-intl/server';
@@ -173,6 +174,7 @@ async function persistGuestEmail(
   contactEmail: string | undefined,
   required: boolean,
   filingLocale?: string | null,
+  deferAccount = false,
 ): Promise<{ ok: true } | { ok: false; error: string; needsSignIn?: boolean }> {
   if (actor.kind !== 'guest') return { ok: true };
   const email = contactEmail?.trim() ?? '';
@@ -186,6 +188,9 @@ async function persistGuestEmail(
   }
   const saved = await saveGuestEmail(filingId, email);
   if (saved.needsSignIn) {
+    // Landing drafts store the address and keep going. Account creation
+    // waits until after payment. /start still stops for an existing account.
+    if (deferAccount) return { ok: true };
     const t = await wizardCopy(filingLocale);
     return { ok: false as const, needsSignIn: true, error: saved.error ?? t('guestEmailHasAccount') };
   }
@@ -299,7 +304,19 @@ async function saveStep2Now(input: z.infer<typeof Step2Schema>) {
   }
   const data = parsed.data;
   const { filing, actor } = await getFilingForUser(data.filingId);
-  const emailSaved = await persistGuestEmail(actor, filing.id, data.contactEmail, true, filing.locale);
+  const lpShort = usesLpShortWizard({
+    optionalDetails: filing.optionalDetails,
+    entryPath: filing.entryPath,
+    entityType: filing.entityType,
+  });
+  const emailSaved = await persistGuestEmail(
+    actor,
+    filing.id,
+    data.contactEmail,
+    true,
+    filing.locale,
+    lpShort,
+  );
   if (!emailSaved.ok) return emailSaved;
   const blockedState = inactiveStateResult(filing.state, filing.locale);
   if (blockedState) return blockedState;
@@ -334,7 +351,7 @@ async function saveStep2Now(input: z.infer<typeof Step2Schema>) {
       businessName,
       nameAvailable: data.available ?? null,
       nameCheckedAt: new Date(),
-      currentStep: Math.max(filing.currentStep, 3),
+      currentStep: Math.max(filing.currentStep, lpShort ? 4 : 3),
       completedSteps: markStepComplete(filing.completedSteps, 2),
     },
   });
@@ -737,10 +754,15 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
     actor.email,
   );
 
+  const lpShort = usesLpShortWizard({
+    optionalDetails: filing.optionalDetails,
+    entryPath: filing.entryPath,
+    entityType: filing.entityType,
+  });
   await prisma.filing.update({
     where: { id: filing.id },
     data: {
-      currentStep: Math.max(filing.currentStep, 8),
+      currentStep: Math.max(filing.currentStep, lpShort ? 9 : 8),
       completedSteps: markStepComplete(filing.completedSteps, 7),
     },
   });

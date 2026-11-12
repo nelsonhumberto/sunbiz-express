@@ -13,6 +13,7 @@ import {
   nameCheckClientError,
   nameCheckDelayMs,
   nameCheckBlocksContinue,
+  step2CanContinue,
   nameCheckErrorEvent,
   nameCheckErrorResponse,
   nameCheckFailureNavigation,
@@ -282,6 +283,24 @@ describe('name check failures', () => {
   });
 });
 
+describe('step 2 continue on a name-check failure', () => {
+  it('stays enabled on timeout, error, and similar names, and blocks only an exact conflict', () => {
+    const base = { name: 'Sol Norte LLC', hardBlocked: false };
+    expect(step2CanContinue({ ...base, status: null })).toBe(true);
+    expect(step2CanContinue({ ...base, status: 'error' })).toBe(true);
+    expect(step2CanContinue({ ...base, status: 'timeout' })).toBe(true);
+    expect(step2CanContinue({ ...base, status: 'similar_conflict' })).toBe(true);
+    expect(step2CanContinue({ ...base, status: 'available' })).toBe(true);
+    expect(step2CanContinue({ ...base, status: 'exact_conflict' })).toBe(false);
+    expect(step2CanContinue({ name: 'A LLC', hardBlocked: false, status: null })).toBe(false);
+    expect(step2CanContinue({ ...base, hardBlocked: true, status: null })).toBe(false);
+    const step = readFileSync('components/wizard/steps/Step2Name.tsx', 'utf8');
+    expect(step).toContain('step2CanContinue');
+    expect(step).toContain('lpShort ? 4 : 3');
+    expect(step).toContain('!lpShort && result && !result.available');
+  });
+});
+
 describe('name-check route errors', () => {
   beforeEach(() => {
     vi.mocked(rateLimit).mockReset();
@@ -436,7 +455,7 @@ describe('name check copy and wiring', () => {
     expect(widget).not.toContain('location.assign');
     expect(step).not.toContain('router.back');
     expect(step).not.toContain('location.assign');
-    expect(step).toContain('const canContinue = !nameTooShort && !isHardBlocked && !nameTaken');
+    expect(step).toContain('step2CanContinue');
     expect(step).not.toContain('checkFailed');
     expect(widget).toContain('A new lookup replaces the previous failure note.');
     expect(widget).toContain('setCheckFailed(false)');

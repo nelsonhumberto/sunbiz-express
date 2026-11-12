@@ -5,6 +5,7 @@ import {
   authorizeGuestFormationPayment,
   checkoutEmailFromDetails,
   filingCheckoutEmailDetails,
+  filingContactEmail,
   filingNeedsSetPasswordPrompt,
   paidFilingIdsToClaim,
   paymentConfirmationRecipient,
@@ -19,6 +20,7 @@ import {
   withoutGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
 import { hrefForLocale } from '@/lib/app-href';
+import { resolveSunbizCoverEmail } from '@/lib/sunbiz-cover';
 import en from '../../messages/en.json';
 import es from '../../messages/es.json';
 
@@ -143,6 +145,32 @@ describe('guest PaymentIntent authorization', () => {
     expect(checkoutEmailFromDetails(JSON.stringify({ checkoutEmail: 'buyer@example.com' }))).toBe(
       'buyer@example.com',
     );
+  });
+
+  it('uses the typed email for review and Sunbiz correspondence, never the guest placeholder', () => {
+    const details = JSON.stringify({
+      checkoutEmail: 'buyer@example.com',
+      typedGuestEmail: 'buyer@example.com',
+    });
+    expect(
+      filingContactEmail({
+        accountEmail: 'guest.abc@guest.launchforma.invalid',
+        correspondenceEmail: 'guest.abc@guest.launchforma.invalid',
+        optionalDetails: details,
+      }),
+    ).toBe('buyer@example.com');
+    expect(
+      resolveSunbizCoverEmail({
+        useOurRegisteredAgent: false,
+        customerEmail: 'guest.abc@guest.launchforma.invalid',
+      }),
+    ).toBe('notice@launchforma.com');
+    expect(
+      resolveSunbizCoverEmail({
+        useOurRegisteredAgent: false,
+        customerEmail: 'buyer@example.com',
+      }),
+    ).toBe('buyer@example.com');
   });
 
   it('attaches a paid filing only after sign-in with the typed address', () => {

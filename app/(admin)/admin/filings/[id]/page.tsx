@@ -43,6 +43,7 @@ import {
   filingUsesOurRa,
   resolveSunbizCoverEmail,
 } from '@/lib/sunbiz-cover';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import { filingIncludesEin } from '@/lib/ein';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 
@@ -140,7 +141,11 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   const useOurRa = filingUsesOurRa(filing.registeredAgent);
   const coverEmail = resolveSunbizCoverEmail({
     useOurRegisteredAgent: useOurRa,
-    customerEmail: correspondence?.email || filing.user.email,
+    customerEmail: filingContactEmail({
+      accountEmail: filing.user.email,
+      correspondenceEmail: correspondence?.email,
+      optionalDetails: filing.optionalDetails,
+    }),
   });
   const sunbizCover = filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE');
   const sunbizCoverReady = Boolean(sunbizCover?.base64);

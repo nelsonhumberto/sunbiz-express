@@ -8,6 +8,7 @@
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { safeParseJson } from '@/lib/utils';
+import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
 
 export const NOTICE_EMAIL = 'notice@launchforma.com';
 
@@ -44,7 +45,7 @@ export function resolveSunbizCoverEmail(args: {
 }): string {
   if (args.useOurRegisteredAgent) return NOTICE_EMAIL;
   const email = (args.customerEmail || '').trim();
-  if (email && email.includes('@')) return email;
+  if (email && email.includes('@') && !isPlaceholderGuestEmail(email)) return email;
   return NOTICE_EMAIL;
 }
 

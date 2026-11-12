@@ -27,6 +27,7 @@ import {
   generatePin,
   safeParseJson,
 } from '@/lib/utils';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import {
   annualComplianceFor,
   defaultProcessingOption,
@@ -277,7 +278,12 @@ export async function submitFilingToState(
   const coverLetter = generateCoverLetter({
     filing: filingForDoc as Parameters<typeof generateCoverLetter>[0]['filing'],
     contactName: filing.incorporatorSignature ?? actorEmail ?? 'Authorized Person',
-    contactEmail: correspondence?.email ?? actorEmail ?? '',
+    contactEmail:
+      filingContactEmail({
+        accountEmail: actorEmail,
+        correspondenceEmail: correspondence?.email,
+        optionalDetails: filing.optionalDetails,
+      }) ?? '',
     contactPhone: filing.contactPhone ?? correspondence?.phone ?? null,
     totalFeeCents: filing.stateFeeCents, // government remittance only
     certificateOfStatus: wantsCertStatus,

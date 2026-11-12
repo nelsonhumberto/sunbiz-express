@@ -27,6 +27,7 @@ import type { WizardFiling } from '../types';
 import type { AddressValue } from '../AddressForm';
 import { parseOptionalPhone } from '@/lib/phone';
 import { memberTitleLabel, reviewMemberText } from '@/lib/member-title';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import { serviceTierDisplayName } from '@/lib/tier-display';
 
 type ManagementType = 'member-managed' | 'manager-managed';
@@ -212,7 +213,16 @@ export function Step10Review({
       </ReviewSection>
 
       <ReviewSection title={t('correspondenceEmail')} stepHref={null} editLabel={tCommon('edit')}>
-        <Row label={t('emailAccountLabel')} value={correspondence?.email ?? '-'} mono />
+        <Row
+          label={t('emailAccountLabel')}
+          value={
+            filingContactEmail({
+              correspondenceEmail: correspondence?.email,
+              optionalDetails: filing.optionalDetails,
+            }) ?? '-'
+          }
+          mono
+        />
         <div className="space-y-1.5 pt-2">
           <Label htmlFor="contactPhone">
             {t('phone')}{' '}

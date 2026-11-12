@@ -100,6 +100,47 @@ export function checkoutEmailFromDetails(raw: string | null | undefined): string
   }
 }
 
+function usableContactEmail(email: string | null | undefined): string | null {
+  const normalized = normalizeEmail(email ?? '');
+  if (!isDeliverableEmail(normalized) || isPlaceholderGuestEmail(normalized)) return null;
+  return normalized;
+}
+
+/**
+ * Address shown on review and sent as filing correspondence.
+ * A guest.launchforma.invalid mailbox never wins over the typed checkout email.
+ */
+export function filingContactEmail(input: {
+  accountEmail?: string | null;
+  correspondenceEmail?: string | null;
+  optionalDetails?: string | null;
+}): string | null {
+  let checkout: string | null = null;
+  let typed: string | null = null;
+  let pending: string | null = null;
+  if (input.optionalDetails) {
+    try {
+      const parsed = JSON.parse(input.optionalDetails) as {
+        checkoutEmail?: unknown;
+        typedGuestEmail?: unknown;
+        pendingAccountEmail?: unknown;
+      };
+      checkout = typeof parsed.checkoutEmail === 'string' ? parsed.checkoutEmail : null;
+      typed = typeof parsed.typedGuestEmail === 'string' ? parsed.typedGuestEmail : null;
+      pending = typeof parsed.pendingAccountEmail === 'string' ? parsed.pendingAccountEmail : null;
+    } catch {
+      checkout = null;
+    }
+  }
+  return (
+    usableContactEmail(checkout) ??
+    usableContactEmail(typed) ??
+    usableContactEmail(pending) ??
+    usableContactEmail(input.correspondenceEmail) ??
+    usableContactEmail(input.accountEmail)
+  );
+}
+
 /**
  * Paid filings to move after the owner signs in with the typed address.
  * Drafts stay on the existing draft rules. Payment itself does not call this.

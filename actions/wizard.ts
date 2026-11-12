@@ -34,6 +34,7 @@ import { safeParseJson } from '@/lib/utils';
 import { parseOptionalPhone } from '@/lib/phone';
 import { canonicalFiledName, NAME_TOO_SHORT_ERROR, nameHasMinimumSubstance } from '@/lib/name-check';
 import { usesLpShortWizard } from '@/lib/lp-wizard-path';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActionTimeout } from '@/lib/action-timeout';
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
 import { getTranslations } from 'next-intl/server';
@@ -72,14 +73,33 @@ async function ensureCorrespondenceFromSession(
   filingId: string,
   existing: string | null,
   email: string | null | undefined,
+  optionalDetails?: string | null,
 ) {
-  if (existing) return;
-  const e = (email ?? '').trim();
-  if (!e) return;
+  const current = safeParseJson<{ email?: string; phone?: string; source?: string } | null>(
+    existing,
+    null,
+  );
+  const next = filingContactEmail({
+    accountEmail: email,
+    correspondenceEmail: current?.email,
+    optionalDetails,
+  });
+  if (!next) return;
+  if (
+    current?.email &&
+    !isPlaceholderGuestEmail(current.email) &&
+    current.email.trim().toLowerCase() === next
+  ) {
+    return;
+  }
   await prisma.filing.update({
     where: { id: filingId },
     data: {
-      correspondenceContact: JSON.stringify({ email: e, source: 'account' }),
+      correspondenceContact: JSON.stringify({
+        ...(current ?? {}),
+        email: next,
+        source: 'account',
+      }),
     },
   });
 }
@@ -752,6 +772,7 @@ export async function saveStep7(input: z.infer<typeof Step7Schema>) {
     filing.id,
     filing.correspondenceContact,
     actor.email,
+    filing.optionalDetails,
   );
 
   const lpShort = usesLpShortWizard({
@@ -1056,6 +1077,7 @@ export async function saveStep10(input: z.infer<typeof Step10Schema>) {
     filing.id,
     filing.correspondenceContact,
     actor.email,
+    filing.optionalDetails,
   );
 
   const fresh = await prisma.filing.findUnique({

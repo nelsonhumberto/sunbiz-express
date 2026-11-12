@@ -62,6 +62,77 @@ async function redirectHref(run: () => Promise<unknown>): Promise<string | null>
   return null;
 }
 
+describe('openGuestDraft with an existing guest', () => {
+  beforeEach(() => {
+    auth.mockReset();
+    auth.mockResolvedValue(null);
+    headerGet.mockReset();
+    headerGet.mockImplementation(() => null);
+    cookieGet.mockReset();
+    cookieSet.mockReset();
+    userCreate.mockReset();
+    filingCreate.mockReset();
+    filingFindFirst.mockReset();
+    filingUpdate.mockReset();
+    filingUpdate.mockResolvedValue({});
+    userUpdate.mockReset();
+    userUpdate.mockResolvedValue({});
+    userFindUnique.mockReset();
+    cookieGet.mockImplementation((name: string) =>
+      name === 'LF_GUEST_TOKEN' ? { value: 'tok_1' } : undefined,
+    );
+    userFindUnique.mockImplementation(async (args: { where: { guestToken?: string } }) => {
+      if (args.where.guestToken === 'tok_1') {
+        return {
+          id: 'guest_1',
+          email: 'guest.abc@guest.launchforma.invalid',
+          firstName: '',
+          lastName: '',
+          accountStatus: 'GUEST',
+          isTester: false,
+        };
+      }
+      return null;
+    });
+    filingFindFirst.mockResolvedValue({
+      id: 'filing_en',
+      currentStep: 4,
+      businessName: 'Sol Norte LLC',
+      locale: 'en',
+      userId: 'guest_1',
+      optionalDetails: JSON.stringify({ floridaLlcPreselected: true }),
+    });
+  });
+
+  it('reopens the open landing draft in Spanish instead of returning an error', async () => {
+    const spanish = await openGuestDraft({
+      state: 'FL',
+      entityType: 'LLC',
+      tier: 'BASIC',
+      businessName: 'Otro Nombre',
+      browserPath: '/es/lp/llc-florida',
+      returnRedirect: true,
+    });
+    expect(spanish).toEqual({ redirectTo: '/es/wizard/filing_en/4' });
+    expect(filingCreate).not.toHaveBeenCalled();
+  });
+
+  it('still asks /start which name to keep', async () => {
+    const start = await openGuestDraft({
+      state: 'FL',
+      entityType: 'LLC',
+      businessName: 'Otro Nombre',
+      browserPath: '/start',
+      returnRedirect: true,
+    });
+    expect(start).toMatchObject({
+      choice: { draftId: 'filing_en', proposedName: 'Otro Nombre' },
+    });
+    expect(start.redirectTo).toBeUndefined();
+    expect(filingCreate).not.toHaveBeenCalled();
+  });
+});
+
 describe('openGuestDraft navigation', () => {
   beforeEach(() => {
     auth.mockReset();

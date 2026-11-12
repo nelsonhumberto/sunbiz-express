@@ -41,6 +41,7 @@ import {
 import { isDeliverableEmail } from '@/lib/email-address';
 import {
   checkoutEmailFromDetails,
+  filingContactEmail,
   maySignInClaimedGuest,
   paymentConfirmationRecipient,
   planGuestClaimFollowUp,
@@ -48,6 +49,7 @@ import {
   submittedFilingHref,
   withGuestSetPasswordPending,
 } from '@/lib/guest-checkout';
+import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { claimPaidGuestAccount, type GuestClaimResult } from '@/lib/guest-checkout-claim';
 import type { SiteLocale } from '@/lib/pick-locale';
 import { notifyAdminOfPaidOrder } from '@/lib/paid-order-alert';
@@ -220,11 +222,29 @@ export async function processCheckout(input: {
     if (redirectTo) return { ok: true, redirectTo };
     return { error: 'Please sign in.' };
   }
-  // A guest pays only after the PaymentIntent route stored a real email on
-  // that guest. Placeholder rows still stop here. We never look a payer up
-  // by the typed email and sign into that other account.
+  // A guest pays only after a real email is stored on that guest, unless this
+  // is a landing draft whose typed address already belongs to someone else.
+  // That other account is not loaded and nobody is signed in.
   if (!checkoutAllowsPayment(actor.kind, actor.email)) {
-    return { error: CHECKOUT_ACCOUNT_REQUIRED };
+    const peek = await prisma.filing.findUnique({
+      where: { id: input.filingId },
+      select: {
+        userId: true,
+        optionalDetails: true,
+        entryPath: true,
+        entityType: true,
+      },
+    });
+    const typed = filingContactEmail({ optionalDetails: peek?.optionalDetails });
+    const landingPay =
+      peek?.userId === actor.id &&
+      Boolean(typed) &&
+      usesLpShortWizard({
+        optionalDetails: peek?.optionalDetails,
+        entryPath: peek?.entryPath,
+        entityType: peek?.entityType,
+      });
+    if (!landingPay) return { error: CHECKOUT_ACCOUNT_REQUIRED };
   }
 
   const filing = await prisma.filing.findUnique({

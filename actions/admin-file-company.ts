@@ -9,6 +9,7 @@ import {
   processSunbizCoverPdf,
   resolveSunbizCoverEmail,
 } from '@/lib/sunbiz-cover';
+import { filingContactEmail } from '@/lib/guest-checkout';
 
 const MAX_COVER_BYTES = 8 * 1024 * 1024;
 
@@ -61,7 +62,11 @@ export async function uploadSunbizCoverPage(args: {
   const useOurRa = filingUsesOurRa(filing.registeredAgent);
   const coverEmail = resolveSunbizCoverEmail({
     useOurRegisteredAgent: useOurRa,
-    customerEmail: correspondence?.email || filing.user?.email,
+    customerEmail: filingContactEmail({
+      accountEmail: filing.user?.email,
+      correspondenceEmail: correspondence?.email,
+      optionalDetails: filing.optionalDetails,
+    }),
   });
 
   const raw = Buffer.from(args.fileBase64, 'base64');

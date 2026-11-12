@@ -1256,6 +1256,7 @@
     "totalPaid": "Total paid",
     "viewDetails": "View filing details",
     "goDashboard": "Go to dashboard",
+    "signInToSeeFiling": "Sign in to see your filing",
     "confirmingTitle": "We're confirming your order",
     "confirmingBody": "We are confirming your order. Payment can take a moment to show up. Open your dashboard to see the latest status.",
     "confirmedTitle": "Your payment is confirmed",

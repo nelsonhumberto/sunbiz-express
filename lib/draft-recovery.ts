@@ -8,6 +8,7 @@ import { prisma } from './db';
 import { renderTemplate, sendEmail, type NotificationType } from './email';
 import { isDeliverableEmail, isQaOrE2eRecipient, isReservedMailbox, normalizeEmail } from './email-address';
 import { readGuestAsideEmails } from './guest-identity';
+import { filingContactEmail } from './guest-checkout';
 import { isResumeDripEnabled, resumeEmailReplyTo } from './feature-flags';
 import { hrefForLocale } from './app-href';
 import { isSpanishPublicPath } from './locale-paths';
@@ -854,7 +855,10 @@ export async function runRaRenewalReminders(now: number) {
 
     await sendEmail({
       type: bucket,
-      to: svc.filing.user.email,
+      to: filingContactEmail({
+        accountEmail: svc.filing.user.email,
+        optionalDetails: svc.filing.optionalDetails,
+      }) ?? svc.filing.user.email,
       filingId: svc.filingId,
       userId: svc.filing.userId,
       context: {

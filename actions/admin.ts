@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { filingContactEmail } from '@/lib/guest-checkout';
 import {
   generateArticlesOfOrganization,
   generateArticlesOfIncorporation,
@@ -154,7 +155,10 @@ export async function advanceFilingStatus(
   if (newStatus === 'APPROVED' && filing.user) {
     await sendEmail({
       type: 'FILING_APPROVED',
-      to: filing.user.email,
+      to: filingContactEmail({
+        accountEmail: filing.user.email,
+        optionalDetails: filing.optionalDetails,
+      }) ?? filing.user.email,
       userId: filing.userId,
       filingId: filing.id,
       context: {
@@ -237,7 +241,10 @@ export async function uploadIssuedDocument(args: {
   if (filing.user) {
     await sendEmail({
       type: 'FILING_APPROVED',
-      to: filing.user.email,
+      to: filingContactEmail({
+        accountEmail: filing.user.email,
+        optionalDetails: filing.optionalDetails,
+      }) ?? filing.user.email,
       userId: filing.userId,
       filingId: filing.id,
       context: {
@@ -272,7 +279,10 @@ export async function rejectFiling(filingId: string, reason: string) {
   if (filing.user) {
     await sendEmail({
       type: 'FILING_REJECTED',
-      to: filing.user.email,
+      to: filingContactEmail({
+        accountEmail: filing.user.email,
+        optionalDetails: filing.optionalDetails,
+      }) ?? filing.user.email,
       userId: filing.userId,
       filingId: filing.id,
       context: {

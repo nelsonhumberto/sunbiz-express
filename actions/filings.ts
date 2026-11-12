@@ -528,9 +528,14 @@ export async function submitFilingToState(
     },
   });
 
+  const submittedTo = filingContactEmail({
+    accountEmail: actorEmail,
+    correspondenceEmail: safeParseJson<{ email?: string } | null>(filing.correspondenceContact, null)?.email,
+    optionalDetails: filing.optionalDetails,
+  });
   await sendEmail({
     type: 'FILING_SUBMITTED',
-    to: actorEmail ?? '',
+    to: submittedTo ?? '',
     userId: actorId,
     filingId: filing.id,
     context: {

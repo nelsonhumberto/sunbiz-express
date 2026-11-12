@@ -19,6 +19,7 @@ import {
   type GuestEmailOwner,
 } from '@/lib/guest-identity';
 import { guestResumeUrl, resolveDripLocale, resumeDripMailbox, signInResumeUrl } from '@/lib/draft-recovery';
+import { paidFilingIdsToClaim } from '@/lib/guest-checkout';
 import { hrefForLocale } from '@/lib/app-href';
 import { createLoginLink, LOGIN_LINK_TTL_DAYS } from '@/lib/login-link';
 import { localeFromPathOrFiling } from '@/lib/request-locale';
@@ -271,13 +272,14 @@ export async function attachGuestDraftsToAccount(
   });
   if (!account) return { movedIds: [], resumeHref: null };
 
-  const drafts = await prisma.filing.findMany({
-    where: { userId: guest.id, status: 'DRAFT' },
+  const owned = await prisma.filing.findMany({
+    where: { userId: guest.id },
     orderBy: { updatedAt: 'desc' },
-    select: { id: true, currentStep: true, optionalDetails: true },
+    select: { id: true, status: true, currentStep: true, optionalDetails: true },
   });
-  const typedEmails = drafts.flatMap((draft) => readGuestAsideEmails(draft.optionalDetails));
-  const latest = drafts[0] ?? null;
+  const drafts = owned.filter((row) => row.status === 'DRAFT');
+  const typedEmails = owned.flatMap((row) => readGuestAsideEmails(row.optionalDetails));
+  const latest = drafts[0] ?? owned[0] ?? null;
   const mismatch = planMismatchedGuestSignIn({
     guestEmail: guest.email,
     accountEmail: account.email,
@@ -303,6 +305,10 @@ export async function attachGuestDraftsToAccount(
     };
   }
 
+  const paidIds = paidFilingIdsToClaim({
+    accountEmail: account.email,
+    filings: owned,
+  });
   if (plan.filingIds.length > 0) {
     await prisma.filing.updateMany({
       where: { id: { in: plan.filingIds }, userId: guest.id, status: 'DRAFT' },
@@ -318,6 +324,12 @@ export async function attachGuestDraftsToAccount(
       });
     }
   }
+  if (paidIds.length > 0) {
+    await prisma.filing.updateMany({
+      where: { id: { in: paidIds }, userId: guest.id, status: { not: 'DRAFT' } },
+      data: { userId: account.id },
+    });
+  }
   const remaining = await prisma.filing.count({ where: { userId: guest.id } });
   if (remaining === 0 && plan.retireGuestUserId) {
     await prisma.user.update({
@@ -327,7 +339,7 @@ export async function attachGuestDraftsToAccount(
   }
   clearGuestCookie();
   return {
-    movedIds: plan.filingIds,
+    movedIds: [...plan.filingIds, ...paidIds],
     resumeHref: latest ? wizardHrefForDraft(latest.id, latest.currentStep) : null,
   };
 }

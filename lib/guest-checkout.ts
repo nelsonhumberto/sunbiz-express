@@ -8,7 +8,7 @@
  */
 
 import { isDeliverableEmail, normalizeEmail } from './email-address';
-import { isPlaceholderGuestEmail } from './guest-identity';
+import { isPlaceholderGuestEmail, readGuestAsideEmails } from './guest-identity';
 
 /** JSON `code` when the typed email belongs to a non-guest account. */
 export const GUEST_CHECKOUT_EXISTING_ACCOUNT_CODE = 'existing_account';
@@ -22,7 +22,7 @@ export interface GuestCheckoutEmailOwner {
 }
 
 export type GuestPaymentIntentDecision =
-  | { ok: true; email: string }
+  | { ok: true; email: string; emailHeld?: boolean }
   | {
       ok: false;
       reason:
@@ -45,6 +45,11 @@ export function authorizeGuestFormationPayment(input: {
   alreadyPaid: boolean;
   email: string;
   emailOwner: GuestCheckoutEmailOwner | null;
+  /**
+   * Landing drafts may pay with an address that already belongs to someone
+   * else. The filing stays on this guest. The other account is not read.
+   */
+  allowHeldEmail?: boolean;
 }): GuestPaymentIntentDecision {
   if (!input.guestUserId || !input.filingUserId || input.guestUserId !== input.filingUserId) {
     return { ok: false, reason: 'not_owner' };
@@ -58,6 +63,9 @@ export function authorizeGuestFormationPayment(input: {
   }
 
   if (input.emailOwner && input.emailOwner.id !== input.guestUserId) {
+    if (input.allowHeldEmail) {
+      return { ok: true, email, emailHeld: true };
+    }
     if (input.emailOwner.accountStatus !== 'GUEST') {
       return { ok: false, reason: 'existing_account' };
     }
@@ -65,6 +73,47 @@ export function authorizeGuestFormationPayment(input: {
   }
 
   return { ok: true, email };
+}
+
+/**
+ * Receipt and confirmation address. A real mailbox on the paying user wins.
+ * A placeholder guest falls through to the address stored on the filing.
+ */
+export function paymentConfirmationRecipient(input: {
+  accountEmail?: string | null;
+  checkoutEmail?: string | null;
+}): string | null {
+  const account = normalizeEmail(input.accountEmail ?? '');
+  if (isDeliverableEmail(account) && !isPlaceholderGuestEmail(account)) return account;
+  const checkout = normalizeEmail(input.checkoutEmail ?? '');
+  if (isDeliverableEmail(checkout) && !isPlaceholderGuestEmail(checkout)) return checkout;
+  return null;
+}
+
+export function checkoutEmailFromDetails(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { checkoutEmail?: unknown };
+    return typeof parsed?.checkoutEmail === 'string' ? parsed.checkoutEmail : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Paid filings to move after the owner signs in with the typed address.
+ * Drafts stay on the existing draft rules. Payment itself does not call this.
+ */
+export function paidFilingIdsToClaim(input: {
+  accountEmail: string;
+  filings: Array<{ id: string; status: string; optionalDetails: string | null }>;
+}): string[] {
+  const account = normalizeEmail(input.accountEmail ?? '');
+  if (!isDeliverableEmail(account) || isPlaceholderGuestEmail(account)) return [];
+  return input.filings
+    .filter((filing) => filing.status !== 'DRAFT')
+    .filter((filing) => readGuestAsideEmails(filing.optionalDetails).includes(account))
+    .map((filing) => filing.id);
 }
 
 /** Filing JSON written before the PaymentIntent so receipts have the real address. */

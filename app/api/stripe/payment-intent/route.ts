@@ -13,6 +13,7 @@ import {
   authorizeGuestFormationPayment,
   filingCheckoutEmailDetails,
 } from '@/lib/guest-checkout';
+import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { safeParseJson } from '@/lib/utils';
 import {
   ADD_ON_BY_SLUG,
@@ -286,6 +287,8 @@ async function createGuestFormationPaymentIntent(
       userId: true,
       status: true,
       state: true,
+      entityType: true,
+      entryPath: true,
       optionalDetails: true,
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
     },
@@ -300,6 +303,14 @@ async function createGuestFormationPaymentIntent(
         })
       : null;
 
+  const lpShort = filing
+    ? usesLpShortWizard({
+        optionalDetails: filing.optionalDetails,
+        entryPath: filing.entryPath,
+        entityType: filing.entityType,
+      })
+    : false;
+
   const decision = authorizeGuestFormationPayment({
     guestUserId: guest.id,
     filingUserId: filing?.userId ?? null,
@@ -307,6 +318,7 @@ async function createGuestFormationPaymentIntent(
     alreadyPaid: (filing?.payments.length ?? 0) > 0,
     email: body.email ?? '',
     emailOwner,
+    allowHeldEmail: lpShort,
   });
 
   if (!decision.ok) {
@@ -335,7 +347,9 @@ async function createGuestFormationPaymentIntent(
     return paymentError('state_unavailable', 400);
   }
 
-  if (normalizeEmail(guest.email) !== decision.email) {
+  // A held address stays on the other user. This guest keeps the placeholder
+  // mailbox, and the filing is not moved.
+  if (decision.emailHeld !== true && normalizeEmail(guest.email) !== decision.email) {
     try {
       await prisma.user.update({
         where: { id: guest.id },
@@ -343,18 +357,20 @@ async function createGuestFormationPaymentIntent(
       });
     } catch (err) {
       if (!isUniqueConflict(err)) throw err;
-      const winner = await prisma.user.findUnique({
-        where: { email: decision.email },
-        select: { id: true, accountStatus: true },
-      });
-      if (winner && winner.id !== guest.id && winner.accountStatus !== 'GUEST') {
-        return paymentError('existing_account', 403);
+      if (!lpShort) {
+        const winner = await prisma.user.findUnique({
+          where: { email: decision.email },
+          select: { id: true, accountStatus: true },
+        });
+        if (winner && winner.id !== guest.id && winner.accountStatus !== 'GUEST') {
+          return paymentError('existing_account', 403);
+        }
+        return paymentError('email_unavailable', 409);
       }
-      return paymentError('email_unavailable', 409);
     }
   }
 
-  await rememberCheckoutEmail(filing!.id, filing!.optionalDetails, decision.email, false);
+  await rememberCheckoutEmail(filing.id, filing.optionalDetails, decision.email, false);
 
   const priced = await priceOwnedCharge({
     userId: guest.id,

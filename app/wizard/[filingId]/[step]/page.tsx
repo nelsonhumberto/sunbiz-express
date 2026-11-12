@@ -309,6 +309,7 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
             guestEmail={realGuestEmail ?? ''}
             pendingAccountEmail={pendingAccountEmail || undefined}
             serverTotalCents={serverTotalCents}
+            lpShort={lpShort}
           />
         )}
       </WizardShell>

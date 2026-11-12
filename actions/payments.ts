@@ -33,9 +33,16 @@ import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
-import { CHECKOUT_ACCOUNT_REQUIRED, checkoutAllowsPayment } from '@/lib/guest-identity';
 import {
+  CHECKOUT_ACCOUNT_REQUIRED,
+  checkoutAllowsPayment,
+  isPlaceholderGuestEmail,
+} from '@/lib/guest-identity';
+import { isDeliverableEmail } from '@/lib/email-address';
+import {
+  checkoutEmailFromDetails,
   maySignInClaimedGuest,
+  paymentConfirmationRecipient,
   planGuestClaimFollowUp,
   planRecoveredGuestClaim,
   submittedFilingHref,
@@ -467,9 +474,14 @@ export async function processCheckout(input: {
     ...existingOptional,
     autoRenewRa,
   };
-  // Set before submit. The wizard re-render after this action redirects, and
-  // it must already see that a guest should stay on the success page.
-  if (actor.kind === 'guest') {
+  // A guest who already owns the mailbox gets the set-password prompt.
+  // A held address stays on the other account, so this row is not promoted
+  // and nobody is signed in.
+  const guestOwnsMailbox =
+    actor.kind === 'guest' &&
+    isDeliverableEmail(actor.email) &&
+    !isPlaceholderGuestEmail(actor.email);
+  if (guestOwnsMailbox) {
     Object.assign(nextOptional, withGuestSetPasswordPending(nextOptional));
   }
   if (autoRenewRa) {
@@ -506,17 +518,25 @@ export async function processCheckout(input: {
   // path, the filing locale remains. English stays unprefixed.
   const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
 
-  await sendEmail({
-    type: 'PAYMENT_CONFIRMATION',
-    to: actor.email ?? '',
-    userId: actor.id,
-    filingId: filing.id,
-    context: {
-      businessName: filing.businessName ?? '',
-      totalCents: expectedTotal,
-      locale: checkoutLocale,
-    },
+  const confirmTo = paymentConfirmationRecipient({
+    accountEmail: actor.email,
+    checkoutEmail:
+      (typeof nextOptional.checkoutEmail === 'string' ? nextOptional.checkoutEmail : null) ??
+      checkoutEmailFromDetails(filing.optionalDetails),
   });
+  if (confirmTo) {
+    await sendEmail({
+      type: 'PAYMENT_CONFIRMATION',
+      to: confirmTo,
+      userId: actor.id,
+      filingId: filing.id,
+      context: {
+        businessName: filing.businessName ?? '',
+        totalCents: expectedTotal,
+        locale: checkoutLocale,
+      },
+    });
+  }
 
   await notifyAdminOfPaidOrder(filing.id);
 
@@ -531,7 +551,7 @@ export async function processCheckout(input: {
     checkoutLocale,
   );
   let postCheckoutRedirect = successPath;
-  if (actor.kind === 'guest') {
+  if (guestOwnsMailbox) {
     try {
       const claim = await claimPaidGuestAccount({
         userId: actor.id,

@@ -8,7 +8,7 @@ import {
 } from '@/lib/pricing';
 import { pageTitle, withBrand } from '@/lib/seo-title';
 import { formatCurrency } from '@/lib/utils';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { CheckCircle2, X } from 'lucide-react';
 
 const TITLE = 'File Your Florida Annual Report Online | Due May 1';
@@ -24,11 +24,11 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: pageTitle(t('metaTitle')),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('metaTitle'),
           description: t('ogDescription'),
           type: 'website',
-        },
+        }),
       },
       locale,
     );
@@ -38,11 +38,11 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: TITLE,
       description: DESCRIPTION,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: withBrand(TITLE),
         description: DESCRIPTION,
         type: 'website',
-      },
+      }),
     },
     locale,
   );

@@ -91,19 +91,21 @@ export const SOCIAL_IMAGE = {
   alt: 'LaunchForma',
 } as const;
 
+/** Every public openGraph block must use this so a page cannot drop the share image. */
+export function socialOpenGraph<T extends object>(og?: T): T & { images: [typeof SOCIAL_IMAGE] } {
+  return { ...(og ?? ({} as T)), images: [SOCIAL_IMAGE] };
+}
+
 export function attachSocialImages(meta: Metadata): Metadata {
   const og = meta.openGraph && typeof meta.openGraph === 'object' ? meta.openGraph : undefined;
   const tw = meta.twitter && typeof meta.twitter === 'object' ? meta.twitter : undefined;
   return {
     ...meta,
-    openGraph: {
-      ...(og ?? {}),
-      images: og && 'images' in og && og.images ? og.images : [SOCIAL_IMAGE],
-    },
+    openGraph: socialOpenGraph(og),
     twitter: {
       ...(tw ?? {}),
       card: 'summary_large_image',
-      images: tw && 'images' in tw && tw.images ? tw.images : [SOCIAL_IMAGE.url],
+      images: [SOCIAL_IMAGE.url],
     },
   };
 }
@@ -114,9 +116,10 @@ export function withLocaleMeta(englishPath: string, meta: Metadata, locale: stri
   return attachSocialImages({
     ...meta,
     alternates,
-    openGraph:
+    openGraph: socialOpenGraph(
       og && typeof og === 'object'
         ? { ...og, locale: locale === 'es' ? 'es_US' : 'en_US' }
         : { locale: locale === 'es' ? 'es_US' : 'en_US' },
+    ),
   });
 }

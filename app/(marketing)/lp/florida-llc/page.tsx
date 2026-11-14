@@ -9,7 +9,7 @@ import { GovDisclosure } from '@/components/marketing/GovDisclosure';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { adsActorForUser } from '@/lib/ads-actor';
 import { floridaOnlyNote } from '@/lib/formation-states';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { FLORIDA, localizedStateName } from '@/lib/marketing-states';
 import { tierFromLandingSearch } from '@/lib/lp-tier';
@@ -50,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       robots: { index: false, follow: false },
-      openGraph: { title, description, type: 'website' },
+      openGraph: socialOpenGraph({ title, description, type: 'website' }),
     },
     locale,
   );

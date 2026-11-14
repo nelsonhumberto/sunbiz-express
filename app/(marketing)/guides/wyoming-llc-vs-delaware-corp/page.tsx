@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-05-27';
 const PATH = '/guides/wyoming-llc-vs-delaware-corp';
@@ -16,12 +16,12 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('ogTitle'),
           description: t('ogDescription'),
           type: 'article',
           publishedTime: PUBLISHED,
-        },
+        }),
       },
       locale,
     );
@@ -32,13 +32,13 @@ export async function generateMetadata(): Promise<Metadata> {
       title: 'Wyoming LLC vs Delaware Corp: Which State Should You Choose?',
       description:
         'A founder-friendly comparison of forming a Wyoming LLC versus a Delaware C-Corp - taxes, privacy, annual cost, investor expectations, and when each makes sense.',
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'Wyoming LLC vs Delaware Corp - Which Should You Choose?',
         description:
           'Side-by-side comparison: privacy, asset protection, taxes, annual costs, and investor expectations.',
         type: 'article',
         publishedTime: PUBLISHED,
-      },
+      }),
     },
     locale,
   );

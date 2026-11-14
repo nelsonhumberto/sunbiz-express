@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { claimGuestAccount, type ClaimResult } from '@/actions/guest-start';
-import { getClientUtmAttribution } from '@/lib/utm-client';
 import {
   ActionTimeoutError,
   isRedirectError,
@@ -24,6 +23,7 @@ import {
   withActionTimeout,
   WIZARD_ACTION_TIMEOUT_MS,
 } from '@/lib/action-timeout';
+import { guestPromptDelayMs, shouldShowGuestAccountPrompt } from '@/lib/guest-prompt';
 
 const DISMISS_KEY = 'lf_guest_prompt_seen';
 
@@ -39,6 +39,8 @@ interface Props {
   email: string;
   filingId: string;
   returnStep?: number;
+  /** Wizard URL step. The package step never opens this dialog. */
+  step?: number;
 }
 
 /**
@@ -46,7 +48,7 @@ interface Props {
  * Dismissal is stored in localStorage. A failed sign-in does not send them
  * to /sign-in; the guest cookie still opens this filing.
  */
-export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: Props) {
+export function GuestAccountPrompt({ firstName, email, filingId, returnStep, step }: Props) {
   const t = useTranslations('wizard');
   const locale = pickLocale(useLocale(), null);
   const [open, setOpen] = useState(false);
@@ -62,6 +64,9 @@ export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: P
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!shouldShowGuestAccountPrompt({ isGuest: true, lpShort: false, hasEmail: true, step: step ?? returnStep ?? 2 })) {
+      return;
+    }
     const seen = window.localStorage.getItem(DISMISS_KEY);
     if (seen) return;
     let engaged = isEditingControl(document.activeElement);
@@ -70,8 +75,7 @@ export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: P
     }
     document.addEventListener('focusin', markEngaged);
     document.addEventListener('input', markEngaged);
-    const isAdTraffic = !!getClientUtmAttribution();
-    const delay = isAdTraffic ? 45_000 : 1_200;
+    const delay = guestPromptDelayMs();
     const timer = window.setTimeout(() => {
       if (engaged || isEditingControl(document.activeElement)) return;
       setOpen(true);
@@ -81,7 +85,7 @@ export function GuestAccountPrompt({ firstName, email, filingId, returnStep }: P
       document.removeEventListener('focusin', markEngaged);
       document.removeEventListener('input', markEngaged);
     };
-  }, []);
+  }, [returnStep, step]);
 
   function dismiss() {
     if (typeof window !== 'undefined') {

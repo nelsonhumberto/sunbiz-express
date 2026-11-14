@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { BellRing, Check, FileText, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { LocaleLink } from '@/components/i18n/LocaleLink';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { BusinessServicesHeroCta } from '@/components/marketing/BusinessServicesHeroCta';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -37,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
       robots: { index: false, follow: true },
-      openGraph: { title, description, type: 'website' },
+      openGraph: socialOpenGraph({ title, description, type: 'website' }),
       twitter: { card: 'summary_large_image', title, description },
     },
     locale,

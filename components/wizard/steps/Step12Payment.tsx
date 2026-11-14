@@ -244,7 +244,7 @@ export function Step12Payment({
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
         <div className="space-y-2.5">
           {breakdown.lines.map((line) => {
-            const label = localizedLineLabel(line, entityType, t, tPricing);
+            const label = localizedLineLabel(line, entityType, t, tPricing, locale);
             const detail =
               lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
               localizedLineDetail(line, t);

@@ -4,7 +4,7 @@ import { permanentRedirect } from 'next/navigation';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
-import { attachSocialImages, englishOnlyAlternates } from '@/lib/locale-seo';
+import { socialOpenGraph, attachSocialImages, englishOnlyAlternates } from '@/lib/locale-seo';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 
@@ -139,14 +139,14 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { absolute: TITLE },
     description: DESCRIPTION,
     alternates: englishOnlyAlternates(PATH),
-    openGraph: {
+    openGraph: socialOpenGraph({
       title: TITLE,
       description: DESCRIPTION,
       type: 'article',
       locale: 'en_US',
       publishedTime: PUBLISHED,
       modifiedTime: `${DATE_MODIFIED}T00:00:00.000Z`,
-    },
+    }),
   });
 }
 

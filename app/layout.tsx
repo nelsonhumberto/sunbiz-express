@@ -23,6 +23,7 @@ import { HtmlLang } from '@/components/i18n/HtmlLang';
 import { ChunkReload } from '@/components/ChunkReload';
 import { LI_FAT_ID_STRIP_SCRIPT } from '@/lib/strip-li-fat-id';
 import { VITALS_BEACON_BOOTSTRAP } from '@/lib/vitals-beacon';
+import { socialOpenGraph } from '@/lib/locale-seo';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -51,7 +52,7 @@ export const metadata: Metadata = {
     'form an LLC',
     'LaunchForma',
   ],
-  openGraph: {
+  openGraph: socialOpenGraph({
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
       'A private filing service that prepares and files your Florida LLC or Corporation with the state. Free registered agent and transparent all-in pricing. Not a government agency. No hidden fees, ever.',
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     siteName: 'LaunchForma',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'LaunchForma' }],
-  },
+  }),
   twitter: {
     card: 'summary_large_image',
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',

@@ -17,7 +17,7 @@ import {
   type OaGuideCopy,
 } from '@/lib/oa-guide-copy';
 import { localizedHref } from '@/lib/locale-paths';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { oaTemplateDownloadEnabled } from '@/lib/oa-template';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
@@ -71,13 +71,13 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: { absolute: meta.title },
       description: meta.description,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: meta.title,
         description: meta.description,
         type: 'article',
         publishedTime: OA_GUIDE_PUBLISHED,
         modifiedTime: `${OA_GUIDE_MODIFIED}T00:00:00.000Z`,
-      },
+      }),
     },
     locale,
   );

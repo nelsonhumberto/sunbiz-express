@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/utils';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { localizedHref } from '@/lib/locale-paths';
 import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: { title: t('ogTitle'), description: t('ogDescription'), type: 'website' },
+        openGraph: socialOpenGraph({ title: t('ogTitle'), description: t('ogDescription'), type: 'website' }),
       },
       locale,
     );
@@ -35,12 +35,12 @@ export async function generateMetadata(): Promise<Metadata> {
       title: 'States We Serve - LLC & Corporation Formation',
       description:
         'LaunchForma files LLCs and Corporations in Florida today, with more states rolling out. Compare timing, the state fee, and what is included.',
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'States We Serve - LaunchForma',
         description:
           'Form a Florida business with all-in pricing, a free Year-1 Registered Agent, and a transparent state fee.',
         type: 'website',
-      },
+      }),
     },
     locale,
   );

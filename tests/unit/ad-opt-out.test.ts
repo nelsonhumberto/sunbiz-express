@@ -367,7 +367,7 @@ describe('privacy policy text', () => {
     );
     expect(en.privacyChoices.intro).not.toContain('load only after you accept cookies');
     expect(es.legalPrivacy.body).toContain(
-      'Antes de que aceptes, estas etiquetas solo envían señales sin cookies; las cookies de publicidad y de análisis se usan solo después de que aceptes.',
+      'Antes de que aceptes, estas etiquetas solo envían señales sin cookies; las cookies de publicidad y analítica se instalan solo después de que aceptes.',
     );
     expect(es.legalPrivacy.body.match(/señales sin cookies/g)).toHaveLength(1);
     expect(es.legalPrivacy.body).toContain(

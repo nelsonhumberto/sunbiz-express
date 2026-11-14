@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { getGuestUser } from '@/lib/guest';
 import { redirectLocalized } from '@/lib/locale-redirect';
@@ -7,9 +8,14 @@ import { safeRedirectPath } from '@/lib/utils';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'wizard' });
+  return {
+    title: t('pageTitle'),
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Wizard layout - admits both authenticated users AND guests holding a valid

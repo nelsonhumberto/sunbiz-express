@@ -83,15 +83,40 @@ export function buildLocaleAlternates(englishPath: string): NonNullable<Metadata
   return localeAlternates(englishPath, requestPath);
 }
 
+/** Default share image. Child openGraph objects replace the layout image, so every builder attaches this. */
+export const SOCIAL_IMAGE = {
+  url: '/opengraph-image',
+  width: 1200,
+  height: 630,
+  alt: 'LaunchForma',
+} as const;
+
+export function attachSocialImages(meta: Metadata): Metadata {
+  const og = meta.openGraph && typeof meta.openGraph === 'object' ? meta.openGraph : undefined;
+  const tw = meta.twitter && typeof meta.twitter === 'object' ? meta.twitter : undefined;
+  return {
+    ...meta,
+    openGraph: {
+      ...(og ?? {}),
+      images: og && 'images' in og && og.images ? og.images : [SOCIAL_IMAGE],
+    },
+    twitter: {
+      ...(tw ?? {}),
+      card: 'summary_large_image',
+      images: tw && 'images' in tw && tw.images ? tw.images : [SOCIAL_IMAGE.url],
+    },
+  };
+}
+
 export function withLocaleMeta(englishPath: string, meta: Metadata, locale: string): Metadata {
   const alternates = buildLocaleAlternates(englishPath);
   const og = meta.openGraph;
-  return {
+  return attachSocialImages({
     ...meta,
     alternates,
     openGraph:
       og && typeof og === 'object'
         ? { ...og, locale: locale === 'es' ? 'es_US' : 'en_US' }
         : { locale: locale === 'es' ? 'es_US' : 'en_US' },
-  };
+  });
 }

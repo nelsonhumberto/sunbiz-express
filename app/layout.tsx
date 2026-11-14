@@ -58,12 +58,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'LaunchForma',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'LaunchForma' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business',
     description:
       'Private Florida LLC formation service. All-in pricing, free registered agent, submission within 1 business day. Not a government agency.',
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,

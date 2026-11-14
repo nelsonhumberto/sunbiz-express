@@ -7,7 +7,7 @@ import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { toSpanishUrl } from '@/lib/locale-paths';
-import { buildLocaleAlternates } from '@/lib/locale-seo';
+import { attachSocialImages, buildLocaleAlternates } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-10-26';
 const DATE_MODIFIED = '2026-10-26';
@@ -159,7 +159,7 @@ export async function generateMetadata(): Promise<Metadata> {
   // Spanish twin lives at /es/guides/costo-llc-florida (different slug).
   // /es/guides/florida-llc-cost rewrites onto this page, so send it there.
   if (locale === 'es') permanentRedirect(toSpanishUrl(PATH));
-  return {
+  return attachSocialImages({
     title: { absolute: TITLE },
     description: DESCRIPTION,
     alternates: buildLocaleAlternates(PATH),
@@ -171,7 +171,7 @@ export async function generateMetadata(): Promise<Metadata> {
       publishedTime: PUBLISHED,
       modifiedTime: `${DATE_MODIFIED}T00:00:00.000Z`,
     },
-  };
+  });
 }
 
 export default async function FloridaLlcCostGuide() {

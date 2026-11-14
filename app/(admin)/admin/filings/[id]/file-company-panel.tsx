@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { uploadSunbizCoverPage } from '@/actions/admin-file-company';
+import { SUNBIZ_FAX_TEST_BLOCK_MESSAGE } from '@/lib/sunbiz-fax-guard';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPT = 'application/pdf,.pdf';
@@ -30,6 +31,7 @@ export function FileCompanyPanel({
   const [faxPending, startFax] = useTransition();
   const [filename, setFilename] = useState<string | null>(null);
   const [coverReady, setCoverReady] = useState(hasCoverPage);
+  const [faxNotice, setFaxNotice] = useState<string | null>(null);
 
   const fileToBase64 = async (file: File) => {
     const buf = await file.arrayBuffer();
@@ -83,11 +85,23 @@ export function FileCompanyPanel({
         const res = await fetch(`/api/admin/filings/${filingId}/file-package`, {
           method: 'POST',
         });
-        const data = await res.json();
+        const data = (await res.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+          dryRun?: boolean;
+        };
+        if (data.dryRun || data.error === 'test_filing') {
+          const text = data.message || SUNBIZ_FAX_TEST_BLOCK_MESSAGE;
+          setFaxNotice(text);
+          toast.warning(text);
+          return;
+        }
         if (!res.ok) {
+          setFaxNotice(null);
           toast.error(data.message || data.error || 'Fax failed.');
           return;
         }
+        setFaxNotice(null);
         toast.success('Fax sent to Sunbiz! Check the fax log for status.');
       } catch (e) {
         toast.error((e as Error).message || 'Fax failed.');
@@ -180,6 +194,11 @@ export function FileCompanyPanel({
             <FileStack className="h-3 w-3" />
             {t('fileCompanyDownloadHint')}
           </p>
+          {faxNotice ? (
+            <p className="text-sm text-amber-800 mt-2 ml-5" role="status">
+              {faxNotice}
+            </p>
+          ) : null}
         </li>
       </ol>
     </div>

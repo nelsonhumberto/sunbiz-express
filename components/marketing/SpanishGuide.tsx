@@ -7,7 +7,7 @@ import { GuideValueBlock } from '@/components/marketing/GuideValueBlock';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { isSpanishPublicPath, PUBLIC_PATH_HEADER, toSpanishUrl } from '@/lib/locale-paths';
-import { guideTwinAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
+import { attachSocialImages, guideTwinAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
 
 type SpanishGuideMetaOptions = {
@@ -40,7 +40,7 @@ export async function spanishGuideMetadata(
   const alternates = options?.twinEnglishPath
     ? guideTwinAlternates(options.twinEnglishPath, esPath)
     : spanishOnlyAlternates(esPath);
-  return {
+  return attachSocialImages({
     title: pageTitle(t('metaTitle')),
     description: t('metaDescription'),
     alternates,
@@ -52,7 +52,7 @@ export async function spanishGuideMetadata(
       locale: 'es_US',
       publishedTime: t('published'),
     },
-  };
+  });
 }
 
 export async function SpanishGuide({

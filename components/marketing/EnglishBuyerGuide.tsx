@@ -7,7 +7,7 @@ import { GuideScrollDepth, GuideTrackedCta } from '@/components/marketing/GuideC
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { buyerTwinAlternates } from '@/lib/buyer-guide-hreflang';
-import { englishOnlyAlternates } from '@/lib/locale-seo';
+import { attachSocialImages, englishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
 
 const HERO_CLASS =
@@ -29,7 +29,7 @@ export async function englishBuyerMetadata(input: {
 }): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') permanentRedirect(input.esTwin ?? input.path);
-  return {
+  return attachSocialImages({
     title: pageTitle(input.title),
     description: input.description,
     alternates: input.esTwin
@@ -43,7 +43,7 @@ export async function englishBuyerMetadata(input: {
       locale: 'en_US',
       publishedTime: input.published,
     },
-  };
+  });
 }
 
 export async function EnglishBuyerGuide({

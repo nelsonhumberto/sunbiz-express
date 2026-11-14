@@ -26,6 +26,15 @@ export type LpProgress = {
   hasSignature: boolean;
 };
 
+/**
+ * Header Start Filing and the plan buttons on the Florida LLC ad landing
+ * open the short draft. /start, /pricing, and every other page stay on the
+ * 11-step flow.
+ */
+export function lpSurfaceOpensShortWizard(pathname: string | null | undefined): boolean {
+  return isFloridaLlcLandingPath(pathname);
+}
+
 export function usesLpShortWizard(input: {
   optionalDetails?: string | null;
   entryPath?: string | null;

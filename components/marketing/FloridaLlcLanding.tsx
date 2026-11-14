@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { openGuestDraft } from '@/actions/guest-start';
 import { captureChecklistSignup } from '@/actions/checklist-signup';
-import { Link } from '@/i18n/navigation';
 import {
   BEFORE_NAVIGATION_CAPTURE,
   captureThenNavigate,
@@ -148,14 +147,6 @@ export function FloridaLlcLanding({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-
-  function startHref(tier: TierSlug, businessName: string) {
-    const params = new URLSearchParams();
-    params.set('tier', tier);
-    const trimmed = businessName.trim();
-    if (trimmed) params.set('name', trimmed);
-    return hrefWithAttribution(`/start?${params.toString()}`, attributionSearch);
-  }
 
   async function openDraft(
     tier: TierSlug,
@@ -443,9 +434,9 @@ export function FloridaLlcLanding({
                   <span className="font-display text-2xl font-medium leading-none">{amount}</span>
                   <span className="ml-1 text-xs text-ink-subtle">{tPricing('allIn')}</span>
                 </button>
-                <Link
-                  href={startHref(tier.slug, name)}
-                  onClick={(event) => {
+                <button
+                  type="button"
+                  onClick={() => {
                     trackCtaClicked(
                       'lp_continue',
                       { location: 'plan', has_name: name.trim().length > 0 },
@@ -453,14 +444,12 @@ export function FloridaLlcLanding({
                     );
                     const trimmed = name.trim();
                     trackCtaClicked('lp_choose', { location: 'plan', tier: tier.slug });
-                    if (!startNameIsAcceptable(trimmed)) return;
-                    event.preventDefault();
-                    void openDraft(tier.slug, trimmed, 'plan');
+                    void openDraft(tier.slug, trimmed, 'plan', !startNameIsAcceptable(trimmed));
                   }}
                   className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold"
                 >
                   {tPricing('chooseTier', { name: tierName })}
-                </Link>
+                </button>
               </div>
             </div>
           );

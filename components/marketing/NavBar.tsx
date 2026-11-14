@@ -13,6 +13,7 @@ import { useCurrentMarketingState } from '@/lib/use-current-state';
 import { isActiveFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
 import { englishPathname, localizedHref } from '@/lib/locale-paths';
+import { lpSurfaceOpensShortWizard } from '@/lib/lp-wizard-path';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -26,6 +27,7 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   const pathname = usePathname();
   const barePath = englishPathname(pathname);
   const currentState = useCurrentMarketingState();
+  const shortWizard = lpSurfaceOpensShortWizard(pathname);
   const startHref = localizedHref(
     isActiveFormationState(currentState.code) && currentState.code !== 'FL'
       ? `/start?state=${currentState.code}`
@@ -53,6 +55,11 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  function submitLandingStart(ctaId: string) {
+    trackCtaClicked(ctaId, { state: currentState.code });
+    document.querySelector<HTMLFormElement>('[data-testid="lp-hero"] form')?.requestSubmit();
+  }
 
   return (
     <header
@@ -103,16 +110,22 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
               <Button asChild variant="ghost" size="sm">
                 <Link href={localizedHref('/sign-in', locale)}>{t('signIn')}</Link>
               </Button>
-              <Button asChild>
-                <Link
-                  href={startHref}
-                  onClick={() =>
-                    trackCtaClicked('nav_start', { state: currentState.code })
-                  }
-                >
+              {shortWizard ? (
+                <Button type="button" onClick={() => submitLandingStart('nav_start')}>
                   {t('startFiling')}
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link
+                    href={startHref}
+                    onClick={() =>
+                      trackCtaClicked('nav_start', { state: currentState.code })
+                    }
+                  >
+                    {t('startFiling')}
+                  </Link>
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -157,11 +170,15 @@ export function NavBar({ isAuthed = false, isAdmin = false }: NavBarProps) {
                   <Button asChild variant="outline">
                     <Link href={localizedHref('/sign-in', locale)}>{t('signIn')}</Link>
                   </Button>
-                  <Button asChild>
-                    <Link href={startHref}>
+                  {shortWizard ? (
+                    <Button type="button" onClick={() => submitLandingStart('nav_start_mobile')}>
                       {t('startFiling')}
-                    </Link>
-                  </Button>
+                    </Button>
+                  ) : (
+                    <Button asChild>
+                      <Link href={startHref}>{t('startFiling')}</Link>
+                    </Button>
+                  )}
                 </>
               )}
             </div>

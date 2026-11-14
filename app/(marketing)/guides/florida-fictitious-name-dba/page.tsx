@@ -4,7 +4,7 @@ import { permanentRedirect } from 'next/navigation';
 import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
-import { englishOnlyAlternates } from '@/lib/locale-seo';
+import { attachSocialImages, englishOnlyAlternates } from '@/lib/locale-seo';
 import { tierPackagePriceCents } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 
@@ -135,7 +135,7 @@ export async function generateMetadata(): Promise<Metadata> {
   // No Spanish article yet. /es rewrites onto this page, so send it back
   // to the English URL instead of publishing an es hreflang.
   if (locale === 'es') permanentRedirect(PATH);
-  return {
+  return attachSocialImages({
     title: { absolute: TITLE },
     description: DESCRIPTION,
     alternates: englishOnlyAlternates(PATH),
@@ -147,7 +147,7 @@ export async function generateMetadata(): Promise<Metadata> {
       publishedTime: PUBLISHED,
       modifiedTime: `${DATE_MODIFIED}T00:00:00.000Z`,
     },
-  };
+  });
 }
 
 export default async function FloridaFictitiousNameGuide() {

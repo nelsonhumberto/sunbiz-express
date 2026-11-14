@@ -93,7 +93,11 @@
     "sunbizSearch": "States we serve",
     "statesWeServe": "States we serve",
     "copyright": "© {year} {company} · {address} · LaunchForma is not a law firm and does not provide legal advice.",
-    "doNotSell": "Do Not Sell or Share My Personal Information"
+    "doNotSell": "Do Not Sell or Share My Personal Information",
+    "socialNav": "LaunchForma on social",
+    "socialInstagram": "LaunchForma on Instagram",
+    "socialX": "LaunchForma on X",
+    "socialFacebook": "LaunchForma on Facebook"
   },
   "contactPage": {
     "metaTitle": "Contact",

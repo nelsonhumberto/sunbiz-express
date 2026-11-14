@@ -93,7 +93,11 @@
     "sunbizSearch": "Estados que atendemos",
     "statesWeServe": "Estados que atendemos",
     "copyright": "© {year} {company} · {address} · LaunchForma no es un bufete de abogados y no proporciona asesoramiento legal.",
-    "doNotSell": "No vender ni compartir mi información personal"
+    "doNotSell": "No vender ni compartir mi información personal",
+    "socialNav": "LaunchForma en redes",
+    "socialInstagram": "LaunchForma en Instagram",
+    "socialX": "LaunchForma en X",
+    "socialFacebook": "LaunchForma en Facebook"
   },
   "contactPage": {
     "metaTitle": "Contacto",

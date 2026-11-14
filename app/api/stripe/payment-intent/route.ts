@@ -67,6 +67,7 @@ import {
 import { resolveRequestLocale } from '@/lib/request-locale';
 import { AnnualReportDraftSchema } from '@/lib/annual-report-draft';
 import { z } from 'zod';
+import { paymentCreateFailureLog, safePaymentErrorReason } from '@/lib/payment-intent-log';
 
 // Never statically analyse this route - it needs the Stripe key at runtime.
 export const dynamic = 'force-dynamic';
@@ -146,6 +147,8 @@ interface PaymentBody {
   email?: string;
   annualReportId?: string;
   annualReport?: unknown;
+  /** Intent from a lost response. Reused only when its metadata names this filing. */
+  paymentIntentId?: string;
 }
 
 /**
@@ -173,18 +176,27 @@ export async function POST(request: NextRequest) {
   if (!userId) {
     const guest = await getGuestUser();
     if (!guest) {
+      logger.warn(
+        'payment intent create failed',
+        paymentCreateFailureLog({ reason: 'no_guest_cookie' }),
+      );
       return paymentError('start_filing_first', 401);
     }
     try {
       return await createGuestFormationPaymentIntent(request, guest);
     } catch (err) {
-      logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
+      logger.error(
+        'payment intent create failed',
+        paymentCreateFailureLog({ reason: safePaymentErrorReason(err) }),
+      );
       return paymentError('create_failed', 500);
     }
   }
 
+  let filingIdForLog: string | undefined;
   try {
     const body = (await request.json()) as PaymentBody;
+    filingIdForLog = body.filingId;
     const { filingId, posthogDistinctId, certificateSlug, purpose, couponCode, raServiceId } = body;
 
     if (isCertificateAddOnSlug(certificateSlug)) {
@@ -236,16 +248,20 @@ export async function POST(request: NextRequest) {
       stripe,
       filingId: priced.reuseFilingCheckout ? priced.filingId : undefined,
       storedPaymentIntentId: priced.storedPaymentIntentId,
+      clientPaymentIntentId: body.paymentIntentId,
       amountCents: priced.amountCents,
       intentParams,
     });
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-    });
+    return paymentIntentResponse(paymentIntent, priced.filingId);
   } catch (err) {
-    logger.error('Stripe PaymentIntent error', { area: 'stripe', tag: 'payment-intent' }, err);
+    logger.error(
+      'payment intent create failed',
+      paymentCreateFailureLog({
+        filingId: filingIdForLog,
+        reason: safePaymentErrorReason(err),
+      }),
+    );
     return paymentError('create_failed', 500);
   }
 }
@@ -405,6 +421,7 @@ async function createGuestFormationPaymentIntent(
     stripe,
     filingId: priced.reuseFilingCheckout ? priced.filingId : undefined,
     storedPaymentIntentId: priced.storedPaymentIntentId,
+    clientPaymentIntentId: body.paymentIntentId,
     amountCents: priced.amountCents,
     intentParams: {
       amount: priced.amountCents,
@@ -428,10 +445,7 @@ async function createGuestFormationPaymentIntent(
     },
   });
 
-  return NextResponse.json({
-    clientSecret: paymentIntent.client_secret,
-    paymentIntentId: paymentIntent.id,
-  });
+  return paymentIntentResponse(paymentIntent, priced.filingId);
 }
 
 /**
@@ -834,25 +848,48 @@ async function ensureStripeCustomer(stripe: Stripe, userId: string): Promise<str
  * the amount if the total changed. Otherwise create one, keyed by filing id
  * and amount so a retry does not mint a second intent.
  */
+function paymentIntentResponse(paymentIntent: Stripe.PaymentIntent, filingId?: string) {
+  if (!paymentIntent.client_secret) {
+    logger.error(
+      'payment intent create failed',
+      paymentCreateFailureLog({ filingId, reason: 'missing_client_secret' }),
+    );
+    return paymentError('create_failed', 500);
+  }
+  return NextResponse.json({
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+  });
+}
+
 async function resolveCheckoutPaymentIntent(input: {
   stripe: Stripe;
   filingId?: string;
   storedPaymentIntentId: string | null;
+  clientPaymentIntentId?: string | null;
   amountCents: number;
   intentParams: Stripe.PaymentIntentCreateParams;
 }): Promise<Stripe.PaymentIntent> {
   const { stripe, filingId, amountCents, intentParams } = input;
+  const storedId = input.storedPaymentIntentId?.trim() || null;
+  const clientId = input.clientPaymentIntentId?.trim() || null;
+  const candidateId = storedId || clientId;
 
-  if (filingId && input.storedPaymentIntentId) {
+  if (filingId && candidateId) {
     try {
-      const existing = await stripe.paymentIntents.retrieve(input.storedPaymentIntentId);
-      const plan = planCheckoutPaymentIntent({
-        filingId,
-        amountCents,
-        storedPaymentIntentId: existing.id,
-        storedStatus: existing.status,
-        storedAmount: existing.amount,
-      });
+      const existing = await stripe.paymentIntents.retrieve(candidateId);
+      const owned =
+        Boolean(storedId) ||
+        existing.metadata?.filingId === filingId;
+      const plan = owned
+        ? planCheckoutPaymentIntent({
+            filingId,
+            amountCents,
+            storedPaymentIntentId: existing.id,
+            storedStatus: existing.status,
+            storedAmount: existing.amount,
+          })
+        : { action: 'create' as const, idempotencyKey: '' };
       if (plan.action === 'reuse') {
         const metadata = intentParams.metadata;
         const needsTestFlag = metadata?.isTest === 'true' && existing.metadata?.isTest !== 'true';
@@ -875,7 +912,7 @@ async function resolveCheckoutPaymentIntent(input: {
     ? checkoutPaymentIntentIdempotencyKey(
         filingId,
         amountCents,
-        input.storedPaymentIntentId,
+        storedId,
       )
     : undefined;
 

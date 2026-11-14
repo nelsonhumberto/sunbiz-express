@@ -22,6 +22,7 @@ import { validateCoupon, type CouponValidationResult } from '@/actions/coupons';
 import { WizardActions } from '../WizardShell';
 import { useWizardSubmit } from '../useWizardSubmit';
 import { StripeCardInput, type StripeCardHandle } from '@/components/ui/StripeCardInput';
+import { cardFormSubmittable } from '@/lib/card-form-ready';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -138,7 +139,13 @@ export function Step12Payment({
     d.setFullYear(d.getFullYear() + 1);
     return d;
   });
-  const { pending, error, run } = useWizardSubmit();
+  const { pending, error, setError, run } = useWizardSubmit();
+  const [cardField, setCardField] = useState({ ready: false, complete: false });
+  const cardReady = cardFormSubmittable({
+    testerCheckout,
+    elementReady: cardField.ready,
+    complete: cardField.complete,
+  });
   const router = useLocalizedRouter(filing.locale);
   const cardRef = useRef<StripeCardHandle>(null);
 
@@ -184,6 +191,12 @@ export function Step12Payment({
       }
       trackEvent('checkout_payment_submitted', paymentEventProps);
 
+      if (!testerCheckout && !cardReady) {
+        return {
+          ok: false,
+          error: cardField.ready ? t('cardFormIncomplete') : t('cardFormLoading'),
+        };
+      }
       if (testerCheckout) {
         // Tester mode: skip Stripe entirely, use bypass sentinel
         paymentIntentId = 'TESTER_BYPASS';
@@ -427,7 +440,7 @@ export function Step12Payment({
 
           <div className="space-y-1.5">
             <Label>{t('cardDetails')}</Label>
-            <StripeCardInput ref={cardRef} />
+            <StripeCardInput ref={cardRef} onAvailability={setCardField} />
           </div>
         </div>
       )}
@@ -474,9 +487,13 @@ export function Step12Payment({
       <WizardActions
         prevHref={`/wizard/${filing.id}/10`}
         onNext={onPay}
-        nextDisabled={isGuest && !checkoutEmail.trim()}
+        nextDisabled={(isGuest && !checkoutEmail.trim()) || !cardReady}
         onBlocked={() => {
-          document.getElementById('checkout-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (isGuest && !checkoutEmail.trim()) {
+            document.getElementById('checkout-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+          setError(cardField.ready ? t('cardFormIncomplete') : t('cardFormLoading'));
         }}
         pending={pending}
         error={error}

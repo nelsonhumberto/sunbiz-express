@@ -31,8 +31,10 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import { useTranslations } from 'next-intl';
 import { localeFromPublicPath } from '@/lib/locale-paths';
 import { paymentIntentErrorMessage } from '@/lib/payment-intent-errors';
+import { postPaymentIntent } from '@/lib/payment-create-retry';
 import { stripePromise } from '@/lib/stripe-client';
 import { getAnalyticsDistinctId } from '@/lib/analytics';
 
@@ -88,11 +90,22 @@ export interface StripeCardHandle {
 // ── Inner component (has access to useStripe / useElements) ────────────────
 
 const InnerCard = forwardRef(function InnerCard(
-  _props: { showCardElement: boolean },
+  props: {
+    showCardElement: boolean;
+    onAvailability?: (state: { ready: boolean; complete: boolean }) => void;
+  },
   ref: ForwardedRef<StripeCardHandle>,
 ) {
   const stripe = useStripe();
   const elements = useElements();
+  const t = useTranslations('wizard');
+  const elementReady = useRef(false);
+  const cardComplete = useRef(false);
+  const onAvailability = props.onAvailability;
+
+  function publishAvailability() {
+    onAvailability?.({ ready: elementReady.current && Boolean(stripe), complete: cardComplete.current });
+  }
 
   useImperativeHandle(ref, () => ({
     async confirm(opts: ConfirmOptions): Promise<CardConfirmResult> {
@@ -113,52 +126,79 @@ const InnerCard = forwardRef(function InnerCard(
         guestAttemptId,
         paymentIntentId,
       } = opts;
-      if (!stripe) return { error: 'Stripe has not loaded yet. Please wait.' };
+      const locale =
+        typeof window !== 'undefined' ? localeFromPublicPath(window.location.pathname) : 'en';
+      if (!stripe || !elementReady.current) {
+        return { error: t('cardFormLoading'), code: 'card_not_ready' };
+      }
+      if (!savedPaymentMethodId && !cardComplete.current) {
+        return { error: t('cardFormIncomplete'), code: 'card_incomplete' };
+      }
 
       const guestAnnualReport = purpose === 'guest_annual_report';
-      // 1. Create PaymentIntent server-side
-      const res = await fetch(
-        guestAnnualReport
-          ? '/api/stripe/payment-intent?purpose=guest_annual_report'
-          : '/api/stripe/payment-intent',
-        {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amountCents,
-          ...(filingId ? { filingId } : {}),
-          ...(certificateSlug ? { certificateSlug } : {}),
-          ...(purpose ? { purpose } : {}),
-          ...(couponCode ? { couponCode } : {}),
-          ...(raServiceId ? { raServiceId } : {}),
-          ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
-          ...(email ? { email } : {}),
-          ...(entityType ? { entityType } : {}),
-          ...(opts.metadata?.documentNumber ? { documentNumber: opts.metadata.documentNumber } : {}),
-          ...(guestAttemptId ? { guestAttemptId } : {}),
-          ...(paymentIntentId ? { paymentIntentId } : {}),
-          ...(annualReportId ? { annualReportId } : {}),
-          ...(annualReport ? { annualReport } : {}),
-          ...(opts.metadata ? { metadata: opts.metadata } : {}),
-          posthogDistinctId: getAnalyticsDistinctId(),
-        }),
-      });
-      const json = await res.json();
-      if (json.paymentIntentId) opts.onPaymentIntent?.(json.paymentIntentId);
-      if (json.alreadySucceeded && json.paymentIntentId) {
-        return { paymentIntentId: json.paymentIntentId };
+      const requestBody = {
+        amountCents,
+        ...(filingId ? { filingId } : {}),
+        ...(certificateSlug ? { certificateSlug } : {}),
+        ...(purpose ? { purpose } : {}),
+        ...(couponCode ? { couponCode } : {}),
+        ...(raServiceId ? { raServiceId } : {}),
+        ...(typeof useOurRa === 'boolean' ? { useOurRa } : {}),
+        ...(email ? { email } : {}),
+        ...(entityType ? { entityType } : {}),
+        ...(opts.metadata?.documentNumber ? { documentNumber: opts.metadata.documentNumber } : {}),
+        ...(guestAttemptId ? { guestAttemptId } : {}),
+        ...(paymentIntentId ? { paymentIntentId } : {}),
+        ...(annualReportId ? { annualReportId } : {}),
+        ...(annualReport ? { annualReport } : {}),
+        ...(opts.metadata ? { metadata: opts.metadata } : {}),
+        posthogDistinctId: getAnalyticsDistinctId(),
+      };
+      const created = await postPaymentIntent(async (payload) => {
+        try {
+          const res = await fetch(
+            guestAnnualReport
+              ? '/api/stripe/payment-intent?purpose=guest_annual_report'
+              : '/api/stripe/payment-intent',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+          let json: Record<string, unknown> | null = null;
+          try {
+            const parsed = (await res.json()) as unknown;
+            json = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+          } catch {
+            json = null;
+          }
+          return { status: res.status, json };
+        } catch {
+          return { status: 0, json: null, networkError: true };
+        }
+      }, requestBody);
+      const json = created.json ?? {};
+      const createdIntentId = typeof json.paymentIntentId === 'string' ? json.paymentIntentId : undefined;
+      const clientSecret = typeof json.clientSecret === 'string' ? json.clientSecret : '';
+      if (createdIntentId) opts.onPaymentIntent?.(createdIntentId);
+      if (json.alreadySucceeded === true && createdIntentId) {
+        return { paymentIntentId: createdIntentId };
       }
-      if (json.error || !json.clientSecret) {
-        const code = typeof json.code === 'string' ? json.code : undefined;
-        const locale =
-          typeof window !== 'undefined' ? localeFromPublicPath(window.location.pathname) : 'en';
+      if (json.error || !clientSecret) {
+        const code =
+          typeof json.code === 'string'
+            ? json.code
+            : created.networkError || created.status >= 500 || created.status === 0
+              ? 'create_failed'
+              : undefined;
         return {
           error:
             paymentIntentErrorMessage(code, locale) ??
             (typeof json.error === 'string' ? json.error : paymentIntentErrorMessage('create_failed', locale)) ??
             'Could not create payment.',
           ...(code ? { code } : {}),
-          ...(json.paymentIntentId ? { paymentIntentId: json.paymentIntentId } : {}),
+          ...(createdIntentId ? { paymentIntentId: createdIntentId } : {}),
         };
       }
 
@@ -167,14 +207,14 @@ const InnerCard = forwardRef(function InnerCard(
 
       if (savedPaymentMethodId) {
         // Returning customer - re-use stored PM
-        result = await stripe.confirmCardPayment(json.clientSecret, {
+        result = await stripe.confirmCardPayment(clientSecret, {
           payment_method: savedPaymentMethodId,
         });
       } else {
         // New card via CardElement
         const cardElement = elements?.getElement(CardElement);
-        if (!cardElement) return { error: 'Card element not mounted.' };
-        result = await stripe.confirmCardPayment(json.clientSecret, {
+        if (!cardElement) return { error: t('cardFormLoading'), code: 'card_not_ready' };
+        result = await stripe.confirmCardPayment(clientSecret, {
           payment_method: {
             card: cardElement,
             billing_details: { name: cardholderName },
@@ -185,7 +225,7 @@ const InnerCard = forwardRef(function InnerCard(
       if (result.error) {
         return {
           error: result.error.message ?? 'Payment failed.',
-          ...(json.paymentIntentId ? { paymentIntentId: json.paymentIntentId } : {}),
+          ...(createdIntentId ? { paymentIntentId: createdIntentId } : {}),
         };
       }
 
@@ -193,11 +233,19 @@ const InnerCard = forwardRef(function InnerCard(
     },
   }));
 
-  if (!_props.showCardElement) return null;
+  if (!props.showCardElement) return null;
 
   return (
     <div className="rounded-md border border-input bg-background px-3 py-3 text-sm">
       <CardElement
+        onReady={() => {
+          elementReady.current = true;
+          publishAvailability();
+        }}
+        onChange={(event) => {
+          cardComplete.current = event.complete;
+          publishAvailability();
+        }}
         options={{
           style: {
             base: {
@@ -220,13 +268,15 @@ const InnerCard = forwardRef(function InnerCard(
 interface StripeCardInputProps {
   /** Pass false when a saved card is selected - hides the CardElement. */
   showCardElement?: boolean;
+  /** Fired when the card field mounts and when its fields become complete. */
+  onAvailability?: (state: { ready: boolean; complete: boolean }) => void;
 }
 
 export const StripeCardInput = forwardRef<StripeCardHandle, StripeCardInputProps>(
-  function StripeCardInput({ showCardElement = true }, ref) {
+  function StripeCardInput({ showCardElement = true, onAvailability }, ref) {
     return (
       <Elements stripe={stripePromise}>
-        <InnerCard ref={ref} showCardElement={showCardElement} />
+        <InnerCard ref={ref} showCardElement={showCardElement} onAvailability={onAvailability} />
       </Elements>
     );
   },

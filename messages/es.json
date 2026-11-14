@@ -93,7 +93,11 @@
     "sunbizSearch": "Estados que atendemos",
     "statesWeServe": "Estados que atendemos",
     "copyright": "© {year} {company} · {address} · LaunchForma no es un bufete de abogados y no proporciona asesoramiento legal.",
-    "doNotSell": "No vender ni compartir mi información personal"
+    "doNotSell": "No vender ni compartir mi información personal",
+    "socialNav": "LaunchForma en redes",
+    "socialInstagram": "LaunchForma en Instagram",
+    "socialX": "LaunchForma en X",
+    "socialFacebook": "LaunchForma en Facebook"
   },
   "contactPage": {
     "metaTitle": "Contacto",
@@ -780,6 +784,15 @@
     "couponPrompt": "¿Tienes un código de descuento?",
     "couponApply": "Aplicar",
     "couponApplied": "aplicado",
+    "couponName": "Cupón",
+    "couponPercentOff": "{value}% de descuento",
+    "couponFallback": "Ese código no es válido.",
+    "couponEmpty": "Escribe un código de descuento.",
+    "couponInvalid": "Este código no es válido.",
+    "couponInactive": "Este código ya no está activo.",
+    "couponExpired": "Este código ya venció.",
+    "couponLimit": "Este código ya llegó a su límite de usos.",
+    "couponRateLimit": "Demasiados intentos. Espera {seconds}s e inténtalo de nuevo.",
     "nameTakenBlock": "Ese nombre ya está tomado en Florida. Elige uno que se distinga.",
     "guestEmailInvalid": "Escribe un correo válido.",
     "guestEmailHasAccount": "Este correo ya tiene una cuenta. Entra y pasamos este borrador a tu cuenta.",

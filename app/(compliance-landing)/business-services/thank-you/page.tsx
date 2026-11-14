@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Mail, MapPin } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { LeadConversionTracker } from '@/components/analytics/LeadConversionTracker';
 import { ComplianceLandingFooter } from '@/components/marketing/ComplianceLandingFooter';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       keywords: ['registered agent', 'operating agreement', 'compliance reminders', 'LaunchForma'],
       robots: { index: false, follow: false },
-      openGraph: { title, description, type: 'website' },
+      openGraph: socialOpenGraph({ title, description, type: 'website' }),
       twitter: { card: 'summary', title, description },
     },
     locale,

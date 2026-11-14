@@ -4,7 +4,7 @@ import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { tierPriceParts } from '@/lib/pricing';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { formatCurrency } from '@/lib/utils';
 
 const CORP_ESSENTIAL = tierPriceParts('BASIC', 'CORP', 'FL');
@@ -187,12 +187,12 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: { absolute: title },
         description,
-        openGraph: {
+        openGraph: socialOpenGraph({
           title,
           description,
           type: 'article',
           publishedTime: PUBLISHED,
-        },
+        }),
       },
       locale,
     );
@@ -202,12 +202,12 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: { absolute: TITLE },
       description: DESCRIPTION,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: TITLE,
         description: DESCRIPTION,
         type: 'article',
         publishedTime: PUBLISHED,
-      },
+      }),
     },
     locale,
   );

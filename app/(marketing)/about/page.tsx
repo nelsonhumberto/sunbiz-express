@@ -5,7 +5,7 @@ import { CTABanner } from '@/components/marketing/CTABanner';
 import { ADD_ON_BY_SLUG } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { pageTitle } from '@/lib/seo-title';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -16,11 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('ogTitle'),
           description: t('ogDescription'),
           type: 'website',
-        },
+        }),
       },
       locale,
     );
@@ -31,12 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
       title: pageTitle('About LaunchForma - Transparent Business Formation'),
       description:
         'LaunchForma builds the modern, transparent alternative to LegalZoom-style upsells. All-in pricing that includes the state fee, free Year-1 Registered Agent, and zero data sales.',
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'About LaunchForma - Modern, Transparent Business Formation',
         description:
           'Why we built LaunchForma: a clean, honest alternative to legal-tech upsell traps. All-in pricing, no data sales.',
         type: 'website',
-      },
+      }),
     },
     locale,
   );

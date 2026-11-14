@@ -60,6 +60,7 @@ import {
 } from '@/lib/utm-attribution';
 import { capturePurchaseCompletedServer, type PurchaseIntentLike } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
+import { planSucceededPayment } from '@/lib/payment-failure';
 import { checkoutAttributionMetadata } from '@/lib/checkout-attribution';
 
 function isUniqueConflict(err: unknown): boolean {
@@ -450,26 +451,61 @@ export async function processCheckout(input: {
       },
     });
   } catch (err) {
-    // The webhook inserted this PaymentIntent and may already have claimed
-    // the guest. Replay the claimed sign-in instead of a second payment.
-    if (isUniqueConflict(err) && actor.kind === 'guest') {
-      const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
-      const claim = await claimPaidGuestAccount({
-        userId: actor.id,
-        filingId: filing.id,
-        locale: checkoutLocale,
+    // A failed webhook row can exist before the customer retries this same
+    // PaymentIntent. Promote it instead of treating the unique key as fatal.
+    if (isUniqueConflict(err) && stripeIntentId) {
+      const existing = await prisma.payment.findUnique({
+        where: { stripePaymentIntentId: stripeIntentId },
       });
-      const redirectTo = await finishGuestClaim({
-        actorId: actor.id,
-        filingId: filing.id,
-        locale: checkoutLocale,
-        paymentIntentUserId: piUserId,
-        paymentIntentFilingId: piFilingId,
-        claim,
-      });
-      if (redirectTo) return { ok: true, redirectTo };
+      if (
+        existing &&
+        existing.filingId === filing.id &&
+        planSucceededPayment(existing.status) === 'upgrade'
+      ) {
+        await prisma.payment.update({
+          where: { id: existing.id },
+          data: {
+            status: 'SUCCEEDED',
+            errorMessage: null,
+            amountCents: expectedTotal,
+            stripePaymentMethodId: pmId,
+            cardLast4,
+            cardBrand,
+            cardholderName,
+            completedAt: new Date(),
+            isTest: isTestPayment({
+              stripePaymentIntentId: stripeIntentId,
+              livemode,
+              metadata: paidIntent.metadata,
+              userIsTester: payer?.isTester === true,
+            }),
+          },
+        });
+      } else if (actor.kind === 'guest') {
+        // The webhook inserted this PaymentIntent and may already have claimed
+        // the guest. Replay the claimed sign-in instead of a second payment.
+        const checkoutLocale = localeFromPathOrFiling(await storedLocale(), filing.locale);
+        const claim = await claimPaidGuestAccount({
+          userId: actor.id,
+          filingId: filing.id,
+          locale: checkoutLocale,
+        });
+        const redirectTo = await finishGuestClaim({
+          actorId: actor.id,
+          filingId: filing.id,
+          locale: checkoutLocale,
+          paymentIntentUserId: piUserId,
+          paymentIntentFilingId: piFilingId,
+          claim,
+        });
+        if (redirectTo) return { ok: true, redirectTo };
+        throw err;
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
     }
-    throw err;
   }
 
   // The Payment insert is the transition to paid. The webhook captures only

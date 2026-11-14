@@ -5,7 +5,7 @@ import { ShieldCheck, Globe2, ArchiveX, ArrowRight, FileText } from 'lucide-reac
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { localizedHref } from '@/lib/locale-paths';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -16,11 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('metaTitle'),
           description: t('ogDescription'),
           type: 'website',
-        },
+        }),
       },
       locale,
     );
@@ -31,12 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
       title: 'BOI Reporting Update 2026 - U.S. Companies Are Exempt',
       description:
         "FinCEN's August 2026 final rule permanently exempts companies formed in the United States from beneficial ownership information (BOI) reporting. Here is what changed and who still reports.",
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'BOI Reporting Update 2026 - U.S. Companies Are Exempt',
         description:
           'Companies formed in the United States no longer file beneficial ownership (BOI) reports with FinCEN.',
         type: 'website',
-      },
+      }),
     },
     locale,
   );

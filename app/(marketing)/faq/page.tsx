@@ -11,7 +11,7 @@ import { floridaOnlyNote } from '@/lib/formation-states';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 interface FAQPageProps {
   searchParams?: { state?: string | string[] };
@@ -51,7 +51,7 @@ export async function generateMetadata({
       {
         title,
         description,
-        openGraph: { title, description, type: 'website' },
+        openGraph: socialOpenGraph({ title, description, type: 'website' }),
       },
       locale,
     );

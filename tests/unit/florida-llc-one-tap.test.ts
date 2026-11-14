@@ -45,7 +45,7 @@ describe('Florida LLC landing one tap', () => {
   const openDraft = functionBody(landing, 'async function openDraft');
   const sticky = between(landing, 'data-testid="lp-sticky"', "tLp('stickyCta')");
   const repeat = between(landing, 'className="flex h-12 w-full', "tLp('repeatCta')");
-  const plan = between(landing, 'href={startHref(tier.slug, name)}', "tPricing('chooseTier'");
+  const plan = between(landing, "location: 'plan'", "tPricing('chooseTier'");
 
   it('empty name submits to nameLater draft', () => {
     expect(startNameIsAcceptable('')).toBe(false);
@@ -99,6 +99,8 @@ describe('Florida LLC landing one tap', () => {
     expect(plan.indexOf('BEFORE_NAVIGATION_CAPTURE')).toBeLessThan(plan.indexOf('startNameIsAcceptable'));
     expect(plan).toContain("location: 'plan'");
     expect(plan).toContain('has_name: name.trim().length > 0');
+    expect(plan).toContain("openDraft(tier.slug, trimmed, 'plan', !startNameIsAcceptable(trimmed))");
+    expect(plan).not.toContain('/start');
 
     expect(openDraft).not.toContain('trackCtaClicked');
     expect(landing.match(/'lp_continue'/g)).toHaveLength(4);

@@ -6,7 +6,7 @@ import { EnEspanolLinks } from '@/components/marketing/EnEspanolLinks';
 import { JsonLd, breadcrumbJsonLd } from '@/components/seo/JsonLd';
 import { localizedHref } from '@/lib/locale-paths';
 import { EN_GUIDES_INDEX_SPANISH_LINKS } from '@/lib/spanish-guide-links';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: { title: t('ogTitle'), description: t('ogDescription'), type: 'website' },
+        openGraph: socialOpenGraph({ title: t('ogTitle'), description: t('ogDescription'), type: 'website' }),
       },
       locale,
     );
@@ -28,12 +28,12 @@ export async function generateMetadata(): Promise<Metadata> {
       title: 'Guides - LLC, Corporation & Compliance Resources',
       description:
         'Plain-English guides to forming a Florida LLC, the annual report, registered agents, operating agreements, and the 2026 FinCEN BOI update.',
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'LaunchForma Guides',
         description:
           'Plain-English guides to forming a Florida LLC, annual reports, registered agents, and operating agreements.',
         type: 'website',
-      },
+      }),
     },
     locale,
   );

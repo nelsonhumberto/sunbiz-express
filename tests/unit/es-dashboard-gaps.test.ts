@@ -45,19 +45,31 @@ describe('Spanish dashboard and wizard gaps', () => {
         storedLabel: 'Essential - Florida LLC',
         tierSlug: 'BASIC',
         entityType: 'LLC',
+        locale: 'es',
         translate: (key) =>
           key === 'tier_BASIC' ? 'Esencial' : key === 'packageEntityLlc' ? 'LLC' : key,
       }),
-    ).toBe('Esencial - Florida LLC');
+    ).toBe('Esencial - LLC de Florida');
+    expect(
+      localizedPackageLabel({
+        storedLabel: 'Popular - Florida Corporation',
+        tierSlug: 'STANDARD',
+        entityType: 'CORP',
+        locale: 'es',
+        translate: (key) =>
+          key === 'tier_STANDARD' ? 'Popular' : key === 'packageEntityCorp' ? 'Corporación' : key,
+      }),
+    ).toBe('Popular - Corporación de Florida');
     expect(
       localizedPackageLabel({
         storedLabel: 'Essential - Florida Corporation',
         tierSlug: 'BASIC',
         entityType: 'CORP',
+        locale: 'en',
         translate: (key) =>
-          key === 'tier_BASIC' ? 'Esencial' : key === 'packageEntityCorp' ? 'Corporación' : key,
+          key === 'tier_BASIC' ? 'Essential' : key === 'packageEntityCorp' ? 'Corporation' : key,
       }),
-    ).toBe('Esencial - Florida Corporación');
+    ).toBe('Essential - Florida Corporation');
     expect(es.pricing.tier_BASIC).toBe('Esencial');
     expect(es.pricing.feat_articles).toMatch(/Artículos/);
     expect(es.pricing.feat_articles).not.toMatch(/Articles of Organization/);

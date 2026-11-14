@@ -160,7 +160,7 @@ export function Step12Payment({
         setAppliedCoupon(result);
         setCouponInput('');
       } else {
-        setCouponError(result.error ?? 'Invalid coupon.');
+        setCouponError(result.error ?? t('couponFallback'));
       }
     });
   };
@@ -244,7 +244,7 @@ export function Step12Payment({
         <h3 className="font-semibold text-ink mb-3">{t('orderSummary')}</h3>
         <div className="space-y-2.5">
           {breakdown.lines.map((line) => {
-            const label = localizedLineLabel(line, entityType, t, tPricing);
+            const label = localizedLineLabel(line, entityType, t, tPricing, locale);
             const detail =
               lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
               localizedLineDetail(line, t);
@@ -268,8 +268,11 @@ export function Step12Payment({
           <div className="flex items-baseline justify-between text-sm gap-3 text-success">
             <div className="flex items-center gap-1.5">
               <Tag className="h-3.5 w-3.5" />
-              <span>Coupon <strong>{appliedCoupon.code}</strong>
-                {appliedCoupon.type === 'PERCENT' ? ` (${appliedCoupon.value}% off)` : ''}
+              <span>
+                {t('couponName')} <strong>{appliedCoupon.code}</strong>
+                {appliedCoupon.type === 'PERCENT' && appliedCoupon.value != null
+                  ? ` (${t('couponPercentOff', { value: appliedCoupon.value })})`
+                  : ''}
               </span>
             </div>
             <span className="font-medium shrink-0">−{formatCurrency(discountCents)}</span>

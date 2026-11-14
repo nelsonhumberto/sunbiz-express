@@ -19,6 +19,8 @@ export function localizedPackageLabel(args: {
   tierSlug?: string | null;
   entityType: 'LLC' | 'CORP';
   translate: (key: string) => string;
+  /** Spanish reads "Popular - Corporación de Florida". English keeps state first. */
+  locale?: string | null;
 }): string {
   const tierKey = args.tierSlug ? `tier_${args.tierSlug}` : '';
   const translatedTier = tierKey ? args.translate(tierKey) : '';
@@ -37,7 +39,9 @@ export function localizedPackageLabel(args: {
       : args.entityType === 'CORP'
         ? 'Corporation'
         : 'LLC';
-  return stateName ? `${tierName} - ${stateName} ${entity}` : `${tierName} - ${entity}`;
+  if (!stateName) return `${tierName} - ${entity}`;
+  if (args.locale === 'es') return `${tierName} - ${entity} de ${stateName}`;
+  return `${tierName} - ${stateName} ${entity}`;
 }
 
 export function serviceTierDisplayName(

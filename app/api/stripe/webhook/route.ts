@@ -8,6 +8,11 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { isTestPayment } from '@/lib/payment-test';
+import {
+  paymentFailureNote,
+  planPaymentFailure,
+  planSucceededPayment,
+} from '@/lib/payment-failure';
 import { capturePurchaseCompletedServer } from '@/lib/posthog-server';
 import { isInternalTrafficUser } from '@/lib/internal-traffic';
 import { formatStripeWebhookLog } from '@/lib/stripe-webhook-log';
@@ -79,6 +84,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ deferred: true }, { status: 425 });
       }
       outcome = reconciled === 'done' ? 'reconciled' : 'noop';
+    } else if (event.type === 'payment_intent.payment_failed') {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      outcome = await recordFailedPaymentIntent(pi);
     }
   } catch {
     logStripeWebhook(event.type, event.id, 'error');
@@ -101,8 +109,11 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   const existing = await prisma.payment.findUnique({
     where: { stripePaymentIntentId: pi.id },
   });
-  if (existing) {
-    await claimGuestPaymentAccount(existing.userId, existing.filingId, true);
+  const paidPlan = planSucceededPayment(existing?.status);
+  if (paidPlan === 'noop') {
+    if (existing) {
+      await claimGuestPaymentAccount(existing.userId, existing.filingId, true);
+    }
     return 'noop';
   }
 
@@ -111,8 +122,17 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     include: { user: { select: { isTester: true } } },
   });
   if (!filing) return 'noop';
-  // Only reconcile drafts - submitted/approved filings are already finalized.
-  if (filing.status !== 'DRAFT') return 'noop';
+  // A paid filing stays paid. A failed row for this intent can still be
+  // promoted, without touching status, steps, or the confirmation email.
+  if (filing.status !== 'DRAFT') {
+    if (paidPlan === 'upgrade' && existing) {
+      await prisma.payment.update({
+        where: { id: existing.id },
+        data: { status: 'SUCCEEDED', errorMessage: null, completedAt: new Date() },
+      });
+    }
+    return 'noop';
+  }
 
   // Backstop grace: if the charge just happened, defer to the client checkout
   // (processCheckout) which also converts guests + signs them in. Only act once
@@ -141,35 +161,51 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
     { area: 'stripe', entityId: filingId, tag: 'webhook-reconcile' },
   );
 
-  try {
-    await prisma.payment.create({
-      data: {
-        filingId: filing.id,
-        userId: filing.userId,
-        stripePaymentIntentId: pi.id,
-        stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
-        amountCents,
-        status: 'SUCCEEDED',
-        isTest: isTestPayment({
+  const succeededData = {
+    stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
+    amountCents,
+    status: 'SUCCEEDED' as const,
+    errorMessage: null,
+    isTest: isTestPayment({
+      stripePaymentIntentId: pi.id,
+      livemode: pi.livemode,
+      metadata: pi.metadata,
+      userIsTester: filing.user.isTester,
+    }),
+    stateFilingFeeCents: filing.stateFeeCents,
+    formationServiceFeeCents: filing.serviceFeeCents,
+    otherServicesCents: filing.addOnsTotalCents,
+    cardLast4,
+    cardBrand,
+    completedAt: new Date(),
+  };
+
+  if (paidPlan === 'upgrade' && existing) {
+    await prisma.payment.update({ where: { id: existing.id }, data: succeededData });
+  } else {
+    try {
+      await prisma.payment.create({
+        data: {
+          filingId: filing.id,
+          userId: filing.userId,
           stripePaymentIntentId: pi.id,
-          livemode: pi.livemode,
-          metadata: pi.metadata,
-          userIsTester: filing.user.isTester,
-        }),
-        stateFilingFeeCents: filing.stateFeeCents,
-        formationServiceFeeCents: filing.serviceFeeCents,
-        otherServicesCents: filing.addOnsTotalCents,
-        cardLast4,
-        cardBrand,
-        completedAt: new Date(),
-      },
-    });
-  } catch (err: unknown) {
-    // Unique-constraint race with processCheckout → already handled elsewhere.
-    if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
-      return 'noop';
+          ...succeededData,
+        },
+      });
+    } catch (err: unknown) {
+      // Unique-constraint race with processCheckout → already handled elsewhere,
+      // unless that row is only the failed attempt and this event is the success.
+      if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
+        const raced = await prisma.payment.findUnique({ where: { stripePaymentIntentId: pi.id } });
+        if (raced && planSucceededPayment(raced.status) === 'upgrade') {
+          await prisma.payment.update({ where: { id: raced.id }, data: succeededData });
+        } else {
+          return 'noop';
+        }
+      } else {
+        throw err;
+      }
     }
-    throw err;
   }
 
   // This insert is the filing's transition to paid. A retry that lost the
@@ -234,6 +270,74 @@ async function reconcilePaidFiling(pi: Stripe.PaymentIntent): Promise<'done' | '
   await claimGuestPaymentAccount(filing.userId, filing.id, false);
 
   return 'done';
+}
+
+/**
+ * Record payment_intent.payment_failed. Does not email the customer and does
+ * not change the filing. A succeeded or refunded row for this intent is kept.
+ */
+async function recordFailedPaymentIntent(pi: Stripe.PaymentIntent): Promise<string> {
+  const filingId = pi.metadata?.filingId;
+  if (!filingId) return 'noop';
+
+  const existing = await prisma.payment.findUnique({
+    where: { stripePaymentIntentId: pi.id },
+  });
+  const plan = planPaymentFailure(existing?.status);
+  if (plan === 'replay') return 'replay';
+  if (plan === 'leave_paid') return 'left_paid';
+
+  const filing = await prisma.filing.findUnique({
+    where: { id: filingId },
+    include: { user: { select: { isTester: true } } },
+  });
+  if (!filing) return 'noop';
+
+  const failedData = {
+    status: 'FAILED' as const,
+    errorMessage: paymentFailureNote(pi.last_payment_error?.message),
+    amountCents: pi.amount || filing.totalCents || 0,
+    currency: pi.currency || 'usd',
+    isTest: isTestPayment({
+      stripePaymentIntentId: pi.id,
+      livemode: pi.livemode,
+      metadata: pi.metadata,
+      userIsTester: filing.user.isTester,
+    }),
+    stripeChargeId: typeof pi.latest_charge === 'string' ? pi.latest_charge : null,
+  };
+
+  if (plan === 'mark_failed' && existing) {
+    await prisma.payment.update({ where: { id: existing.id }, data: failedData });
+    return 'payment_failed';
+  }
+
+  try {
+    await prisma.payment.create({
+      data: {
+        filingId: filing.id,
+        userId: filing.userId,
+        stripePaymentIntentId: pi.id,
+        stateFilingFeeCents: filing.stateFeeCents,
+        formationServiceFeeCents: filing.serviceFeeCents,
+        otherServicesCents: filing.addOnsTotalCents,
+        ...failedData,
+      },
+    });
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
+      const raced = await prisma.payment.findUnique({ where: { stripePaymentIntentId: pi.id } });
+      const racedPlan = planPaymentFailure(raced?.status);
+      if (racedPlan === 'leave_paid') return 'left_paid';
+      if (raced && racedPlan === 'mark_failed') {
+        await prisma.payment.update({ where: { id: raced.id }, data: failedData });
+        return 'payment_failed';
+      }
+      return 'replay';
+    }
+    throw err;
+  }
+  return 'payment_failed';
 }
 
 async function claimGuestPaymentAccount(

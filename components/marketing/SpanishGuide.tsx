@@ -7,7 +7,7 @@ import { GuideValueBlock } from '@/components/marketing/GuideValueBlock';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { isSpanishPublicPath, PUBLIC_PATH_HEADER, toSpanishUrl } from '@/lib/locale-paths';
-import { guideTwinAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
+import { socialOpenGraph, attachSocialImages, guideTwinAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
 
 type SpanishGuideMetaOptions = {
@@ -15,6 +15,8 @@ type SpanishGuideMetaOptions = {
   twinEnglishPath?: string;
   /** Explicit index, follow. Spanish guides are indexable either way. */
   indexable?: boolean;
+  /** ICU values for metaDescription when the Spanish string names a price. */
+  values?: Record<string, string | number>;
 };
 
 /**
@@ -40,19 +42,19 @@ export async function spanishGuideMetadata(
   const alternates = options?.twinEnglishPath
     ? guideTwinAlternates(options.twinEnglishPath, esPath)
     : spanishOnlyAlternates(esPath);
-  return {
+  return attachSocialImages({
     title: pageTitle(t('metaTitle')),
-    description: t('metaDescription'),
+    description: options?.values ? t('metaDescription', options.values) : t('metaDescription'),
     alternates,
     ...(options?.indexable ? { robots: { index: true, follow: true } } : {}),
-    openGraph: {
+    openGraph: socialOpenGraph({
       title: t('ogTitle'),
       description: t('ogDescription'),
       type: 'article',
       locale: 'es_US',
       publishedTime: t('published'),
-    },
-  };
+    }),
+  });
 }
 
 export async function SpanishGuide({

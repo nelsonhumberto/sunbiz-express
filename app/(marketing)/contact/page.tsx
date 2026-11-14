@@ -7,7 +7,7 @@ import {
   CONTACT_PHONE_DISPLAY,
   CONTACT_PHONE_E164,
 } from '@/lib/constants';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { serviceInquiryFromQuery } from '@/lib/service-inquiry';
 
 interface ContactPageProps {
@@ -28,11 +28,11 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title,
       description,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: t('ogTitle'),
         description: t('ogDescription'),
         type: 'website',
-      },
+      }),
     },
     locale,
   );

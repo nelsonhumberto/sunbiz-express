@@ -21,7 +21,7 @@ import { JsonLd, serviceJsonLd, breadcrumbJsonLd, faqPageJsonLd } from '@/compon
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { pageTitle, statePageTitlePhrase, withBrand } from '@/lib/seo-title';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { EN_FLORIDA_LICENSE_SPANISH_LINKS } from '@/lib/spanish-guide-links';
 
 interface StateLandingPageProps {
@@ -64,7 +64,7 @@ export async function generateMetadata({
       {
         title: pageTitle(phrase),
         description,
-        openGraph: { title: withBrand(phrase), description, type: 'website' },
+        openGraph: socialOpenGraph({ title: withBrand(phrase), description, type: 'website' }),
       },
       locale,
     );
@@ -77,7 +77,7 @@ export async function generateMetadata({
     {
       title: pageTitle(phrase),
       description: t('heroSubhead', { state: stateName }),
-      openGraph: { title: phrase, type: 'website' },
+      openGraph: socialOpenGraph({ title: phrase, type: 'website' }),
       // Coming-soon pages are near-duplicate templated content - keep them out
       // of the index (still crawlable for the waitlist links) to avoid a
       // thin-content footprint across ~47 state slugs.

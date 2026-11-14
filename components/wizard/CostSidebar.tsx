@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Sparkles, ShieldCheck, Receipt } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,7 @@ export function CostSidebar({
 }: CostSidebarProps) {
   const t = useTranslations('wizard');
   const tPricing = useTranslations('pricing');
+  const locale = useLocale();
   const breakdown = computeCost({
     entityType,
     tier,
@@ -55,7 +56,7 @@ export function CostSidebar({
   const stateCode: StateCode = state ?? 'FL';
   const stateName = getFormationState(stateCode).name;
   const labelFor = (line: CostBreakdownLine) =>
-    localizedLineLabel(line, entityType, t, tPricing);
+    localizedLineLabel(line, entityType, t, tPricing, locale);
   const detailFor = (line: CostBreakdownLine) =>
     lineFeeSplit(line, entityType, stateCode, stateName, tPricing) ??
     localizedLineDetail(line, t);
@@ -194,6 +195,7 @@ export function localizedLineLabel(
   entityType: EntityType,
   tWizard: (key: string, vars?: Record<string, string | number>) => string,
   tPricing: (key: string) => string,
+  locale?: string | null,
 ): string {
   if (line.category === 'package' && line.tierSlug) {
     return localizedPackageLabel({
@@ -201,6 +203,7 @@ export function localizedLineLabel(
       tierSlug: line.tierSlug,
       entityType,
       translate: tPricing,
+      locale,
     });
   }
   if (line.category === 'addon' && line.addOnSlug) {

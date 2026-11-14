@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { checkActionRateLimit } from '@/lib/rate-limit';
@@ -23,24 +24,28 @@ export async function validateCoupon(
   code: string,
   subtotalCents: number,
 ): Promise<CouponValidationResult> {
-  if (!code?.trim()) return { ok: false, error: 'Enter a coupon code.' };
+  const t = await getTranslations('wizard');
+  if (!code?.trim()) return { ok: false, error: t('couponEmpty') };
 
   // Throttle to stop brute-forcing valid coupon codes.
   const limited = checkActionRateLimit('coupon-validate', 15, 10 * 60 * 1000);
-  if (limited) return { ok: false, error: limited };
+  if (limited) {
+    const seconds = /(\d+)/.exec(limited)?.[1] ?? '60';
+    return { ok: false, error: t('couponRateLimit', { seconds }) };
+  }
 
   const coupon = await prisma.coupon.findUnique({
     where: { code: code.trim().toUpperCase() },
   });
 
   // Generic message so attackers can't distinguish "not found" from inactive.
-  if (!coupon) return { ok: false, error: 'This coupon code is invalid.' };
-  if (!coupon.active) return { ok: false, error: 'This coupon is no longer active.' };
+  if (!coupon) return { ok: false, error: t('couponInvalid') };
+  if (!coupon.active) return { ok: false, error: t('couponInactive') };
   if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-    return { ok: false, error: 'This coupon has expired.' };
+    return { ok: false, error: t('couponExpired') };
   }
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
-    return { ok: false, error: 'This coupon has reached its usage limit.' };
+    return { ok: false, error: t('couponLimit') };
   }
 
   const discountCents =

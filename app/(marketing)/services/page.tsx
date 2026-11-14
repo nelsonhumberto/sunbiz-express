@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CTABanner } from '@/components/marketing/CTABanner';
 import { JsonLd, servicesItemListJsonLd } from '@/components/seo/JsonLd';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import {
   ShieldCheck,
   Hash,
@@ -42,11 +42,11 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('ogTitle'),
           description: t('ogDescription'),
           type: 'website',
-        },
+        }),
       },
       locale,
     );
@@ -59,12 +59,12 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title,
       description,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: 'LaunchForma Services - Formation, Compliance, Branding',
         description:
           'Everything you need to form, fund, and run your LLC or Corporation - a la carte add-ons with transparent pricing.',
         type: 'website',
-      },
+      }),
     },
     locale,
   );

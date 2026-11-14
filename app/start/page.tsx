@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { Link } from '@/i18n/navigation';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { DoNotSellLink } from '@/components/legal/DoNotSellLink';
 import { Logo } from '@/components/marketing/Logo';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -33,15 +33,20 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title,
         description,
-        openGraph: { title, description, type: 'website' },
+        openGraph: socialOpenGraph({ title, description, type: 'website' }),
       },
       locale,
     );
   }
+  const title = pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business');
+  const description =
+    'Start your Florida LLC or corporation without an account. We prepare the filing and our team submits it to the state. A private filing service, not a government agency.';
   return withLocaleMeta(
     '/start',
     {
-      title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
+      title,
+      description,
+      openGraph: socialOpenGraph({ title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business', description, type: 'website' }),
     },
     locale,
   );

@@ -50,6 +50,7 @@ import { safeParseJson } from '@/lib/utils';
 import { getWizardActor } from '@/lib/guest';
 import { testerCheckoutAllowed } from '@/lib/tester-checkout';
 import { GuestAccountPrompt } from '@/components/wizard/GuestAccountPrompt';
+import { shouldShowGuestAccountPrompt } from '@/lib/guest-prompt';
 import { isCheckoutTestMode } from '@/lib/checkout-test-mode';
 import { isPlaceholderGuestEmail, showPendingAccountBanner } from '@/lib/guest-identity';
 import { submittedFilingHref } from '@/lib/guest-checkout';
@@ -317,14 +318,20 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
       {/* Guest-only popup: appears after Step 1 (entity choice) so we have
           collected enough info to position the offer. The popup is dismissable
           and persists its dismissal in localStorage. */}
-      {isGuest && actor?.kind === 'guest' && realGuestEmail && stepNum >= 2 && !lpShort && (
+      {shouldShowGuestAccountPrompt({
+        isGuest: isGuest && actor?.kind === 'guest',
+        lpShort,
+        hasEmail: Boolean(realGuestEmail),
+        step: stepNum,
+      }) && actor?.kind === 'guest' && realGuestEmail ? (
         <GuestAccountPrompt
           firstName={actor.firstName}
           email={realGuestEmail}
           filingId={filing.id}
           returnStep={stepNum}
+          step={stepNum}
         />
-      )}
+      ) : null}
     </>
   );
 }

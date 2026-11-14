@@ -7,7 +7,7 @@ import { GuideScrollDepth, GuideTrackedCta } from '@/components/marketing/GuideC
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { buyerTwinAlternates } from '@/lib/buyer-guide-hreflang';
-import { englishOnlyAlternates } from '@/lib/locale-seo';
+import { socialOpenGraph, attachSocialImages, englishOnlyAlternates } from '@/lib/locale-seo';
 import { pageTitle } from '@/lib/seo-title';
 
 const HERO_CLASS =
@@ -29,21 +29,21 @@ export async function englishBuyerMetadata(input: {
 }): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') permanentRedirect(input.esTwin ?? input.path);
-  return {
+  return attachSocialImages({
     title: pageTitle(input.title),
     description: input.description,
     alternates: input.esTwin
       ? buyerTwinAlternates(input.path, input.esTwin)
       : englishOnlyAlternates(input.path),
     robots: { index: true, follow: true },
-    openGraph: {
+    openGraph: socialOpenGraph({
       title: input.title,
       description: input.description,
       type: 'article',
       locale: 'en_US',
       publishedTime: input.published,
-    },
-  };
+    }),
+  });
 }
 
 export async function EnglishBuyerGuide({

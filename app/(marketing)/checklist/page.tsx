@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getLocale } from 'next-intl/server';
 import { ChecklistBoard } from '@/components/marketing/ChecklistBoard';
 import { checklistCopy } from '@/lib/drip-copy';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 const START_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com').replace(/\/$/, '');
 
@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: copy.pageTitle,
       description: copy.pageIntro,
-      openGraph: { title: copy.pageTitle, description: copy.pageIntro, type: 'article' },
+      openGraph: socialOpenGraph({ title: copy.pageTitle, description: copy.pageIntro, type: 'article' }),
     },
     locale,
   );

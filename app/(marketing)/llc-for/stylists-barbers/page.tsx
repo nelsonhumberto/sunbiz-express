@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { unstable_noStore as noStore } from 'next/cache';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { NicheStylistsPage } from '@/components/marketing/NicheStylistsPage';
+import { socialOpenGraph, attachSocialImages } from '@/lib/locale-seo';
 import {
   nicheBundleBlockEnabled,
   nicheMetadataAlternates,
@@ -16,23 +17,23 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = (await getLocale()) === 'es' ? 'es' : 'en';
   const t = await getTranslations('nicheStylists');
   const copy = readNicheStylistsCopy((key) => t(key), locale);
-  return {
+  return attachSocialImages({
     title: { absolute: copy.metaTitle },
     description: copy.metaDescription,
     alternates: nicheMetadataAlternates(locale),
-    openGraph: {
+    openGraph: socialOpenGraph({
       title: copy.metaTitle,
       description: copy.metaDescription,
       type: 'website',
       locale: locale === 'es' ? 'es_US' : 'en_US',
       url: locale === 'es' ? NICHE_STYLISTS_ES_URL : NICHE_STYLISTS_EN_URL,
-    },
+    }),
     twitter: {
       card: 'summary_large_image',
       title: copy.metaTitle,
       description: copy.metaDescription,
     },
-  };
+  });
 }
 
 export default async function StylistsBarbersPage() {

@@ -3,6 +3,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { localizedHref } from '@/lib/locale-paths';
 import { Logo } from './Logo';
 import { BUSINESS_ADDRESS, BUSINESS_LEGAL_NAME, COPYRIGHT_YEAR } from '@/lib/constants';
+import { FOOTER_SOCIAL_LINKS } from '@/lib/social-links';
 
 export function Footer() {
   const tFooter = useTranslations('footer');
@@ -51,6 +52,20 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1 space-y-4">
             <Logo variant="dark" href={href('/')} />
             <p className="text-sm text-white/60 leading-relaxed max-w-xs">{tFooter('tagline')}</p>
+            <nav aria-label={tFooter('socialNav')} className="flex flex-wrap gap-x-3 gap-y-1">
+              {FOOTER_SOCIAL_LINKS.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={tFooter(link.labelKey)}
+                  className="text-sm text-white/70 underline-offset-2 hover:text-white hover:underline"
+                >
+                  {link.name}
+                </a>
+              ))}
+            </nav>
             <div className="flex items-center gap-2 text-xs text-white/40">
               <span className="inline-block h-2 w-2 rounded-full bg-accent animate-pulse-soft" />
               <span>{tFooter('systemsOperational')}</span>

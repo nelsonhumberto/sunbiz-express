@@ -5,7 +5,7 @@ import { GuideLayout } from '@/components/marketing/GuideLayout';
 import { MarkdownBody } from '@/components/marketing/MarkdownBody';
 import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { withBrand } from '@/lib/seo-title';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 const PUBLISHED = '2026-10-23';
 const TITLE = 'What Is a Registered Agent in Florida?';
@@ -38,12 +38,12 @@ export async function generateMetadata(): Promise<Metadata> {
       {
         title: t('metaTitle'),
         description: t('metaDescription'),
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: t('ogTitle'),
           description: t('ogDescription'),
           type: 'article',
           publishedTime: PUBLISHED,
-        },
+        }),
       },
       locale,
     );
@@ -53,12 +53,12 @@ export async function generateMetadata(): Promise<Metadata> {
     {
       title: TITLE,
       description: DESCRIPTION,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: withBrand(TITLE),
         description: DESCRIPTION,
         type: 'article',
         publishedTime: PUBLISHED,
-      },
+      }),
     },
     locale,
   );

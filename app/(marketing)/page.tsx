@@ -21,7 +21,7 @@ import { JsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
 import { robotsForMarketingState } from '@/lib/marketing-robots';
 import { retiredStateDestination } from '@/lib/retired-state-redirects';
 import { homeTitlePhrase, pageTitle, withBrand } from '@/lib/seo-title';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 
 interface HomePageSearchParams {
   state?: string | string[];
@@ -63,11 +63,11 @@ export async function generateMetadata({
       {
         title: pageTitle(phrase),
         description,
-        openGraph: {
+        openGraph: socialOpenGraph({
           title: withBrand(phrase),
           description,
           type: 'website',
-        },
+        }),
       },
       locale,
     );
@@ -83,11 +83,11 @@ export async function generateMetadata({
     {
       title: pageTitle(phrase),
       description,
-      openGraph: {
+      openGraph: socialOpenGraph({
         title: phrase,
         description,
         type: 'website',
-      },
+      }),
       robots: robotsForMarketingState(state),
     },
     locale,

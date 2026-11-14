@@ -11,7 +11,7 @@ import { getMarketingFaq } from '@/lib/marketing-faq';
 import { TIERS, tierPackagePriceCents, type TierSlug } from '@/lib/pricing';
 import { floridaOnlyNote, type StateCode } from '@/lib/formation-states';
 import { JsonLd, pricingProductJsonLd, faqPageJsonLd } from '@/components/seo/JsonLd';
-import { withLocaleMeta } from '@/lib/locale-seo';
+import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 import { formatCurrency } from '@/lib/utils';
 import { searchParamsToQueryString } from '@/lib/utm';
 
@@ -58,7 +58,7 @@ export async function generateMetadata({
     {
       title,
       description,
-      openGraph: { title, description, type: 'website' },
+      openGraph: socialOpenGraph({ title, description, type: 'website' }),
     },
     locale,
   );

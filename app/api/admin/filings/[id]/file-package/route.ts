@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { renderArticlesHtml } from '@/lib/filing-documents';
 import { htmlDocumentToPdf, mergePdfDocuments, pdfFilename } from '@/lib/html-to-pdf';
 import { NOTICE_EMAIL, stripBlankPdfPages } from '@/lib/sunbiz-cover';
+import { sunbizFaxBlockBody } from '@/lib/sunbiz-fax-guard';
 import { telnyxSendFax, normalizeFaxNumber, TelnyxError } from '@/lib/telnyx';
 
 export const dynamic = 'force-dynamic';
@@ -111,6 +112,24 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const flags = await prisma.filing.findUnique({
+    where: { id: params.id },
+    select: { isTest: true, user: { select: { isTester: true } } },
+  });
+  const blocked = sunbizFaxBlockBody(
+    flags ? { isTest: flags.isTest, isTester: flags.user?.isTester } : null,
+  );
+  if (blocked) {
+    logger.warn('Sunbiz fax skipped for test filing', {
+      area: 'filing',
+      entityId: params.id,
+      tag: 'fax',
+      isTest: flags?.isTest === true,
+      isTester: flags?.user?.isTester === true,
+    });
+    return NextResponse.json(blocked, { status: 409 });
   }
 
   const connectionId = process.env.TELNYX_FAX_CONNECTION_ID?.trim();

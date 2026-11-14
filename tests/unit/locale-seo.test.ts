@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { englishOnlyAlternates, localeAlternates, spanishOnlyAlternates } from '@/lib/locale-seo';
 import {
@@ -120,6 +121,13 @@ describe('hreflang alternates', () => {
     expect(start.startMeta.description).not.toMatch(/\b(the|and|with|your|Form a)\b/);
     expect(start.startMeta.title).not.toMatch(/—|–/);
     expect(start.startMeta.description).not.toMatch(/—|–/);
+    const wizard = es.wizard as Record<string, string>;
+    expect(wizard.couponName).toBe('Cupón');
+    expect(wizard.couponPercentOff).toBe('{value}% de descuento');
+    expect(wizard.couponInvalid).not.toMatch(/\b(coupon|invalid|This)\b/);
+    expect(readFileSync('app/start/page.tsx', 'utf8')).toContain('description,');
+    expect(readFileSync('components/wizard/steps/Step12Payment.tsx', 'utf8')).not.toContain('% off');
+    expect(readFileSync('actions/coupons.ts', 'utf8')).toContain("t('couponInvalid')");
   });
 });
 

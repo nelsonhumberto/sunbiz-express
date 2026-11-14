@@ -10,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const meta = await spanishGuideMetadata(PATH, NS, {
     twinEnglishPath: '/guides/florida-llc-cost',
     indexable: true,
+    values: floridaLlcCostMetaValues(),
   });
   const t = await getTranslations(NS);
   const description = renderFloridaLlcCostMeta(t('metaDescription', floridaLlcCostMetaValues()));

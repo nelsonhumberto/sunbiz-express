@@ -15,6 +15,8 @@ type SpanishGuideMetaOptions = {
   twinEnglishPath?: string;
   /** Explicit index, follow. Spanish guides are indexable either way. */
   indexable?: boolean;
+  /** ICU values for metaDescription when the Spanish string names a price. */
+  values?: Record<string, string | number>;
 };
 
 /**
@@ -42,7 +44,7 @@ export async function spanishGuideMetadata(
     : spanishOnlyAlternates(esPath);
   return attachSocialImages({
     title: pageTitle(t('metaTitle')),
-    description: t('metaDescription'),
+    description: options?.values ? t('metaDescription', options.values) : t('metaDescription'),
     alternates,
     ...(options?.indexable ? { robots: { index: true, follow: true } } : {}),
     openGraph: {

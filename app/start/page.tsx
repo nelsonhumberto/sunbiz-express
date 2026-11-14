@@ -38,10 +38,15 @@ export async function generateMetadata(): Promise<Metadata> {
       locale,
     );
   }
+  const title = pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business');
+  const description =
+    'Start your Florida LLC or corporation without an account. We prepare the filing and our team submits it to the state. A private filing service, not a government agency.';
   return withLocaleMeta(
     '/start',
     {
-      title: pageTitle('LaunchForma | Form a Florida LLC & Incorporate Your Business'),
+      title,
+      description,
+      openGraph: { title: 'LaunchForma | Form a Florida LLC & Incorporate Your Business', description, type: 'website' },
     },
     locale,
   );

@@ -11,6 +11,22 @@
     scroll-behavior: smooth;
   }
 
+  /* 664px-class phones: keep the business name above the sticky Continue bar. */
+  .wizard-name-block {
+    scroll-margin-bottom: calc(var(--wizard-actions-height, 5.5rem) + var(--lf-cookie-h, 0px) + 1rem);
+  }
+
+  @media (max-height: 720px) {
+    .wizard-step-column {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .wizard-step-intro {
+      margin-bottom: 0.75rem;
+    }
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';

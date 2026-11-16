@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useLocale, useTranslations } from 'next-intl';
+import type { CookieNoticeCopy } from '@/lib/cookie-notice-locale';
+import type { Locale } from '@/i18n/config';
 import {
   ADS_CONSENT_ALL,
   ADS_CONSENT_ESSENTIAL,
@@ -16,9 +17,14 @@ import { localizedHref } from '@/lib/locale-paths';
 const COOKIE_BAR_VAR = '--lf-cookie-h';
 
 /** Slim bottom bar. Fixed, so it does not shift page content. Shown once. */
-export function CookieConsentBar() {
-  const t = useTranslations('cookieNotice');
-  const locale = useLocale();
+export function CookieConsentBar({
+  locale,
+  copy,
+}: {
+  /** Public-path language, so a client provider that hydrated in English cannot paint this bar in English on /es. */
+  locale: Locale;
+  copy: CookieNoticeCopy;
+}) {
   const barRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
@@ -93,17 +99,17 @@ export function CookieConsentBar() {
       ref={barRef}
       data-testid="cookie-consent"
       role="region"
-      aria-label={t('label')}
+      aria-label={copy.label}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-2 py-0.5"
     >
       <div className="mx-auto flex max-w-3xl items-center gap-2">
         <p className="min-w-0 flex-1 text-[11px] leading-tight text-ink">
-          {t('body')}{' '}
+          {copy.body}{' '}
           <a
             href={localizedHref('/privacy', locale)}
             className="font-semibold text-primary underline underline-offset-2"
           >
-            {t('privacy')}
+            {copy.privacy}
           </a>
         </p>
         <div className="flex shrink-0 items-center gap-1">
@@ -112,14 +118,14 @@ export function CookieConsentBar() {
             className="min-h-11 px-2 text-xs font-medium text-ink underline underline-offset-2"
             onClick={() => choose(ADS_CONSENT_ESSENTIAL)}
           >
-            {t('essential')}
+            {copy.essential}
           </button>
           <button
             type="button"
             className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white"
             onClick={() => choose(ADS_CONSENT_ALL)}
           >
-            {t('accept')}
+            {copy.accept}
           </button>
         </div>
       </div>

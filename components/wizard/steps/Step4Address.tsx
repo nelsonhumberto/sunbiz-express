@@ -105,7 +105,7 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
             )}
           >
             <p className="font-semibold text-ink leading-snug">
-              {t('hasInStateAddress', { state: stateRule.name })}
+              <span key="has-in-state">{t('hasInStateAddress', { state: stateRule.name })}</span>
             </p>
           </button>
           <button
@@ -121,8 +121,10 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
             )}
           >
             <p className="font-semibold text-ink leading-snug flex items-start gap-2">
-              <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-              {t('noInStateAddress', { state: stateRule.name })}
+              <span key="no-in-state-icon" className="inline-flex">
+                <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+              </span>
+              <span key="no-in-state">{t('noInStateAddress', { state: stateRule.name })}</span>
             </p>
           </button>
         </div>
@@ -130,21 +132,23 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
 
       {showInStateChoice && noFloridaAddress && (
         <p className="text-sm text-ink-muted leading-relaxed">
-          {t('noInStateAddressHelper', { state: stateRule.name })}
+          <span key="no-in-state-help">{t('noInStateAddressHelper', { state: stateRule.name })}</span>
         </p>
       )}
 
       {showInStateChoice && noFloridaAddress && (
         <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
-          <p className="font-medium text-ink">{t('addOnName_registered_agent')}</p>
+          <p className="font-medium text-ink">
+            <span key="ra-name">{t('addOnName_registered_agent')}</span>
+          </p>
           <p className="text-xs leading-relaxed text-ink-muted mt-1">
-            {t('addOnDesc_registered_agent')}
+            <span key="ra-desc">{t('addOnDesc_registered_agent')}</span>
           </p>
           <ul className="text-xs text-ink-muted space-y-1 mt-2">
-            <li>· {t('useOurAgentP1', { state: stateRule.name })}</li>
-            <li>· {t('useOurAgentP2')}</li>
-            <li>· {t('useOurAgentP3', { price: raPrice })}</li>
-            <li>· {t('useOurAgentP4')}</li>
+            <li><span key="ra-p1">· {t('useOurAgentP1', { state: stateRule.name })}</span></li>
+            <li><span key="ra-p2">· {t('useOurAgentP2')}</span></li>
+            <li><span key="ra-p3">· {t('useOurAgentP3', { price: raPrice })}</span></li>
+            <li><span key="ra-p4">· {t('useOurAgentP4')}</span></li>
           </ul>
         </div>
       )}
@@ -157,29 +161,37 @@ export function Step4Address({ filing }: { filing: WizardFiling }) {
         highlightMissing={showMissing && principalStillRequired}
       />
       {showMissing && principalStillRequired && !valid && (
-        <p className="text-sm text-destructive">{t('missingFields')}</p>
+        <p className="text-sm text-destructive">
+          <span key="missing-fields">{t('missingFields')}</span>
+        </p>
       )}
 
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted">
         <p className="font-medium text-ink mb-1 flex items-center gap-1.5">
-          <MapPin className="h-4 w-4" />
-          {t('principalTipTitle')}
+          <span key="principal-tip-icon" className="inline-flex">
+            <MapPin className="h-4 w-4" />
+          </span>
+          <span key="principal-tip-title">{t('principalTipTitle')}</span>
         </p>
         <p className="text-xs leading-relaxed">
-          {principalRequired
-            ? t('principalTipBody', { state: stateRule.name })
-            : t('principalTipBodyOptional', { state: stateRule.name })}
+          <span key="principal-tip-body">
+            {principalRequired
+              ? t('principalTipBody', { state: stateRule.name })
+              : t('principalTipBodyOptional', { state: stateRule.name })}
+          </span>
         </p>
       </div>
 
       {isOutOfState && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
           <p className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
-            <Info className="h-4 w-4" />
-            {t('foreignRegistrationCalloutTitle')}
+            <span key="foreign-icon" className="inline-flex">
+              <Info className="h-4 w-4" />
+            </span>
+            <span key="foreign-title">{t('foreignRegistrationCalloutTitle')}</span>
           </p>
           <p className="text-xs leading-relaxed text-amber-900/80">
-            {t('foreignRegistrationCalloutBody', { filingState: stateRule.name })}
+            <span key="foreign-body">{t('foreignRegistrationCalloutBody', { filingState: stateRule.name })}</span>
           </p>
         </div>
       )}

@@ -42,17 +42,18 @@ vi.mock('@/components/marketing/CTABanner', () => ({
 
 vi.mock('next-intl/server', () => ({
   getLocale: async () => 'es',
-  getTranslations: async (ns: string) => {
+  getTranslations: async (ns: string | { namespace: string }) => {
+    const name = typeof ns === 'string' ? ns : ns.namespace;
     const messages = JSON.parse(readFileSync('messages/es.json', 'utf8')) as Record<
       string,
       Record<string, string>
     >;
-    const bag = messages[ns] ?? {};
+    const bag = messages[name] ?? {};
     return (key: string, values?: Record<string, string | number>) => {
       const value = bag[key];
-      if (typeof value !== 'string') throw new Error(`missing ${ns}.${key}`);
+      if (typeof value !== 'string') throw new Error(`missing ${name}.${key}`);
       const needsValues = value.includes('{');
-      if (needsValues && !values) return `${ns}.${key}`;
+      if (needsValues && !values) return `${name}.${key}`;
       let text = value;
       if (values) {
         for (const [name, replacement] of Object.entries(values)) {

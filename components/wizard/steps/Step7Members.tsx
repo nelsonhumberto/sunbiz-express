@@ -742,11 +742,10 @@ export function Step7Members({
             )}
             <div>
               <p className="font-semibold text-ink">
-                Delaware Certificate - initial member disclosure
+                <span key="de-members-title">{t('deMembersTitle')}</span>
               </p>
               <p className="text-xs text-ink-muted mt-0.5">
-                Delaware lets you choose whether to list initial member names and addresses on the
-                publicly-filed Certificate of Formation. Most founders leave them off for privacy.
+                <span key="de-members-body">{t('deMembersBody')}</span>
               </p>
             </div>
           </div>
@@ -762,9 +761,11 @@ export function Step7Members({
                   : 'border-border bg-white hover:border-primary/30',
               )}
             >
-              <p className="font-semibold text-ink">Do not include (recommended)</p>
+              <p className="font-semibold text-ink">
+                <span key="de-members-hide-title">{t('deMembersHideTitle')}</span>
+              </p>
               <p className="text-xs text-ink-muted">
-                Member info stays in your private records. Default Delaware behavior.
+                <span key="de-members-hide-body">{t('deMembersHideBody')}</span>
               </p>
             </button>
             <button
@@ -778,9 +779,11 @@ export function Step7Members({
                   : 'border-border bg-white hover:border-primary/30',
               )}
             >
-              <p className="font-semibold text-ink">Include initial members</p>
+              <p className="font-semibold text-ink">
+                <span key="de-members-show-title">{t('deMembersShowTitle')}</span>
+              </p>
               <p className="text-xs text-ink-muted">
-                Names and addresses listed on the public Certificate of Formation.
+                <span key="de-members-show-body">{t('deMembersShowBody')}</span>
               </p>
             </button>
           </div>

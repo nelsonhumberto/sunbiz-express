@@ -69,7 +69,7 @@ export default async function FloridaLlcLandingPage({ searchParams }: LandingPro
     locale === 'es'
       ? [
           tNiche('subhead'),
-          (await getTranslations('guideLlcSinSsn'))('ctaSubhead'),
+          (await getTranslations({ locale: 'es', namespace: 'guideLlcSinSsn' }))('ctaSubhead'),
           tHero('previewBankReadyDetail'),
         ]
       : [tNiche('subhead'), MIAMI_LAKES_EN, tHero('previewBankReadyDetail')];

@@ -42,7 +42,9 @@ describe('wizard translate guard and error recovery', () => {
     );
     expect(layout).toContain('strategy="beforeInteractive"');
     const wizardLayout = readFileSync('app/wizard/layout.tsx', 'utf8');
-    expect(wizardLayout).not.toContain('translate=');
+    expect(wizardLayout).toContain('chromeTranslateOptOut(locale)');
+    expect(wizardLayout).toContain('englishWizardNotranslateMeta(locale)');
+    expect(wizardLayout).toContain('translate={optOut.translate}');
     expect(wizardRenderFailureContext({
       digest: 'abc',
       language: 'es-MX',

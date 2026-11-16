@@ -103,6 +103,9 @@ describe('English landing passes tier=STANDARD into openGuestDraft', () => {
       }),
     );
     expect(html).toContain('name="tier"');
+    expect(html).toContain('translate="no"');
+    expect(html).toContain('notranslate');
+    expect(html).not.toContain('Ver en español');
 
     const tier = landingStartTier(null, EN_SEARCH);
     expect(tier).toBe('STANDARD');

@@ -2,9 +2,10 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/i18n/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, X, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { VerEnEspanolLink } from '@/components/i18n/VerEnEspanolLink';
 import { Logo } from '@/components/marketing/Logo';
 import { LanguageSwitcher } from '@/components/marketing/LanguageSwitcher';
 import { GovDisclosure } from '@/components/marketing/GovDisclosure';
@@ -61,6 +62,7 @@ export function WizardShell({
 }: WizardShellProps) {
   const t = useTranslations('wizard');
   const tDisc = useTranslations('disclosure');
+  const locale = useLocale();
 
   useEffect(() => {
     trackEvent('wizard_step_viewed', {
@@ -141,7 +143,10 @@ export function WizardShell({
         </div>
       </header>
 
-      <div className="wizard-step-column flex-1 container py-8 lg:py-12">
+      <div className="wizard-step-column relative flex-1 container py-8 lg:py-12">
+        {locale === 'en' ? (
+          <VerEnEspanolLink className="absolute right-4 top-2 z-10 text-[11px] font-medium leading-none text-ink-muted underline underline-offset-2 hover:text-ink" />
+        ) : null}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
           <div id="wizard-step-content" tabIndex={-1} className="lg:col-span-2 min-w-0 focus:outline-none">
             <div className="wizard-step-intro mb-8">

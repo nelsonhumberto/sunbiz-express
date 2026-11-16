@@ -66,6 +66,8 @@ function filing(step: 2 | 4): WizardFiling {
 }
 
 function wrapTextInFont(root: ParentNode) {
+  // Chrome still wraps text when translate="no" or .notranslate is set and the
+  // visitor has "always translate English" on. Do not skip those nodes.
   const texts: Text[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let current = walker.nextNode();
@@ -147,7 +149,14 @@ describe('wizard steps survive Chrome Translate', () => {
     await act(async () => {
       root.render(createElement(Step2Name, { filing: filing(2) }));
     });
+    host.setAttribute('translate', 'no');
+    host.classList.add('notranslate');
+    const meta = document.createElement('meta');
+    meta.name = 'google';
+    meta.content = 'notranslate';
+    document.head.appendChild(meta);
     wrapTextInFont(host);
+    expect(host.querySelector('font')).toBeTruthy();
     const input = host.querySelector('#businessName') as HTMLInputElement;
     expect(input).toBeTruthy();
     await act(async () => {
@@ -186,7 +195,10 @@ describe('wizard steps survive Chrome Translate', () => {
     await act(async () => {
       root.render(createElement(Step4Address, { filing: filing(4) }));
     });
+    host.setAttribute('translate', 'no');
+    host.classList.add('notranslate');
     wrapTextInFont(host);
+    expect(host.querySelector('font')).toBeTruthy();
     const radios = host.querySelectorAll('[role="radio"]');
     expect(radios.length).toBeGreaterThan(0);
     await act(async () => {

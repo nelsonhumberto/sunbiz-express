@@ -185,10 +185,16 @@ export function Step2Name({
       */}
       {assessment?.requiresManualReview && (
         <div className="rounded-lg border border-warn/30 bg-warn-subtle/40 p-4 flex items-start gap-3 text-sm text-ink leading-relaxed">
-          <FileText className="h-5 w-5 text-warn shrink-0 mt-0.5" />
+          <span key="name-manual-icon" className="inline-flex">
+            <FileText className="h-5 w-5 text-warn shrink-0 mt-0.5" />
+          </span>
           <div className="space-y-1">
-            <p className="font-semibold">{t('nameManualTitle')}</p>
-            <p className="text-xs text-ink-muted">{t('nameManualBody')}</p>
+            <p className="font-semibold">
+              <span key="name-manual-title">{t('nameManualTitle')}</span>
+            </p>
+            <p className="text-xs text-ink-muted">
+              <span key="name-manual-body">{t('nameManualBody')}</span>
+            </p>
           </div>
         </div>
       )}
@@ -198,16 +204,22 @@ export function Step2Name({
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
         >
-          {t('nameTooShort')}
+          <span key="name-too-short">{t('nameTooShort')}</span>
         </p>
       )}
 
       {isHardBlocked && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3 text-sm text-destructive leading-relaxed">
-          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <span key="name-hard-icon" className="inline-flex">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          </span>
           <div className="space-y-1">
-            <p className="font-semibold">{t('nameHardBlockTitle')}</p>
-            <p className="text-xs">{assessment?.error ?? t('nameHardBlockFallback')}</p>
+            <p className="font-semibold">
+              <span key="name-hard-title">{t('nameHardBlockTitle')}</span>
+            </p>
+            <p className="text-xs">
+              <span key="name-hard-body">{assessment?.error ?? t('nameHardBlockFallback')}</span>
+            </p>
           </div>
         </div>
       )}
@@ -215,19 +227,25 @@ export function Step2Name({
       <div className="rounded-lg bg-muted/40 border border-border p-4 text-sm text-ink-muted leading-relaxed">
         <p className="font-medium text-ink mb-1">{t('nameTipsTitle')}</p>
         <ul className="space-y-1 text-xs">
-          <li>· {t('nameTip1', { state: stateName })}</li>
-          <li>· {t('nameTip2')}</li>
-          <li>· {t('nameTip3')}</li>
-          <li>· {t('nameTip4')}</li>
+          <li><span key="name-tip-1">· {t('nameTip1', { state: stateName })}</span></li>
+          <li><span key="name-tip-2">· {t('nameTip2')}</span></li>
+          <li><span key="name-tip-3">· {t('nameTip3')}</span></li>
+          <li><span key="name-tip-4">· {t('nameTip4')}</span></li>
         </ul>
       </div>
 
       {/* Approval guarantee - calms anxiety about state rejection. */}
       <div className="rounded-lg border border-success/30 bg-success-subtle/40 p-4 text-sm text-ink leading-relaxed flex items-start gap-3">
-        <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
+        <span key="name-guarantee-icon" className="inline-flex">
+          <ShieldCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
+        </span>
         <div>
-          <p className="font-semibold mb-0.5">{t('nameGuaranteeTitle')}</p>
-          <p className="text-xs text-ink-muted">{t('nameGuaranteeBody', { state: stateName })}</p>
+          <p className="font-semibold mb-0.5">
+            <span key="name-guarantee-title">{t('nameGuaranteeTitle')}</span>
+          </p>
+          <p className="text-xs text-ink-muted">
+            <span key="name-guarantee-body">{t('nameGuaranteeBody', { state: stateName })}</span>
+          </p>
         </div>
       </div>
 

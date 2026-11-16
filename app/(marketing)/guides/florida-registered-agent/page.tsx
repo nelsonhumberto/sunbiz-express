@@ -32,7 +32,7 @@ const PATH = '/guides/florida-registered-agent';
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlRa');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlRa' });
     return withLocaleMeta(
       PATH,
       {
@@ -67,7 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FloridaRegisteredAgentGuide() {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlRa');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlRa' });
     const faq = [1, 2, 3].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
     return (
       <>

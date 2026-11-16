@@ -73,6 +73,34 @@ interface MemberTaxUi {
   taxIdLast4?: string | null;
 }
 
+type ProcField = 'label' | 'desc' | 'estimate';
+
+const PROCESSING_KEYS: Record<string, string> = {
+  'WY:standard:label': 'procWyStandardLabel',
+  'WY:standard:desc': 'procWyStandardDesc',
+  'WY:standard:estimate': 'procWyStandardEstimate',
+  'WY:expedited:label': 'procWyExpeditedLabel',
+  'WY:expedited:desc': 'procWyExpeditedDesc',
+  'WY:expedited:estimate': 'procWyExpeditedEstimate',
+  'DE:standard:label': 'procDeStandardLabel',
+  'DE:standard:desc': 'procDeStandardDesc',
+  'DE:standard:estimate': 'procDeStandardEstimate',
+  'DE:expedited_8bd:label': 'procDeExpeditedLabel',
+  'DE:expedited_8bd:desc': 'procDeExpeditedDesc',
+  'DE:expedited_8bd:estimate': 'procDeExpeditedEstimate',
+};
+
+function processingField(
+  t: (key: 'procWyStandardLabel') => string,
+  state: string,
+  id: string,
+  field: ProcField,
+  fallback: string,
+): string {
+  const key = PROCESSING_KEYS[`${state}:${id}:${field}`];
+  return key ? t(key as 'procWyStandardLabel') : fallback;
+}
+
 export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const stored = safeParseJson<{
     effectiveDate?: string;
@@ -925,7 +953,8 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           <div className="space-y-1.5">
             <Label htmlFor="organizerEmail" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
-              Organizer email <span className="text-destructive">*</span>
+              <span key="wy-organizer-label">{t('wyOrganizerEmail')}</span>{' '}
+              <span key="wy-organizer-required" className="text-destructive">*</span>
             </Label>
             <Input
               id="organizerEmail"
@@ -936,8 +965,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
               className="max-w-md"
             />
             <p className="text-xs text-ink-muted">
-              Wyoming requires the organizer's email on the Articles. The Secretary of State
-              uses this to send filing confirmations.
+              <span key="wy-organizer-help">{t('wyOrganizerHelp')}</span>
             </p>
           </div>
         )}
@@ -952,8 +980,8 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
               required
             />
             <span className="text-sm text-ink leading-relaxed">
-              I consent to receive electronic service of process and Wyoming Secretary of
-              State notices on behalf of this entity. <span className="text-destructive">*</span>
+              <span key="wy-consent">{t('wyConsent')}</span>{' '}
+              <span key="wy-consent-required" className="text-destructive">*</span>
             </span>
           </label>
         )}
@@ -985,9 +1013,11 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           <div className="flex items-start gap-3">
             <Clock className="h-5 w-5 text-primary mt-0.5" />
             <div>
-              <p className="font-semibold text-ink">{stateRule.name} processing speed</p>
+              <p className="font-semibold text-ink">
+                <span key="proc-speed-title">{t('procSpeedTitle', { state: stateRule.name })}</span>
+              </p>
               <p className="text-xs text-ink-muted mt-0.5">
-                State expedite fees are forwarded to {stateRule.name} - we do not mark them up.
+                <span key="proc-speed-body">{t('procSpeedBody', { state: stateRule.name })}</span>
               </p>
             </div>
           </div>
@@ -1008,14 +1038,22 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                   )}
                 >
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-semibold text-ink">{opt.label}</span>
+                    <span key={`${opt.id}-label`} className="font-semibold text-ink">
+                      {processingField(t, stateCode, opt.id, 'label', opt.label)}
+                    </span>
                     <span className={cn('text-sm font-semibold', selected ? 'text-primary' : 'text-ink-muted')}>
-                      {formatDollars(opt.feeCents)}
-                      {opt.feeIsProvisional && opt.feeCents > 0 ? '*' : ''}
+                      <span key={`${opt.id}-fee`}>
+                        {formatDollars(opt.feeCents)}
+                        {opt.feeIsProvisional && opt.feeCents > 0 ? '*' : ''}
+                      </span>
                     </span>
                   </div>
                   <p className="text-xs text-ink-muted">
-                    {opt.estimate} · {opt.description}
+                    <span key={`${opt.id}-detail`}>
+                      {processingField(t, stateCode, opt.id, 'estimate', opt.estimate)}
+                      {' · '}
+                      {processingField(t, stateCode, opt.id, 'desc', opt.description)}
+                    </span>
                   </p>
                 </button>
               );
@@ -1023,8 +1061,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           </div>
           {stateRule.processingOptions.some((o) => o.feeIsProvisional && o.feeCents > 0) && (
             <p className="text-[11px] text-ink-subtle italic">
-              * Provisional state fee - confirmed at submission. We will reach out before charging
-              if the actual amount differs.
+              <span key="proc-provisional">{t('procProvisional')}</span>
             </p>
           )}
         </div>
@@ -1047,13 +1084,13 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
           />
           <div className="text-sm text-ink leading-relaxed">
             <span className="font-semibold inline-flex items-center gap-1.5">
-              <Globe className="h-4 w-4" />
-              I plan to operate in another state
+              <span key="foreign-operate-icon" className="inline-flex">
+                <Globe className="h-4 w-4" />
+              </span>
+              <span key="foreign-operate-title">{t('foreignOperateTitle')}</span>
             </span>
             <p className="text-xs text-ink-muted mt-1">
-              Forming in {stateRule.name} doesn't authorize you to do business in another state.
-              Most states require a separate "foreign qualification" filing if you have an office,
-              employees, or significant operations there. We'll follow up after formation with help.
+              <span key="foreign-operate-body">{t('foreignOperateBody', { state: stateRule.name })}</span>
             </p>
           </div>
         </label>

@@ -55,6 +55,41 @@ export type { NameCheckResult };
 
 export type { BusinessNameAssessment };
 
+type NameBadgeIcon = 'loading' | 'ok' | 'taken' | 'similar';
+
+function NameBadgeGlyph({ icon }: { icon: NameBadgeIcon }) {
+  switch (icon) {
+    case 'loading':
+      return <Loader2 className="h-3 w-3 animate-spin" />;
+    case 'ok':
+      return <Check className="h-3 w-3" strokeWidth={3} />;
+    case 'taken':
+      return <X className="h-3 w-3" />;
+    case 'similar':
+      return <AlertTriangle className="h-3 w-3" />;
+    default: {
+      const unexpected: never = icon;
+      return unexpected;
+    }
+  }
+}
+
+function nameBadge(
+  loading: boolean,
+  result: NameCheckResult | null,
+  labelFor: (key: 'checking' | 'available' | 'taken' | 'similar') => string,
+): {
+  variant: 'outline' | 'success' | 'danger' | 'warn';
+  label: string;
+  icon: NameBadgeIcon;
+} | null {
+  if (loading) return { variant: 'outline', label: labelFor('checking'), icon: 'loading' };
+  if (!result) return null;
+  if (result.available) return { variant: 'success', label: labelFor('available'), icon: 'ok' };
+  if (result.status === 'exact_conflict') return { variant: 'danger', label: labelFor('taken'), icon: 'taken' };
+  return { variant: 'warn', label: labelFor('similar'), icon: 'similar' };
+}
+
 interface NameCheckWidgetProps {
   initialName?: string | null;
   /** Name passed in from /start (?name=) when the filing row is still blank. */
@@ -242,8 +277,8 @@ export function NameCheckWidget({
       setLoading(false);
       const baseMessage =
         stateRule.code === 'WY'
-          ? `We'll verify availability with the Wyoming Secretary of State at submission. We strongly recommend running the WyoBiz "Contains" search yourself first - see the link below.`
-          : `We'll verify availability with ${stateRule.name} at submission. Names that conflict with an existing ${stateRule.name} entity will be rejected; we'll contact you to choose an alternative.`;
+          ? t('wyNameDeferred')
+          : t('nameCheckStateDeferred', { state: stateRule.name });
       setResult({
         query: combinedName,
         available: true,
@@ -391,14 +426,17 @@ export function NameCheckWidget({
     return result.message || t('nameStatusError');
   })();
 
+  const badge = nameBadge(loading, result, (key) => t(key));
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="businessName" className="text-base">
-          {t('businessName')} <span className="text-destructive">*</span>
+          <span key="business-name-label">{t('businessName')}</span>{' '}
+          <span key="business-name-required" className="text-destructive">*</span>
         </Label>
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="wizard-name-block flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-subtle pointer-events-none" />
             <Input
@@ -440,7 +478,7 @@ export function NameCheckWidget({
               <SelectContent>
                 {suffixOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                    <span key={opt.value}>{opt.label}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -451,52 +489,37 @@ export function NameCheckWidget({
         {ambiguousSuffix === 'co' && (
           <p className="text-xs text-ink-muted flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            {t('nameSuffixCoHint')}
+            <span key="suffix-co">{t('nameSuffixCoHint')}</span>
           </p>
         )}
         {ambiguousSuffix === 'company' && (
           <p className="text-xs text-ink-muted flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            {t('nameSuffixCompanyHint')}
+            <span key="suffix-company">{t('nameSuffixCompanyHint')}</span>
           </p>
         )}
         {baseHasSuffix && !ambiguousSuffix && (
           <p className="text-xs text-warn flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {t('suffixDuplicateWarn')}
+            <span key="suffix-duplicate">{t('suffixDuplicateWarn')}</span>
           </p>
         )}
 
         <div className="flex items-center justify-between gap-3 pt-1">
           <p className="text-xs text-ink-subtle">
-            {t('namePreviewLabel')}{' '}
-            <span className="font-medium text-ink">
+            <span key="name-preview-label">{t('namePreviewLabel')}</span>{' '}
+            <span key="name-preview-value" className="font-medium text-ink">
               {combinedName.trim() || '-'}
             </span>
           </p>
           <div>
-            {loading ? (
-              <Badge variant="outline">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {t('checking')}
+            {badge ? (
+              <Badge variant={badge.variant}>
+                <span key="name-badge-icon" className="inline-flex">
+                  <NameBadgeGlyph icon={badge.icon} />
+                </span>
+                <span key="name-badge-label">{badge.label}</span>
               </Badge>
-            ) : result ? (
-              result.available ? (
-                <Badge variant="success">
-                  <Check className="h-3 w-3" strokeWidth={3} />
-                  {t('available')}
-                </Badge>
-              ) : result.status === 'exact_conflict' ? (
-                <Badge variant="danger">
-                  <X className="h-3 w-3" />
-                  {t('taken')}
-                </Badge>
-              ) : (
-                <Badge variant="warn">
-                  <AlertTriangle className="h-3 w-3" />
-                  {t('similar')}
-                </Badge>
-              )
             ) : null}
           </div>
         </div>
@@ -507,7 +530,11 @@ export function NameCheckWidget({
           role="status"
           className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-ink-muted leading-relaxed flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p>{rateLimited ? t('nameCheckRateLimit') : t('nameCheckDeferred')}</p>
+          <p>
+            <span key="name-check-note">
+              {rateLimited ? t('nameCheckRateLimit') : t('nameCheckDeferred')}
+            </span>
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -520,7 +547,7 @@ export function NameCheckWidget({
               setRetryNonce(retryTokenRef.current);
             }}
           >
-            {t('nameCheckRetry')}
+            <span key="name-check-retry">{t('nameCheckRetry')}</span>
           </Button>
         </div>
       )}
@@ -546,19 +573,19 @@ export function NameCheckWidget({
                   : 'text-warn'
             )}
           >
-            {statusMessage}
+            <span key="name-status-message">{statusMessage}</span>
           </p>
 
           {result.available && (
             <p className="mt-2 text-xs text-success/90 leading-relaxed">
-              {t('nameLockUrgency', { state: stateRule.name })}
+              <span key="name-lock-urgency">{t('nameLockUrgency', { state: stateRule.name })}</span>
             </p>
           )}
 
           {result.conflicts.length > 0 && (
             <div className="mt-3 space-y-1">
               <p className="text-xs font-semibold text-ink uppercase tracking-wider">
-                {t('conflictsHeader')}
+                <span key="conflicts-header">{t('conflictsHeader')}</span>
               </p>
               <ul className="space-y-1">
                 {result.conflicts.map((c) => (
@@ -580,7 +607,7 @@ export function NameCheckWidget({
             <div className="mt-4">
               <p className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3" />
-                {t('tryInstead')}
+                <span key="try-instead">{t('tryInstead')}</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {result.suggestions.map((s) => {
@@ -596,7 +623,7 @@ export function NameCheckWidget({
                       }}
                       className="px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-border hover:border-primary hover:bg-primary/5 hover:text-primary transition-colors"
                     >
-                      {s}
+                      <span key={s}>{s}</span>
                     </button>
                   );
                 })}
@@ -633,8 +660,10 @@ export function NameCheckWidget({
                 key={`${w.kind}-${w.id}`}
                 className={cn('rounded-lg border p-3 flex items-start gap-2.5 text-xs leading-relaxed', tone)}
               >
-                <Icon className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>{w.message}</span>
+                <span key={`${w.kind}-${w.id}-icon`} className="inline-flex">
+                  <Icon className="h-4 w-4 shrink-0 mt-0.5" />
+                </span>
+                <span key={`${w.kind}-${w.id}-text`}>{w.message}</span>
               </div>
             );
           })}
@@ -651,13 +680,10 @@ export function NameCheckWidget({
             <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p>
-                Wyoming uses a strict <strong>"distinguishable"</strong> rule and reviews many
-                names manually. We&apos;ll cross-check your name against the state registry
-                before we submit so there are no surprises.
+                <span key="wy-distinguishable">{t('wyDistinguishable')}</span>
               </p>
               <p className="text-[11px] text-ink-subtle">
-                Names that begin with &quot;A&quot; or use special characters are paper-filed
-                for manual review by the Wyoming Secretary of State.
+                <span key="wy-paper">{t('wyPaperFiled')}</span>
               </p>
             </div>
           </div>

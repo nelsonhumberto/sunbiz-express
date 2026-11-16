@@ -34,7 +34,7 @@ const PATH = '/guides/florida-annual-report';
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlAnnual');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlAnnual' });
     return withLocaleMeta(
       PATH,
       {
@@ -69,7 +69,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FloridaAnnualReportGuide() {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlAnnual');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlAnnual' });
     const faq = [1, 2, 3].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
     return (
       <>

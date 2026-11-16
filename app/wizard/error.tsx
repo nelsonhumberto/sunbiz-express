@@ -8,6 +8,7 @@ import { hrefForLocale } from '@/lib/app-href';
 import { Button } from '@/components/ui/button';
 import { ERROR_PAGE_COPY } from '@/lib/error-page-copy';
 import { logger } from '@/lib/logger';
+import { wizardRenderFailureContext } from '@/lib/wizard-error-context';
 
 /**
  * Wizard-scoped error boundary. The public URL decides the language
@@ -24,12 +25,27 @@ export default function WizardError({
   const copy = ERROR_PAGE_COPY[locale];
 
   useEffect(() => {
-    logger.error('Wizard render failure', {
-      area: 'wizard',
-      digest: error.digest,
-      tag: 'wizard-error-boundary',
-    }, error);
+    logger.error(
+      'Wizard render failure',
+      {
+        area: 'wizard',
+        ...wizardRenderFailureContext({
+          digest: error.digest,
+          language: navigator.language,
+          htmlClassName: document.documentElement.className,
+        }),
+      },
+      error,
+    );
   }, [error]);
+
+  function tryAgain() {
+    // reset() remounts this segment. A full reload then drops the <font>
+    // nodes Chrome Translate inserted. The filing id stays in the URL, so
+    // the saved draft is the same one.
+    reset();
+    window.location.reload();
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface px-6 py-12">
@@ -47,7 +63,7 @@ export default function WizardError({
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
-          <Button type="button" onClick={() => reset()}>
+          <Button type="button" onClick={tryAgain}>
             <RefreshCw className="h-4 w-4" /> {copy.tryAgain}
           </Button>
           <Button asChild variant="outline">

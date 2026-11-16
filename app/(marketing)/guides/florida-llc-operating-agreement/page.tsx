@@ -23,7 +23,7 @@ import { oaTemplateDownloadEnabled } from '@/lib/oa-template';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
 
 async function spanishCopy(): Promise<OaGuideCopy> {
-  const t = await getTranslations('guideOa');
+  const t = await getTranslations({ locale: 'es', namespace: 'guideOa' });
   return {
     metaTitle: t('metaTitle'),
     metaDescription: t('metaDescription'),

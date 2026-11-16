@@ -35,7 +35,7 @@ const PATH = '/guides/how-to-form-an-llc-in-florida';
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlForm');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlForm' });
     return withLocaleMeta(
       PATH,
       {
@@ -70,7 +70,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HowToFormFloridaLlcGuide() {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlForm');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlForm' });
     const faq = [1, 2, 3].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
     return (
       <>

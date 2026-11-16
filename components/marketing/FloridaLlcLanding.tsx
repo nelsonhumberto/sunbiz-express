@@ -26,10 +26,12 @@ import { hrefWithAttribution } from '@/lib/preserve-attribution';
 import { asTier } from '@/lib/lp-tier';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
+import { VerEnEspanolLink } from '@/components/i18n/VerEnEspanolLink';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { startNameIsAcceptable } from '@/lib/start-draft';
 import { newlyReachedScrollDepths } from '@/lib/scroll-depth';
 import { checklistCopy, type DripLocale } from '@/lib/drip-copy';
+import { chromeTranslateOptOut } from '@/lib/chrome-translate';
 import { localizedHref } from '@/lib/locale-paths';
 import { floridaLlcBuyerHeadline } from '@/lib/lp-buyer-headline';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -82,6 +84,7 @@ export function FloridaLlcLanding({
   const tPricing = useTranslations('pricing');
   const tHow = useTranslations('howItWorks');
   const locale = useLocale() === 'es' ? 'es' : 'en';
+  const optOut = chromeTranslateOptOut(locale);
   const lang: DripLocale = locale;
   const checklist = checklistCopy(lang);
   const router = useRouter();
@@ -268,7 +271,10 @@ export function FloridaLlcLanding({
   }
 
   return (
-    <div className="pb-28">
+    <div className={cn('pb-28', optOut.className)} translate={optOut.translate}>
+      {locale === 'en' ? (
+        <VerEnEspanolLink className="fixed right-16 top-6 z-50 text-[11px] font-medium leading-none text-ink-muted underline underline-offset-2 hover:text-ink md:right-4 md:top-20" />
+      ) : null}
       <section data-testid="lp-hero" className="container max-w-lg px-4 pt-1">
         <h1
           data-testid="lp-value"

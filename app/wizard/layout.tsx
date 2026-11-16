@@ -4,7 +4,8 @@ import { auth } from '@/lib/auth';
 import { getGuestUser } from '@/lib/guest';
 import { redirectLocalized } from '@/lib/locale-redirect';
 import { storedEntryPath } from '@/lib/stored-locale';
-import { safeRedirectPath } from '@/lib/utils';
+import { chromeTranslateOptOut, englishWizardNotranslateMeta } from '@/lib/chrome-translate';
+import { cn, safeRedirectPath } from '@/lib/utils';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { ChatWidget } from '@/components/assistant/ChatWidget';
 
@@ -14,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t('pageTitle'),
     robots: { index: false, follow: false },
+    ...englishWizardNotranslateMeta(locale),
   };
 }
 
@@ -35,8 +37,11 @@ export default async function WizardLayout({ children }: { children: React.React
     }
   }
 
+  const locale = await getLocale();
+  const optOut = chromeTranslateOptOut(locale);
+
   return (
-    <div className="min-h-screen bg-surface">
+    <div className={cn('min-h-screen bg-surface', optOut.className)} translate={optOut.translate}>
       {/* Target the step content inside WizardShell so the skip link bypasses
           the sticky wizard header + progress bar, not just the page top. */}
       <SkipLink href="#wizard-step-content" />

@@ -21,6 +21,7 @@ import {
   type TierSlug,
 } from '@/lib/pricing';
 import { isRetiredStateSlug } from '@/lib/retired-state-redirects';
+import { publicTierFeatureLabel } from '@/lib/tier-features';
 import { formatCurrency } from '@/lib/utils';
 
 const ESSENTIAL_FL_LLC = tierPriceParts('BASIC', 'LLC', 'FL');
@@ -54,7 +55,7 @@ function includedLabels(slug: TierSlug): string[] {
       labels.push(...includedLabels('STANDARD'));
       continue;
     }
-    labels.push(feature.label);
+    labels.push(publicTierFeatureLabel(feature.label));
   }
   return labels;
 }

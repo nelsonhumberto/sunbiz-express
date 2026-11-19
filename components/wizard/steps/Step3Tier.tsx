@@ -11,6 +11,7 @@ import { useWizardSubmit } from '../useWizardSubmit';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
 import { TIERS, tierPackagePriceCents, tierPriceParts, type EntityType, type TierSlug } from '@/lib/pricing';
 import { TIER_FEATURE_KEYS } from '@/lib/pricing-i18n';
+import { tierFeaturesForEntity } from '@/lib/tier-features';
 import { feeSplitLabel } from '@/components/marketing/fee-split';
 import { formatCurrency, cn } from '@/lib/utils';
 import { isActiveFormationState, type StateCode, getFormationState } from '@/lib/formation-states';
@@ -122,32 +123,34 @@ export function Step3Tier({ filing }: { filing: WizardFiling }) {
               </div>
               <p className="text-xs text-ink-muted mb-4 leading-snug">{tierDesc}</p>
               <ul className="space-y-1.5 flex-1">
-                {tierDef.features.slice(0, 6).map((f) => {
-                  const featKey = TIER_FEATURE_KEYS[f.label];
-                  const label = featKey ? t(featKey as never) : f.label;
-                  return (
-                    <li
-                      key={f.label}
-                      className={cn(
-                        'flex items-start gap-2 text-xs leading-snug',
-                        !f.included && 'text-ink-subtle'
-                      )}
-                    >
-                      {f.included ? (
-                        <Check
-                          className={cn(
-                            'h-3.5 w-3.5 shrink-0 mt-0.5',
-                            f.highlight ? 'text-accent' : 'text-primary'
-                          )}
-                          strokeWidth={3}
-                        />
-                      ) : (
-                        <Minus className="h-3.5 w-3.5 shrink-0 mt-0.5 text-ink-subtle" />
-                      )}
-                      <span className={f.highlight ? 'font-semibold text-ink' : ''}>{label}</span>
-                    </li>
-                  );
-                })}
+                {tierFeaturesForEntity(tierDef.features, entityType)
+                  .slice(0, 6)
+                  .map((f) => {
+                    const featKey = TIER_FEATURE_KEYS[f.label];
+                    const label = featKey ? t(featKey as never) : f.label;
+                    return (
+                      <li
+                        key={f.label}
+                        className={cn(
+                          'flex items-start gap-2 text-xs leading-snug',
+                          !f.included && 'text-ink-subtle'
+                        )}
+                      >
+                        {f.included ? (
+                          <Check
+                            className={cn(
+                              'h-3.5 w-3.5 shrink-0 mt-0.5',
+                              f.highlight ? 'text-accent' : 'text-primary'
+                            )}
+                            strokeWidth={3}
+                          />
+                        ) : (
+                          <Minus className="h-3.5 w-3.5 shrink-0 mt-0.5 text-ink-subtle" />
+                        )}
+                        <span className={f.highlight ? 'font-semibold text-ink' : ''}>{label}</span>
+                      </li>
+                    );
+                  })}
               </ul>
             </button>
           );

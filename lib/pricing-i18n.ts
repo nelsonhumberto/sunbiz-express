@@ -28,7 +28,6 @@ export const TIER_FEATURE_KEYS: Record<string, string> = {
   'Compliance Alerts Plus (year 1)': 'feat_complianceAlerts',
   'Priority phone & email support': 'feat_phoneSupport',
   'S-Corp Election guidance': 'feat_scorp',
-  'Banking resolution template': 'feat_banking',
   'Business email setup': 'feat_email',
   'Quarterly compliance check-ins': 'feat_quarterly',
   'Everything in Filing Only': 'feat_everythingBasic',

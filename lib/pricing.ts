@@ -117,7 +117,7 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
     slug: 'PREMIUM',
     name: 'Premium',
     bestFor: 'Best for hands-off setup',
-    description: 'Popular plus year-round compliance, banking, and branding.',
+    description: 'Popular plus year-round compliance, S-Corp election, and branding.',
     // Oct 25, 2026. FL LLC all-in $549 = $389 service + $125 + $5 + $30.
     serviceMarginCents: 38_900,
     // Top tier carries a "Premium" badge - the audit moved the "Best Value"
@@ -129,7 +129,6 @@ const TIER_DEFS: Omit<TierDef, 'packagePriceCents'>[] = [
       { label: 'Compliance Alerts Plus (year 1)', included: true, highlight: true },
       { label: 'S-Corp Election filing (Form 2553)', included: true, highlight: true },
       { label: 'Free .com domain (year 1)', included: true, highlight: true },
-      { label: 'Banking resolution template', included: true },
       { label: 'Business email setup', included: true },
       { label: 'Quarterly compliance check-ins', included: true },
     ],

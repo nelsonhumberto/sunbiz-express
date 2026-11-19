@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { FLORIDA, type MarketingState } from '@/lib/marketing-states';
 import { getFormationState, isActiveFormationState } from '@/lib/formation-states';
 import { trackCtaClicked } from '@/lib/analytics';
+import { UNSCOPED_OA_FEATURE_KEY } from '@/lib/tier-features';
 
 interface PricingTableProps {
   showHeader?: boolean;
@@ -43,7 +44,7 @@ const FEATURE_KEYS: Record<string, string> = {
   'Preparation and submission within 1 business day': 'feat_sameDayPrep',
   'Free Year-1 Registered Agent': 'feat_freeRA',
   'Email support': 'feat_emailSupport',
-  'Operating Agreement (custom)': 'feat_oa',
+  'Operating Agreement (custom)': UNSCOPED_OA_FEATURE_KEY,
   'Operating Agreement (add-on)': 'feat_oaAddOn',
   'Certified Copy of Articles': 'feat_certCopy',
   'Certificate of Status (state-issued)': 'feat_certStatus',
@@ -52,7 +53,6 @@ const FEATURE_KEYS: Record<string, string> = {
   'Compliance Alerts Plus (year 1)': 'feat_complianceAlerts',
   'Priority phone & email support': 'feat_phoneSupport',
   'S-Corp Election guidance': 'feat_scorp',
-  'Banking resolution template': 'feat_banking',
   'Business email setup': 'feat_email',
   'Quarterly compliance check-ins': 'feat_quarterly',
   'Everything in Filing Only': 'feat_everythingBasic',

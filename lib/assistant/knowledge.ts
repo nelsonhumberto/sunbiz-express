@@ -3,6 +3,7 @@ import 'server-only';
 import { getMarketingFaq } from '@/lib/marketing-faq';
 import { resolveMarketingState } from '@/lib/marketing-states';
 import { TIERS, tierPackagePriceCents, type EntityType, type TierSlug } from '@/lib/pricing';
+import { tierFeaturesForEntity } from '@/lib/tier-features';
 import { formatCurrency } from '@/lib/utils';
 import { FORMATION_STATES, type StateCode } from '@/lib/formation-states';
 import { COMPANY_FACTS } from './docs';
@@ -30,7 +31,7 @@ export function buildKnowledge(opts: {
     const price = dollars(
       tierPackagePriceCents(t.slug as TierSlug, opts.entityType, opts.stateCode),
     );
-    const included = t.features
+    const included = tierFeaturesForEntity(t.features, opts.entityType)
       .filter((feature) => feature.included)
       .map((feature) => feature.label)
       .join('; ');

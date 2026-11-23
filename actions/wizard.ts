@@ -37,7 +37,11 @@ import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { filingContactEmail } from '@/lib/guest-checkout';
 import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActionTimeout } from '@/lib/action-timeout';
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
-import { shouldCollectSCorpConsent } from '@/lib/scorp-consent';
+import {
+  hasShareholderWithoutTaxId,
+  recordedShareholderTaxIds,
+  shouldCollectSCorpConsent,
+} from '@/lib/scorp-consent';
 import { getTranslations } from 'next-intl/server';
 import { saveGuestEmail } from '@/actions/guest-email';
 import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
@@ -270,8 +274,20 @@ export async function syncSCorpElectionAddOn(
     where: { filingId, serviceId: svc.id },
   });
 
+  const filingForOwners = await prisma.filing.findUnique({
+    where: { id: filingId },
+    select: { entityType: true, optionalDetails: true },
+  });
+  const ownersLackTaxId = hasShareholderWithoutTaxId(
+    recordedShareholderTaxIds({
+      entityType: filingForOwners?.entityType ?? 'LLC',
+      optionalDetails: filingForOwners?.optionalDetails,
+    }),
+  );
+
   // Premium bundles the election - never bill it as a line item.
-  const shouldHave = elected && tier !== 'PREMIUM';
+  // An owner with no SSN and no ITIN drops the $99 line until they qualify again.
+  const shouldHave = elected && tier !== 'PREMIUM' && !ownersLackTaxId;
 
   if (shouldHave && !existing) {
     await prisma.filingAdditionalService.create({
@@ -283,9 +299,9 @@ export async function syncSCorpElectionAddOn(
         status: 'PENDING',
       },
     });
-  } else if (!shouldHave && existing && !elected) {
-    // Only auto-remove when the user actively chose a non-S-Corp election at
-    // Step 1 (so we don't clobber a Premium bundle or a manual selection).
+  } else if (existing && !shouldHave && (!elected || ownersLackTaxId)) {
+    // Remove when the customer left S-Corp, or when an owner has no SSN and
+    // no ITIN. A later SSN or ITIN can select the add-on again.
     await prisma.filingAdditionalService.delete({ where: { id: existing.id } });
   }
 }
@@ -1070,6 +1086,11 @@ export async function saveStep9(
       completedSteps: markStepComplete(filing.completedSteps, 8),
     },
   });
+  if (hasShareholderWithoutTaxId(submittedOwners)) {
+    await prisma.filingAdditionalService.deleteMany({
+      where: { filingId: filing.id, service: { serviceSlug: 's_corp_election' } },
+    });
+  }
   // Processing option affects pricing - recompute so the customer sees the
   // new total in the cost sidebar before reaching payment.
   await recomputeCost(filing.id);

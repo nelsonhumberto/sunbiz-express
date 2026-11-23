@@ -6,6 +6,7 @@
 // manual_foreign. An EIN (trust or estate) is still a US tax id.
 
 import { classifyEinPathway } from './ein';
+import { safeParseJson } from './utils';
 
 /** Tax id types that are not the foreign / no-SSN pathway. */
 const US_TAX_ID_TYPES = new Set(['SSN', 'ITIN', 'EIN']);
@@ -132,4 +133,48 @@ export function shouldGenerateForm2553(args: {
 }): boolean {
   if (!electionSelected(args)) return false;
   return !hasShareholderWithoutTaxId(args.shareholders);
+}
+
+/**
+ * Owners whose tax id was actually saved. Missing rows are not treated as
+ * "no SSN" so an election chosen before step 9 keeps its price.
+ */
+export function recordedShareholderTaxIds(args: {
+  entityType: string;
+  optionalDetails: unknown;
+  ein?: {
+    responsiblePartyType?: string | null;
+    taxIdType?: string | null;
+    status?: string | null;
+  } | null;
+}): ShareholderTaxId[] {
+  const optional =
+    typeof args.optionalDetails === 'string'
+      ? safeParseJson<Record<string, unknown> | null>(args.optionalDetails, null)
+      : args.optionalDetails && typeof args.optionalDetails === 'object'
+        ? (args.optionalDetails as Record<string, unknown>)
+        : null;
+  const shareStructure = optional?.shareStructure as
+    | { shareholders?: Array<{ taxIdType?: string | null }> | null }
+    | null
+    | undefined;
+  const memberTaxInfo = optional?.memberTaxInfo as
+    | Array<{ taxIdType?: string | null }>
+    | null
+    | undefined;
+  return shareholderTaxIdsFromOptional({
+    entityType: args.entityType,
+    shareStructure: shareStructure ?? null,
+    memberTaxInfo: memberTaxInfo ?? null,
+    ein: args.ein,
+  });
+}
+
+/** Drop the $99 S-Corp add-on when an owner has no SSN and no ITIN. */
+export function billableAddOnSlugs<T extends string>(
+  addOnSlugs: readonly T[],
+  shareholders: readonly ShareholderTaxId[],
+): T[] {
+  if (!hasShareholderWithoutTaxId(shareholders)) return [...addOnSlugs];
+  return addOnSlugs.filter((slug) => slug !== 's_corp_election');
 }

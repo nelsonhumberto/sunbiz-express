@@ -31,6 +31,7 @@ import {
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
+import { billableAddOnSlugs, recordedShareholderTaxIds } from '@/lib/scorp-consent';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import {
@@ -285,9 +286,21 @@ export async function processCheckout(input: {
   await ensureFilingTouchUtm(filing.id);
   await ensureUserFirstTouchUtm(actor.id);
 
-  const addOnSlugsForGate = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug,
+  const addOnSlugsForGate = billableAddOnSlugs(
+    filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
+    recordedShareholderTaxIds({
+      entityType: filing.entityType,
+      optionalDetails: filing.optionalDetails,
+      ein: filing.einApplication,
+    }),
   );
+  if (
+    addOnSlugsForGate.length !== filing.filingAdditionalServices.length
+  ) {
+    await prisma.filingAdditionalService.deleteMany({
+      where: { filingId: filing.id, service: { serviceSlug: 's_corp_election' } },
+    });
+  }
 
   // Completeness + EIN gate (shared with the Stripe webhook backstop so neither
   // path can charge + submit an incomplete draft that would yield blank docs).

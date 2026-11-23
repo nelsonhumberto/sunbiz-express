@@ -1,7 +1,7 @@
 'use client';
 
 import { Link } from '@/i18n/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocalizedRouter } from '@/components/i18n/useLocalizedRouter';
 import { toast } from 'sonner';
@@ -23,6 +23,11 @@ import {
 } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
+import {
+  billableAddOnSlugs,
+  hasShareholderWithoutTaxId,
+  recordedShareholderTaxIds,
+} from '@/lib/scorp-consent';
 import { useWizardSubmit } from '../useWizardSubmit';
 import { withActionTimeout } from '@/lib/action-timeout';
 import { useWizardCostPreview } from '../WizardCostPreviewContext';
@@ -89,8 +94,20 @@ export function Step11AddOns({
       ? 'operating_agreement_multi'
       : 'operating_agreement_single';
 
+  const recordedOwners = useMemo(
+    () =>
+      recordedShareholderTaxIds({
+        entityType: filing.entityType,
+        optionalDetails: filing.optionalDetails,
+      }),
+    [filing.entityType, filing.optionalDetails],
+  );
+  const ownersLackTaxId = hasShareholderWithoutTaxId(recordedOwners);
   const initialSelected = new Set(
-    filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug),
+    billableAddOnSlugs(
+      filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug),
+      recordedOwners,
+    ),
   );
   initialSelected.add('registered_agent');
 
@@ -104,8 +121,11 @@ export function Step11AddOns({
   // Push the live selection into the order-summary sidebar so the total
   // updates the instant an add-on is toggled (before the step is saved).
   useEffect(() => {
-    setAddOnsPreview(Array.from(selected));
-  }, [selected, setAddOnsPreview]);
+    const slugs = ownersLackTaxId
+      ? billableAddOnSlugs(Array.from(selected), recordedOwners)
+      : Array.from(selected);
+    setAddOnsPreview(slugs);
+  }, [selected, setAddOnsPreview, ownersLackTaxId, recordedOwners]);
 
   // Honour `?addon=...` deep links from upsell cards so the recommendation
   // shows up already toggled on.
@@ -192,7 +212,7 @@ export function Step11AddOns({
     run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
-        addOnSlugs: Array.from(selected),
+        addOnSlugs: billableAddOnSlugs(Array.from(selected), recordedOwners),
       });
       if (res.ok) router.push(`/wizard/${filing.id}/11`);
       return res;
@@ -207,7 +227,7 @@ export function Step11AddOns({
     run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
-        addOnSlugs: Array.from(baseline),
+        addOnSlugs: billableAddOnSlugs(Array.from(baseline), recordedOwners),
       });
       if (res.ok) router.push(`/wizard/${filing.id}/11`);
       return res;

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { classifyEinPathway } from '@/lib/ein';
+import { quoteDraftFiling } from '@/lib/filing-totals';
+import { addOnPriceCents, tierPackagePriceCents } from '@/lib/pricing';
 import {
+  billableAddOnSlugs,
   hasShareholderWithoutTaxId,
   shareholderTaxIdsFromOptional,
   shouldCollectSCorpConsent,
@@ -150,6 +153,41 @@ describe('S-Corp consent and Form 2553 when an owner has no SSN or ITIN', () => 
         shareholders: withSsn,
       }),
     ).toBe(false);
+  });
+
+  it('drops the S-Corp add-on and its price when an owner has no SSN or ITIN', () => {
+    const shareholders = [{ taxIdType: 'SSN' }, { taxIdType: 'NONE' }];
+    expect(billableAddOnSlugs(['s_corp_election', 'registered_agent'], shareholders)).toEqual([
+      'registered_agent',
+    ]);
+    const quote = quoteDraftFiling({
+      entityType: 'LLC',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        memberTaxInfo: shareholders,
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(quote.addOnsTotalCents).toBe(0);
+    expect(quote.totalCents).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+  });
+
+  it('keeps and charges the S-Corp add-on when every owner has an SSN', () => {
+    const shareholders = [{ taxIdType: 'SSN' }, { taxIdType: 'SSN' }];
+    expect(billableAddOnSlugs(['s_corp_election'], shareholders)).toEqual(['s_corp_election']);
+    const addon = addOnPriceCents('s_corp_election', 'LLC', 'FL');
+    const quote = quoteDraftFiling({
+      entityType: 'LLC',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        memberTaxInfo: shareholders,
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(quote.addOnsTotalCents).toBe(addon);
+    expect(quote.totalCents).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL') + addon);
   });
 
   it('still generates Form 2553 for a trust or estate EIN', () => {

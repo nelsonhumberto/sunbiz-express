@@ -24,6 +24,7 @@ import {
 import { quoteAnnualReport } from '@/lib/annual-report-quote';
 import { resolveGuestAnnualReportCharge } from '@/lib/guest-annual-report-charge';
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
+import { billableAddOnSlugs, recordedShareholderTaxIds } from '@/lib/scorp-consent';
 import {
   DOCUMENT_NUMBER_REQUIRED,
   guestAnnualReportPaymentIntentMatches,
@@ -748,6 +749,20 @@ async function priceOwnedCharge(input: {
   }
 
   // Catalog price plus selected add-ons. Stored totals and the client body are ignored.
+  // An owner with no SSN and no ITIN is not billed for the S-Corp add-on.
+  const pricedOwners = recordedShareholderTaxIds({
+    entityType: filing.entityType,
+    optionalDetails: filing.optionalDetails,
+  });
+  const storedSlugs = filing.filingAdditionalServices.map((row) => row.service.serviceSlug);
+  if (billableAddOnSlugs(storedSlugs, pricedOwners).length !== storedSlugs.length) {
+    await prisma.filingAdditionalService.deleteMany({
+      where: { filingId: filing.id, service: { serviceSlug: 's_corp_election' } },
+    });
+    filing.filingAdditionalServices = filing.filingAdditionalServices.filter(
+      (row) => row.service.serviceSlug !== 's_corp_election',
+    );
+  }
   const totals = quoteDraftFiling(filing);
   if (filingTotalsChanged(filing, totals)) {
     try {

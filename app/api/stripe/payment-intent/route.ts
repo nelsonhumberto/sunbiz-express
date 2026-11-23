@@ -675,6 +675,9 @@ async function priceOwnedCharge(input: {
       filingAdditionalServices: { include: { service: true } },
       payments: { where: { status: 'SUCCEEDED' }, select: { id: true }, take: 1 },
       user: { select: { isTester: true } },
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
     },
   });
   if (!filing || filing.userId !== input.userId) {
@@ -753,6 +756,7 @@ async function priceOwnedCharge(input: {
   const pricedOwners = recordedShareholderTaxIds({
     entityType: filing.entityType,
     optionalDetails: filing.optionalDetails,
+    ein: filing.einApplication,
   });
   const storedSlugs = filing.filingAdditionalServices.map((row) => row.service.serviceSlug);
   if (billableAddOnSlugs(storedSlugs, pricedOwners).length !== storedSlugs.length) {

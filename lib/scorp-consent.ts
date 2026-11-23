@@ -8,9 +8,6 @@
 import { classifyEinPathway } from './ein';
 import { safeParseJson } from './utils';
 
-/** Tax id types that are not the foreign / no-SSN pathway. */
-const US_TAX_ID_TYPES = new Set(['SSN', 'ITIN', 'EIN']);
-
 export type ShareholderTaxIdChoice = 'SSN' | 'ITIN' | 'EIN' | 'NONE';
 
 export type ShareholderTaxId = {
@@ -30,29 +27,33 @@ export function coerceShareholderTaxIdType(
 }
 
 /**
- * True when any owner has neither an SSN nor an ITIN.
- * A missing type, NONE, or a foreign responsible party counts.
- * SSN, ITIN, and EIN (trust or estate) do not.
+ * True only for an explicit "No SSN or ITIN" choice (NONE) or a foreign
+ * responsible party. A null, undefined, or not-yet-collected tax id does
+ * not count: plain corporations store null until S-Corp is selected.
+ * SSN, ITIN, and EIN (trust or estate) do not count either.
  */
 export function hasShareholderWithoutTaxId(
   shareholders: readonly ShareholderTaxId[],
 ): boolean {
   return shareholders.some((person) => {
     const foreign = (person.responsiblePartyType ?? '').trim().toLowerCase() === 'foreign';
-    const type = (person.taxIdType ?? '').trim().toUpperCase();
-    // NONE and blank are not US tax ids. Passing them through would look
-    // truthy to classifyEinPathway and miss the manual_foreign pathway.
-    const usTaxId = US_TAX_ID_TYPES.has(type) ? type : null;
-    return (
+    if (
+      foreign &&
       classifyEinPathway({
-        responsiblePartyType: foreign ? 'foreign' : 'us',
-        taxIdType: usTaxId,
+        responsiblePartyType: 'foreign',
+        taxIdType: person.taxIdType ?? null,
       }) === 'manual_foreign'
-    );
+    ) {
+      return true;
+    }
+    return (person.taxIdType ?? '').trim().toUpperCase() === 'NONE';
   });
 }
 
-type StoredOwner = { taxIdType?: string | null };
+type StoredOwner = {
+  taxIdType?: string | null;
+  responsiblePartyType?: string | null;
+};
 
 /**
  * Owners the server should judge before it asks for consent or builds Form 2553.
@@ -74,10 +75,12 @@ export function shareholderTaxIdsFromOptional(args: {
   if (args.entityType === 'CORP' && (args.shareStructure?.shareholders?.length ?? 0) > 0) {
     owners = args.shareStructure!.shareholders!.map((owner) => ({
       taxIdType: owner.taxIdType ?? null,
+      responsiblePartyType: owner.responsiblePartyType ?? null,
     }));
   } else if ((args.memberTaxInfo?.length ?? 0) > 0) {
     owners = args.memberTaxInfo!.map((owner) => ({
       taxIdType: owner.taxIdType ?? null,
+      responsiblePartyType: owner.responsiblePartyType ?? null,
     }));
   } else if ((args.memberCount ?? 0) > 0) {
     owners = Array.from({ length: args.memberCount ?? 0 }, () => ({ taxIdType: null }));
@@ -155,13 +158,10 @@ export function recordedShareholderTaxIds(args: {
         ? (args.optionalDetails as Record<string, unknown>)
         : null;
   const shareStructure = optional?.shareStructure as
-    | { shareholders?: Array<{ taxIdType?: string | null }> | null }
+    | { shareholders?: StoredOwner[] | null }
     | null
     | undefined;
-  const memberTaxInfo = optional?.memberTaxInfo as
-    | Array<{ taxIdType?: string | null }>
-    | null
-    | undefined;
+  const memberTaxInfo = optional?.memberTaxInfo as StoredOwner[] | null | undefined;
   return shareholderTaxIdsFromOptional({
     entityType: args.entityType,
     shareStructure: shareStructure ?? null,

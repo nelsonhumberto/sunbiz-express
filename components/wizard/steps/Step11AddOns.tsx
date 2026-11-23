@@ -269,6 +269,7 @@ export function Step11AddOns({
       return false;
     }
     if (a.slug === oppositeOA) return false;
+    if (ownersLackTaxId && a.slug === 's_corp_election') return false;
     return true;
   });
   const sorted = [...visible].sort((a, b) => {

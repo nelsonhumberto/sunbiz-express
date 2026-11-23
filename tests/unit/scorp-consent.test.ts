@@ -71,19 +71,26 @@ describe('S-Corp consent and Form 2553 when an owner has no SSN or ITIN', () => 
       }),
     ).toBe(false);
 
-    const fromStored = shareholderTaxIdsFromOptional({
+    const notYetCollected = shareholderTaxIdsFromOptional({
       entityType: 'LLC',
       memberTaxInfo: [{ taxIdType: 'SSN' }, { taxIdType: null }],
       memberCount: 2,
     });
-    expect(hasShareholderWithoutTaxId(fromStored)).toBe(true);
+    expect(hasShareholderWithoutTaxId(notYetCollected)).toBe(false);
+    expect(
+      shouldCollectSCorpConsent({
+        taxElection: null,
+        addOnSlugs: ['s_corp_election'],
+        shareholders: notYetCollected,
+      }),
+    ).toBe(true);
     expect(
       shouldGenerateForm2553({
-        taxElection: 'S_CORP',
-        addOnSlugs: [],
-        shareholders: fromStored,
+        taxElection: null,
+        addOnSlugs: ['s_corp_election'],
+        shareholders: notYetCollected,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('treats a foreign responsible party as the manual_foreign EIN pathway', () => {
@@ -171,6 +178,66 @@ describe('S-Corp consent and Form 2553 when an owner has no SSN or ITIN', () => 
     });
     expect(quote.addOnsTotalCents).toBe(0);
     expect(quote.totalCents).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
+  });
+
+  it('keeps and charges the S-Corp add-on when tax ids were not collected yet', () => {
+    const addonLlc = addOnPriceCents('s_corp_election', 'LLC', 'FL');
+    const addonCorp = addOnPriceCents('s_corp_election', 'CORP', 'FL');
+    const llc = quoteDraftFiling({
+      entityType: 'LLC',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        memberTaxInfo: [{ taxIdType: null }, { taxIdType: null }],
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(hasShareholderWithoutTaxId([{ taxIdType: null }, { taxIdType: undefined }])).toBe(false);
+    expect(llc.addOnsTotalCents).toBe(addonLlc);
+    expect(llc.totalCents).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL') + addonLlc);
+
+    const corp = quoteDraftFiling({
+      entityType: 'CORP',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        shareStructure: {
+          shareholders: [{ taxIdType: null }, { name: 'Ada' }],
+        },
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(corp.addOnsTotalCents).toBe(addonCorp);
+    expect(corp.totalCents).toBe(tierPackagePriceCents('BASIC', 'CORP', 'FL') + addonCorp);
+  });
+
+  it('drops the S-Corp add-on for an explicit NONE or a foreign responsible party', () => {
+    const none = [{ taxIdType: 'NONE' }];
+    const foreign = [{ taxIdType: 'SSN', responsiblePartyType: 'foreign' as const }];
+    expect(billableAddOnSlugs(['s_corp_election'], none)).toEqual([]);
+    expect(billableAddOnSlugs(['s_corp_election'], foreign)).toEqual([]);
+    const dropped = quoteDraftFiling({
+      entityType: 'CORP',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        shareStructure: { shareholders: [{ taxIdType: 'NONE' }] },
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(dropped.addOnsTotalCents).toBe(0);
+    expect(dropped.totalCents).toBe(tierPackagePriceCents('BASIC', 'CORP', 'FL'));
+    const foreignQuote = quoteDraftFiling({
+      entityType: 'LLC',
+      serviceTier: 'BASIC',
+      state: 'FL',
+      optionalDetails: JSON.stringify({
+        memberTaxInfo: [{ taxIdType: 'SSN', responsiblePartyType: 'foreign' }],
+      }),
+      filingAdditionalServices: [{ service: { serviceSlug: 's_corp_election' } }],
+    });
+    expect(foreignQuote.addOnsTotalCents).toBe(0);
+    expect(foreignQuote.totalCents).toBe(tierPackagePriceCents('BASIC', 'LLC', 'FL'));
   });
 
   it('keeps and charges the S-Corp add-on when every owner has an SSN', () => {

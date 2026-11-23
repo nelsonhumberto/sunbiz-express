@@ -170,11 +170,45 @@ export function recordedShareholderTaxIds(args: {
   });
 }
 
-/** Drop the $99 S-Corp add-on when an owner has no SSN and no ITIN. */
+export type EinResponsibleParty = {
+  responsiblePartyType?: string | null;
+  taxIdType?: string | null;
+  status?: string | null;
+} | null;
+
+/**
+ * Same owner list for the order summary, the pay page, and the PaymentIntent.
+ * Includes a foreign EIN responsible party when one is on file.
+ */
+export function sCorpOrderOwners(args: {
+  entityType: string;
+  optionalDetails: unknown;
+  ein?: EinResponsibleParty;
+}): ShareholderTaxId[] {
+  return recordedShareholderTaxIds({
+    entityType: args.entityType,
+    optionalDetails: args.optionalDetails,
+    ein: args.ein ?? null,
+  });
+}
+
+/** The add-on card is only for an S-Corp election whose owners can sign Form 2553. */
+export function sCorpAddOnCardOffered(args: {
+  taxElection?: string | null;
+  shareholders: readonly ShareholderTaxId[];
+}): boolean {
+  return args.taxElection === 'S_CORP' && !hasShareholderWithoutTaxId(args.shareholders);
+}
+
+/**
+ * Slugs that will actually be charged. The $99 line is included only when the
+ * card is offered, which is the same rule saveStep11 keeps on the filing.
+ */
 export function billableAddOnSlugs<T extends string>(
   addOnSlugs: readonly T[],
   shareholders: readonly ShareholderTaxId[],
+  taxElection?: string | null,
 ): T[] {
-  if (!hasShareholderWithoutTaxId(shareholders)) return [...addOnSlugs];
+  if (sCorpAddOnCardOffered({ taxElection, shareholders })) return [...addOnSlugs];
   return addOnSlugs.filter((slug) => slug !== 's_corp_election');
 }

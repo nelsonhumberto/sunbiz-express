@@ -39,7 +39,7 @@ import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActio
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
 import {
   hasShareholderWithoutTaxId,
-  recordedShareholderTaxIds,
+  sCorpOrderOwners,
   shouldCollectSCorpConsent,
 } from '@/lib/scorp-consent';
 import { getTranslations } from 'next-intl/server';
@@ -158,6 +158,9 @@ async function recomputeCost(filingId: string) {
     where: { id: filingId },
     include: {
       filingAdditionalServices: { include: { service: true } },
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
     },
   });
   if (!filing) return;
@@ -276,12 +279,19 @@ export async function syncSCorpElectionAddOn(
 
   const filingForOwners = await prisma.filing.findUnique({
     where: { id: filingId },
-    select: { entityType: true, optionalDetails: true },
+    select: {
+      entityType: true,
+      optionalDetails: true,
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
+    },
   });
   const ownersLackTaxId = hasShareholderWithoutTaxId(
-    recordedShareholderTaxIds({
+    sCorpOrderOwners({
       entityType: filingForOwners?.entityType ?? 'LLC',
       optionalDetails: filingForOwners?.optionalDetails,
+      ein: filingForOwners?.einApplication,
     }),
   );
 
@@ -1273,6 +1283,9 @@ export async function getWizardFiling(filingId: string) {
     include: {
       managersMembers: { orderBy: { position: 'asc' } },
       filingAdditionalServices: { include: { service: true } },
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
     },
   });
   // Guests cannot navigate to /dashboard; we send them home instead.

@@ -35,7 +35,7 @@ import {
 import { localizedLineLabel, localizedLineDetail } from '../CostSidebar';
 import { lineFeeSplit } from '@/components/marketing/fee-split';
 import { formatCurrency, safeParseJson } from '@/lib/utils';
-import { billableAddOnSlugs, recordedShareholderTaxIds } from '@/lib/scorp-consent';
+import { billableAddOnSlugs, sCorpOrderOwners } from '@/lib/scorp-consent';
 import { formatLongDate } from '@/lib/due-label';
 import type { WizardFiling } from '../types';
 import { GuestSignInPrompt } from '../GuestSignInPrompt';
@@ -101,10 +101,12 @@ export function Step12Payment({
   const raRenewalPrice = formatCurrency(stateRule.registeredAgent.renewalCents);
   const addOnSlugs = billableAddOnSlugs(
     filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
-    recordedShareholderTaxIds({
+    sCorpOrderOwners({
       entityType: filing.entityType,
       optionalDetails: filing.optionalDetails,
+      ein: filing.einApplication,
     }),
+    filing.taxElection,
   );
   const optionalDetails = safeParseJson<Record<string, unknown> | null>(
     filing.optionalDetails,

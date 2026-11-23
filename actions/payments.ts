@@ -31,7 +31,7 @@ import {
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { safeParseJson } from '@/lib/utils';
-import { billableAddOnSlugs, recordedShareholderTaxIds } from '@/lib/scorp-consent';
+import { billableAddOnSlugs, sCorpOrderOwners } from '@/lib/scorp-consent';
 import { assertFilingReadyForSubmission } from '@/lib/filing-readiness';
 import { getWizardActor, GUEST_COOKIE } from '@/lib/guest';
 import {
@@ -288,11 +288,12 @@ export async function processCheckout(input: {
 
   const addOnSlugsForGate = billableAddOnSlugs(
     filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
-    recordedShareholderTaxIds({
+    sCorpOrderOwners({
       entityType: filing.entityType,
       optionalDetails: filing.optionalDetails,
       ein: filing.einApplication,
     }),
+    filing.taxElection,
   );
   if (
     addOnSlugsForGate.length !== filing.filingAdditionalServices.length

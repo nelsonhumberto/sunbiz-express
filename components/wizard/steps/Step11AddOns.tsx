@@ -25,8 +25,8 @@ import { ArrowLeft } from 'lucide-react';
 import { saveStep11, upgradeTier } from '@/actions/wizard';
 import {
   billableAddOnSlugs,
-  hasShareholderWithoutTaxId,
-  recordedShareholderTaxIds,
+  sCorpAddOnCardOffered,
+  sCorpOrderOwners,
 } from '@/lib/scorp-consent';
 import { useWizardSubmit } from '../useWizardSubmit';
 import { withActionTimeout } from '@/lib/action-timeout';
@@ -96,17 +96,22 @@ export function Step11AddOns({
 
   const recordedOwners = useMemo(
     () =>
-      recordedShareholderTaxIds({
+      sCorpOrderOwners({
         entityType: filing.entityType,
         optionalDetails: filing.optionalDetails,
+        ein: filing.einApplication,
       }),
-    [filing.entityType, filing.optionalDetails],
+    [filing.entityType, filing.optionalDetails, filing.einApplication],
   );
-  const ownersLackTaxId = hasShareholderWithoutTaxId(recordedOwners);
+  const offerSCorpCard = sCorpAddOnCardOffered({
+    taxElection: filing.taxElection,
+    shareholders: recordedOwners,
+  });
   const initialSelected = new Set(
     billableAddOnSlugs(
       filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug),
       recordedOwners,
+      filing.taxElection,
     ),
   );
   initialSelected.add('registered_agent');
@@ -121,11 +126,10 @@ export function Step11AddOns({
   // Push the live selection into the order-summary sidebar so the total
   // updates the instant an add-on is toggled (before the step is saved).
   useEffect(() => {
-    const slugs = ownersLackTaxId
-      ? billableAddOnSlugs(Array.from(selected), recordedOwners)
-      : Array.from(selected);
-    setAddOnsPreview(slugs);
-  }, [selected, setAddOnsPreview, ownersLackTaxId, recordedOwners]);
+    setAddOnsPreview(
+      billableAddOnSlugs(Array.from(selected), recordedOwners, filing.taxElection),
+    );
+  }, [selected, setAddOnsPreview, recordedOwners, filing.taxElection]);
 
   // Honour `?addon=...` deep links from upsell cards so the recommendation
   // shows up already toggled on.
@@ -212,7 +216,7 @@ export function Step11AddOns({
     run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
-        addOnSlugs: billableAddOnSlugs(Array.from(selected), recordedOwners),
+        addOnSlugs: billableAddOnSlugs(Array.from(selected), recordedOwners, filing.taxElection),
       });
       if (res.ok) router.push(`/wizard/${filing.id}/11`);
       return res;
@@ -227,7 +231,7 @@ export function Step11AddOns({
     run(async () => {
       const res = await saveStep11({
         filingId: filing.id,
-        addOnSlugs: billableAddOnSlugs(Array.from(baseline), recordedOwners),
+        addOnSlugs: billableAddOnSlugs(Array.from(baseline), recordedOwners, filing.taxElection),
       });
       if (res.ok) router.push(`/wizard/${filing.id}/11`);
       return res;
@@ -269,7 +273,7 @@ export function Step11AddOns({
       return false;
     }
     if (a.slug === oppositeOA) return false;
-    if (ownersLackTaxId && a.slug === 's_corp_election') return false;
+    if (a.slug === 's_corp_election' && !offerSCorpCard) return false;
     return true;
   });
   const sorted = [...visible].sort((a, b) => {

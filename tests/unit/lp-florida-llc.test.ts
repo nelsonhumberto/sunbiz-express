@@ -123,6 +123,24 @@ describe('Florida LLC ad landing', () => {
     expect(startHeadlinePriceCents({ tier: 'BASIC', state: 'WY' })).toBe(
       tierPackagePriceCents('BASIC', 'LLC', 'WY'),
     );
+    expect(startHeadlinePriceCents({ entity: 'SCORP' })).toBe(
+      tierPackagePriceCents('BASIC', 'CORP', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ entity: 'CORP' })).toBe(
+      tierPackagePriceCents('BASIC', 'CORP', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ entity: 'LLC' })).toBe(
+      tierPackagePriceCents('BASIC', 'LLC', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ entity: 'SCORP', tier: 'STANDARD' })).toBe(
+      tierPackagePriceCents('STANDARD', 'CORP', 'FL'),
+    );
+    expect(startHeadlinePriceCents({ entity: 'SCORP' })).not.toBe(
+      tierPackagePriceCents('BASIC', 'LLC', 'FL'),
+    );
+    expect(source('app/start/guest-start-launch.tsx')).toContain(
+      "entity: preselectFloridaLlc ? 'LLC' : entity",
+    );
     const shell = source('components/wizard/WizardShell.tsx');
     expect(shell).toContain('step >= 2 || tierPreview !== null');
     expect(shell).not.toContain('step >= 3 || tierPreview !== null');

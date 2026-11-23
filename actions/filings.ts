@@ -41,6 +41,10 @@ import { computeNextAnnualCompliance } from '@/lib/formation-validation';
 import { resolveDripLocale } from '@/lib/draft-recovery';
 import { getWizardActor } from '@/lib/guest';
 import { filingIncludesEin } from '@/lib/ein';
+import {
+  shareholderTaxIdsFromOptional,
+  shouldGenerateForm2553,
+} from '@/lib/scorp-consent';
 import { filingUtmCreateFields } from '@/lib/utm-attribution';
 import { storedEntryPath, storedLocale } from '@/lib/stored-locale';
 import { qaMarkedFromRequest, stampQaLaunchformaGuest } from '@/lib/qa-guest';
@@ -143,6 +147,9 @@ export async function submitFilingToState(
       payments: true,
       filingAdditionalServices: { include: { service: true } },
       user: { select: { locale: true } },
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
     },
   });
   if (!filing || filing.userId !== actorId) throw new Error('Not found');
@@ -345,11 +352,26 @@ export async function submitFilingToState(
 
   // S-Corp election (IRS Form 2553). Generated only when the customer actually
   // elected S-Corp at Step 1 or explicitly bought the election add-on - never
-  // merely because Premium bundles it. Owners flow from the corp share
-  // structure or the LLC member list; each owner consents by electing S-Corp.
-  const electedSCorp =
-    filing.taxElection === 'S_CORP' || filingAddOnSlugs.includes('s_corp_election');
-  if (electedSCorp) {
+  // merely because Premium bundles it. Skipped when any owner has no SSN and
+  // no ITIN (the manual_foreign EIN pathway), even if S-Corp was selected.
+  const shareStructureFor2553 = (optionalForCost?.shareStructure ?? null) as
+    | { shareholders?: Array<{ taxIdType?: string | null }> }
+    | null;
+  const memberTaxInfoFor2553 = (optionalForCost?.memberTaxInfo ?? null) as
+    | Array<{ taxIdType?: string | null }>
+    | null;
+  const generateForm2553Doc = shouldGenerateForm2553({
+    taxElection: filing.taxElection,
+    addOnSlugs: filingAddOnSlugs,
+    shareholders: shareholderTaxIdsFromOptional({
+      entityType: filing.entityType,
+      shareStructure: shareStructureFor2553,
+      memberTaxInfo: memberTaxInfoFor2553,
+      memberCount: filing.managersMembers.length,
+      ein: filing.einApplication,
+    }),
+  });
+  if (generateForm2553Doc) {
     const shareStructure = (optionalForCost?.shareStructure ?? null) as
       | { shareholders?: Array<Record<string, unknown>> }
       | null;
@@ -366,17 +388,21 @@ export async function submitFilingToState(
       }));
     } else {
       // LLC (or corp without a captured share table): list the members/owners.
-      // Tax IDs are completed by the taxpayer on the signed copy.
-      owners = filing.managersMembers.map((m) => ({
-        name: m.name,
-        address: [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', ') || undefined,
-        ownership:
-          m.ownershipPercentage != null ? `${m.ownershipPercentage}%` : undefined,
-        taxIdType: 'SSN',
-        taxIdLast4: null,
-        taxYearEnd: '12/31',
-        consent: true,
-      }));
+      // Tax id type and last-4 come from the step 9 member record when present.
+      const memberTax = (optionalForCost?.memberTaxInfo ?? []) as Array<Record<string, unknown>>;
+      owners = filing.managersMembers.map((m) => {
+        const info = memberTax.find((row) => row.memberId === m.id || row.name === m.name);
+        return {
+          name: m.name,
+          address: [m.street1, m.city, m.state, m.zip].filter(Boolean).join(', ') || undefined,
+          ownership:
+            m.ownershipPercentage != null ? `${m.ownershipPercentage}%` : undefined,
+          taxIdType: (info?.taxIdType as string | null) ?? 'SSN',
+          taxIdLast4: (info?.taxIdLast4 as string | null) ?? null,
+          taxYearEnd: (info?.taxYearEnd as string | null) ?? '12/31',
+          consent: info?.sCorpConsent != null ? !!info.sCorpConsent : true,
+        };
+      });
     }
 
     const optionalEffective =

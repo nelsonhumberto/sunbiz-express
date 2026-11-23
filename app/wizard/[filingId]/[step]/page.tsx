@@ -42,6 +42,7 @@ const Step12Payment = nextDynamic(() =>
 );
 import { type AddOnSlug, type TierSlug } from '@/lib/pricing';
 import { quoteDraftFiling } from '@/lib/filing-totals';
+import { billableAddOnSlugs, sCorpOrderOwners } from '@/lib/scorp-consent';
 import { guestWizardStep, startNameIsAcceptable } from '@/lib/start-draft';
 import { readFloridaLlcPreselected } from '@/lib/florida-llc-preselect';
 import { lpProgressFromDraft, lpRouteStep, usesLpShortWizard } from '@/lib/lp-wizard-path';
@@ -146,8 +147,15 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
     }
   }
 
-  const addOnSlugs = filing.filingAdditionalServices.map(
-    (fas) => fas.service.serviceSlug as AddOnSlug
+  const orderOwners = sCorpOrderOwners({
+    entityType: filing.entityType,
+    optionalDetails: filing.optionalDetails,
+    ein: filing.einApplication,
+  });
+  const addOnSlugs = billableAddOnSlugs(
+    filing.filingAdditionalServices.map((fas) => fas.service.serviceSlug as AddOnSlug),
+    orderOwners,
+    filing.taxElection,
   );
 
   const optional = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
@@ -222,6 +230,8 @@ export default async function WizardStepPage({ params, searchParams }: PageProps
         entityType: filing.entityType,
         serviceTier: filing.serviceTier,
         state: filing.state,
+        taxElection: filing.taxElection,
+        einApplication: filing.einApplication,
         optionalDetails: filing.optionalDetails,
         filingAdditionalServices: filing.filingAdditionalServices,
       }).totalCents

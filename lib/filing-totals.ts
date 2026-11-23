@@ -5,6 +5,7 @@ import {
   type EntityType,
   type TierSlug,
 } from '@/lib/pricing';
+import { billableAddOnSlugs, sCorpOrderOwners, type EinResponsibleParty } from '@/lib/scorp-consent';
 import {
   ACTIVE_FORMATION_STATES,
   FORMATION_STATE_UNAVAILABLE,
@@ -33,6 +34,8 @@ export interface DraftQuoteInput {
   serviceTier: string;
   state: string | null;
   optionalDetails: string | null;
+  taxElection?: string | null;
+  einApplication?: EinResponsibleParty;
   filingAdditionalServices?: { service: { serviceSlug: string } }[] | null;
 }
 
@@ -56,8 +59,17 @@ export function quoteDraftFiling(filing: DraftQuoteInput): FilingTotalColumns {
   const optional = safeParseJson<Record<string, unknown> | null>(filing.optionalDetails, null);
   const processingOptionId =
     optional && typeof optional.processingOption === 'string' ? optional.processingOption : undefined;
-  const addOnSlugs = (filing.filingAdditionalServices ?? []).map(
+  const storedAddOnSlugs = (filing.filingAdditionalServices ?? []).map(
     (row) => row.service.serviceSlug as AddOnSlug,
+  );
+  const addOnSlugs = billableAddOnSlugs(
+    storedAddOnSlugs,
+    sCorpOrderOwners({
+      entityType: filing.entityType,
+      optionalDetails: optional,
+      ein: filing.einApplication,
+    }),
+    filing.taxElection,
   );
   const breakdown = computeCost({
     entityType,

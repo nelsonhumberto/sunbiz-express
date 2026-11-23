@@ -260,6 +260,7 @@ export function GuestStartLaunch({
     startHeadlinePriceCents({
       tier: defaultTier,
       state: defaultState,
+      entity: preselectFloridaLlc ? 'LLC' : entity,
       preselectFloridaLlc,
     }),
   );

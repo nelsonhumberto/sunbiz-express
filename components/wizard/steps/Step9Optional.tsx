@@ -37,10 +37,44 @@ import {
 } from '@/lib/formation-states';
 import type { WizardFiling } from '../types';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
+import {
+  coerceShareholderTaxIdType,
+  shouldCollectSCorpConsent,
+  type ShareholderTaxIdChoice,
+} from '@/lib/scorp-consent';
 
 function formatDollars(cents: number): string {
   if (cents === 0) return 'Included';
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function ShareholderTaxIdTypeField({
+  value,
+  onChange,
+}: {
+  value: ShareholderTaxIdChoice;
+  onChange: (value: ShareholderTaxIdChoice) => void;
+}) {
+  const t = useTranslations('wizard');
+  return (
+    <div className="space-y-1.5">
+      <Label>{t('scorpTaxIdType')}</Label>
+      <Select
+        value={value}
+        onValueChange={(next) => onChange(next as ShareholderTaxIdChoice)}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="SSN">SSN</SelectItem>
+          <SelectItem value="ITIN">ITIN</SelectItem>
+          <SelectItem value="EIN">{t('scorpTrustEstateTaxId')}</SelectItem>
+          <SelectItem value="NONE">{t('scorpNoTaxId')}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 interface ShareholderUi {
@@ -52,7 +86,7 @@ interface ShareholderUi {
   email?: string;
   shares: number;
   /** S-corp election fields - collected only when election is in package. */
-  taxIdType?: 'SSN' | 'EIN';
+  taxIdType?: ShareholderTaxIdChoice;
   /** Plaintext during the wizard session; encrypted server-side. */
   taxId?: string;
   taxYearEnd?: string;
@@ -64,7 +98,7 @@ interface MemberTaxUi {
   memberId: string;
   name: string;
   ownershipPercentage?: number | null;
-  taxIdType: 'SSN' | 'EIN';
+  taxIdType: ShareholderTaxIdChoice;
   /** Plaintext during the wizard session; encrypted server-side. */
   taxId: string;
   taxYearEnd: string;
@@ -89,7 +123,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         zip?: string | null;
         email?: string | null;
         shares?: number;
-        taxIdType?: 'SSN' | 'EIN' | null;
+        taxIdType?: string | null;
         taxIdLast4?: string | null;
         taxYearEnd?: string | null;
         sCorpConsent?: boolean | null;
@@ -98,7 +132,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
     memberTaxInfo?: Array<{
       memberId?: string | null;
       name: string;
-      taxIdType?: 'SSN' | 'EIN' | null;
+      taxIdType?: string | null;
       taxIdLast4?: string | null;
       taxYearEnd?: string | null;
       sCorpConsent?: boolean | null;
@@ -151,7 +185,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         zip: s.zip ?? '',
         email: s.email ?? '',
         shares: s.shares ?? 0,
-        taxIdType: (s.taxIdType as 'SSN' | 'EIN') ?? 'SSN',
+        taxIdType: coerceShareholderTaxIdType(s.taxIdType),
         // We never load encrypted Tax IDs back into the form - only the
         // last-4 mask is shown so the customer can confirm what's on file.
         taxId: '',
@@ -192,7 +226,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
         memberId: m.id,
         name: m.name,
         ownershipPercentage: m.ownershipPercentage ?? null,
-        taxIdType: (prior?.taxIdType as 'SSN' | 'EIN') ?? 'SSN',
+        taxIdType: coerceShareholderTaxIdType(prior?.taxIdType),
         taxId: '',
         taxYearEnd: prior?.taxYearEnd ?? '12/31',
         sCorpConsent: !!prior?.sCorpConsent,
@@ -251,11 +285,21 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const allShareholdersNamed = isCorp
     ? shareholders.every((s) => s.name.trim().length > 0)
     : true;
+  // Skip the consent (and the Form 2553 tax-id requirement) when any owner
+  // has neither an SSN nor an ITIN. The tax-id type selector stays so they
+  // can change it.
+  const scorpOwners = isCorp ? shareholders : memberTax;
+  const collectSCorpConsent = shouldCollectSCorpConsent({
+    taxElection: filing.taxElection,
+    addOnSlugs,
+    serviceTier: filing.serviceTier,
+    shareholders: scorpOwners,
+  });
   const sCorpConsentsOk =
-    !isCorp || !sCorpElected || shareholders.every((s) => s.sCorpConsent);
+    !isCorp || !collectSCorpConsent || shareholders.every((s) => s.sCorpConsent);
   const sCorpTaxIdsOk =
     !isCorp ||
-    !sCorpElected ||
+    !collectSCorpConsent ||
     shareholders.every((s) => /^\d{9}$/.test((s.taxId ?? '').replace(/\D/g, '')));
 
   const corpShareValid =
@@ -273,6 +317,7 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
   const llcSCorpActive = !isCorp && sCorpElected;
   const llcSCorpValid =
     !llcSCorpActive ||
+    !collectSCorpConsent ||
     memberTax.every(
       (m) =>
         m.sCorpConsent &&
@@ -395,9 +440,9 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                 email: s.email,
                 shares: s.shares,
                 taxIdType: sCorpElected ? s.taxIdType : undefined,
-                taxId: sCorpElected ? s.taxId : undefined,
-                taxYearEnd: sCorpElected ? s.taxYearEnd : undefined,
-                sCorpConsent: sCorpElected ? !!s.sCorpConsent : undefined,
+                taxId: collectSCorpConsent ? s.taxId : undefined,
+                taxYearEnd: collectSCorpConsent ? s.taxYearEnd : undefined,
+                sCorpConsent: collectSCorpConsent ? !!s.sCorpConsent : undefined,
               })),
             }
           : undefined,
@@ -406,9 +451,9 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
               memberId: m.memberId,
               name: m.name,
               taxIdType: m.taxIdType,
-              taxId: m.taxId || undefined,
-              taxYearEnd: m.taxYearEnd,
-              sCorpConsent: m.sCorpConsent,
+              taxId: collectSCorpConsent ? m.taxId || undefined : undefined,
+              taxYearEnd: collectSCorpConsent ? m.taxYearEnd : undefined,
+              sCorpConsent: collectSCorpConsent ? m.sCorpConsent : undefined,
               ownershipPercentage: m.ownershipPercentage ?? undefined,
             }))
           : undefined,
@@ -749,80 +794,77 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                         />
                       </div>
 
-                      {/* S-corp election fields - only when election is in the package. */}
+                      {/* S-corp election fields - only when election is in the package.
+                          Consent and Form 2553 copy stay hidden when any owner
+                          has no SSN and no ITIN. */}
                       {sCorpElected && (
                         <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 space-y-3">
-                          <div className="flex items-start gap-2">
-                            <Lock className="h-3.5 w-3.5 text-primary mt-0.5" />
-                            <div>
-                              <p className="text-xs font-semibold text-primary">
-                                {t('scorpHeader')}
-                              </p>
-                              <p className="text-[11px] text-ink-muted leading-snug">
-                                {t('scorpBody')}
-                              </p>
+                          {collectSCorpConsent && (
+                            <div className="flex items-start gap-2">
+                              <Lock className="h-3.5 w-3.5 text-primary mt-0.5" />
+                              <div>
+                                <p className="text-xs font-semibold text-primary">
+                                  {t('scorpHeader')}
+                                </p>
+                                <p className="text-[11px] text-ink-muted leading-snug">
+                                  {t('scorpBody')}
+                                </p>
+                              </div>
                             </div>
-                          </div>
+                          )}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label>{t('scorpTaxIdType')}</Label>
-                              <Select
-                                value={sh.taxIdType ?? 'SSN'}
-                                onValueChange={(v) =>
-                                  updateShareholder(idx, { taxIdType: v as 'SSN' | 'EIN' })
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="SSN">SSN</SelectItem>
-                                  <SelectItem value="EIN">{t('scorpTrustEstateTaxId')}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="md:col-span-2 space-y-1.5">
-                              <Label>{t('scorpTaxIdLabel')}</Label>
-                              <Input
-                                value={sh.taxId ?? ''}
-                                onChange={(e) =>
-                                  updateShareholder(idx, { taxId: e.target.value })
-                                }
-                                placeholder="123-45-6789"
-                                inputMode="numeric"
-                                autoComplete="off"
-                              />
-                              <p className="text-[11px] text-ink-subtle">
-                                {t('scorpTaxIdHelp')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label>{t('scorpTaxYearEnd')}</Label>
-                              <Input
-                                value={sh.taxYearEnd ?? '12/31'}
-                                onChange={(e) =>
-                                  updateShareholder(idx, { taxYearEnd: e.target.value })
-                                }
-                                placeholder="12/31"
-                              />
-                              <p className="text-[11px] text-ink-subtle">
-                                {t('scorpTaxYearEndHelp')}
-                              </p>
-                            </div>
-                          </div>
-                          <label className="flex items-start gap-2 text-xs text-ink leading-snug cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!!sh.sCorpConsent}
-                              onChange={(e) =>
-                                updateShareholder(idx, { sCorpConsent: e.target.checked })
-                              }
-                              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                            <ShareholderTaxIdTypeField
+                              value={sh.taxIdType ?? 'SSN'}
+                              onChange={(taxIdType) => updateShareholder(idx, { taxIdType })}
                             />
-                            <span>{t('scorpConsentLabel')}</span>
-                          </label>
+                            {collectSCorpConsent && (
+                              <div className="md:col-span-2 space-y-1.5">
+                                <Label>{t('scorpTaxIdLabel')}</Label>
+                                <Input
+                                  value={sh.taxId ?? ''}
+                                  onChange={(e) =>
+                                    updateShareholder(idx, { taxId: e.target.value })
+                                  }
+                                  placeholder="123-45-6789"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                />
+                                <p className="text-[11px] text-ink-subtle">
+                                  {t('scorpTaxIdHelp')}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {collectSCorpConsent && (
+                            <>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label>{t('scorpTaxYearEnd')}</Label>
+                                  <Input
+                                    value={sh.taxYearEnd ?? '12/31'}
+                                    onChange={(e) =>
+                                      updateShareholder(idx, { taxYearEnd: e.target.value })
+                                    }
+                                    placeholder="12/31"
+                                  />
+                                  <p className="text-[11px] text-ink-subtle">
+                                    {t('scorpTaxYearEndHelp')}
+                                  </p>
+                                </div>
+                              </div>
+                              <label className="flex items-start gap-2 text-xs text-ink leading-snug cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!sh.sCorpConsent}
+                                  onChange={(e) =>
+                                    updateShareholder(idx, { sCorpConsent: e.target.checked })
+                                  }
+                                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                />
+                                <span>{t('scorpConsentLabel')}</span>
+                              </label>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -838,17 +880,19 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
             rather than a share allocation, so we key it to the member list. */}
         {llcSCorpActive && (
           <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/[0.04] p-5">
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Lock className="h-5 w-5" />
+            {collectSCorpConsent && (
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-ink">{t('scorpMembersHeader')}</h3>
+                  <p className="text-xs text-ink-muted mt-0.5">{t('scorpMembersBody')}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-ink">{t('scorpMembersHeader')}</h3>
-                <p className="text-xs text-ink-muted mt-0.5">{t('scorpMembersBody')}</p>
-              </div>
-            </div>
+            )}
 
-            {memberTax.length === 0 && (
+            {collectSCorpConsent && memberTax.length === 0 && (
               <p className="text-xs text-ink-muted">{t('scorpMembersEmpty')}</p>
             )}
 
@@ -866,55 +910,48 @@ export function Step9Optional({ filing }: { filing: WizardFiling }) {
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t('scorpTaxIdType')}</Label>
-                      <Select
-                        value={m.taxIdType}
-                        onValueChange={(v) =>
-                          updateMemberTax(idx, { taxIdType: v as 'SSN' | 'EIN' })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SSN">SSN</SelectItem>
-                          <SelectItem value="EIN">{t('scorpTrustEstateTaxId')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="md:col-span-2 space-y-1.5">
-                      <Label>{t('scorpTaxIdLabel')}</Label>
-                      <Input
-                        value={m.taxId}
-                        onChange={(e) => updateMemberTax(idx, { taxId: e.target.value })}
-                        placeholder={m.taxIdLast4 ? `On file •••-••-${m.taxIdLast4}` : '123-45-6789'}
-                        inputMode="numeric"
-                        autoComplete="off"
-                      />
-                      <p className="text-[11px] text-ink-subtle">{t('scorpTaxIdHelp')}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t('scorpTaxYearEnd')}</Label>
-                      <Input
-                        value={m.taxYearEnd}
-                        onChange={(e) => updateMemberTax(idx, { taxYearEnd: e.target.value })}
-                        placeholder="12/31"
-                      />
-                      <p className="text-[11px] text-ink-subtle">{t('scorpTaxYearEndHelp')}</p>
-                    </div>
-                  </div>
-                  <label className="flex items-start gap-2 text-xs text-ink leading-snug cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={m.sCorpConsent}
-                      onChange={(e) => updateMemberTax(idx, { sCorpConsent: e.target.checked })}
-                      className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                    <ShareholderTaxIdTypeField
+                      value={m.taxIdType}
+                      onChange={(taxIdType) => updateMemberTax(idx, { taxIdType })}
                     />
-                    <span>{t('scorpConsentLabel')}</span>
-                  </label>
+                    {collectSCorpConsent && (
+                      <div className="md:col-span-2 space-y-1.5">
+                        <Label>{t('scorpTaxIdLabel')}</Label>
+                        <Input
+                          value={m.taxId}
+                          onChange={(e) => updateMemberTax(idx, { taxId: e.target.value })}
+                          placeholder={m.taxIdLast4 ? `On file •••-••-${m.taxIdLast4}` : '123-45-6789'}
+                          inputMode="numeric"
+                          autoComplete="off"
+                        />
+                        <p className="text-[11px] text-ink-subtle">{t('scorpTaxIdHelp')}</p>
+                      </div>
+                    )}
+                  </div>
+                  {collectSCorpConsent && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label>{t('scorpTaxYearEnd')}</Label>
+                          <Input
+                            value={m.taxYearEnd}
+                            onChange={(e) => updateMemberTax(idx, { taxYearEnd: e.target.value })}
+                            placeholder="12/31"
+                          />
+                          <p className="text-[11px] text-ink-subtle">{t('scorpTaxYearEndHelp')}</p>
+                        </div>
+                      </div>
+                      <label className="flex items-start gap-2 text-xs text-ink leading-snug cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={m.sCorpConsent}
+                          onChange={(e) => updateMemberTax(idx, { sCorpConsent: e.target.checked })}
+                          className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                        />
+                        <span>{t('scorpConsentLabel')}</span>
+                      </label>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

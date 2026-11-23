@@ -5,6 +5,10 @@ import { safeParseJson } from '@/lib/utils';
 import { decryptString } from '@/lib/encryption';
 import { getFormationState } from '@/lib/formation-states';
 import { generateForm2553Pdf, type Form2553Shareholder } from '@/lib/form2553';
+import {
+  shareholderTaxIdsFromOptional,
+  shouldGenerateForm2553,
+} from '@/lib/scorp-consent';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +36,34 @@ export async function GET(
 
   const filing = await prisma.filing.findUnique({
     where: { id: params.id },
-    include: { managersMembers: { orderBy: { position: 'asc' } } },
+    include: {
+      managersMembers: { orderBy: { position: 'asc' } },
+      filingAdditionalServices: { include: { service: true } },
+      einApplication: {
+        select: { responsiblePartyType: true, taxIdType: true, status: true },
+      },
+    },
   });
   if (!filing) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  const optForGuard = safeParseJson<{
+    shareStructure?: { shareholders?: Array<{ taxIdType?: string | null }> } | null;
+    memberTaxInfo?: Array<{ taxIdType?: string | null }> | null;
+  } | null>(filing.optionalDetails, null);
+  const allowForm2553 = shouldGenerateForm2553({
+    taxElection: filing.taxElection,
+    addOnSlugs: filing.filingAdditionalServices.map((row) => row.service.serviceSlug),
+    shareholders: shareholderTaxIdsFromOptional({
+      entityType: filing.entityType,
+      shareStructure: optForGuard?.shareStructure ?? null,
+      memberTaxInfo: optForGuard?.memberTaxInfo ?? null,
+      memberCount: filing.managersMembers.length,
+      ein: filing.einApplication,
+    }),
+  });
+  if (!allowForm2553) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 });
+  }
 
   // Audit the decryption: this route decrypts shareholder/member SSNs into the
   // PDF, so every generation is logged (admin + filing + timestamp, no PII).

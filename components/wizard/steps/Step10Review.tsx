@@ -28,6 +28,10 @@ import type { AddressValue } from '../AddressForm';
 import { parseOptionalPhone } from '@/lib/phone';
 import { memberTitleLabel, reviewMemberText } from '@/lib/member-title';
 import { filingContactEmail } from '@/lib/guest-checkout';
+import {
+  shareholderTaxIdsFromOptional,
+  shouldGenerateForm2553,
+} from '@/lib/scorp-consent';
 import { serviceTierDisplayName } from '@/lib/tier-display';
 
 type ManagementType = 'member-managed' | 'manager-managed';
@@ -82,10 +86,12 @@ export function Step10Review({
       shareholders?: Array<{
         name: string;
         shares?: number;
+        taxIdType?: string | null;
         taxIdLast4?: string | null;
         sCorpConsent?: boolean | null;
       }>;
     };
+    memberTaxInfo?: Array<{ taxIdType?: string | null }> | null;
   } | null>(filing.optionalDetails, null);
 
   const [signature, setSignature] = useState(filing.incorporatorSignature ?? '');
@@ -100,6 +106,16 @@ export function Step10Review({
     (fas) => fas.service.serviceSlug as AddOnSlug,
   );
   const isLLC = filing.entityType === 'LLC';
+  const showForm2553 = shouldGenerateForm2553({
+    taxElection: filing.taxElection,
+    addOnSlugs,
+    shareholders: shareholderTaxIdsFromOptional({
+      entityType: filing.entityType,
+      shareStructure: opt?.shareStructure ?? null,
+      memberTaxInfo: opt?.memberTaxInfo ?? null,
+      memberCount: filing.managersMembers.length,
+    }),
+  });
   const oaEntitled =
     isLLC &&
     filingHasOperatingAgreement({
@@ -161,7 +177,7 @@ export function Step10Review({
           label={t('serviceTier')}
           value={serviceTierDisplayName(filing.serviceTier, (key) => tPricing(key as 'tier_BASIC'))}
         />
-        {filing.taxElection === 'S_CORP' && (
+        {filing.taxElection === 'S_CORP' && showForm2553 && (
           <Row label={t('taxElectionLabel')} value={t('taxElectionSCorp')} />
         )}
       </ReviewSection>

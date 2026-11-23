@@ -45,6 +45,10 @@ import {
 } from '@/lib/sunbiz-cover';
 import { filingContactEmail } from '@/lib/guest-checkout';
 import { filingIncludesEin } from '@/lib/ein';
+import {
+  shareholderTaxIdsFromOptional,
+  shouldGenerateForm2553,
+} from '@/lib/scorp-consent';
 import type { AddOnSlug, TierSlug } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
@@ -150,6 +154,21 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
   const sunbizCover = filing.documents.find((d) => d.documentType === 'SUNBIZ_COVER_PAGE');
   const sunbizCoverReady = Boolean(sunbizCover?.base64);
   const annualReportDocumentNumber = paidAnnualReportDocumentNumber(filing);
+  const optionalForScorp = safeParseJson<{
+    shareStructure?: { shareholders?: Array<{ taxIdType?: string | null }> } | null;
+    memberTaxInfo?: Array<{ taxIdType?: string | null }> | null;
+  } | null>(filing.optionalDetails, null);
+  const offerForm2553 = shouldGenerateForm2553({
+    taxElection: filing.taxElection,
+    addOnSlugs: filing.filingAdditionalServices.map((row) => row.service.serviceSlug),
+    shareholders: shareholderTaxIdsFromOptional({
+      entityType: filing.entityType,
+      shareStructure: optionalForScorp?.shareStructure ?? null,
+      memberTaxInfo: optionalForScorp?.memberTaxInfo ?? null,
+      memberCount: filing.managersMembers.length,
+      ein: filing.einApplication,
+    }),
+  });
 
   // COVER_LETTER is an internal draft helper - not shown for download here.
   // SUNBIZ_COVER_PAGE is listed separately as Missing / Available.
@@ -221,13 +240,13 @@ export default async function AdminFilingDetailPage({ params }: PageProps) {
               ) : (
                 <Badge variant="outline">{filing.serviceTier}</Badge>
               )}
-              {filing.taxElection === 'S_CORP' && (
+              {offerForm2553 && (
                 <Badge variant="default" className="gap-1">
                   S-Corp election (Form 2553)
                 </Badge>
               )}
             </div>
-            {filing.taxElection === 'S_CORP' && (
+            {offerForm2553 && (
               <a
                 href={`/api/admin/filings/${filing.id}/form-2553`}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"

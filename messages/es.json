@@ -1154,6 +1154,7 @@
     "scorpTaxIdLabel": "Tax ID del accionista",
     "scorpTaxIdHelp": "SSN para personas, o la identificación fiscal de la entidad para trusts, sucesiones u organizaciones exentas. Cifrado en reposo; solo se guardan los últimos 4 dígitos.",
     "scorpTaxIdType": "Tipo de Tax ID",
+    "scorpNoTaxId": "Sin SSN ni ITIN",
     "scorpTaxYearEnd": "Fin del año fiscal",
     "scorpTaxYearEndHelp": "La mayoría usa 12/31 (año calendario).",
     "scorpConsentLabel": "Acepto la elección S-Corp para esta corporación.",

@@ -1154,6 +1154,7 @@
     "scorpTaxIdLabel": "Shareholder Tax ID",
     "scorpTaxIdHelp": "SSN for individuals, or the entity tax ID for trusts, estates, and exempt organizations. Encrypted at rest; only the last 4 digits are stored unencrypted.",
     "scorpTaxIdType": "Tax ID type",
+    "scorpNoTaxId": "No SSN or ITIN",
     "scorpTaxYearEnd": "Tax year end",
     "scorpTaxYearEndHelp": "Most shareholders use 12/31 (calendar year).",
     "scorpConsentLabel": "I consent to the S-Corp election for this corporation.",

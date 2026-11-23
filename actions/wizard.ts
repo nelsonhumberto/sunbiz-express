@@ -37,6 +37,7 @@ import { usesLpShortWizard } from '@/lib/lp-wizard-path';
 import { filingContactEmail } from '@/lib/guest-checkout';
 import { isActionTimeoutError, isRedirectError, STEP2_SAVE_TIMEOUT_MS, withActionTimeout } from '@/lib/action-timeout';
 import { filingTotalsChanged, quoteDraftFiling } from '@/lib/filing-totals';
+import { shouldCollectSCorpConsent } from '@/lib/scorp-consent';
 import { getTranslations } from 'next-intl/server';
 import { saveGuestEmail } from '@/actions/guest-email';
 import { isPlaceholderGuestEmail } from '@/lib/guest-identity';
@@ -807,7 +808,7 @@ const ShareholderSchema = z.object({
   email: z.string().optional(),
   shares: z.number().int().min(0).optional(),
   /** Tax ID type - only collected when S-corp election is in the package. */
-  taxIdType: z.enum(['SSN', 'EIN']).optional(),
+  taxIdType: z.enum(['SSN', 'ITIN', 'EIN', 'NONE']).optional(),
   /** Plain-text 9-digit Tax ID (encrypted before persistence). */
   taxId: z.string().optional(),
   /** Tax year end in MM/DD (Form 2553 Column N). */
@@ -829,7 +830,7 @@ const ShareStructureSchema = z.object({
 const MemberTaxInfoSchema = z.object({
   memberId: z.string().optional(),
   name: z.string().min(1).max(255),
-  taxIdType: z.enum(['SSN', 'EIN']).optional(),
+  taxIdType: z.enum(['SSN', 'ITIN', 'EIN', 'NONE']).optional(),
   taxId: z.string().optional(),
   taxYearEnd: z.string().optional(),
   sCorpConsent: z.boolean().optional(),
@@ -892,6 +893,21 @@ export async function saveStep9(
     filing.taxElection === 'S_CORP' || // authoritative Step-1 choice
     addOnSlugs.includes('s_corp_election') ||
     (filing.serviceTier as TierSlug) === 'PREMIUM'; // Premium bundles S-corp
+  const submittedOwners =
+    filing.entityType === 'CORP'
+      ? (data.shareStructure?.shareholders ?? []).map((owner) => ({
+          taxIdType: owner.taxIdType ?? null,
+        }))
+      : (data.memberTaxInfo ?? []).map((owner) => ({
+          taxIdType: owner.taxIdType ?? null,
+        }));
+  // Same helper the wizard uses: no SSN and no ITIN skips consent and Form 2553.
+  const collectSCorpConsent = shouldCollectSCorpConsent({
+    taxElection: filing.taxElection,
+    addOnSlugs,
+    serviceTier: filing.serviceTier,
+    shareholders: submittedOwners,
+  });
 
   // Build the share-structure payload. We encrypt any Tax IDs and only
   // store the encrypted ciphertext + last-4 so plaintext SSNs never sit
@@ -920,9 +936,9 @@ export async function saveStep9(
     }
 
     // S-corp election turns on stricter validation: each shareholder must
-    // have consented AND provided a valid 9-digit Tax ID. We surface a
-    // friendly error rather than throwing.
-    if (sCorpElected) {
+    // have consented AND provided a valid 9-digit Tax ID. Skipped when any
+    // owner has no SSN and no ITIN (no Form 2553).
+    if (collectSCorpConsent) {
       for (const s of shareholders) {
         if (!s.sCorpConsent) {
           return {
@@ -942,7 +958,7 @@ export async function saveStep9(
     const persistedShareholders = shareholders.map((s) => {
       let taxIdLast4: string | null = null;
       let taxIdEncrypted: string | null = null;
-      if (sCorpElected && s.taxId) {
+      if (collectSCorpConsent && s.taxId) {
         const digits = s.taxId.replace(/\D/g, '');
         taxIdLast4 = digits.slice(-4);
         taxIdEncrypted = encryptString(digits);
@@ -955,18 +971,18 @@ export async function saveStep9(
         zip: s.zip?.trim() ?? null,
         email: s.email?.trim() ?? null,
         shares: s.shares ?? 0,
-        taxIdType: sCorpElected ? s.taxIdType ?? 'SSN' : null,
+        taxIdType: sCorpElected ? s.taxIdType ?? (collectSCorpConsent ? 'SSN' : null) : null,
         taxIdLast4,
         taxIdEncrypted,
-        taxYearEnd: sCorpElected ? s.taxYearEnd ?? '12/31' : null,
-        sCorpConsent: sCorpElected ? !!s.sCorpConsent : null,
+        taxYearEnd: collectSCorpConsent ? s.taxYearEnd ?? '12/31' : null,
+        sCorpConsent: collectSCorpConsent ? !!s.sCorpConsent : null,
       };
     });
 
     shareStructurePersisted = {
       issuedShares: issued,
       shareholders: persistedShareholders,
-      sCorpElected,
+      sCorpElected: collectSCorpConsent,
     };
   }
 
@@ -986,19 +1002,21 @@ export async function saveStep9(
     } | null>(filing.optionalDetails, null);
     const priorMembers = priorOptional?.memberTaxInfo ?? [];
 
-    for (const m of data.memberTaxInfo) {
-      const prior = priorMembers.find(
-        (p) => (m.memberId && p.memberId === m.memberId) || p.name === m.name,
-      );
-      if (!m.sCorpConsent) {
-        return { ok: false, error: 'Each member must consent to the S-Corp election.' };
-      }
-      const hasNewId = looksLikeNineDigitTaxId(m.taxId);
-      if (!hasNewId && !prior?.taxIdEncrypted) {
-        return {
-          ok: false,
-          error: 'Each member must provide a valid 9-digit Tax ID for the S-Corp election.',
-        };
+    if (collectSCorpConsent) {
+      for (const m of data.memberTaxInfo) {
+        const prior = priorMembers.find(
+          (p) => (m.memberId && p.memberId === m.memberId) || p.name === m.name,
+        );
+        if (!m.sCorpConsent) {
+          return { ok: false, error: 'Each member must consent to the S-Corp election.' };
+        }
+        const hasNewId = looksLikeNineDigitTaxId(m.taxId);
+        if (!hasNewId && !prior?.taxIdEncrypted) {
+          return {
+            ok: false,
+            error: 'Each member must provide a valid 9-digit Tax ID for the S-Corp election.',
+          };
+        }
       }
     }
 
@@ -1007,15 +1025,23 @@ export async function saveStep9(
         (p) => (m.memberId && p.memberId === m.memberId) || p.name === m.name,
       );
       const digits = (m.taxId ?? '').replace(/\D/g, '');
-      const hasNewId = /^\d{9}$/.test(digits);
+      const hasNewId = collectSCorpConsent && /^\d{9}$/.test(digits);
       return {
         memberId: m.memberId ?? null,
         name: m.name.trim(),
-        taxIdType: m.taxIdType ?? 'SSN',
-        taxIdLast4: hasNewId ? digits.slice(-4) : prior?.taxIdLast4 ?? null,
-        taxIdEncrypted: hasNewId ? encryptString(digits) : prior?.taxIdEncrypted ?? null,
-        taxYearEnd: m.taxYearEnd ?? '12/31',
-        sCorpConsent: true,
+        taxIdType: m.taxIdType ?? (collectSCorpConsent ? 'SSN' : null),
+        taxIdLast4: hasNewId
+          ? digits.slice(-4)
+          : collectSCorpConsent
+            ? (prior?.taxIdLast4 ?? null)
+            : null,
+        taxIdEncrypted: hasNewId
+          ? encryptString(digits)
+          : collectSCorpConsent
+            ? prior?.taxIdEncrypted ?? null
+            : null,
+        taxYearEnd: collectSCorpConsent ? m.taxYearEnd ?? '12/31' : null,
+        sCorpConsent: collectSCorpConsent ? true : null,
         ownershipPercentage: m.ownershipPercentage ?? null,
       };
     });

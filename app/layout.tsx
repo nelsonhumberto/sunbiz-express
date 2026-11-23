@@ -6,6 +6,11 @@ import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { messagesForPath } from '@/i18n/config';
+import { PUBLIC_PATH_HEADER } from '@/lib/locale-paths';
+import { cookieNoticeLocale } from '@/lib/cookie-notice-locale';
+import { TRANSLATE_DOM_GUARD_SCRIPT } from '@/lib/translate-dom-guard';
+import enMessages from '@/messages/en.json';
+import esMessages from '@/messages/es.json';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -79,14 +84,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const requestLocale = await getLocale();
+  const headerStore = headers();
+  const pathname = headerStore.get('x-lf-pathname') ?? '';
+  const locale = cookieNoticeLocale(headerStore.get(PUBLIC_PATH_HEADER) ?? '', requestLocale);
+  const messages = locale === requestLocale ? await getMessages() : locale === 'es' ? esMessages : enMessages;
+  const cookieCopy = (locale === 'es' ? esMessages : enMessages).cookieNotice;
   const session = await auth();
   const guest = session?.user?.isTester ? null : await getGuestUser();
   const testerUserId = session?.user?.isTester ? session.user.id : guest?.isTester ? guest.id : null;
   const isTester = session?.user?.isTester === true || guest?.isTester === true;
-  const headerStore = headers();
-  const pathname = headerStore.get('x-lf-pathname') ?? '';
   const serverGpc = headerStore.get('sec-gpc') === '1';
   const serverCookie = cookies().get(AD_OPT_OUT_COOKIE)?.value ?? null;
 
@@ -98,6 +105,9 @@ export default async function RootLayout({
       >
         <HtmlLang />
         <ChunkReload />
+        <Script id="lf-translate-dom-guard" strategy="beforeInteractive">
+          {TRANSLATE_DOM_GUARD_SCRIPT}
+        </Script>
         <Script id="strip-li-fat-id" strategy="beforeInteractive">
           {LI_FAT_ID_STRIP_SCRIPT}
         </Script>
@@ -126,7 +136,7 @@ export default async function RootLayout({
                 className: 'font-sans',
               }}
             />
-            <CookieConsentBar />
+            <CookieConsentBar locale={locale} copy={cookieCopy} />
           </NextIntlClientProvider>
           <Analytics />
           <SpeedInsights />

@@ -96,19 +96,17 @@ describe('notifyAdminOfPaidOrder', () => {
     });
   });
 
-  it('prefixes tester and isTest orders without throwing', async () => {
+  it('skips tester owners and isTest filings, and still sends a real order', async () => {
     findUnique.mockResolvedValue(filing({ user: { ...filing().user, isTester: true } }));
-    await notifyAdminOfPaidOrder('fil_1');
-    expect(sendEmail.mock.calls[0][0].context.testOrder).toBe(true);
+    await expect(notifyAdminOfPaidOrder('fil_1')).resolves.toBe('skipped');
 
-    sendEmail.mockClear();
-    findUnique.mockResolvedValue(
-      filing({
-        payments: [{ ...filing().payments[0], isTest: true }],
-      }),
-    );
-    await notifyAdminOfPaidOrder('fil_1');
-    expect(sendEmail.mock.calls[0][0].context.testOrder).toBe(true);
+    findUnique.mockResolvedValue(filing({ isTest: true }));
+    await expect(notifyAdminOfPaidOrder('fil_1')).resolves.toBe('skipped');
+    expect(sendEmail).not.toHaveBeenCalled();
+
+    findUnique.mockResolvedValue(filing());
+    await expect(notifyAdminOfPaidOrder('fil_1')).resolves.toBe('sent');
+    expect(sendEmail).toHaveBeenCalledTimes(1);
   });
 
   it('logs and returns failed when lookup throws', async () => {

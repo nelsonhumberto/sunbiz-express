@@ -10,7 +10,7 @@ const PATH = '/guides/wyoming-llc-vs-delaware-corp';
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideWyDe');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideWyDe' });
     return withLocaleMeta(
       PATH,
       {
@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WyomingVsDelawareGuide() {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideWyDe');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideWyDe' });
     return (
       <GuideLayout
         slug="wyoming-llc-vs-delaware-corp"

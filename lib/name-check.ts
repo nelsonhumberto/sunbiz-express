@@ -15,6 +15,12 @@ export const NAME_CHECK_CLIENT_TIMEOUT_MS = 5_000;
 export const NAME_CHECK_DEBOUNCE_MS = 600;
 /** How long Retry stays disabled after a 429. */
 export const NAME_CHECK_RATE_LIMIT_COOLDOWN_MS = 8_000;
+/**
+ * Per-visitor lookups per minute. A buyer editing a name, suffix, and retry
+ * was hitting the old cap of 30 (about 15 pauses) and getting a 429.
+ */
+export const NAME_CHECK_IP_LIMIT = 60;
+export const NAME_CHECK_IP_WINDOW_MS = 60_000;
 
 export interface NameCheckResult {
   query: string;

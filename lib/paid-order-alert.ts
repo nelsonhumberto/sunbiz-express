@@ -165,6 +165,9 @@ export async function notifyAdminOfPaidOrder(filingId: string): Promise<'sent' |
     const filing = await loadPaidFiling(filingId);
     const paid = filing ? earliestPayment(filing) : null;
     if (!filing || !paid) return 'skipped';
+    // Same test guard as the Sunbiz fax: a filing marked isTest, or owned
+    // by an isTester, must not email admin@launchforma.com.
+    if (filing.isTest === true || filing.user.isTester === true) return 'skipped';
     const deadline = paidOrderDeadline(paid.paidAt);
     const annualReportDocumentNumber = paidAnnualReportDocumentNumber(filing);
     await sendEmail({

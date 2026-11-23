@@ -179,7 +179,7 @@ function FaqList({ items }: { items: { q: string; a: string }[] }) {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlCorp');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlCorp' });
     const title = t('metaTitle');
     const description = t('metaDescription');
     return withLocaleMeta(
@@ -216,7 +216,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HowToFormFloridaCorporationGuide() {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guideFlCorp');
+    const t = await getTranslations({ locale: 'es', namespace: 'guideFlCorp' });
     const faq = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ q: t(`faq${n}q`), a: t(`faq${n}a`) }));
     return (
       <>

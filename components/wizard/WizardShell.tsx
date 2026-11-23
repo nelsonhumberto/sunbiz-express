@@ -143,13 +143,13 @@ export function WizardShell({
         </div>
       </header>
 
-      <div className="relative flex-1 container py-8 lg:py-12">
+      <div className="wizard-step-column relative flex-1 container py-8 lg:py-12">
         {locale === 'en' ? (
           <VerEnEspanolLink className="absolute right-4 top-2 z-10 text-[11px] font-medium leading-none text-ink-muted underline underline-offset-2 hover:text-ink" />
         ) : null}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
           <div id="wizard-step-content" tabIndex={-1} className="lg:col-span-2 min-w-0 focus:outline-none">
-            <div className="mb-8">
+            <div className="wizard-step-intro mb-8">
               <motion.div
                 key={step}
                 initial={{ opacity: 0, y: 12 }}
@@ -343,8 +343,12 @@ export function WizardActions({
             pending && 'cursor-not-allowed active:scale-100',
           )}
         >
-          {pending ? tCommon('saving') : label}
-          {!pending && <span className="text-lg leading-none">→</span>}
+          <span key="wizard-next-label">{pending ? tCommon('saving') : label}</span>
+          {!pending && (
+            <span key="wizard-next-arrow" className="text-lg leading-none">
+              →
+            </span>
+          )}
         </button>
       </div>
     </div>

@@ -11,7 +11,7 @@ import { socialOpenGraph, withLocaleMeta } from '@/lib/locale-seo';
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   if (locale === 'es') {
-    const t = await getTranslations('guidesPage');
+    const t = await getTranslations({ locale: 'es', namespace: 'guidesPage' });
     return withLocaleMeta(
       '/guides',
       {
@@ -127,7 +127,7 @@ const GUIDES = [
 
 export default async function GuidesHubPage() {
   const locale = await getLocale();
-  const t = locale === 'es' ? await getTranslations('guidesPage') : null;
+  const t = locale === 'es' ? await getTranslations({ locale: 'es', namespace: 'guidesPage' }) : null;
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://launchforma.com';
   const prefix = locale === 'es' ? '/es' : '';
   const guides = t

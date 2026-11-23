@@ -89,6 +89,19 @@ export interface StripeCardHandle {
 
 // ── Inner component (has access to useStripe / useElements) ────────────────
 
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: '15px',
+      color: '#1a1a2e',
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      '::placeholder': { color: '#9ca3af' },
+    },
+    invalid: { color: '#ef4444' },
+  },
+  hidePostalCode: false,
+} as const;
+
 const InnerCard = forwardRef(function InnerCard(
   props: {
     showCardElement: boolean;
@@ -246,18 +259,7 @@ const InnerCard = forwardRef(function InnerCard(
           cardComplete.current = event.complete;
           publishAvailability();
         }}
-        options={{
-          style: {
-            base: {
-              fontSize: '15px',
-              color: '#1a1a2e',
-              fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-              '::placeholder': { color: '#9ca3af' },
-            },
-            invalid: { color: '#ef4444' },
-          },
-          hidePostalCode: false,
-        }}
+        options={CARD_ELEMENT_OPTIONS}
       />
     </div>
   );

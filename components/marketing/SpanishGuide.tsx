@@ -37,7 +37,7 @@ export async function spanishGuideMetadata(
   options?: SpanishGuideMetaOptions,
 ): Promise<Metadata> {
   redirectUnlessSpanish(englishPath);
-  const t = await getTranslations(namespace);
+  const t = await getTranslations({ locale: 'es', namespace });
   const esPath = toSpanishUrl(englishPath);
   const alternates = options?.twinEnglishPath
     ? guideTwinAlternates(options.twinEnglishPath, esPath)
@@ -75,7 +75,7 @@ export async function SpanishGuide({
   trackSource?: string;
 }) {
   redirectUnlessSpanish(path);
-  const t = await getTranslations(namespace);
+  const t = await getTranslations({ locale: 'es', namespace });
   const faqCount = Number(t('faqCount'));
   const faq = Array.from({ length: faqCount }, (_, i) => {
     const n = i + 1;

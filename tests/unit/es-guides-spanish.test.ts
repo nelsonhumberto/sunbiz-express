@@ -85,7 +85,7 @@ describe('Spanish guide pages', () => {
     for (const [file, namespace] of pages) {
       const source = readFileSync(file, 'utf8');
       expect(source, file).toContain("locale === 'es'");
-      expect(source, file).toContain(`getTranslations('${namespace}')`);
+      expect(source, file).toContain(`namespace: '${namespace}'`);
     }
     const guidesIndex = readFileSync('app/(marketing)/guides/page.tsx', 'utf8');
     expect(guidesIndex).toContain('href="/es/business-services"');
